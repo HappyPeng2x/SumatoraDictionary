@@ -1,3 +1,19 @@
+/* Sumatora Dictionary
+        Copyright (C) 2018 Nicolas Centa
+
+        This program is free software: you can redistribute it and/or modify
+        it under the terms of the GNU General Public License as published by
+        the Free Software Foundation, either version 3 of the License, or
+        (at your option) any later version.
+
+        This program is distributed in the hope that it will be useful,
+        but WITHOUT ANY WARRANTY; without even the implied warranty of
+        MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+        GNU General Public License for more details.
+
+        You should have received a copy of the GNU General Public License
+        along with this program.  If not, see <http://www.gnu.org/licenses/>.*/
+
 package org.happypeng.sumatora.android.sumatoradictionary;
 
 import android.content.DialogInterface;
@@ -12,30 +28,18 @@ import android.view.LayoutInflater;
 import android.os.Bundle;
 import android.os.AsyncTask;
 
-import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.EditText;
-import android.widget.TwoLineListItem;
 
 import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteException;
+import android.database.Cursor;
 
 import android.support.v7.widget.RecyclerView;
 
-import java.io.IOException;
-import java.io.StringWriter;
-
-import java.util.ArrayList;
-import java.util.List;
 import java.util.LinkedList;
-import java.util.Iterator;
-
-import net.java.sen.StringTagger;
-import net.java.sen.SenFactory;
-
-import net.java.sen.dictionary.Token;
-
 
 public class Dictionary extends AppCompatActivity {
     private SQLiteDatabase m_db;
@@ -151,22 +155,33 @@ public class Dictionary extends AppCompatActivity {
                     return;
                 }
 
-                ArrayList<Token> reuse_list = new ArrayList<Token>();
-                List<Token> output_list;
-                StringTagger tagger = SenFactory.getStringTagger(null, false);
-
                 EditText input_edit = findViewById(R.id.editText);
-                String analyze_string;
 
                 try {
-                    analyze_string = input_edit.getText().toString();
+                    Cursor cur = m_db.rawQuery
+                            ("SELECT DISTINCT writings.seq FROM writings, readings WHERE writings.seq=readings.seq " +
+                                    "AND (writings.keb LIKE \"%" + input_edit.getText() + "%\" OR readings.reb LIKE \"%" + input_edit.getText() + "%\") " +
+                                    "GROUP BY writings.seq " +
+                                    "ORDER BY (writings.keb = \"" + input_edit.getText() + "\")*(20 - writings.keb_id) DESC, " +
+                                            " (readings.reb = \"" + input_edit.getText() + "\")*(20 - readings.reb_id) DESC, " +
+                                            " (writings.keb LIKE \"" + input_edit.getText() + "%\")*(20 - writings.keb_id) DESC, " +
+                                            " (readings.reb LIKE \"" + input_edit.getText() + "%\")*(20 - readings.reb_id) DESC",
+                            null);
+                    LinkedList<DictionaryElement> output_list = new LinkedList<DictionaryElement>();
 
-                    output_list = tagger.analyze(analyze_string, reuse_list);
+                    while (cur.moveToNext()) {
+                        DictionaryElement ele =
+                                new DictionaryElement(m_db, cur.getInt(0));
 
-                    RecyclerView.Adapter adapter = new DictionaryAdapter(output_list);
+                        output_list.add(ele);
+                    }
+
+                    cur.close();
+
+                    RecyclerView.Adapter adapter = new DictionaryAdapter(m_db, output_list);
 
                     recyclerView.setAdapter(adapter);
-                } catch (IOException e) {
+                } catch (SQLiteException e) {
                    e.printStackTrace();
                 }
             }

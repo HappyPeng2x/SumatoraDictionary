@@ -19,22 +19,11 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:background="?android:selectableItemBackground"
-            android:padding="8dp"
-            tools:text="Text 1"
             android:fontFamily="sans-serif"
+            android:padding="8dp"
             android:textColor="#000"
-            android:textSize="18sp" />
-
-        <TextView
-            android:id="@+id/text2"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="?android:selectableItemBackground"
-            android:padding="8dp"
-            tools:text="Text 2"
-            android:fontFamily="sans-serif"
-            android:textColor="#666"
-            android:textSize="12sp" />
+            android:textSize="12sp"
+            tools:text="Text 1" />
 
     </LinearLayout>
 

@@ -5,27 +5,32 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
-import net.java.sen.dictionary.Token;
+import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteException;
+import android.database.Cursor;
 
 import java.util.List;
 
 public class DictionaryAdapter extends RecyclerView.Adapter<DictionaryViewHolder> {
-    List<Token> mList;
+    private List<DictionaryElement> mList;
+    private SQLiteDatabase mDb;
 
-    public DictionaryAdapter(List<Token> pList) {
-        this.mList = pList;
+    public DictionaryAdapter(SQLiteDatabase pDb, List<DictionaryElement> pList)
+    {
+        mList = pList;
+        mDb = pDb;
     }
 
     @Override
     public DictionaryViewHolder onCreateViewHolder(ViewGroup pViewGroup, int pItemType) {
         View view = LayoutInflater.from(pViewGroup.getContext()).inflate(R.layout.cell_cards,pViewGroup,false);
-        return new DictionaryViewHolder(view);
+        return new DictionaryViewHolder(view, mDb);
     }
 
     @Override
     public void onBindViewHolder(DictionaryViewHolder pViewHolder, int position) {
-        Token token = mList.get(position);
-        pViewHolder.bind(token);
+        DictionaryElement ele = mList.get(position);
+        pViewHolder.bind(ele);
     }
 
     @Override
