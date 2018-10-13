@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Sumatora Japanese Dictionary</string>
+    <string name="search_hint">Please enter some Japanese text...</string>
+</resources>
