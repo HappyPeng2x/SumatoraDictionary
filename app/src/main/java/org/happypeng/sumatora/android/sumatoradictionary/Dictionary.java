@@ -159,13 +159,19 @@ public class Dictionary extends AppCompatActivity {
 
                 try {
                     Cursor cur = m_db.rawQuery
-                            ("SELECT DISTINCT writings.seq FROM writings, readings WHERE writings.seq=readings.seq " +
+                            ("SELECT DISTINCT writings.seq " +
+                                    "FROM (writings LEFT JOIN writings_prio ON writings.seq=writings_prio.seq AND writings.keb_id=writings_prio.keb_id), " +
+                                            "(readings LEFT JOIN readings_prio ON readings.seq=readings_prio.seq AND readings.reb_id=readings_prio.reb_id)" +
+                                            "WHERE writings.seq=readings.seq " +
                                     "AND (writings.keb LIKE \"%" + input_edit.getText() + "%\" OR readings.reb LIKE \"%" + input_edit.getText() + "%\") " +
                                     "GROUP BY writings.seq " +
-                                    "ORDER BY (writings.keb = \"" + input_edit.getText() + "\")*(20 - writings.keb_id) DESC, " +
+                                    "ORDER BY  " +
+                                            " (writings.keb = \"" + input_edit.getText() + "\")*(20 - writings.keb_id) DESC, " +
                                             " (readings.reb = \"" + input_edit.getText() + "\")*(20 - readings.reb_id) DESC, " +
+                                            " (readings.reb LIKE \"" + input_edit.getText() + "%\")*(20 - readings.reb_id) DESC, " +
+                                            " writings_prio.ke_pri IS NULL ASC, readings_prio.re_pri IS NULL ASC, " +
                                             " (writings.keb LIKE \"" + input_edit.getText() + "%\")*(20 - writings.keb_id) DESC, " +
-                                            " (readings.reb LIKE \"" + input_edit.getText() + "%\")*(20 - readings.reb_id) DESC",
+                                            " writings.keb, readings.reb",
                             null);
                     LinkedList<DictionaryElement> output_list = new LinkedList<DictionaryElement>();
 

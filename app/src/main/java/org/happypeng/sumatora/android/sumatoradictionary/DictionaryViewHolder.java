@@ -56,15 +56,23 @@ public class DictionaryViewHolder extends ViewHolder {
 
         for (DictionaryElement.Writing w : writings) {
             writingsBuf.append(w.keb);
+
+            if (!pEle.getWritingsPrio(w.keb_id).isEmpty()) {
+                writingsBuf.append("(c)");
+            }
+
             writingsBuf.append(" ");
         }
 
         for (DictionaryElement.Reading r : readings) {
             readingsBuf.append(r.reb);
+
+            if (!pEle.getReadingsPrio(r.reb_id).isEmpty()) {
+                readingsBuf.append("(c)");
+            }
+
             readingsBuf.append(" ");
         }
-
-
 
         List<DictionaryElement.Gloss> gloss = pEle.getGloss("eng");
 
