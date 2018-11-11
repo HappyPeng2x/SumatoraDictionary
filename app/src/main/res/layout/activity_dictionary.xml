@@ -4,20 +4,19 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:paddingBottom="16dp"
     android:paddingLeft="16dp"
-    android:paddingRight="16dp"
     android:paddingTop="16dp"
+    android:paddingRight="16dp"
+    android:paddingBottom="16dp"
     tools:context="org.happypeng.sumatora.android.sumatoradictionary.Dictionary">
-
 
 
     <EditText
         android:id="@+id/editText"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_alignParentLeft="true"
         android:layout_alignParentStart="true"
+        android:layout_alignParentLeft="true"
         android:layout_alignParentTop="true"
         android:ems="10"
         android:hint="@string/search_hint"
@@ -36,12 +35,12 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_alignParentLeft="true"
-        android:layout_alignParentStart="true"
         android:layout_below="@+id/button"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentLeft="true"
         android:orientation="vertical">
 
-<!--        <ListView
+        <!--        <ListView
             android:id="@+id/dictLayout"
             android:layout_width="match_parent"
             android:layout_height="0dp"
@@ -50,12 +49,12 @@
             android:orientation="horizontal"
             android:rowCount="1" />-->
 
-        <android.support.v7.widget.RecyclerView
+        <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recyclerView"
-            android:scrollbars="vertical"
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_weight="1" />
+            android:layout_weight="1"
+            android:scrollbars="vertical" />
 
         <ProgressBar
             android:id="@+id/progressBar"
@@ -67,8 +66,8 @@
             android:id="@+id/statusText"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_alignParentLeft="true"
             android:layout_alignParentStart="true"
+            android:layout_alignParentLeft="true"
             android:layout_alignParentTop="true"
             android:ems="10"
             android:inputType="text" />
@@ -76,4 +75,4 @@
 
     </LinearLayout>
 
-    </RelativeLayout>
+</RelativeLayout>

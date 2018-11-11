@@ -49,7 +49,7 @@ import java.util.zip.GZIPInputStream;
 public class DatabaseTool {
     private static String JMDICT_DB_ASSET = "JMdict.db";
     private static String JMDICT_DB_FILE = "JMdict.db";
-    private static String JMDICT_DB_VERSION = "00";
+    private static String JMDICT_DB_VERSION = "01";
 
     private static void copyFile(InputStream in, OutputStream out) throws IOException {
         byte[] buffer = new byte[1024];

@@ -17,13 +17,20 @@
 package org.happypeng.sumatora.android.sumatoradictionary;
 
 import android.content.DialogInterface;
-import android.support.v7.app.AppCompatActivity;
 import android.app.AlertDialog;
-import android.content.Context;
 
-import android.support.v7.widget.LinearLayoutManager;
+import android.content.Context;
+import android.content.Intent;
+
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
+import androidx.appcompat.app.AppCompatActivity;
+
 import android.view.View;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuItem;
 
 import android.os.Bundle;
 import android.os.AsyncTask;
@@ -37,9 +44,10 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
 import android.database.Cursor;
 
-import android.support.v7.widget.RecyclerView;
-
 import java.util.LinkedList;
+
+// import com.eggheadgames.aboutbox.AboutConfig;
+// import com.eggheadgames.aboutbox.activity.AboutActivity;
 
 public class Dictionary extends AppCompatActivity {
     private SQLiteDatabase m_db;
@@ -204,5 +212,22 @@ public class Dictionary extends AppCompatActivity {
 
             m_db = null;
         }
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu pMenu) {
+        getMenuInflater().inflate(R.menu.activity_menu, pMenu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem pMenuItem) {
+        switch (pMenuItem.getItemId()) {
+            case R.id.about:
+                Intent intent = new Intent(this, AboutActivity.class);
+                startActivity(intent);
+        }
+
+        return true;
     }
 }

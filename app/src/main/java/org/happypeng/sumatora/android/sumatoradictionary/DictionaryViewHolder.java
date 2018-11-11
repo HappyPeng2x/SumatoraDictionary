@@ -19,7 +19,7 @@ package org.happypeng.sumatora.android.sumatoradictionary;
 import java.util.List;
 
 import android.graphics.Color;
-import android.support.v7.widget.RecyclerView.ViewHolder;
+import androidx.recyclerview.widget.RecyclerView.ViewHolder;
 
 import android.text.style.ForegroundColorSpan;
 import android.text.style.RelativeSizeSpan;
