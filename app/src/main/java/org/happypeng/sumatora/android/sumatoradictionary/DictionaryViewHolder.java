@@ -21,6 +21,8 @@ import java.util.List;
 import android.graphics.Color;
 import androidx.recyclerview.widget.RecyclerView.ViewHolder;
 
+import android.text.Spanned;
+import android.text.style.BackgroundColorSpan;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.RelativeSizeSpan;
 import android.view.View;
@@ -28,6 +30,7 @@ import android.view.View;
 import android.widget.TextView;
 
 import android.text.SpannableString;
+import android.text.SpannableStringBuilder;
 
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
@@ -48,36 +51,44 @@ public class DictionaryViewHolder extends ViewHolder {
     }
 
     public void bind(DictionaryElement pEle){
+        SpannableStringBuilder sb = new SpannableStringBuilder();
+
         List<DictionaryElement.Writing> writings = pEle.getWritings();
         List<DictionaryElement.Reading> readings = pEle.getReadings();
 
-        StringBuffer writingsBuf = new StringBuffer();
-        StringBuffer readingsBuf = new StringBuffer();
+        int writingsLength = 0;
+        int readingsLength = 0;
 
         for (DictionaryElement.Writing w : writings) {
-            writingsBuf.append(w.keb);
-
             if (!pEle.getWritingsPrio(w.keb_id).isEmpty()) {
-                writingsBuf.append("(c)");
+                sb.append(w.keb, new BackgroundColorSpan(Color.parseColor("#ccffcc")), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            } else {
+                sb.append(w.keb);
             }
 
-            writingsBuf.append(" ");
+            sb.append(" ");
+
+            writingsLength = writingsLength + w.keb.length() + 1;
         }
 
         for (DictionaryElement.Reading r : readings) {
-            readingsBuf.append(r.reb);
-
             if (!pEle.getReadingsPrio(r.reb_id).isEmpty()) {
-                readingsBuf.append("(c)");
+                sb.append(r.reb, new BackgroundColorSpan(Color.parseColor("#ccffcc")), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            } else {
+                sb.append(r.reb);
             }
 
-            readingsBuf.append(" ");
+            sb.append(" ");
+
+            readingsLength = readingsLength + r.reb.length() + 1;
         }
+
+        sb.append("\n");
+        readingsLength = readingsLength + 1;
 
         List<DictionaryElement.Gloss> gloss = pEle.getGloss("eng");
 
-        StringBuffer glossBuf = new StringBuffer();
-
+        int glossLength = 0;
         int cur_sense = -1;
 
         for (DictionaryElement.Gloss g : gloss) {
@@ -85,22 +96,29 @@ public class DictionaryViewHolder extends ViewHolder {
                 cur_sense = g.sense_id;
 
                 if (cur_sense > 0) {
-                    glossBuf.append("\n");
+                    sb.append("\n");
+
+                    glossLength = glossLength + 1;
                 }
 
-                glossBuf.append(cur_sense + 1);
-                glossBuf.append(". ");
+                sb.append(Integer.toString(cur_sense + 1));
+                sb.append(". ");
+
+                glossLength = glossLength + 2 + Integer.toString(cur_sense + 1).length();
             } else {
-                glossBuf.append(", ");
+                sb.append(", ");
+
+                glossLength = glossLength + 2;
             }
 
-            glossBuf.append(g.gloss);
+            sb.append(g.gloss);
+
+            glossLength = glossLength + g.gloss.length();
         }
 
-        SpannableString titleSpan = new SpannableString(writingsBuf.toString() + " " + readingsBuf.toString() + "\n\n" + glossBuf.toString());
-        titleSpan.setSpan(new ForegroundColorSpan(Color.GRAY), writingsBuf.length() + 1, writingsBuf.length() + readingsBuf.length() + 1, 0);
-        titleSpan.setSpan(new RelativeSizeSpan(1.5f), 0, writingsBuf.length() + readingsBuf.length() + 1, 0);
+        sb.setSpan(new ForegroundColorSpan(Color.GRAY), writingsLength, writingsLength + readingsLength, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        sb.setSpan(new RelativeSizeSpan(1.5f), 0, writingsLength + readingsLength, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
 
-        textViewView.setText(titleSpan, TextView.BufferType.SPANNABLE);
+        textViewView.setText(sb, TextView.BufferType.SPANNABLE);
     }
 }
