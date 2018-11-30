@@ -28,7 +28,6 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.view.View;
-import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 
@@ -45,9 +44,6 @@ import android.database.sqlite.SQLiteException;
 import android.database.Cursor;
 
 import java.util.LinkedList;
-
-// import com.eggheadgames.aboutbox.AboutConfig;
-// import com.eggheadgames.aboutbox.activity.AboutActivity;
 
 public class Dictionary extends AppCompatActivity {
     private SQLiteDatabase m_db;
@@ -69,6 +65,20 @@ public class Dictionary extends AppCompatActivity {
         st.setText("Loading database...");
     }
 
+    private void setSearchingDictionary()
+    {
+        ProgressBar pb = findViewById(R.id.progressBar);
+        Button bu = findViewById(R.id.button);
+        TextView st = findViewById(R.id.statusText);
+
+        pb.setIndeterminate(true);
+        pb.animate();
+
+        bu.setEnabled(false);
+
+        st.setText("Searching in the dictionary...");
+    }
+
     private void setReady()
     {
         ProgressBar pb = findViewById(R.id.progressBar);
@@ -80,6 +90,69 @@ public class Dictionary extends AppCompatActivity {
         bu.setEnabled(true);
 
         st.setText("");
+    }
+
+    private class SearchDictionaryTask extends AsyncTask<String, Void, Void>
+    {
+        private RecyclerView m_recyclerView;
+        private LinkedList<DictionaryElement> m_output_list;
+
+        SearchDictionaryTask(RecyclerView a_recyclerView)
+        {
+            m_recyclerView = a_recyclerView;
+        }
+
+        protected Void doInBackground(String... a_params)
+        {
+            if (a_params.length < 1)
+            {
+                return null;
+            }
+
+            String s = a_params[0];
+
+            try {
+                Cursor cur = m_db.rawQuery
+                        ("SELECT DISTINCT writings.seq " +
+                                        "FROM (writings LEFT JOIN writings_prio ON writings.seq=writings_prio.seq AND writings.keb_id=writings_prio.keb_id), " +
+                                        "(readings LEFT JOIN readings_prio ON readings.seq=readings_prio.seq AND readings.reb_id=readings_prio.reb_id)" +
+                                        "WHERE writings.seq=readings.seq " +
+                                        "AND (writings.keb LIKE \"%" + s + "%\" OR readings.reb LIKE \"%" + s + "%\") " +
+                                        "GROUP BY writings.seq " +
+                                        "ORDER BY  " +
+                                        " (writings.keb = \"" + s + "\")*(20 - writings.keb_id) DESC, " +
+                                        " (readings.reb = \"" + s + "\")*(20 - readings.reb_id) DESC, " +
+                                        " (readings.reb LIKE \"" + s + "%\")*(20 - readings.reb_id) DESC, " +
+                                        " writings_prio.ke_pri IS NULL ASC, readings_prio.re_pri IS NULL ASC, " +
+                                        " (writings.keb LIKE \"" + s + "%\")*(20 - writings.keb_id) DESC, " +
+                                        " writings.keb, readings.reb",
+                                null);
+
+                m_output_list = new LinkedList<DictionaryElement>();
+
+                while (cur.moveToNext()) {
+                    DictionaryElement ele =
+                            new DictionaryElement(m_db, cur.getInt(0));
+
+                    m_output_list.add(ele);
+                }
+
+                cur.close();
+            } catch (SQLiteException e) {
+                e.printStackTrace();
+            }
+
+            return null;
+        }
+
+        protected void onPostExecute(Void a_param)
+        {
+            RecyclerView.Adapter adapter = new DictionaryAdapter(m_db, m_output_list);
+
+            m_recyclerView.setAdapter(adapter);
+
+            setReady();
+        }
     }
 
     private class LoadDBTask extends AsyncTask<Void, Void, Void>
@@ -95,11 +168,11 @@ public class Dictionary extends AppCompatActivity {
 
         protected Void doInBackground(Void... a_params)
         {
-            System.err.println("Starting background task...");
+            // System.err.println("Starting background task...");
 
             m_db =  DatabaseTool.getDB(m_context);
 
-            System.err.println("Ending background task...");
+            // System.err.println("Ending background task...");
 
             return null;
         }
@@ -165,39 +238,9 @@ public class Dictionary extends AppCompatActivity {
 
                 EditText input_edit = findViewById(R.id.editText);
 
-                try {
-                    Cursor cur = m_db.rawQuery
-                            ("SELECT DISTINCT writings.seq " +
-                                    "FROM (writings LEFT JOIN writings_prio ON writings.seq=writings_prio.seq AND writings.keb_id=writings_prio.keb_id), " +
-                                            "(readings LEFT JOIN readings_prio ON readings.seq=readings_prio.seq AND readings.reb_id=readings_prio.reb_id)" +
-                                            "WHERE writings.seq=readings.seq " +
-                                    "AND (writings.keb LIKE \"%" + input_edit.getText() + "%\" OR readings.reb LIKE \"%" + input_edit.getText() + "%\") " +
-                                    "GROUP BY writings.seq " +
-                                    "ORDER BY  " +
-                                            " (writings.keb = \"" + input_edit.getText() + "\")*(20 - writings.keb_id) DESC, " +
-                                            " (readings.reb = \"" + input_edit.getText() + "\")*(20 - readings.reb_id) DESC, " +
-                                            " (readings.reb LIKE \"" + input_edit.getText() + "%\")*(20 - readings.reb_id) DESC, " +
-                                            " writings_prio.ke_pri IS NULL ASC, readings_prio.re_pri IS NULL ASC, " +
-                                            " (writings.keb LIKE \"" + input_edit.getText() + "%\")*(20 - writings.keb_id) DESC, " +
-                                            " writings.keb, readings.reb",
-                            null);
-                    LinkedList<DictionaryElement> output_list = new LinkedList<DictionaryElement>();
+                setSearchingDictionary();
 
-                    while (cur.moveToNext()) {
-                        DictionaryElement ele =
-                                new DictionaryElement(m_db, cur.getInt(0));
-
-                        output_list.add(ele);
-                    }
-
-                    cur.close();
-
-                    RecyclerView.Adapter adapter = new DictionaryAdapter(m_db, output_list);
-
-                    recyclerView.setAdapter(adapter);
-                } catch (SQLiteException e) {
-                   e.printStackTrace();
-                }
+                new SearchDictionaryTask(recyclerView).execute(input_edit.getText().toString());
             }
         });
     }
