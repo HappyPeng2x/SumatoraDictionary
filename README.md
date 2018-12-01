@@ -2,6 +2,8 @@
 
 An offline Japanese dictionary for Android.
 
+![Screenshot](/screenshots/Screenshot_1543653545.png)
+
 ## License
 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
