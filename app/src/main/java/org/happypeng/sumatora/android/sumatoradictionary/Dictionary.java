@@ -27,12 +27,17 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.os.Looper;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
 
 import android.os.Bundle;
 import android.os.AsyncTask;
+import android.os.Handler;
+import android.os.Message;
+
+import android.os.StrictMode;
 
 import android.widget.ProgressBar;
 import android.widget.Button;
@@ -47,20 +52,32 @@ import java.util.LinkedList;
 
 public class Dictionary extends AppCompatActivity {
     private SQLiteDatabase m_db;
+
     private boolean m_db_loading;
     private Context m_context;
     private int m_grid_rows;
 
+    private RecyclerView m_recyclerView;
+    private LinkedList<DictionaryElement> m_output_list;
+    private RecyclerView.Adapter m_adapter;
+
+    private Handler m_handler;
+
+    private Button m_search_button;
+
+    private boolean m_search_running;
+
+    private SearchDictionaryTask m_search_task;
+
     private void setInPreparation()
     {
         ProgressBar pb = findViewById(R.id.progressBar);
-        Button bu = findViewById(R.id.button);
         TextView st = findViewById(R.id.statusText);
 
         pb.setIndeterminate(true);
         pb.animate();
 
-        bu.setEnabled(false);
+        m_search_button.setEnabled(false);
 
         st.setText("Loading database...");
     }
@@ -68,13 +85,12 @@ public class Dictionary extends AppCompatActivity {
     private void setSearchingDictionary()
     {
         ProgressBar pb = findViewById(R.id.progressBar);
-        Button bu = findViewById(R.id.button);
         TextView st = findViewById(R.id.statusText);
 
         pb.setIndeterminate(true);
         pb.animate();
 
-        bu.setEnabled(false);
+        m_search_button.setEnabled(false);
 
         st.setText("Searching in the dictionary...");
     }
@@ -82,24 +98,19 @@ public class Dictionary extends AppCompatActivity {
     private void setReady()
     {
         ProgressBar pb = findViewById(R.id.progressBar);
-        Button bu = findViewById(R.id.button);
         TextView st = findViewById(R.id.statusText);
 
         pb.setIndeterminate(false);
 
-        bu.setEnabled(true);
+        m_search_button.setEnabled(true);
 
         st.setText("");
     }
 
     private class SearchDictionaryTask extends AsyncTask<String, Void, Void>
     {
-        private RecyclerView m_recyclerView;
-        private LinkedList<DictionaryElement> m_output_list;
-
-        SearchDictionaryTask(RecyclerView a_recyclerView)
+        SearchDictionaryTask()
         {
-            m_recyclerView = a_recyclerView;
         }
 
         protected Void doInBackground(String... a_params)
@@ -128,13 +139,21 @@ public class Dictionary extends AppCompatActivity {
                                         " writings.keb, readings.reb",
                                 null);
 
-                m_output_list = new LinkedList<DictionaryElement>();
-
-                while (cur.moveToNext()) {
+                while (cur.moveToNext() && !isCancelled()) {
                     DictionaryElement ele =
-                            new DictionaryElement(m_db, cur.getInt(0));
+                            new DictionaryElement(m_db, cur.getInt(0),"eng");
 
                     m_output_list.add(ele);
+
+                    if (m_handler != null) {
+                        Message m = new Message();
+                        Bundle b = new Bundle();
+
+                        b.putInt("position", m_output_list.size() - 1);
+                        m.setData(b);
+
+                        m_handler.sendMessage(m);
+                    }
                 }
 
                 cur.close();
@@ -147,9 +166,25 @@ public class Dictionary extends AppCompatActivity {
 
         protected void onPostExecute(Void a_param)
         {
-            RecyclerView.Adapter adapter = new DictionaryAdapter(m_db, m_output_list);
+            m_search_running = false;
+            m_search_button.setText("Search");
+            m_search_button.setEnabled(true);
 
-            m_recyclerView.setAdapter(adapter);
+            setReady();
+        }
+
+        protected void onPreExecute()
+        {
+            m_search_running = true;
+            m_search_button.setText("Stop");
+            m_search_button.setEnabled(true);
+        }
+
+        protected void onCancelled(Void a_return)
+        {
+            m_search_running = false;
+            m_search_button.setText("Search");
+            m_search_button.setEnabled(true);
 
             setReady();
         }
@@ -168,11 +203,7 @@ public class Dictionary extends AppCompatActivity {
 
         protected Void doInBackground(Void... a_params)
         {
-            // System.err.println("Starting background task...");
-
             m_db =  DatabaseTool.getDB(m_context);
-
-            // System.err.println("Ending background task...");
 
             return null;
         }
@@ -205,27 +236,44 @@ public class Dictionary extends AppCompatActivity {
         }
     }
 
+    private final boolean DEVELOPER_MODE = false;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        if (DEVELOPER_MODE) {
+            StrictMode.setThreadPolicy(new StrictMode.ThreadPolicy.Builder()
+                    .detectAll()
+                    .penaltyLog()
+                    .build());
+            StrictMode.setVmPolicy(new StrictMode.VmPolicy.Builder()
+                    .detectAll()
+                    .penaltyLog()
+                    .penaltyDeath()
+                    .build());
+        }
+
         super.onCreate(savedInstanceState);
+
         setContentView(R.layout.activity_dictionary);
 
         m_context = this;
         m_db_loading = true;
         m_grid_rows = 1;
 
+        m_search_button = (Button) findViewById(R.id.button);
+
+        m_search_running = false;
+
         setInPreparation();
 
         new LoadDBTask(this).execute();
 
         // Setup recycler view
-        final RecyclerView recyclerView = (RecyclerView) findViewById(R.id.recyclerView);
-
-        recyclerView.setHasFixedSize(true);
+        m_recyclerView = (RecyclerView) findViewById(R.id.recyclerView);
 
         RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(this);
 
-        recyclerView.setLayoutManager(layoutManager);
+        m_recyclerView.setLayoutManager(layoutManager);
 
         // Setup search button
         findViewById(R.id.button).setOnClickListener(new View.OnClickListener() {
@@ -236,13 +284,32 @@ public class Dictionary extends AppCompatActivity {
                     return;
                 }
 
-                EditText input_edit = findViewById(R.id.editText);
+                if (!m_search_running) {
+                    m_output_list = new LinkedList<DictionaryElement>();
+                    m_adapter = new DictionaryAdapter(m_db, m_output_list);
+                    m_recyclerView.setAdapter(m_adapter);
 
-                setSearchingDictionary();
+                    EditText input_edit = findViewById(R.id.editText);
 
-                new SearchDictionaryTask(recyclerView).execute(input_edit.getText().toString());
+                    setSearchingDictionary();
+
+                    m_search_task = new SearchDictionaryTask();
+                    m_search_task.execute(input_edit.getText().toString());
+                } else {
+                    m_search_task.cancel(false);
+                }
             }
         });
+
+        // Setup handler
+        m_handler = new Handler(Looper.getMainLooper()) {
+            @Override
+            public void handleMessage(Message a_inputMessage) {
+                if (m_adapter != null) {
+                    m_adapter.notifyItemInserted(a_inputMessage.getData().getInt("position"));
+                }
+            }
+        };
     }
 
     @Override

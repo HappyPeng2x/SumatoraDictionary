@@ -74,7 +74,7 @@ public class AboutActivity extends MaterialAboutActivity {
                                 .build())
                         .addItem(new MaterialAboutActionItem.Builder()
                             .text("License")
-                            .subText("Creative Commons Attribution-ShareAlike Licence (V3.0)")
+                            .subText("Creative Commons Attribution-ShareAlike License (V3.0)")
                             .icon(R.drawable.ic_outline_class_24px)
                             .setOnClickAction(new MaterialAboutItemOnClickAction() {
                             @Override
@@ -152,7 +152,7 @@ public class AboutActivity extends MaterialAboutActivity {
                                 .build())
                         .addItem(new MaterialAboutActionItem.Builder()
                                 .text("License")
-                                .subText("Creative Commons Attribution International (V4.0)")
+                                .subText("Creative Commons Attribution International License (V4.0)")
                                 .icon(R.drawable.ic_outline_class_24px)
                                 .setOnClickAction(new MaterialAboutItemOnClickAction() {
                                     @Override

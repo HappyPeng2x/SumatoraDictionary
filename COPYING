@@ -1,9 +1,0 @@
-Everything is covered by LICENSE, except lucene-gosen under LGPL v2.1 provided as a JAR
-(refer to https://github.com/lucene-gosen/lucene-gosen for sources), 
-and JMdict.db.gz which is a derived work of JMdict and so under the same Creative Commons 
-Attribution-ShareAlike Licence (V3.0) (refer to http://www.edrdg.org/edrdg/licence.html).
-
-Copyright for JMdict is held by James William BREEN and The Electronic Dictionary Research 
-and Development Group.
-
-Copyright for lucene-gosen is belonging to authors mentioned in https://github.com/lucene-gosen/lucene-gosen/blob/master/AUTHORS.
