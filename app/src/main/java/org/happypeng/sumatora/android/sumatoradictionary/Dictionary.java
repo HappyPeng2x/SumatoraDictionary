@@ -22,11 +22,17 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 
+import androidx.core.graphics.drawable.DrawableCompat;
+import androidx.core.view.GravityCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
+import androidx.drawerlayout.widget.DrawerLayout;
+import androidx.appcompat.app.ActionBar;
 
+import android.graphics.drawable.Drawable;
 import android.os.Looper;
 import android.view.View;
 import android.view.Menu;
@@ -68,6 +74,8 @@ public class Dictionary extends AppCompatActivity {
     private boolean m_search_running;
 
     private SearchDictionaryTask m_search_task;
+
+    private DrawerLayout m_drawer_layout;
 
     private void setInPreparation()
     {
@@ -256,6 +264,22 @@ public class Dictionary extends AppCompatActivity {
 
         setContentView(R.layout.activity_dictionary);
 
+        // Set-up the nice Android-ish UI
+
+        Toolbar tb = (Toolbar) findViewById(R.id.nav_toolbar);
+        setSupportActionBar(tb);
+
+/*        ActionBar ab = getSupportActionBar();
+        ab.setDisplayHomeAsUpEnabled(true);
+
+        Drawable normalDrawable = getDrawable(R.drawable.ic_outline_menu_24px);
+        Drawable wrapDrawable = DrawableCompat.wrap(normalDrawable);
+        DrawableCompat.setTint(wrapDrawable, getColor(R.color.mal_color_icon_dark_theme));
+
+        ab.setHomeAsUpIndicator(wrapDrawable);*/
+
+        m_drawer_layout = (DrawerLayout) findViewById(R.id.nav_drawer);
+
         m_context = this;
         m_db_loading = true;
         m_grid_rows = 1;
@@ -336,8 +360,12 @@ public class Dictionary extends AppCompatActivity {
             case R.id.about:
                 Intent intent = new Intent(this, AboutActivity.class);
                 startActivity(intent);
+                return true;
+/*            case android.R.id.home:
+                m_drawer_layout.openDrawer(GravityCompat.START);
+                return true;*/
         }
 
-        return true;
+        return super.onOptionsItemSelected(pMenuItem);
     }
 }
