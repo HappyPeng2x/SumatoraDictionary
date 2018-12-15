@@ -100,8 +100,12 @@ public class DictionaryElement {
     private void readWritings()
     {
         LinkedList<Writing> result = new LinkedList<Writing>();
-        String[] cols = {"keb_id", "keb", "ke_inf"};
-        Cursor cur = mDb.query("writings", cols, "seq = " + Integer.toString(mSeq), null,null,null,"keb_id");
+
+        Cursor cur = mDb.rawQuery("SELECT w.keb_id, w.keb, w_inf.ke_inf " +
+                        " FROM writings AS w LEFT JOIN writings_inf AS w_inf ON w.seq=w_inf.seq AND w.keb_id=w_inf.keb_id " +
+                        " WHERE w.seq=" + Integer.toString(mSeq) + " " +
+                        " ORDER BY w.keb_id",
+                null);
 
         while (cur.moveToNext()) {
             result.add(new Writing(mDb, mSeq, cur.getInt(0), cur.getString(1), cur.getString(2)));
@@ -208,8 +212,12 @@ public class DictionaryElement {
     private void readReadings()
     {
         LinkedList<Reading> result = new LinkedList<Reading>();
-        String[] cols = {"reb_id", "reb", "re_inf"};
-        Cursor cur = mDb.query("readings", cols, "seq = " + Integer.toString(mSeq), null,null,null, "reb_id");
+
+        Cursor cur = mDb.rawQuery("SELECT r.reb_id, r.reb, r_inf.re_inf " +
+                " FROM readings AS r LEFT JOIN readings_inf AS r_inf ON r.seq=r_inf.seq AND r.reb_id=r_inf.reb_id " +
+                " WHERE r.seq=" + Integer.toString(mSeq) + " " +
+                " ORDER BY r.reb_id",
+                null);
 
         while (cur.moveToNext()) {
             result.add(new Reading(mDb, mSeq, cur.getInt(0), cur.getString(1), cur.getString(2)));
