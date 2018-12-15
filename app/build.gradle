@@ -50,4 +50,5 @@ dependencies {
     implementation 'androidx.recyclerview:recyclerview:1.0.0'
     implementation 'androidx.cardview:cardview:1.0.0'
     implementation 'com.github.daniel-stoneuk:material-about-library:2.4.2'
+    implementation 'com.github.HappyPeng2x:RecyclerTreeView:1.2.3androidx'
 }

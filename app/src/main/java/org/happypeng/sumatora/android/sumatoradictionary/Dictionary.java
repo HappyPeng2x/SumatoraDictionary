@@ -22,18 +22,16 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 
-import androidx.core.graphics.drawable.DrawableCompat;
-import androidx.core.view.GravityCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.drawerlayout.widget.DrawerLayout;
-import androidx.appcompat.app.ActionBar;
 
-import android.graphics.drawable.Drawable;
 import android.os.Looper;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -46,7 +44,7 @@ import android.os.Message;
 import android.os.StrictMode;
 
 import android.widget.ProgressBar;
-import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.EditText;
 
@@ -63,13 +61,21 @@ public class Dictionary extends AppCompatActivity {
     private Context m_context;
     private int m_grid_rows;
 
+    private boolean m_list_building;
+
     private RecyclerView m_recyclerView;
     private LinkedList<DictionaryElement> m_output_list;
     private RecyclerView.Adapter m_adapter;
 
     private Handler m_handler;
 
-    private Button m_search_button;
+    private ImageButton m_search_button;
+    private ImageButton m_magic_cross;
+
+    private EditText m_edit_text;
+
+    private ProgressBar m_progress_bar;
+    private TextView m_status_text;
 
     private boolean m_search_running;
 
@@ -79,40 +85,56 @@ public class Dictionary extends AppCompatActivity {
 
     private void setInPreparation()
     {
-        ProgressBar pb = findViewById(R.id.progressBar);
-        TextView st = findViewById(R.id.statusText);
+        m_status_text.setVisibility(View.VISIBLE);
+        m_progress_bar.setVisibility(View.VISIBLE);
 
-        pb.setIndeterminate(true);
-        pb.animate();
+        m_progress_bar.setIndeterminate(true);
+        m_progress_bar.animate();
 
         m_search_button.setEnabled(false);
 
-        st.setText("Loading database...");
+        m_status_text.setText("Loading database...");
     }
 
     private void setSearchingDictionary()
     {
-        ProgressBar pb = findViewById(R.id.progressBar);
-        TextView st = findViewById(R.id.statusText);
+        m_status_text.setVisibility(View.VISIBLE);
+        m_progress_bar.setVisibility(View.VISIBLE);
 
-        pb.setIndeterminate(true);
-        pb.animate();
+        m_progress_bar.setIndeterminate(true);
+        m_progress_bar.animate();
 
         m_search_button.setEnabled(false);
 
-        st.setText("Searching in the dictionary...");
+        m_status_text.setText("Searching in the dictionary...");
+    }
+
+    private void setBuildingList(int aCount, int aPosition)
+    {
+        if (!m_list_building) {
+            m_status_text.setVisibility(View.VISIBLE);
+            m_progress_bar.setVisibility(View.VISIBLE);
+
+            m_progress_bar.setIndeterminate(false);
+            m_progress_bar.setMax(aCount);
+
+            m_status_text.setText("Building results list...");
+        }
+
+        m_progress_bar.setProgress(aPosition);
     }
 
     private void setReady()
     {
-        ProgressBar pb = findViewById(R.id.progressBar);
-        TextView st = findViewById(R.id.statusText);
-
-        pb.setIndeterminate(false);
+        m_progress_bar.setIndeterminate(false);
+        m_progress_bar.setMax(0);
 
         m_search_button.setEnabled(true);
 
-        st.setText("");
+        m_status_text.setText("");
+
+        m_status_text.setVisibility(View.GONE);
+        m_progress_bar.setVisibility(View.GONE);
     }
 
     private class SearchDictionaryTask extends AsyncTask<String, Void, Void>
@@ -131,6 +153,8 @@ public class Dictionary extends AppCompatActivity {
             String s = a_params[0];
 
             try {
+                int count;
+
                 Cursor cur = m_db.rawQuery
                         ("SELECT DISTINCT writings.seq " +
                                         "FROM (writings LEFT JOIN writings_prio ON writings.seq=writings_prio.seq AND writings.keb_id=writings_prio.keb_id), " +
@@ -147,6 +171,8 @@ public class Dictionary extends AppCompatActivity {
                                         " writings.keb, readings.reb",
                                 null);
 
+                count = cur.getCount();
+
                 while (cur.moveToNext() && !isCancelled()) {
                     DictionaryElement ele =
                             new DictionaryElement(m_db, cur.getInt(0),"eng");
@@ -158,6 +184,7 @@ public class Dictionary extends AppCompatActivity {
                         Bundle b = new Bundle();
 
                         b.putInt("position", m_output_list.size() - 1);
+                        b.putInt("count", count);
                         m.setData(b);
 
                         m_handler.sendMessage(m);
@@ -175,8 +202,9 @@ public class Dictionary extends AppCompatActivity {
         protected void onPostExecute(Void a_param)
         {
             m_search_running = false;
-            m_search_button.setText("Search");
+            m_search_button.setImageResource(R.drawable.ic_outline_search_24px);
             m_search_button.setEnabled(true);
+            m_list_building = false;
 
             setReady();
         }
@@ -184,15 +212,16 @@ public class Dictionary extends AppCompatActivity {
         protected void onPreExecute()
         {
             m_search_running = true;
-            m_search_button.setText("Stop");
+            m_search_button.setImageResource(R.drawable.ic_outline_stop_24px);
             m_search_button.setEnabled(true);
         }
 
         protected void onCancelled(Void a_return)
         {
             m_search_running = false;
-            m_search_button.setText("Search");
+            m_search_button.setImageResource(R.drawable.ic_outline_search_24px);
             m_search_button.setEnabled(true);
+            m_list_building = false;
 
             setReady();
         }
@@ -269,24 +298,21 @@ public class Dictionary extends AppCompatActivity {
         Toolbar tb = (Toolbar) findViewById(R.id.nav_toolbar);
         setSupportActionBar(tb);
 
-/*        ActionBar ab = getSupportActionBar();
-        ab.setDisplayHomeAsUpEnabled(true);
-
-        Drawable normalDrawable = getDrawable(R.drawable.ic_outline_menu_24px);
-        Drawable wrapDrawable = DrawableCompat.wrap(normalDrawable);
-        DrawableCompat.setTint(wrapDrawable, getColor(R.color.mal_color_icon_dark_theme));
-
-        ab.setHomeAsUpIndicator(wrapDrawable);*/
-
         m_drawer_layout = (DrawerLayout) findViewById(R.id.nav_drawer);
 
         m_context = this;
         m_db_loading = true;
         m_grid_rows = 1;
 
-        m_search_button = (Button) findViewById(R.id.button);
+        m_search_button = (ImageButton) findViewById(R.id.button);
 
         m_search_running = false;
+
+        m_magic_cross = (ImageButton) findViewById(R.id.magic_cross);
+        m_edit_text = (EditText) findViewById(R.id.editText);
+
+        m_progress_bar = (ProgressBar) findViewById(R.id.progressBar);
+        m_status_text = (TextView) findViewById(R.id.statusText);
 
         setInPreparation();
 
@@ -299,8 +325,29 @@ public class Dictionary extends AppCompatActivity {
 
         m_recyclerView.setLayoutManager(layoutManager);
 
+        m_edit_text.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                if (s.length() > 0) {
+                    m_magic_cross.setVisibility(android.view.View.VISIBLE);
+                } else {
+                    m_magic_cross.setVisibility(android.view.View.GONE);
+                }
+            }
+        });
+
         // Setup search button
-        findViewById(R.id.button).setOnClickListener(new View.OnClickListener() {
+        m_search_button.setOnClickListener(new View.OnClickListener() {
             public void onClick(View a_view) {
                 if (m_db == null) {
                     DBfailureDialog();
@@ -313,15 +360,24 @@ public class Dictionary extends AppCompatActivity {
                     m_adapter = new DictionaryAdapter(m_db, m_output_list);
                     m_recyclerView.setAdapter(m_adapter);
 
-                    EditText input_edit = findViewById(R.id.editText);
-
                     setSearchingDictionary();
 
                     m_search_task = new SearchDictionaryTask();
-                    m_search_task.execute(input_edit.getText().toString());
+                    m_search_task.execute(m_edit_text.getText().toString());
                 } else {
                     m_search_task.cancel(false);
                 }
+            }
+        });
+
+        m_magic_cross.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (m_search_running) {
+                    m_search_task.cancel(false);
+                }
+
+                m_edit_text.setText("");
             }
         });
 
@@ -331,6 +387,9 @@ public class Dictionary extends AppCompatActivity {
             public void handleMessage(Message a_inputMessage) {
                 if (m_adapter != null) {
                     m_adapter.notifyItemInserted(a_inputMessage.getData().getInt("position"));
+
+                    setBuildingList(a_inputMessage.getData().getInt("count"),
+                            a_inputMessage.getData().getInt("position"));
                 }
             }
         };
@@ -361,9 +420,6 @@ public class Dictionary extends AppCompatActivity {
                 Intent intent = new Intent(this, AboutActivity.class);
                 startActivity(intent);
                 return true;
-/*            case android.R.id.home:
-                m_drawer_layout.openDrawer(GravityCompat.START);
-                return true;*/
         }
 
         return super.onOptionsItemSelected(pMenuItem);

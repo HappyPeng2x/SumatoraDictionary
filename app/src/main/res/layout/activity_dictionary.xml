@@ -33,32 +33,59 @@
         android:paddingBottom="16dp"
         tools:context="org.happypeng.sumatora.android.sumatoradictionary.Dictionary">
 
-        <EditText
-            android:id="@+id/editText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_alignParentStart="true"
-            android:layout_alignParentLeft="true"
-            android:layout_alignParentTop="true"
-            android:ems="10"
-            android:hint="@string/search_hint"
-            android:inputType="text" />
 
-        <Button
-            android:id="@+id/button"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_below="@+id/editText"
-            android:layout_alignParentStart="true"
-            android:text="Search" />
 
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_below="@+id/button"
             android:layout_alignParentStart="true"
             android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+            <RelativeLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1">
+
+                <EditText
+                    android:id="@+id/editText"
+                    android:layout_height="wrap_content"
+                    android:layout_width="match_parent"
+                    android:ems="10"
+                    android:hint="@string/search_hint"
+                    android:inputType="text" />
+
+                <ImageButton
+                    android:id="@+id/magic_cross"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignTop="@id/editText"
+                    android:layout_alignBottom="@id/editText"
+                    android:layout_alignRight="@id/editText"
+                    android:background="@null"
+                    android:visibility="gone"
+                    android:src="@drawable/ic_outline_cancel_24px"/>
+
+                </RelativeLayout>
+
+                <RelativeLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent">
+
+                    <ImageButton
+                        android:id="@+id/button"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_centerInParent="true"
+                        android:src="@drawable/ic_outline_search_24px"/>
+                </RelativeLayout>
+
+            </LinearLayout>
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/recyclerView"
@@ -69,12 +96,14 @@
 
             <ProgressBar
                 android:id="@+id/progressBar"
-                style="@android:style/Widget.ProgressBar.Horizontal"
+                style="@android:style/Widget.Material.ProgressBar.Horizontal"
+                android:visibility="gone"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content" />
 
             <TextView
                 android:id="@+id/statusText"
+                android:visibility="gone"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:ems="10" />
