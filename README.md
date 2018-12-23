@@ -2,7 +2,7 @@
 
 An offline Japanese dictionary for Android.
 
-Please see the [screenshot](/screenshots/Screenshot_1543653545.png).
+Please see the [screenshot](/screenshots/Screenshot_1545553707.png).
 
 ## License
 

@@ -20,6 +20,7 @@ import android.content.Context;
 
 import android.content.Intent;
 
+import android.content.pm.PackageManager;
 import android.net.Uri;
 
 import com.danielstone.materialaboutlibrary.MaterialAboutActivity;
@@ -36,6 +37,14 @@ public class AboutActivity extends MaterialAboutActivity {
     protected MaterialAboutList getMaterialAboutList(Context context) {
         final Context activity_context = context;
 
+        String versionName;
+
+        try {
+            versionName = context.getPackageManager().getPackageInfo("org.happypeng.sumatora.android.sumatoradictionary", 0).versionName;
+        } catch (PackageManager.NameNotFoundException e) {
+            versionName = "";
+        }
+
         return new MaterialAboutList.Builder()
                 .addCard(new MaterialAboutCard.Builder()
                         .addItem(new MaterialAboutTitleItem.Builder()
@@ -44,7 +53,7 @@ public class AboutActivity extends MaterialAboutActivity {
                                 .build())
                         .addItem(new MaterialAboutActionItem.Builder()
                                 .text("Version")
-                                .subText("0.0.1")
+                                .subText(versionName)
                                 .icon(R.drawable.ic_outline_info_24px)
                                 .build())
                         .addItem(new MaterialAboutActionItem.Builder()

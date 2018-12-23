@@ -124,6 +124,19 @@ public class Dictionary extends AppCompatActivity {
         m_progress_bar.setProgress(aPosition);
     }
 
+    private void setNoResultsFound()
+    {
+        m_progress_bar.setIndeterminate(false);
+        m_progress_bar.setMax(0);
+
+        m_search_button.setEnabled(true);
+
+        m_status_text.setText("No results found.");
+
+        m_status_text.setVisibility(View.VISIBLE);
+        m_progress_bar.setVisibility(View.GONE);
+    }
+
     private void setReady()
     {
         m_progress_bar.setIndeterminate(false);
@@ -139,8 +152,11 @@ public class Dictionary extends AppCompatActivity {
 
     private class SearchDictionaryTask extends AsyncTask<String, Void, Void>
     {
+        int m_count;
+
         SearchDictionaryTask()
         {
+            m_count = 0;
         }
 
         protected Void doInBackground(String... a_params)
@@ -153,25 +169,41 @@ public class Dictionary extends AppCompatActivity {
             String s = a_params[0];
 
             try {
-                int count;
+                m_db.execSQL("DELETE FROM results_seq");
+
+                m_db.execSQL("INSERT INTO results_seq SELECT writings.seq, writings.keb, NULL, " +
+                        "(writings.keb = \"" + s + "\"), " +
+                        "(writings.keb LIKE \"" + s + "%\"), " +
+                        "(writings.keb LIKE \"%" + s + "\"), " +
+                        "(writings.keb LIKE \"%" + s + "%\"), " +
+                        "NOT writings_prio.ke_pri IS NULL, " +
+                        "0, 0, 0, 0, " +
+                        "NOT readings_prio.re_pri IS NULL " +
+                        "FROM (writings LEFT JOIN writings_prio ON writings.seq=writings_prio.seq) " +
+                        " LEFT JOIN readings_prio ON writings.seq=readings_prio.seq " +
+                        "WHERE writings.keb LIKE \"%" + s + "%\" ");
+
+                m_db.execSQL("INSERT INTO results_seq SELECT readings.seq, NULL, readings.reb, " +
+                        "0, 0, 0, 0, " +
+                        "NOT writings_prio.ke_pri IS NULL, " +
+                        "(readings.reb = \"" + s + "\"), " +
+                        "(readings.reb LIKE \"" + s + "%\"), " +
+                        "(readings.reb LIKE \"%" + s + "\"), " +
+                        "(readings.reb LIKE \"%" + s + "%\"), " +
+                        "NOT readings_prio.re_pri IS NULL " +
+                        "FROM (readings LEFT JOIN readings_prio ON readings.seq=readings_prio.seq) " +
+                        " LEFT JOIN writings_prio ON readings.seq=writings_prio.seq " +
+                        "WHERE readings.reb LIKE \"%" + s + "%\"");
 
                 Cursor cur = m_db.rawQuery
-                        ("SELECT DISTINCT writings.seq " +
-                                        "FROM (writings LEFT JOIN writings_prio ON writings.seq=writings_prio.seq AND writings.keb_id=writings_prio.keb_id), " +
-                                        "(readings LEFT JOIN readings_prio ON readings.seq=readings_prio.seq AND readings.reb_id=readings_prio.reb_id)" +
-                                        "WHERE writings.seq=readings.seq " +
-                                        "AND (writings.keb LIKE \"%" + s + "%\" OR readings.reb LIKE \"%" + s + "%\") " +
-                                        "GROUP BY writings.seq " +
-                                        "ORDER BY  " +
-                                        " (writings.keb = \"" + s + "\")*(20 - writings.keb_id) DESC, " +
-                                        " (readings.reb = \"" + s + "\")*(20 - readings.reb_id) DESC, " +
-                                        " (readings.reb LIKE \"" + s + "%\")*(20 - readings.reb_id) DESC, " +
-                                        " writings_prio.ke_pri IS NULL ASC, readings_prio.re_pri IS NULL ASC, " +
-                                        " (writings.keb LIKE \"" + s + "%\")*(20 - writings.keb_id) DESC, " +
-                                        " writings.keb, readings.reb",
-                                null);
+                        ("SELECT DISTINCT seq FROM results_seq " +
+                        "ORDER BY keb_exact DESC, reb_exact DESC, keb_prio DESC, reb_prio DESC, " +
+                                        "keb_start DESC, reb_start DESC, " +
+                                        "keb_end DESC, reb_end DESC, " +
+                                        "keb_include DESC, reb_include DESC, " +
+                                        "keb, reb", null);
 
-                count = cur.getCount();
+                m_count = cur.getCount();
 
                 while (cur.moveToNext() && !isCancelled()) {
                     DictionaryElement ele =
@@ -184,7 +216,7 @@ public class Dictionary extends AppCompatActivity {
                         Bundle b = new Bundle();
 
                         b.putInt("position", m_output_list.size() - 1);
-                        b.putInt("count", count);
+                        b.putInt("count", m_count);
                         m.setData(b);
 
                         m_handler.sendMessage(m);
@@ -192,6 +224,8 @@ public class Dictionary extends AppCompatActivity {
                 }
 
                 cur.close();
+
+                m_db.execSQL("DELETE FROM results_seq");
             } catch (SQLiteException e) {
                 e.printStackTrace();
             }
@@ -206,7 +240,11 @@ public class Dictionary extends AppCompatActivity {
             m_search_button.setEnabled(true);
             m_list_building = false;
 
-            setReady();
+            if (m_count == 0) {
+                setNoResultsFound();
+            } else {
+                setReady();
+            }
         }
 
         protected void onPreExecute()
@@ -328,16 +366,18 @@ public class Dictionary extends AppCompatActivity {
         m_edit_text.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-
             }
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-
             }
 
             @Override
             public void afterTextChanged(Editable s) {
+                if (!m_search_running) {
+                    setReady();
+                }
+
                 if (s.length() > 0) {
                     m_magic_cross.setVisibility(android.view.View.VISIBLE);
                 } else {
@@ -385,11 +425,13 @@ public class Dictionary extends AppCompatActivity {
         m_handler = new Handler(Looper.getMainLooper()) {
             @Override
             public void handleMessage(Message a_inputMessage) {
-                if (m_adapter != null) {
-                    m_adapter.notifyItemInserted(a_inputMessage.getData().getInt("position"));
+                int position = a_inputMessage.getData().getInt("position");
+                int count = a_inputMessage.getData().getInt("count");
 
-                    setBuildingList(a_inputMessage.getData().getInt("count"),
-                            a_inputMessage.getData().getInt("position"));
+                if (m_adapter != null) {
+                    m_adapter.notifyItemInserted(position);
+
+                    setBuildingList(count, position);
                 }
             }
         };

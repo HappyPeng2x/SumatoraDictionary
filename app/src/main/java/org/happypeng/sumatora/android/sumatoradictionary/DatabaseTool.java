@@ -86,7 +86,7 @@ public class DatabaseTool {
         SQLiteDatabase db = null;
 
         try {
-            db = SQLiteDatabase.openDatabase(a_context.getApplicationInfo().dataDir + "/" + JMDICT_DB_FILE, null, SQLiteDatabase.OPEN_READONLY);
+            db = SQLiteDatabase.openDatabase(a_context.getApplicationInfo().dataDir + "/" + JMDICT_DB_FILE, null, SQLiteDatabase.OPEN_READWRITE);
 
             System.err.println("Database could be opened from file.");
         } catch (SQLiteException e) {
@@ -130,6 +130,11 @@ public class DatabaseTool {
                 e.printStackTrace();
             }
         }
+
+        db.execSQL("DROP TABLE IF EXISTS results_seq");
+        db.execSQL("CREATE TABLE results_seq (seq INTEGER, keb TEXT, reb TEXT, " +
+                "keb_exact INTEGER, keb_start INTEGER, keb_end INTEGER, keb_include INTEGER, keb_prio INTEGER, " +
+                "reb_exact INTEGER, reb_start INTEGER, reb_end INTEGER, reb_include INTEGER, reb_prio INTEGER)");
 
         return db;
     }
