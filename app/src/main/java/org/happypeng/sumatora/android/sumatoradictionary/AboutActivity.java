@@ -178,6 +178,58 @@ public class AboutActivity extends MaterialAboutActivity {
                                 Uri.parse("https://www.creativetail.com/40-free-flat-animal-icons/")))
                         .build())
 
+                .addCard(new MaterialAboutCard.Builder()
+                        .title("Material Design Navigation Drawer")
+                        .addItem(new MaterialAboutActionItem.Builder()
+                                .text("Copyright")
+                                .icon(R.drawable.ic_outline_copyright_24px)
+                                .subText("Pablo Costa")
+                                .build())
+                        .addItem(new MaterialAboutActionItem.Builder()
+                                .text("License")
+                                .subText("MIT License")
+                                .icon(R.drawable.ic_outline_class_24px)
+                                .setOnClickAction(new MaterialAboutItemOnClickAction() {
+                                    @Override
+                                    public void onClick() {
+                                        Intent intent = new Intent(activity_context, LicenseActivity.class);
+                                        intent.putExtra("asset", "MIT.txt");
+                                        startActivity(intent);
+                                    }
+                                })
+                                .build())
+                        .addItem(ConvenienceBuilder.createWebsiteActionItem(activity_context,
+                                getDrawable(R.drawable.ic_outline_public_24px), "Visit Website",
+                                true,
+                                Uri.parse("https://github.com/Sottti/Material-Design-Nav-Drawer/tree/using_design_support_library")))
+                        .build())
+
+                .addCard(new MaterialAboutCard.Builder()
+                        .title("A nice tiger photo")
+                        .addItem(new MaterialAboutActionItem.Builder()
+                                .text("Copyright")
+                                .icon(R.drawable.ic_outline_copyright_24px)
+                                .subText("Blake Meyer")
+                                .build())
+                        .addItem(new MaterialAboutActionItem.Builder()
+                                .text("License")
+                                .subText("Unsplash")
+                                .icon(R.drawable.ic_outline_class_24px)
+                                .setOnClickAction(new MaterialAboutItemOnClickAction() {
+                                    @Override
+                                    public void onClick() {
+                                        Intent intent = new Intent(activity_context, LicenseActivity.class);
+                                        intent.putExtra("asset", "Unsplash.txt");
+                                        startActivity(intent);
+                                    }
+                                })
+                                .build())
+                        .addItem(ConvenienceBuilder.createWebsiteActionItem(activity_context,
+                                getDrawable(R.drawable.ic_outline_public_24px), "Visit Website",
+                                true,
+                                Uri.parse("https://unsplash.com/photos/5RBXc7R-YWs")))
+                        .build())
+
                 .build();
     }
 

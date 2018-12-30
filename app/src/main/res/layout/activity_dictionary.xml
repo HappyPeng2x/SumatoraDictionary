@@ -6,6 +6,7 @@
     android:id="@+id/nav_drawer"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    tools:context="org.happypeng.sumatora.android.sumatoradictionary.Dictionary"
     android:fitsSystemWindows="true">
 
     <LinearLayout
@@ -32,9 +33,6 @@
         android:paddingRight="16dp"
         android:paddingBottom="16dp"
         tools:context="org.happypeng.sumatora.android.sumatoradictionary.Dictionary">
-
-
-
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -113,13 +111,16 @@
 
     </LinearLayout>
 
-<!--    <com.google.android.material.navigation.NavigationView
-        android:id="@+id/nav_view"
+    <com.google.android.material.navigation.NavigationView
+        android:id="@+id/activity_main_navigation_view"
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
         android:layout_gravity="start"
-        android:fitsSystemWindows="true"
-        app:menu="@menu/navigation_menu" />-->
+        android:maxWidth="@dimen/navigation_drawer_max_width"
+        app:elevation="@dimen/elevation_nav_drawer"
+        app:headerLayout="@layout/navigation_drawer_header"
+        app:menu="@menu/navigation_menu"
+        android:fitsSystemWindows="false" />
 
 </androidx.drawerlayout.widget.DrawerLayout>
 

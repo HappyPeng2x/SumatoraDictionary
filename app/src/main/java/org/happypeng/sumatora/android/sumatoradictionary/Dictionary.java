@@ -22,6 +22,9 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.ActionBar;
+import androidx.core.view.GravityCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -51,6 +54,8 @@ import android.widget.EditText;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteException;
 import android.database.Cursor;
+
+import com.google.android.material.navigation.NavigationView;
 
 import java.util.LinkedList;
 
@@ -313,6 +318,17 @@ public class Dictionary extends AppCompatActivity {
 
     private final boolean DEVELOPER_MODE = false;
 
+    private static final int DELAY_MILLIS = 250;
+
+    private void startActivityWithDelay(@NonNull final Class activity) {
+        new Handler().postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                startActivity(new Intent(m_context, activity));
+            }
+        }, DELAY_MILLIS);
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         if (DEVELOPER_MODE) {
@@ -333,8 +349,28 @@ public class Dictionary extends AppCompatActivity {
 
         // Set-up the nice Android-ish UI
 
-        Toolbar tb = (Toolbar) findViewById(R.id.nav_toolbar);
+        final Toolbar tb = (Toolbar) findViewById(R.id.nav_toolbar);
         setSupportActionBar(tb);
+
+        final ActionBar actionBar = getSupportActionBar();
+        actionBar.setHomeAsUpIndicator(R.drawable.ic_menu_white_24dp);
+        actionBar.setDisplayHomeAsUpEnabled(true);
+
+        final NavigationView nv = (NavigationView) findViewById(R.id.activity_main_navigation_view);
+        nv.setNavigationItemSelectedListener(new NavigationView.OnNavigationItemSelectedListener() {
+            @Override
+            public boolean onNavigationItemSelected(@NonNull MenuItem pMenuItem) {
+                m_drawer_layout.closeDrawer(GravityCompat.START);
+
+                switch (pMenuItem.getItemId()) {
+                    case R.id.navigation_view_item_about:
+                        startActivityWithDelay(AboutActivity.class);
+                        break;
+                }
+
+                return true;
+            }
+        });
 
         m_drawer_layout = (DrawerLayout) findViewById(R.id.nav_drawer);
 
@@ -449,21 +485,20 @@ public class Dictionary extends AppCompatActivity {
         }
     }
 
-    @Override
+/*    @Override
     public boolean onCreateOptionsMenu(Menu pMenu) {
         getMenuInflater().inflate(R.menu.activity_menu, pMenu);
         return true;
-    }
+    }*/
 
     @Override
     public boolean onOptionsItemSelected(MenuItem pMenuItem) {
         switch (pMenuItem.getItemId()) {
-            case R.id.about:
-                Intent intent = new Intent(this, AboutActivity.class);
-                startActivity(intent);
-                return true;
+            case android.R.id.home:
+                m_drawer_layout.openDrawer(GravityCompat.START);
+                break;
         }
 
-        return super.onOptionsItemSelected(pMenuItem);
+        return true;
     }
 }

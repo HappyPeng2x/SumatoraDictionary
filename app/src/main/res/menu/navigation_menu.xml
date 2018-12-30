@@ -1,11 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
+
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
-    <group android:checkableBehavior="single">
+
+    <group
+        android:id="@+id/navigation_drawer_group_one"
+        android:checkableBehavior="single">
+
         <item
-            android:id="@+id/nav_pif"
-            android:title="pif" />
-        <item
-            android:id="@+id/nav_paf"
-            android:title="paf" />
+            android:id="@+id/navigation_view_item_search"
+            android:checked="true"
+            android:icon="@drawable/ic_outline_search_24px"
+            android:title="@string/nav_drawer_item_home" />
     </group>
+
+    <group
+        android:id="@+id/navigation_drawer_group_two"
+        android:checkableBehavior="none">
+        <item
+            android:id="@+id/navigation_view_item_about"
+            android:icon="@drawable/ic_info_white_24dp"
+            android:title="@string/nav_drawer_about" />
+    </group>
+
 </menu>

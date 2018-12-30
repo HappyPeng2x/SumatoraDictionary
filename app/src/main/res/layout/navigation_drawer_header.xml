@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<androidx.percentlayout.widget.PercentRelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/navigation_drawer_header"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    tools:context="org.happypeng.sumatora.android.sumatoradictionary.Dictionary">
+
+    <FrameLayout
+        android:id="@+id/navigation_drawer_header_clickable"
+        android:clickable="true"
+        android:foreground="@drawable/nav_drawer_header_foreground"
+        app:layout_aspectRatio="178%"
+        app:layout_widthPercent="100%"
+        android:layout_height="0dp"
+        android:layout_width="0dp">
+
+        <ImageView
+            android:id="@+id/navigation_drawer_user_account_picture_cover"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:src="@drawable/blake_meyer_423494_unsplash_lowres"
+            tools:ignore="ContentDescription" />
+
+    </FrameLayout>
+
+    <LinearLayout
+        android:id="@+id/navigation_drawer_account_section"
+        android:paddingBottom="@dimen/spacing_8"
+        android:paddingStart="@dimen/vertical_keyline_first"
+        android:paddingEnd="@dimen/vertical_keyline_first"
+        android:paddingLeft="@dimen/vertical_keyline_first"
+        android:paddingRight="@dimen/vertical_keyline_first"
+        android:gravity="bottom"
+        android:orientation="vertical"
+        app:layout_aspectRatio="178%"
+        app:layout_widthPercent="100%"
+        android:layout_height="0dp"
+        android:layout_width="0dp">
+
+            <TextView
+                android:id="@+id/navigation_drawer_account_information_display_name"
+                style="@style/Body2.White.Primary"
+                android:text="@string/app_name"
+                android:textSize="25sp"/>
+
+    </LinearLayout>
+
+</androidx.percentlayout.widget.PercentRelativeLayout>
