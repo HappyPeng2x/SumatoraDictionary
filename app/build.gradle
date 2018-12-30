@@ -18,8 +18,8 @@ android {
         applicationId "org.happypeng.sumatora.android.sumatoradictionary"
         minSdkVersion 24
         targetSdkVersion 28
-        versionCode 3
-        versionName "0.2.1"
+        versionCode 4
+        versionName "0.2.2"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         setProperty("archivesBaseName", "SumatoraDictionary-$versionName")
         signingConfig signingConfigs.config
