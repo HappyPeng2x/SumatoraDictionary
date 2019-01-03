@@ -25,24 +25,25 @@ import android.content.Intent;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBar;
 import androidx.core.view.GravityCompat;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModelProviders;
+import androidx.paging.PagedList;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.drawerlayout.widget.DrawerLayout;
+import androidx.room.Room;
 
-import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.View;
-import android.view.Menu;
 import android.view.MenuItem;
 
 import android.os.Bundle;
 import android.os.AsyncTask;
 import android.os.Handler;
-import android.os.Message;
 
 import android.os.StrictMode;
 
@@ -51,28 +52,30 @@ import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.EditText;
 
-import android.database.sqlite.SQLiteDatabase;
-import android.database.sqlite.SQLiteException;
-import android.database.Cursor;
-
 import com.google.android.material.navigation.NavigationView;
+
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryControlDao;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryDatabase;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryEntry;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryEntryDao;
+import org.happypeng.sumatora.android.sumatoradictionary.model.DictionaryViewModel;
 
 import java.util.LinkedList;
 
 public class Dictionary extends AppCompatActivity {
-    private SQLiteDatabase m_db;
+    // private SQLiteDatabase m_db;
 
-    private boolean m_db_loading;
+    // private boolean m_db_loading;
     private Context m_context;
     private int m_grid_rows;
 
     private boolean m_list_building;
 
     private RecyclerView m_recyclerView;
-    private LinkedList<DictionaryElement> m_output_list;
-    private RecyclerView.Adapter m_adapter;
+    // private LinkedList<DictionaryElement> m_output_list;
+    // private RecyclerView.Adapter m_adapter;
 
-    private Handler m_handler;
+    // private Handler m_handler;
 
     private ImageButton m_search_button;
     private ImageButton m_magic_cross;
@@ -82,11 +85,17 @@ public class Dictionary extends AppCompatActivity {
     private ProgressBar m_progress_bar;
     private TextView m_status_text;
 
-    private boolean m_search_running;
+    // private boolean m_search_running;
 
-    private SearchDictionaryTask m_search_task;
+    // private SearchDictionaryTask m_search_task;
 
     private DrawerLayout m_drawer_layout;
+
+    private DictionaryDatabase m_dictionaryDatabase;
+    private DictionaryEntryDao m_dictionaryEntryDao;
+    private DictionaryControlDao m_dictionaryControlDao;
+
+    private int m_testCount;
 
     private void setInPreparation()
     {
@@ -155,165 +164,50 @@ public class Dictionary extends AppCompatActivity {
         m_progress_bar.setVisibility(View.GONE);
     }
 
-    private class SearchDictionaryTask extends AsyncTask<String, Void, Void>
-    {
-        int m_count;
+    // Add test items ; code to be deleted once a proper importer is written
+    private void addTestItems() {
+        final DictionaryEntry entry1 = new DictionaryEntry();
+        final DictionaryEntry entry2 = new DictionaryEntry();
+        final DictionaryEntry entry3 = new DictionaryEntry();
+        final DictionaryEntry entry4 = new DictionaryEntry();
 
-        SearchDictionaryTask()
-        {
-            m_count = 0;
-        }
+        entry1.seq = 1;
+        entry1.readings = "わ";
+        entry1.writings = "和";
+        entry1.lang = "eng";
+        entry1.gloss = "Japanese";
 
-        protected Void doInBackground(String... a_params)
-        {
-            if (a_params.length < 1)
-            {
+        entry2.seq = 2;
+        entry2.readings = "やまと";
+        entry2.writings = "大和";
+        entry2.lang = "eng";
+        entry2.gloss = "Japanese people";
+
+        entry3.seq = 3;
+        entry3.readings = "りょうかい";
+        entry3.writings = "了解";
+        entry3.lang = "eng";
+        entry3.gloss = "OK";
+
+        entry4.seq = 4;
+        entry4.readings = "ふりょう";
+        entry4.writings = "不良";
+        entry4.lang = "eng";
+        entry4.gloss = "Not good";
+
+        new AsyncTask<Void, Void, Void>() {
+            @Override
+            protected Void doInBackground(Void... voids) {
+                m_dictionaryEntryDao.insert(entry1);
+                m_dictionaryEntryDao.insert(entry2);
+                m_dictionaryEntryDao.insert(entry3);
+                m_dictionaryEntryDao.insert(entry4);
+
+                m_dictionaryControlDao.set("imported", 1);
+
                 return null;
             }
-
-            String s = a_params[0];
-
-            try {
-                m_db.execSQL("DELETE FROM results_seq");
-
-                m_db.execSQL("INSERT INTO results_seq SELECT writings.seq, writings.keb, NULL, " +
-                        "(writings.keb = \"" + s + "\"), " +
-                        "(writings.keb LIKE \"" + s + "%\"), " +
-                        "(writings.keb LIKE \"%" + s + "\"), " +
-                        "(writings.keb LIKE \"%" + s + "%\"), " +
-                        "NOT writings_prio.ke_pri IS NULL, " +
-                        "0, 0, 0, 0, " +
-                        "NOT readings_prio.re_pri IS NULL " +
-                        "FROM (writings LEFT JOIN writings_prio ON writings.seq=writings_prio.seq) " +
-                        " LEFT JOIN readings_prio ON writings.seq=readings_prio.seq " +
-                        "WHERE writings.keb LIKE \"%" + s + "%\" ");
-
-                m_db.execSQL("INSERT INTO results_seq SELECT readings.seq, NULL, readings.reb, " +
-                        "0, 0, 0, 0, " +
-                        "NOT writings_prio.ke_pri IS NULL, " +
-                        "(readings.reb = \"" + s + "\"), " +
-                        "(readings.reb LIKE \"" + s + "%\"), " +
-                        "(readings.reb LIKE \"%" + s + "\"), " +
-                        "(readings.reb LIKE \"%" + s + "%\"), " +
-                        "NOT readings_prio.re_pri IS NULL " +
-                        "FROM (readings LEFT JOIN readings_prio ON readings.seq=readings_prio.seq) " +
-                        " LEFT JOIN writings_prio ON readings.seq=writings_prio.seq " +
-                        "WHERE readings.reb LIKE \"%" + s + "%\"");
-
-                Cursor cur = m_db.rawQuery
-                        ("SELECT DISTINCT seq FROM results_seq " +
-                        "ORDER BY keb_exact DESC, reb_exact DESC, keb_prio DESC, reb_prio DESC, " +
-                                        "keb_start DESC, reb_start DESC, " +
-                                        "keb_end DESC, reb_end DESC, " +
-                                        "keb_include DESC, reb_include DESC, " +
-                                        "keb, reb", null);
-
-                m_count = cur.getCount();
-
-                while (cur.moveToNext() && !isCancelled()) {
-                    DictionaryElement ele =
-                            new DictionaryElement(m_db, cur.getInt(0),"eng");
-
-                    m_output_list.add(ele);
-
-                    if (m_handler != null) {
-                        Message m = new Message();
-                        Bundle b = new Bundle();
-
-                        b.putInt("position", m_output_list.size() - 1);
-                        b.putInt("count", m_count);
-                        m.setData(b);
-
-                        m_handler.sendMessage(m);
-                    }
-                }
-
-                cur.close();
-
-                m_db.execSQL("DELETE FROM results_seq");
-            } catch (SQLiteException e) {
-                e.printStackTrace();
-            }
-
-            return null;
-        }
-
-        protected void onPostExecute(Void a_param)
-        {
-            m_search_running = false;
-            m_search_button.setImageResource(R.drawable.ic_outline_search_24px);
-            m_search_button.setEnabled(true);
-            m_list_building = false;
-
-            if (m_count == 0) {
-                setNoResultsFound();
-            } else {
-                setReady();
-            }
-        }
-
-        protected void onPreExecute()
-        {
-            m_search_running = true;
-            m_search_button.setImageResource(R.drawable.ic_outline_stop_24px);
-            m_search_button.setEnabled(true);
-        }
-
-        protected void onCancelled(Void a_return)
-        {
-            m_search_running = false;
-            m_search_button.setImageResource(R.drawable.ic_outline_search_24px);
-            m_search_button.setEnabled(true);
-            m_list_building = false;
-
-            setReady();
-        }
-    }
-
-    private class LoadDBTask extends AsyncTask<Void, Void, Void>
-    {
-        private Context m_context;
-
-        LoadDBTask(Context a_context)
-        {
-            super();
-
-            m_context = a_context;
-        }
-
-        protected Void doInBackground(Void... a_params)
-        {
-            m_db =  DatabaseTool.getDB(m_context);
-
-            return null;
-        }
-
-        protected void onPostExecute(Void a_param)
-        {
-            setReady();
-
-            m_db_loading = false;
-        }
-    }
-
-    private void DBfailureDialog()
-    {
-        if (m_db == null) {
-            AlertDialog.Builder builder = new AlertDialog.Builder(this);
-
-            builder.setMessage("Could not open database, aborting.");
-            builder.setTitle("Fatal error");
-            builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialogInterface, int i) {
-                    finish();
-                }
-            });
-
-            AlertDialog dialog = builder.create();
-
-            dialog.show();
-        }
+        }.execute();
     }
 
     private final boolean DEVELOPER_MODE = false;
@@ -366,6 +260,9 @@ public class Dictionary extends AppCompatActivity {
                     case R.id.navigation_view_item_about:
                         startActivityWithDelay(AboutActivity.class);
                         break;
+                    case R.id.navigation_view_item_add:
+                        addTestItems();
+                        break;
                 }
 
                 return true;
@@ -375,12 +272,9 @@ public class Dictionary extends AppCompatActivity {
         m_drawer_layout = (DrawerLayout) findViewById(R.id.nav_drawer);
 
         m_context = this;
-        m_db_loading = true;
         m_grid_rows = 1;
 
         m_search_button = (ImageButton) findViewById(R.id.button);
-
-        m_search_running = false;
 
         m_magic_cross = (ImageButton) findViewById(R.id.magic_cross);
         m_edit_text = (EditText) findViewById(R.id.editText);
@@ -390,13 +284,11 @@ public class Dictionary extends AppCompatActivity {
 
         setInPreparation();
 
-        new LoadDBTask(this).execute();
-
         // Setup recycler view
         m_recyclerView = (RecyclerView) findViewById(R.id.recyclerView);
 
-        RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(this);
-
+        LinearLayoutManager layoutManager = new LinearLayoutManager(this);
+        layoutManager.setOrientation(RecyclerView.VERTICAL);
         m_recyclerView.setLayoutManager(layoutManager);
 
         m_edit_text.addTextChangedListener(new TextWatcher() {
@@ -410,10 +302,6 @@ public class Dictionary extends AppCompatActivity {
 
             @Override
             public void afterTextChanged(Editable s) {
-                if (!m_search_running) {
-                    setReady();
-                }
-
                 if (s.length() > 0) {
                     m_magic_cross.setVisibility(android.view.View.VISIBLE);
                 } else {
@@ -422,74 +310,65 @@ public class Dictionary extends AppCompatActivity {
             }
         });
 
-        // Setup search button
-        m_search_button.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View a_view) {
-                if (m_db == null) {
-                    DBfailureDialog();
+        // New room code
+        m_dictionaryDatabase = Room.databaseBuilder(Dictionary.this,
+                DictionaryDatabase.class, DictionaryDatabase.DATABASE_NAME)
+                .fallbackToDestructiveMigration()
+                .build();
+        m_dictionaryEntryDao = m_dictionaryDatabase.dictionaryEntryDao();
+        m_dictionaryControlDao = m_dictionaryDatabase.dictionaryControlDao();
 
-                    return;
-                }
+        final DictionaryViewModel viewModel = ViewModelProviders.of(this).get(DictionaryViewModel.class);
 
-                if (!m_search_running) {
-                    m_output_list = new LinkedList<DictionaryElement>();
-                    m_adapter = new DictionaryAdapter(m_db, m_output_list);
-                    m_recyclerView.setAdapter(m_adapter);
+        viewModel.init(m_dictionaryControlDao);
 
-                    setSearchingDictionary();
-
-                    m_search_task = new SearchDictionaryTask();
-                    m_search_task.execute(m_edit_text.getText().toString());
+        viewModel.imported.observe(Dictionary.this, new Observer<Long>() {
+            @Override
+            public void onChanged(Long aLong) {
+                if (aLong != null && aLong != 0) {
+                    setReady();
                 } else {
-                    m_search_task.cancel(false);
+                    setInPreparation();
                 }
+            }
+        });
+
+        viewModel.updateDictionaryEntriesFromAssets(m_dictionaryDatabase, this, m_dictionaryControlDao,
+                m_dictionaryEntryDao);
+
+        final DictionaryPagedListAdapter pagedListAdapter = new DictionaryPagedListAdapter();
+
+        m_recyclerView.setAdapter(pagedListAdapter);
+
+        // New search button logic
+        m_search_button.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                viewModel.search(Dictionary.this, m_dictionaryEntryDao,
+                        m_edit_text.getText().toString(), "eng").observe(Dictionary.this,
+                        new Observer<PagedList<DictionaryEntry>>() {
+                    @Override
+                    public void onChanged(PagedList<DictionaryEntry> dictionaryEntries) {
+                        pagedListAdapter.submitList(dictionaryEntries);
+                    }
+                });
             }
         });
 
         m_magic_cross.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (m_search_running) {
-                    m_search_task.cancel(false);
-                }
-
                 m_edit_text.setText("");
             }
         });
 
-        // Setup handler
-        m_handler = new Handler(Looper.getMainLooper()) {
-            @Override
-            public void handleMessage(Message a_inputMessage) {
-                int position = a_inputMessage.getData().getInt("position");
-                int count = a_inputMessage.getData().getInt("count");
-
-                if (m_adapter != null) {
-                    m_adapter.notifyItemInserted(position);
-
-                    setBuildingList(count, position);
-                }
-            }
-        };
     }
 
     @Override
     protected void onDestroy()
     {
         super.onDestroy();
-
-        if (m_db != null) {
-            m_db.close();
-
-            m_db = null;
-        }
     }
-
-/*    @Override
-    public boolean onCreateOptionsMenu(Menu pMenu) {
-        getMenuInflater().inflate(R.menu.activity_menu, pMenu);
-        return true;
-    }*/
 
     @Override
     public boolean onOptionsItemSelected(MenuItem pMenuItem) {
