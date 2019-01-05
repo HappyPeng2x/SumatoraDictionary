@@ -60,22 +60,13 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryEntry;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryEntryDao;
 import org.happypeng.sumatora.android.sumatoradictionary.model.DictionaryViewModel;
 
-import java.util.LinkedList;
-
 public class Dictionary extends AppCompatActivity {
-    // private SQLiteDatabase m_db;
-
-    // private boolean m_db_loading;
     private Context m_context;
     private int m_grid_rows;
 
     private boolean m_list_building;
 
     private RecyclerView m_recyclerView;
-    // private LinkedList<DictionaryElement> m_output_list;
-    // private RecyclerView.Adapter m_adapter;
-
-    // private Handler m_handler;
 
     private ImageButton m_search_button;
     private ImageButton m_magic_cross;
@@ -85,17 +76,7 @@ public class Dictionary extends AppCompatActivity {
     private ProgressBar m_progress_bar;
     private TextView m_status_text;
 
-    // private boolean m_search_running;
-
-    // private SearchDictionaryTask m_search_task;
-
     private DrawerLayout m_drawer_layout;
-
-    private DictionaryDatabase m_dictionaryDatabase;
-    private DictionaryEntryDao m_dictionaryEntryDao;
-    private DictionaryControlDao m_dictionaryControlDao;
-
-    private int m_testCount;
 
     private void setInPreparation()
     {
@@ -123,21 +104,6 @@ public class Dictionary extends AppCompatActivity {
         m_status_text.setText("Searching in the dictionary...");
     }
 
-    private void setBuildingList(int aCount, int aPosition)
-    {
-        if (!m_list_building) {
-            m_status_text.setVisibility(View.VISIBLE);
-            m_progress_bar.setVisibility(View.VISIBLE);
-
-            m_progress_bar.setIndeterminate(false);
-            m_progress_bar.setMax(aCount);
-
-            m_status_text.setText("Building results list...");
-        }
-
-        m_progress_bar.setProgress(aPosition);
-    }
-
     private void setNoResultsFound()
     {
         m_progress_bar.setIndeterminate(false);
@@ -162,52 +128,6 @@ public class Dictionary extends AppCompatActivity {
 
         m_status_text.setVisibility(View.GONE);
         m_progress_bar.setVisibility(View.GONE);
-    }
-
-    // Add test items ; code to be deleted once a proper importer is written
-    private void addTestItems() {
-        final DictionaryEntry entry1 = new DictionaryEntry();
-        final DictionaryEntry entry2 = new DictionaryEntry();
-        final DictionaryEntry entry3 = new DictionaryEntry();
-        final DictionaryEntry entry4 = new DictionaryEntry();
-
-        entry1.seq = 1;
-        entry1.readings = "わ";
-        entry1.writings = "和";
-        entry1.lang = "eng";
-        entry1.gloss = "Japanese";
-
-        entry2.seq = 2;
-        entry2.readings = "やまと";
-        entry2.writings = "大和";
-        entry2.lang = "eng";
-        entry2.gloss = "Japanese people";
-
-        entry3.seq = 3;
-        entry3.readings = "りょうかい";
-        entry3.writings = "了解";
-        entry3.lang = "eng";
-        entry3.gloss = "OK";
-
-        entry4.seq = 4;
-        entry4.readings = "ふりょう";
-        entry4.writings = "不良";
-        entry4.lang = "eng";
-        entry4.gloss = "Not good";
-
-        new AsyncTask<Void, Void, Void>() {
-            @Override
-            protected Void doInBackground(Void... voids) {
-                m_dictionaryEntryDao.insert(entry1);
-                m_dictionaryEntryDao.insert(entry2);
-                m_dictionaryEntryDao.insert(entry3);
-                m_dictionaryEntryDao.insert(entry4);
-
-                m_dictionaryControlDao.set("imported", 1);
-
-                return null;
-            }
-        }.execute();
     }
 
     private final boolean DEVELOPER_MODE = false;
@@ -260,9 +180,6 @@ public class Dictionary extends AppCompatActivity {
                     case R.id.navigation_view_item_about:
                         startActivityWithDelay(AboutActivity.class);
                         break;
-                    case R.id.navigation_view_item_add:
-                        addTestItems();
-                        break;
                 }
 
                 return true;
@@ -311,47 +228,46 @@ public class Dictionary extends AppCompatActivity {
         });
 
         // New room code
-        m_dictionaryDatabase = Room.databaseBuilder(Dictionary.this,
-                DictionaryDatabase.class, DictionaryDatabase.DATABASE_NAME)
-                .fallbackToDestructiveMigration()
-                .build();
-        m_dictionaryEntryDao = m_dictionaryDatabase.dictionaryEntryDao();
-        m_dictionaryControlDao = m_dictionaryDatabase.dictionaryControlDao();
-
         final DictionaryViewModel viewModel = ViewModelProviders.of(this).get(DictionaryViewModel.class);
 
-        viewModel.init(m_dictionaryControlDao);
+        viewModel.getDatabaseReady().observe(this,
+                new Observer<Boolean>() {
+                    @Override
+                    public void onChanged(Boolean aDbReady) {
+                        if (aDbReady) {
+                            setReady();
+                        } else {
+                            setInPreparation();
+                        }
+                    }
+                });
 
-        viewModel.imported.observe(Dictionary.this, new Observer<Long>() {
-            @Override
-            public void onChanged(Long aLong) {
-                if (aLong != null && aLong != 0) {
-                    setReady();
-                } else {
-                    setInPreparation();
-                }
-            }
-        });
-
-        viewModel.updateDictionaryEntriesFromAssets(m_dictionaryDatabase, this, m_dictionaryControlDao,
-                m_dictionaryEntryDao);
+        if (viewModel.getDatabaseReady().getValue()) {
+            setInPreparation();
+        } else {
+            setReady();
+        }
 
         final DictionaryPagedListAdapter pagedListAdapter = new DictionaryPagedListAdapter();
 
         m_recyclerView.setAdapter(pagedListAdapter);
 
         // New search button logic
+        viewModel.getSearchEntries().observe(this, new Observer<PagedList<DictionaryEntry>>() {
+            @Override
+            public void onChanged(PagedList<DictionaryEntry> aList) {
+                setReady();
+
+                pagedListAdapter.submitList(aList);
+            }
+        });
+
         m_search_button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                viewModel.search(Dictionary.this, m_dictionaryEntryDao,
-                        m_edit_text.getText().toString(), "eng").observe(Dictionary.this,
-                        new Observer<PagedList<DictionaryEntry>>() {
-                    @Override
-                    public void onChanged(PagedList<DictionaryEntry> dictionaryEntries) {
-                        pagedListAdapter.submitList(dictionaryEntries);
-                    }
-                });
+                setSearchingDictionary();
+
+                viewModel.search(m_edit_text.getText().toString(), "eng");
             }
         });
 

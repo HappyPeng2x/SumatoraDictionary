@@ -17,12 +17,6 @@
         android:id="@+id/navigation_drawer_group_two"
         android:checkableBehavior="none">
 
-        <!--Item menu to execute test insertions ; will be deleted in the future  -->
-        <item
-            android:id="@+id/navigation_view_item_add"
-            android:icon="@drawable/ic_outline_cancel_24px"
-            android:title="Add items" />
-
         <item
             android:id="@+id/navigation_view_item_about"
             android:icon="@drawable/ic_info_white_24dp"

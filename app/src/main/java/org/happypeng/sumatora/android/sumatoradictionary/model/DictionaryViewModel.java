@@ -1,211 +1,125 @@
+/* Sumatora Dictionary
+        Copyright (C) 2019 Nicolas Centa
+
+        This program is free software: you can redistribute it and/or modify
+        it under the terms of the GNU General Public License as published by
+        the Free Software Foundation, either version 3 of the License, or
+        (at your option) any later version.
+
+        This program is distributed in the hope that it will be useful,
+        but WITHOUT ANY WARRANTY; without even the implied warranty of
+        MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+        GNU General Public License for more details.
+
+        You should have received a copy of the GNU General Public License
+        along with this program.  If not, see <http://www.gnu.org/licenses/>.*/
+
 package org.happypeng.sumatora.android.sumatoradictionary.model;
 
-import android.app.Activity;
-import android.database.DatabaseUtils;
-import android.os.AsyncTask;
-import android.util.Log;
-import android.util.TimingLogger;
-import android.util.Xml;
+import android.app.Application;
 
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryControlDao;
+import org.happypeng.sumatora.android.sumatoradictionary.DictionaryApplication;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryEntry;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryEntryDao;
-import org.xmlpull.v1.XmlPullParser;
-import org.xmlpull.v1.XmlPullParserException;
 
-import java.io.BufferedReader;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
-import java.util.Arrays;
-
-import androidx.lifecycle.LifecycleOwner;
+import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
-import androidx.lifecycle.ViewModel;
+import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.Observer;
 import androidx.paging.LivePagedListBuilder;
 import androidx.paging.PagedList;
-import androidx.room.RoomDatabase;
-import androidx.sqlite.db.SupportSQLiteDatabase;
 
-public class DictionaryViewModel extends ViewModel {
-    public LiveData<PagedList<DictionaryEntry>> searchEntries;
-    public LiveData<Long> imported;
-    public LiveData<Long> date;
+public class DictionaryViewModel extends AndroidViewModel {
+    private MutableLiveData<PagedList<DictionaryEntry>> m_searchEntriesLiveData;
+    private LiveData<PagedList<DictionaryEntry>> m_searchEntries;
+    private Observer<PagedList<DictionaryEntry>> m_searchObserver;
 
-    public DictionaryViewModel() {
+    private DictionaryDatabase m_db;
+    private LiveData<DictionaryDatabase> m_dbLiveData;
+    private Observer<DictionaryDatabase> m_dbObserver;
+    private MutableLiveData<Boolean> m_dbReady;
+
+    public LiveData<PagedList<DictionaryEntry>> getSearchEntries() {
+        return m_searchEntriesLiveData;
     }
 
-    public void init(DictionaryControlDao controlDao) {
-        imported = controlDao.get("imported");
-        date = controlDao.get("date");
+    public LiveData<Boolean> getDatabaseReady() {
+        return m_dbReady;
     }
 
-    public boolean updateDictionaryEntriesFromAssets(final RoomDatabase aDB, final Activity aActivity,
-                                                     final DictionaryControlDao aControlDao,
-                                                     final DictionaryEntryDao aEntryDao) {
+    public DictionaryViewModel(Application aApp) {
+        super(aApp);
 
-        if (date == null) { // Need to initialize before running
-            return false;
+        m_dbReady = new MutableLiveData<Boolean>();
+        m_searchEntriesLiveData = new MutableLiveData<PagedList<DictionaryEntry>>();
+
+        DictionaryApplication app = (DictionaryApplication) aApp;
+
+        m_dbLiveData = app.getDictionaryDatabase();
+
+        if (m_dbLiveData.getValue() != null) {
+            m_dbReady.setValue(true);
+        } else {
+            m_dbReady.setValue(false);
         }
 
-        new AsyncTask<Void, Void, Void>() {
+        m_dbObserver = new Observer<DictionaryDatabase>() {
             @Override
-            protected Void doInBackground(Void... voids) {
+            public void onChanged(DictionaryDatabase aDictionaryDatabase) {
+                cleanSearchEntries();
 
-                aEntryDao.deleteAll();
-                aControlDao.set("date", 0);
+                m_searchEntriesLiveData.setValue(null);
 
-                aControlDao.set("imported", 0);
+                m_db = aDictionaryDatabase;
 
-                InputStream stream = null;
-                XmlPullParser parser = Xml.newPullParser();
-
-                try {
-                    stream = aActivity.getAssets().open("JMdict.xml");
-                    parser.setInput(aActivity.getAssets().open("JMdict.xml"), "utf-8");
-
-                    int eventType = parser.getEventType();
-                    boolean endParsing = false;
-                    Long newDate = null;
-
-                    String name;
-                    Long seq = null;
-                    String readings = "";
-                    String writings = "";
-                    String sense = "";
-                    String lang = "";
-
-                    DictionaryEntry[] buffer = null;
-                    int bufferPos = 0;
-
-                    while (eventType != XmlPullParser.END_DOCUMENT && !endParsing) {
-                        eventType = parser.next();
-
-                        switch (eventType) {
-                            case XmlPullParser.START_DOCUMENT:
-                                //System.out.println("Start processing XML...");
-                                break;
-                            case XmlPullParser.START_TAG:
-                                name = parser.getName();
-
-                                if (name.equals("dict")) {
-                                    String xmlDate = parser.getAttributeValue("", "date");
-
-                                    if (date.getValue() != null &&
-                                            Long.valueOf(xmlDate) <= date.getValue()) {
-                                        endParsing = true;
-                                    } else {
-                                        newDate = Long.valueOf(xmlDate);
-                                        aEntryDao.deleteAll();
-                                        buffer = new DictionaryEntry[20000];
-                                    }
-                                } else if (name.equals("entry")) {
-                                    seq = Long.valueOf(parser.getAttributeValue("", "seq"));
-                                    writings = parser.getAttributeValue("", "readings");
-                                    readings = parser.getAttributeValue("", "writings");
-                                } else if (name.equals("sense")) {
-                                    lang = parser.getAttributeValue("", "lang");
-                                    sense = "";
-                                }
-
-                                break;
-                            case XmlPullParser.TEXT:
-                                sense = sense + parser.getText();
-                                break;
-                            case XmlPullParser.END_TAG:
-                                name = parser.getName();
-
-                                if (name.equals("sense")) {
-                                    // Insert entry in DB
-                                    DictionaryEntry entry = new DictionaryEntry();
-
-                                    entry.seq = seq;
-                                    entry.writings = writings;
-                                    entry.readings = readings;
-                                    entry.lang = lang;
-                                    entry.gloss = sense;
-                                    entry.bookmark = "";
-
-                                    if (bufferPos < 20000) {
-                                        buffer[bufferPos] = entry;
-                                        bufferPos = bufferPos + 1;
-                                    } else {
-                                        aEntryDao.insertMany(buffer);
-
-                                        Arrays.fill(buffer, null);
-                                        bufferPos = 0;
-                                    }
-                                } else if (name.equals("entry")) {
-                                    seq = null;
-                                    writings = "";
-                                    readings = "";
-                                    lang = "";
-                                    sense = "";
-                                }
-
-                                break;
-                            case XmlPullParser.END_DOCUMENT:
-                                //System.out.println("End processing XML...");
-
-                                for (DictionaryEntry insertEntry : buffer) {
-                                    if (insertEntry != null) {
-                                        aEntryDao.insert(insertEntry);
-                                    }
-                                }
-
-                                aEntryDao.insertMany(Arrays.copyOf(buffer, bufferPos));
-
-                                Arrays.fill(buffer, null);
-                                bufferPos = 0;
-
-                                aControlDao.set("date", newDate);
-                                aControlDao.set("imported", 1);
-
-                                break;
-                        }
-                    }
-                } catch (Exception e) {
-                    System.err.println(e.toString());
+                if (aDictionaryDatabase != null) {
+                    m_dbReady.setValue(true);
+                } else {
+                    m_dbReady.setValue(false);
                 }
-
-                if (stream != null) {
-                    try {
-                        stream.close();
-                    } catch (Exception e) {
-                        System.err.println(e.toString());
-                    }
-                }
-
-                return null;
             }
-        }.execute();
+        };
 
-        return true;
+        m_dbLiveData.observeForever(m_dbObserver);
+
+        m_searchObserver = new Observer<PagedList<DictionaryEntry>>() {
+            @Override
+            public void onChanged(PagedList<DictionaryEntry> aList) {
+                m_searchEntriesLiveData.setValue(aList);
+            }
+        };
     }
 
-    public LiveData<PagedList<DictionaryEntry>> search(LifecycleOwner owner, DictionaryEntryDao entryDao, String expr, String lang) {
-        if (searchEntries != null) {
-            searchEntries.removeObservers(owner);
-            searchEntries = null;
+    private void cleanSearchEntries() {
+        if (m_searchEntries != null) {
+            m_searchEntries.removeObserver(m_searchObserver);
+            m_searchEntries = null;
         }
+    }
+
+    @Override
+    protected void onCleared() {
+        cleanSearchEntries();
+
+        m_searchEntriesLiveData.setValue(null);
+        m_searchEntriesLiveData = null;
+
+        m_dbLiveData.removeObserver(m_dbObserver);
+        m_dbLiveData = null;
+        m_db = null;
+    }
+
+    public void search(String aExpr, String aLang) {
+        cleanSearchEntries();
 
         PagedList.Config pagedListConfig =
-                (new PagedList.Config.Builder()).setEnablePlaceholders(true)
-                        .setPrefetchDistance(10)
-                        .setPageSize(20).build();
+                (new PagedList.Config.Builder()).setEnablePlaceholders(false)
+                        .setPrefetchDistance(100)
+                        .setPageSize(100).build();
 
-        searchEntries = (new LivePagedListBuilder(entryDao.search(expr, lang), pagedListConfig))
-                .build();
+        m_searchEntries = (new LivePagedListBuilder(m_db.dictionaryEntryDao().search(aExpr, aLang),
+                pagedListConfig)).build();
 
-        return searchEntries;
-    }
-
-    public void searchReset(LifecycleOwner owner) {
-        if (searchEntries != null) {
-            searchEntries.removeObservers(owner);
-            searchEntries = null;
-        }
+        m_searchEntries.observeForever(m_searchObserver);
     }
 }

@@ -230,6 +230,32 @@ public class AboutActivity extends MaterialAboutActivity {
                                 Uri.parse("https://unsplash.com/photos/5RBXc7R-YWs")))
                         .build())
 
+                .addCard(new MaterialAboutCard.Builder()
+                        .title("AssetSQLiteOpenHelper")
+                        .addItem(new MaterialAboutActionItem.Builder()
+                                .text("Copyright")
+                                .icon(R.drawable.ic_outline_copyright_24px)
+                                .subText("daolq")
+                                .build())
+                        .addItem(new MaterialAboutActionItem.Builder()
+                                .text("License")
+                                .subText("Creative Commons Attribution International License (V4.0)")
+                                .icon(R.drawable.ic_outline_class_24px)
+                                .setOnClickAction(new MaterialAboutItemOnClickAction() {
+                                    @Override
+                                    public void onClick() {
+                                        Intent intent = new Intent(activity_context, LicenseActivity.class);
+                                        intent.putExtra("asset", "CC-by-4.0.txt");
+                                        startActivity(intent);
+                                    }
+                                })
+                                .build())
+                        .addItem(ConvenienceBuilder.createWebsiteActionItem(activity_context,
+                                getDrawable(R.drawable.ic_outline_public_24px), "Visit Website",
+                                true,
+                                Uri.parse("https://github.com/daolq3012/AssetSQLiteOpenHelper")))
+                        .build())
+
                 .build();
     }
 
