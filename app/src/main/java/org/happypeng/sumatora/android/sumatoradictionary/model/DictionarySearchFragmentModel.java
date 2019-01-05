@@ -29,7 +29,7 @@ import androidx.lifecycle.Observer;
 import androidx.paging.LivePagedListBuilder;
 import androidx.paging.PagedList;
 
-public class DictionaryViewModel extends AndroidViewModel {
+public class DictionarySearchFragmentModel extends AndroidViewModel {
     private MutableLiveData<PagedList<DictionaryEntry>> m_searchEntriesLiveData;
     private LiveData<PagedList<DictionaryEntry>> m_searchEntries;
     private Observer<PagedList<DictionaryEntry>> m_searchObserver;
@@ -47,7 +47,7 @@ public class DictionaryViewModel extends AndroidViewModel {
         return m_dbReady;
     }
 
-    public DictionaryViewModel(Application aApp) {
+    public DictionarySearchFragmentModel(Application aApp) {
         super(aApp);
 
         m_dbReady = new MutableLiveData<Boolean>();

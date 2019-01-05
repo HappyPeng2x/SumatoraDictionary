@@ -34,7 +34,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryEntry;
 
 
 public class DictionaryPagedListAdapter extends PagedListAdapter<DictionaryEntry, DictionaryPagedListAdapter.DictionaryEntryItemViewHolder> {
-    protected DictionaryPagedListAdapter() {
+    public DictionaryPagedListAdapter() {
         super(DictionaryEntry.DIFF_CALLBACK);
     }
 
