@@ -16,17 +16,17 @@ android {
     compileSdkVersion 28
     defaultConfig {
         applicationId "org.happypeng.sumatora.android.sumatoradictionary"
-        minSdkVersion 24
+        minSdkVersion 14
         targetSdkVersion 28
-        versionCode 4
-        versionName "0.2.2"
+        versionCode 5
+        versionName "0.3.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         setProperty("archivesBaseName", "SumatoraDictionary-$versionName")
         signingConfig signingConfigs.config
     }
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
         debug {
@@ -61,4 +61,6 @@ dependencies {
 
     implementation "androidx.paging:paging-runtime:2.1.0-rc01"
     implementation "androidx.paging:paging-common:2.1.0-rc01"
+
+    implementation "com.github.daolq3012:AssetSQLiteOpenHelper:V1.0.1"
 }
