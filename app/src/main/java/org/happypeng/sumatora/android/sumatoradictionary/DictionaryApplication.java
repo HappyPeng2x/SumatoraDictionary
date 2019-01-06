@@ -79,9 +79,10 @@ public class DictionaryApplication extends Application {
 
                 int currentDate = aParams[0].getResources().getInteger(R.integer.database_date);
                 int currentVersion = aParams[0].getResources().getInteger(R.integer.database_version);
+                int databaseReset = aParams[0].getResources().getInteger(R.integer.database_reset);
 
                 if ((version == null || version < currentVersion) ||
-                        (date == null || date < currentDate)) {
+                        (date == null || date < currentDate) || databaseReset != 0) {
                     System.out.println("Recreating database...");
 
                     // The current DB is older than advertised by assets

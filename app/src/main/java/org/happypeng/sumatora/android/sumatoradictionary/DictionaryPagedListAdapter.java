@@ -28,21 +28,34 @@ import android.text.style.RelativeSizeSpan;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageButton;
 import android.widget.TextView;
 
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryEntry;
 
 
 public class DictionaryPagedListAdapter extends PagedListAdapter<DictionaryEntry, DictionaryPagedListAdapter.DictionaryEntryItemViewHolder> {
+    public interface ClickListener {
+        void onClick(View aView, DictionaryEntry aEntry);
+    }
+
+    private ClickListener m_bookmarkClickListener;
+
     public DictionaryPagedListAdapter() {
         super(DictionaryEntry.DIFF_CALLBACK);
+    }
+
+    public void setBookmarkClickListener(ClickListener aListener) {
+        m_bookmarkClickListener = aListener;
     }
 
     @Override
     public DictionaryEntryItemViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
         LayoutInflater layoutInflater = LayoutInflater.from(parent.getContext());
         View view = layoutInflater.inflate(R.layout.cell_cards, parent, false);
-        return new DictionaryEntryItemViewHolder(view);
+        DictionaryEntryItemViewHolder holder = new DictionaryEntryItemViewHolder(view);
+        holder.setBookmarkClickListener(m_bookmarkClickListener);
+        return holder;
     }
 
     @Override
@@ -56,24 +69,55 @@ public class DictionaryPagedListAdapter extends PagedListAdapter<DictionaryEntry
 
     static class DictionaryEntryItemViewHolder extends RecyclerView.ViewHolder {
         private TextView m_textViewView;
+        private ImageButton m_bookmarkStar;
+
+        private ClickListener m_bookmarkClickListener;
 
         public DictionaryEntryItemViewHolder(View itemView) {
             super(itemView);
 
             m_textViewView = (TextView) itemView.findViewById(R.id.text);
+            m_bookmarkStar = (ImageButton) itemView.findViewById(R.id.bookmark_star);
         }
 
-        public void bindTo(DictionaryEntry entry) {
+        public void setBookmarkClickListener(ClickListener aListener) {
+            m_bookmarkClickListener = aListener;
+        }
+
+        public void bindTo(final DictionaryEntry entry) {
+            if (m_bookmarkClickListener != null) {
+                m_bookmarkStar.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        // System.out.println(m_textViewView.getText() + " " + entry.writings);
+
+                        m_bookmarkClickListener.onClick(v, entry);
+                    }
+                });
+            }
+
+            if (!entry.bookmark.equals("")) {
+                m_bookmarkStar.setImageResource(R.drawable.ic_baseline_star_24px);
+            } else {
+                m_bookmarkStar.setImageResource(R.drawable.ic_outline_star_border_24px);
+            }
+
             SpannableStringBuilder sb = new SpannableStringBuilder();
             int writingsLength = 0;
             int readingsLength = 0;
+            int startPos = 0;
 
             for (String w : entry.writings.split(" ")) {
                 if (w.contains("/")) {
                     String nw = w.replace("/", "");
 
-                    sb.append(nw,
-                            new BackgroundColorSpan(Color.parseColor("#ccffcc")), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                    startPos = sb.length();
+
+                    sb.append(nw);
+
+                    sb.setSpan(new BackgroundColorSpan(Color.parseColor("#ccffcc")),
+                            startPos, sb.length(),
+                            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
 
                     writingsLength = writingsLength + nw.length();
                 } else {
@@ -95,8 +139,13 @@ public class DictionaryPagedListAdapter extends PagedListAdapter<DictionaryEntry
                 if (r.contains("/")) {
                     String nr = r.replace("/", "");
 
-                    sb.append(nr,
-                            new BackgroundColorSpan(Color.parseColor("#ccffcc")), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                    startPos = sb.length();
+
+                    sb.append(nr);
+
+                    sb.setSpan(new BackgroundColorSpan(Color.parseColor("#ccffcc")),
+                            startPos, sb.length(),
+                            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
 
                     readingsLength = readingsLength + nr.length();
                 } else {

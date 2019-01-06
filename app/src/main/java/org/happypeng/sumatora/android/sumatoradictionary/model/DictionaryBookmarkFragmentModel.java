@@ -17,20 +17,16 @@
 package org.happypeng.sumatora.android.sumatoradictionary.model;
 
 import android.app.Application;
-import android.os.AsyncTask;
-
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryDatabase;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryEntry;
 
 import androidx.paging.LivePagedListBuilder;
 import androidx.paging.PagedList;
 
-public class DictionarySearchFragmentModel extends DictionaryViewModel {
-    public DictionarySearchFragmentModel(Application aApp) {
+public class DictionaryBookmarkFragmentModel extends DictionaryViewModel {
+    public DictionaryBookmarkFragmentModel(Application aApp) {
         super(aApp);
     }
 
-    public void search(String aExpr, String aLang) {
+    public void listBookmarks(String aBookmark, String aLang) {
         cleanSearchEntries();
 
         PagedList.Config pagedListConfig =
@@ -38,20 +34,9 @@ public class DictionarySearchFragmentModel extends DictionaryViewModel {
                         .setPrefetchDistance(100)
                         .setPageSize(100).build();
 
-        m_searchEntries = (new LivePagedListBuilder(m_db.dictionaryEntryDao().search(aExpr, aLang),
+        m_searchEntries = (new LivePagedListBuilder(m_db.dictionaryEntryDao().listBookmarks(aBookmark, aLang),
                 pagedListConfig)).build();
 
         m_searchEntries.observeForever(m_searchObserver);
-    }
-
-    public void update(final DictionaryEntry aEntry) {
-        new AsyncTask<Void, Void, Void>() {
-            @Override
-            protected Void doInBackground(Void... aParams) {
-                m_db.dictionaryEntryDao().update(aEntry);
-
-                return null;
-            }
-        }.execute();
     }
 }

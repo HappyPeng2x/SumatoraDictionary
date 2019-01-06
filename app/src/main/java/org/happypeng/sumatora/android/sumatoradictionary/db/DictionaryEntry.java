@@ -36,12 +36,16 @@ public class DictionaryEntry {
     public static DiffUtil.ItemCallback<DictionaryEntry> DIFF_CALLBACK = new  DiffUtil.ItemCallback<DictionaryEntry>() {
         @Override
         public boolean areItemsTheSame(@NonNull DictionaryEntry oldItem, @NonNull DictionaryEntry newItem) {
-            return oldItem.seq == newItem.seq && oldItem.lang == newItem.lang;
+            return oldItem.seq == newItem.seq && oldItem.lang.equals(newItem.lang);
         }
 
         @Override
         public boolean areContentsTheSame(@NonNull DictionaryEntry oldItem, @NonNull DictionaryEntry newItem) {
-            return oldItem.equals(newItem);
+            return oldItem.readings.equals(newItem.readings) &&
+                    oldItem.writings.equals(newItem.writings) &&
+                    oldItem.lang.equals(newItem.lang) &&
+                    oldItem.gloss.equals(newItem.gloss) &&
+                    oldItem.bookmark.equals(newItem.bookmark);
         }
     };
 

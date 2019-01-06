@@ -18,7 +18,10 @@ package org.happypeng.sumatora.android.sumatoradictionary.db;
 
 import androidx.paging.DataSource;
 import androidx.room.Dao;
+import androidx.room.Insert;
+import androidx.room.OnConflictStrategy;
 import androidx.room.Query;
+import androidx.room.Update;
 
 @Dao
 public interface DictionaryEntryDao {
@@ -27,5 +30,11 @@ public interface DictionaryEntryDao {
             "writings LIKE '%-' || :expr || '-%' DESC, readings LIKE '%-' || :expr || '-%' DESC, " +
             "writings LIKE '%/' || :expr || '%' DESC, readings LIKE '%/' || :expr || '%' DESC, " +
             "writings LIKE '%-' || :expr || '%' DESC, readings LIKE '%-' || :expr || '%' DESC ")
-    public DataSource.Factory<Integer, DictionaryEntry> search(String expr, String lang);
+    DataSource.Factory<Integer, DictionaryEntry> search(String expr, String lang);
+
+    @Query("SELECT * FROM DictionaryEntry WHERE bookmark = :bookmark AND lang = :lang")
+    DataSource.Factory<Integer, DictionaryEntry> listBookmarks(String bookmark, String lang);
+
+    @Update
+    void update(DictionaryEntry entry);
 }

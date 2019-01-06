@@ -20,6 +20,7 @@ import android.content.Intent;
 
 import androidx.annotation.NonNull;
 import androidx.core.view.GravityCompat;
+import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 
@@ -35,10 +36,14 @@ import android.os.StrictMode;
 
 import com.google.android.material.navigation.NavigationView;
 
+import org.happypeng.sumatora.android.sumatoradictionary.fragment.DictionaryBookmarkFragment;
 import org.happypeng.sumatora.android.sumatoradictionary.fragment.DictionarySearchFragment;
 
 public class Dictionary extends AppCompatActivity {
     private DrawerLayout m_drawer_layout;
+
+    private DictionaryBookmarkFragment m_dictionaryBookmarkFragment;
+    private DictionarySearchFragment m_dictionarySearchFragment;
 
     private final boolean DEVELOPER_MODE = false;
 
@@ -51,6 +56,14 @@ public class Dictionary extends AppCompatActivity {
                 startActivity(new Intent(Dictionary.this, activity));
             }
         }, DELAY_MILLIS);
+    }
+
+    private void switchToFragment(Fragment aFragment, String aTag) {
+        FragmentManager fm = getSupportFragmentManager();
+
+        FragmentTransaction fragmentTransaction = fm.beginTransaction();
+        fragmentTransaction.replace(R.id.dictionary_fragment_container, aFragment, aTag);
+        fragmentTransaction.commit();
     }
 
     @Override
@@ -78,8 +91,28 @@ public class Dictionary extends AppCompatActivity {
                 m_drawer_layout.closeDrawer(GravityCompat.START);
 
                 switch (pMenuItem.getItemId()) {
+                    case R.id.navigation_view_item_search:
+                        if (m_dictionarySearchFragment == null) {
+                            m_dictionarySearchFragment = new DictionarySearchFragment();
+                        }
+
+                        switchToFragment(m_dictionarySearchFragment, "SEARCH_FRAGMENT");
+
+                        break;
                     case R.id.navigation_view_item_about:
                         startActivityWithDelay(AboutActivity.class);
+                        break;
+                    case R.id.navigation_view_item_bookmarks:
+                        if (m_dictionaryBookmarkFragment == null) {
+                            m_dictionaryBookmarkFragment = new DictionaryBookmarkFragment();
+
+                            Bundle bundle = new Bundle();
+                            bundle.putString("bookmark", "bookmarks");
+                            m_dictionaryBookmarkFragment.setArguments(bundle);
+                        }
+
+                        switchToFragment(m_dictionaryBookmarkFragment, "BOOKMARK_FRAGMENT");
+
                         break;
                 }
 
@@ -90,12 +123,11 @@ public class Dictionary extends AppCompatActivity {
         m_drawer_layout = (DrawerLayout) findViewById(R.id.nav_drawer);
 
         FragmentManager fm = getSupportFragmentManager();
+
+        m_dictionarySearchFragment = new DictionarySearchFragment();
+
         FragmentTransaction fragmentTransaction = fm.beginTransaction();
-
-        DictionarySearchFragment searchFragment = new DictionarySearchFragment();
-
-        fragmentTransaction.replace(R.id.dictionary_fragment_container, searchFragment, "SEARCH_FRAGMENT");
-        fragmentTransaction.addToBackStack("SEARCH_FRAGMENT_TRANSACTION");
+        fragmentTransaction.replace(R.id.dictionary_fragment_container, m_dictionarySearchFragment, "SEARCH_FRAGMENT");
         fragmentTransaction.commit();
     }
 
