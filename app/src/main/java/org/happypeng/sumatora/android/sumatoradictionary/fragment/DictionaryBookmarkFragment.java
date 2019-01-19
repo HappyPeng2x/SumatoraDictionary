@@ -40,6 +40,7 @@ import android.widget.TextView;
 import org.happypeng.sumatora.android.sumatoradictionary.DictionaryPagedListAdapter;
 import org.happypeng.sumatora.android.sumatoradictionary.R;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryEntry;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchResult;
 import org.happypeng.sumatora.android.sumatoradictionary.model.DictionaryBookmarkFragmentModel;
 import org.happypeng.sumatora.android.sumatoradictionary.model.DictionarySearchFragmentModel;
 
@@ -126,10 +127,10 @@ public class DictionaryBookmarkFragment extends Fragment {
 
         m_recyclerView.setAdapter(pagedListAdapter);
 
-        viewModel.getSearchEntries().observe(this, new Observer<PagedList<DictionaryEntry>>() {
+        viewModel.getSearchEntries().observe(this, new Observer<PagedList<DictionarySearchResult>>() {
             @Override
-            public void onChanged(PagedList<DictionaryEntry> aList) {
-                pagedListAdapter.submitList(aList);
+            public void onChanged(PagedList<DictionarySearchResult> aList) {
+                // pagedListAdapter.submitList(aList);
             }
         });
 

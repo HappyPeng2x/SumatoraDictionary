@@ -20,7 +20,7 @@ import android.app.Application;
 
 import org.happypeng.sumatora.android.sumatoradictionary.DictionaryApplication;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryDatabase;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryEntry;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchResult;
 
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
@@ -29,16 +29,16 @@ import androidx.lifecycle.Observer;
 import androidx.paging.PagedList;
 
 public class DictionaryViewModel extends AndroidViewModel {
-    protected MutableLiveData<PagedList<DictionaryEntry>> m_searchEntriesLiveData;
-    protected LiveData<PagedList<DictionaryEntry>> m_searchEntries;
-    protected Observer<PagedList<DictionaryEntry>> m_searchObserver;
+    protected MutableLiveData<PagedList<DictionarySearchResult>> m_searchEntriesLiveData;
+    protected LiveData<PagedList<DictionarySearchResult>> m_searchEntries;
+    protected Observer<PagedList<DictionarySearchResult>> m_searchObserver;
 
     protected DictionaryDatabase m_db;
     protected LiveData<DictionaryDatabase> m_dbLiveData;
     protected Observer<DictionaryDatabase> m_dbObserver;
     protected MutableLiveData<Boolean> m_dbReady;
 
-    public LiveData<PagedList<DictionaryEntry>> getSearchEntries() {
+    public LiveData<PagedList<DictionarySearchResult>> getSearchEntries() {
         return m_searchEntriesLiveData;
     }
 
@@ -50,7 +50,7 @@ public class DictionaryViewModel extends AndroidViewModel {
         super(aApp);
 
         m_dbReady = new MutableLiveData<Boolean>();
-        m_searchEntriesLiveData = new MutableLiveData<PagedList<DictionaryEntry>>();
+        m_searchEntriesLiveData = new MutableLiveData<PagedList<DictionarySearchResult>>();
 
         DictionaryApplication app = (DictionaryApplication) aApp;
 
@@ -81,9 +81,9 @@ public class DictionaryViewModel extends AndroidViewModel {
 
         m_dbLiveData.observeForever(m_dbObserver);
 
-        m_searchObserver = new Observer<PagedList<DictionaryEntry>>() {
+        m_searchObserver = new Observer<PagedList<DictionarySearchResult>>() {
             @Override
-            public void onChanged(PagedList<DictionaryEntry> aList) {
+            public void onChanged(PagedList<DictionarySearchResult> aList) {
                 m_searchEntriesLiveData.setValue(aList);
             }
         };

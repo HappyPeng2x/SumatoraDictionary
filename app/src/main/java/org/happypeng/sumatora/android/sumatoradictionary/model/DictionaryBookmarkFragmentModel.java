@@ -34,9 +34,9 @@ public class DictionaryBookmarkFragmentModel extends DictionaryViewModel {
                         .setPrefetchDistance(100)
                         .setPageSize(100).build();
 
-        m_searchEntries = (new LivePagedListBuilder(m_db.dictionaryEntryDao().listBookmarks(aBookmark, aLang),
+/*        m_searchEntries = (new LivePagedListBuilder(m_db.dictionaryEntryDao().listBookmarks(aBookmark, aLang),
                 pagedListConfig)).build();
 
-        m_searchEntries.observeForever(m_searchObserver);
+        m_searchEntries.observeForever(m_searchObserver);*/
     }
 }

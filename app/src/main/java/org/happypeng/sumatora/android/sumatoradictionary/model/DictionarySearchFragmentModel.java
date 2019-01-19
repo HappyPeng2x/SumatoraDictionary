@@ -44,11 +44,11 @@ public class DictionarySearchFragmentModel extends DictionaryViewModel {
         m_searchEntries.observeForever(m_searchObserver);
     }
 
-    public void update(final DictionaryEntry aEntry) {
+    public void updateBookmark(final long seq, final Integer bookmarkFolder) {
         new AsyncTask<Void, Void, Void>() {
             @Override
             protected Void doInBackground(Void... aParams) {
-                m_db.dictionaryEntryDao().update(aEntry);
+                m_db.dictionaryEntryDao().updateBookmark(seq, bookmarkFolder);
 
                 return null;
             }

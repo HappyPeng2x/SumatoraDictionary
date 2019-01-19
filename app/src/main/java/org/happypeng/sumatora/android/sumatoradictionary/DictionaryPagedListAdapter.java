@@ -16,6 +16,7 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary;
 
+import androidx.annotation.Nullable;
 import androidx.paging.PagedListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -32,17 +33,18 @@ import android.widget.ImageButton;
 import android.widget.TextView;
 
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryEntry;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchResult;
 
 
-public class DictionaryPagedListAdapter extends PagedListAdapter<DictionaryEntry, DictionaryPagedListAdapter.DictionaryEntryItemViewHolder> {
+public class DictionaryPagedListAdapter extends PagedListAdapter<DictionarySearchResult, DictionaryPagedListAdapter.DictionaryEntryItemViewHolder> {
     public interface ClickListener {
-        void onClick(View aView, DictionaryEntry aEntry);
+        void onClick(View aView, DictionarySearchResult aEntry);
     }
 
     private ClickListener m_bookmarkClickListener;
 
     public DictionaryPagedListAdapter() {
-        super(DictionaryEntry.DIFF_CALLBACK);
+        super(DictionarySearchResult.DIFF_CALLBACK);
     }
 
     public void setBookmarkClickListener(ClickListener aListener) {
@@ -60,7 +62,7 @@ public class DictionaryPagedListAdapter extends PagedListAdapter<DictionaryEntry
 
     @Override
     public void onBindViewHolder(DictionaryEntryItemViewHolder holder, int position) {
-        DictionaryEntry entry = getItem(position);
+        DictionarySearchResult entry = getItem(position);
 
         if (entry != null) {
             holder.bindTo(entry);
@@ -84,84 +86,62 @@ public class DictionaryPagedListAdapter extends PagedListAdapter<DictionaryEntry
             m_bookmarkClickListener = aListener;
         }
 
-        public void bindTo(final DictionaryEntry entry) {
-            if (m_bookmarkClickListener != null) {
-                m_bookmarkStar.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        // System.out.println(m_textViewView.getText() + " " + entry.writings);
-
-                        m_bookmarkClickListener.onClick(v, entry);
-                    }
-                });
-            }
-
-            if (!entry.bookmark.equals("")) {
-                m_bookmarkStar.setImageResource(R.drawable.ic_baseline_star_24px);
-            } else {
-                m_bookmarkStar.setImageResource(R.drawable.ic_outline_star_border_24px);
-            }
-
+        public void bindTo(final DictionarySearchResult entry) {
             SpannableStringBuilder sb = new SpannableStringBuilder();
             int writingsLength = 0;
             int readingsLength = 0;
             int startPos = 0;
 
-            for (String w : entry.writings.split(" ")) {
-                if (w.contains("/")) {
-                    String nw = w.replace("/", "");
+            sb.append(entry.entryOrder + " " + entry.seq + " ");
+            writingsLength = writingsLength + sb.length();
 
-                    startPos = sb.length();
+            for (String w : entry.writingsPrio.split(" ")) {
+                startPos = sb.length();
 
-                    sb.append(nw);
+                sb.append(w);
 
-                    sb.setSpan(new BackgroundColorSpan(Color.parseColor("#ccffcc")),
-                            startPos, sb.length(),
-                            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                sb.setSpan(new BackgroundColorSpan(Color.parseColor("#ccffcc")),
+                        startPos, sb.length(),
+                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
 
-                    writingsLength = writingsLength + nw.length();
-                } else {
-                    String nw = w.replace("-", "");
-
-                    sb.append(nw);
-
-                    writingsLength = writingsLength + nw.length();
-                }
-
-                if (!w.isEmpty()) {
-                    sb.append(" ");
-
-                    writingsLength = writingsLength + 1;
-                }
+                writingsLength = writingsLength + w.length();
             }
 
-            for (String r : entry.readings.split(" ")) {
-                if (r.contains("/")) {
-                    String nr = r.replace("/", "");
+            if (writingsLength > 0) {
+                sb.append(" ");
 
-                    startPos = sb.length();
-
-                    sb.append(nr);
-
-                    sb.setSpan(new BackgroundColorSpan(Color.parseColor("#ccffcc")),
-                            startPos, sb.length(),
-                            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-
-                    readingsLength = readingsLength + nr.length();
-                } else {
-                    String nr = r.replace("-", "");
-
-                    sb.append(nr);
-
-                    readingsLength = readingsLength + nr.length();
-                }
-
-                if (!r.isEmpty()) {
-                    sb.append(" ");
-
-                    readingsLength = readingsLength + 1;
-                }
+                writingsLength = writingsLength + 1;
             }
+
+            sb.append(entry.writings);
+            writingsLength = writingsLength + entry.writings.length();
+
+            if (writingsLength > 0) {
+                sb.append(" ");
+
+                writingsLength = writingsLength + 1;
+            }
+
+            for (String r : entry.readingsPrio.split(" ")) {
+                startPos = sb.length();
+
+                sb.append(r);
+
+                sb.setSpan(new BackgroundColorSpan(Color.parseColor("#ccffcc")),
+                        startPos, sb.length(),
+                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+
+                readingsLength = readingsLength + r.length();
+            }
+
+            if (readingsLength > 0) {
+                sb.append(" ");
+
+                readingsLength = readingsLength + 1;
+            }
+
+            sb.append(entry.readings);
+            readingsLength = readingsLength + entry.readings.length();
 
             sb.append("\n");
             readingsLength = readingsLength + 1;
@@ -172,6 +152,21 @@ public class DictionaryPagedListAdapter extends PagedListAdapter<DictionaryEntry
             sb.setSpan(new RelativeSizeSpan(1.5f), 0, writingsLength + readingsLength, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
 
             m_textViewView.setText(sb);
+
+            if (m_bookmarkClickListener != null) {
+                m_bookmarkStar.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        m_bookmarkClickListener.onClick(v, entry);
+                    }
+                });
+            }
+
+            if (entry.bookmarkFolder != null) {
+                m_bookmarkStar.setImageResource(R.drawable.ic_baseline_star_24px);
+            } else {
+                m_bookmarkStar.setImageResource(R.drawable.ic_outline_star_border_24px);
+            }
         }
     }
 }

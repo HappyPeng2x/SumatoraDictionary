@@ -16,6 +16,7 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.fragment;
 
+import android.os.AsyncTask;
 import android.os.Bundle;
 
 import androidx.appcompat.app.ActionBar;
@@ -42,6 +43,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.Dictionary;
 import org.happypeng.sumatora.android.sumatoradictionary.DictionaryPagedListAdapter;
 import org.happypeng.sumatora.android.sumatoradictionary.R;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryEntry;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchResult;
 import org.happypeng.sumatora.android.sumatoradictionary.model.DictionarySearchFragmentModel;
 
 public class DictionarySearchFragment extends Fragment {
@@ -181,31 +183,21 @@ public class DictionarySearchFragment extends Fragment {
 
         pagedListAdapter.setBookmarkClickListener(new DictionaryPagedListAdapter.ClickListener() {
             @Override
-            public void onClick(View aView, DictionaryEntry aEntry) {
-                DictionaryEntry updatedEntry = new DictionaryEntry();
-
-                updatedEntry.readings = aEntry.readings;
-                updatedEntry.writings = aEntry.writings;
-                updatedEntry.gloss = aEntry.gloss;
-                updatedEntry.seq = aEntry.seq;
-                updatedEntry.lang = aEntry.lang;
-
-                if (aEntry.bookmark.equals("")) {
-                    updatedEntry.bookmark = "bookmarks";
+            public void onClick(View aView, DictionarySearchResult aEntry) {
+                if (aEntry.bookmarkFolder == null) {
+                    viewModel.updateBookmark(aEntry.seq, 1);
                 } else {
-                    updatedEntry.bookmark = "";
+                    viewModel.updateBookmark(aEntry.seq, null);
                 }
-
-                viewModel.update(updatedEntry);
             }
         });
 
         m_recyclerView.setAdapter(pagedListAdapter);
 
         // New search button logic
-        viewModel.getSearchEntries().observe(this, new Observer<PagedList<DictionaryEntry>>() {
+        viewModel.getSearchEntries().observe(this, new Observer<PagedList<DictionarySearchResult>>() {
             @Override
-            public void onChanged(PagedList<DictionaryEntry> aList) {
+            public void onChanged(PagedList<DictionarySearchResult> aList) {
                 if (viewModel.getDatabaseReady().getValue()) {
                     setReady();
                 }

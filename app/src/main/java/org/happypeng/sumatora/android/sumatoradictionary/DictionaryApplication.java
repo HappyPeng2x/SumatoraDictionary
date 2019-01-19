@@ -18,6 +18,7 @@ package org.happypeng.sumatora.android.sumatoradictionary;
 
 import android.app.Application;
 
+import android.database.sqlite.SQLiteDatabase;
 import android.os.AsyncTask;
 
 import com.fstyle.library.helper.AssetSQLiteOpenHelperFactory;
@@ -33,16 +34,27 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.room.Room;
 
 public class DictionaryApplication extends Application {
+    static final String DATABASE_NAME = "JMdict.db";
+
     protected MutableLiveData<DictionaryDatabase> m_dictionaryDatabase;
 
     public LiveData<DictionaryDatabase> getDictionaryDatabase() {
         return m_dictionaryDatabase;
     }
 
+/*    private boolean hasExistingDatabase() {
+        return getDatabasePath(DATABASE_NAME).exists();
+    }
+
+    private SQLiteDatabase openExistingDatabaseSQL() {
+        return SQLiteDatabase.openDatabase(getDatabasePath(DATABASE_NAME).getAbsolutePath(),
+                null, SQLiteDatabase.OPEN_READWRITE);
+    }*/
+
     protected DictionaryDatabase getDatabase() {
         return Room.databaseBuilder(this,
                 DictionaryDatabase.class,
-                "JMdict.db")
+                DATABASE_NAME)
                 .openHelperFactory(new AssetSQLiteOpenHelperFactory())
                 .fallbackToDestructiveMigration()
                 .build();
@@ -91,7 +103,7 @@ public class DictionaryApplication extends Application {
                     db.close();
 
                     // Import fresh database
-                    aParams[0].deleteDatabase("JMdict.db");
+                    aParams[0].deleteDatabase(DictionaryApplication.DATABASE_NAME);
                     db = aParams[0].getDatabase();
 
                     controlDao = db.dictionaryControlDao();
