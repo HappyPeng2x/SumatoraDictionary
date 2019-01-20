@@ -27,7 +27,7 @@ public class DictionaryBookmarkFragmentModel extends DictionaryViewModel {
     }
 
     public void listBookmarks(String aBookmark, String aLang) {
-        cleanSearchEntries();
+        //cleanSearchEntries();
 
         PagedList.Config pagedListConfig =
                 (new PagedList.Config.Builder()).setEnablePlaceholders(false)

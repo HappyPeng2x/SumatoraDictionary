@@ -16,15 +16,18 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.db;
 
-import androidx.room.Database;
-import androidx.room.RoomDatabase;
+import androidx.room.Entity;
+import androidx.room.Query;
 
-@Database(entities = {DictionaryEntry.class, DictionaryControl.class, DictionaryTranslation.class,
-        DictionaryBookmark.class, DictionaryIndex.class}, version = 2, exportSchema = false)
-abstract public class DictionaryDatabase extends RoomDatabase {
-    public static final String DATABASE_NAME = "DictionaryDatabase";
+@Entity(primaryKeys = {"seq"})
+public class DictionaryBookmark {
+    public long seq;
+    public long bookmark;
 
-    public abstract DictionaryEntryDao dictionaryEntryDao();
-    public abstract DictionaryControlDao dictionaryControlDao();
-    public abstract DictionaryBookmarkDao dictionaryBookmarkDao();
+    public DictionaryBookmark() {}
+
+    public DictionaryBookmark(long aSeq, long aBookmark) {
+        seq = aSeq;
+        bookmark = aBookmark;
+    }
 }

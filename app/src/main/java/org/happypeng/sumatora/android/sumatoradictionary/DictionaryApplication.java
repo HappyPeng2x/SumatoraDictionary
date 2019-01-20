@@ -23,11 +23,15 @@ import android.os.AsyncTask;
 
 import com.fstyle.library.helper.AssetSQLiteOpenHelperFactory;
 
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryControl;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryControlDao;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryDatabase;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryTypeConverters;
 
 import java.io.File;
+import java.util.HashMap;
+import java.util.List;
 
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
@@ -103,7 +107,7 @@ public class DictionaryApplication extends Application {
                     db.close();
 
                     // Import fresh database
-                    aParams[0].deleteDatabase(DictionaryApplication.DATABASE_NAME);
+                    // aParams[0].deleteDatabase(DictionaryApplication.DATABASE_NAME);
                     db = aParams[0].getDatabase();
 
                     controlDao = db.dictionaryControlDao();
@@ -128,7 +132,7 @@ public class DictionaryApplication extends Application {
     public void onCreate() {
         super.onCreate();
 
-        m_dictionaryDatabase = new MutableLiveData<DictionaryDatabase>(null);
+        m_dictionaryDatabase = new MutableLiveData<>(null);
 
         new InitializeDBTask().execute(this);
     }

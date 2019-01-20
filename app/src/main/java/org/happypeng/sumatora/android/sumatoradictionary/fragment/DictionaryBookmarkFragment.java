@@ -123,16 +123,16 @@ public class DictionaryBookmarkFragment extends Fragment {
             setInPreparation();
         }
 
-        final DictionaryPagedListAdapter pagedListAdapter = new DictionaryPagedListAdapter();
+        final DictionaryPagedListAdapter pagedListAdapter = new DictionaryPagedListAdapter(viewModel.getBookmarks().getValue());
 
         m_recyclerView.setAdapter(pagedListAdapter);
 
-        viewModel.getSearchEntries().observe(this, new Observer<PagedList<DictionarySearchResult>>() {
+/*        viewModel.getSearchEntries().observe(this, new Observer<PagedList<DictionarySearchResult>>() {
             @Override
             public void onChanged(PagedList<DictionarySearchResult> aList) {
                 // pagedListAdapter.submitList(aList);
             }
-        });
+        });*/
 
         Bundle bundle = getArguments();
 

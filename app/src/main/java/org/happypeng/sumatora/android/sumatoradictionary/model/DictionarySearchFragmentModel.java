@@ -18,16 +18,39 @@ package org.happypeng.sumatora.android.sumatoradictionary.model;
 
 import android.app.Application;
 import android.os.AsyncTask;
+import android.util.Log;
 
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryEntry;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchResult;
 
+import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.Observer;
 import androidx.paging.LivePagedListBuilder;
 import androidx.paging.PagedList;
 
 public class DictionarySearchFragmentModel extends DictionaryViewModel {
+    protected MutableLiveData<PagedList<DictionarySearchResult>> m_searchEntriesLiveData;
+    protected LiveData<PagedList<DictionarySearchResult>> m_searchEntries;
+    protected Observer<PagedList<DictionarySearchResult>> m_searchObserver;
+
     public DictionarySearchFragmentModel(Application aApp) {
         super(aApp);
+
+        m_searchEntriesLiveData = new MutableLiveData<PagedList<DictionarySearchResult>>();
+
+        m_searchObserver = new Observer<PagedList<DictionarySearchResult>>() {
+            @Override
+            public void onChanged(PagedList<DictionarySearchResult> aList) {
+                m_searchEntriesLiveData.setValue(aList);
+            }
+        };
+    }
+
+    public LiveData<PagedList<DictionarySearchResult>> getSearchEntries() {
+        return m_searchEntriesLiveData;
     }
 
     public void search(String aExpr, String aLang) {
@@ -44,14 +67,50 @@ public class DictionarySearchFragmentModel extends DictionaryViewModel {
         m_searchEntries.observeForever(m_searchObserver);
     }
 
-    public void updateBookmark(final long seq, final Integer bookmarkFolder) {
+    public void updateBookmark(final long seq, final Long bookmark, final Long previousValue) {
         new AsyncTask<Void, Void, Void>() {
             @Override
             protected Void doInBackground(Void... aParams) {
-                m_db.dictionaryEntryDao().updateBookmark(seq, bookmarkFolder);
+                if (m_db != null) {
+                    if (bookmark != null) {
+                        m_db.dictionaryBookmarkDao().insert(new DictionaryBookmark(seq, bookmark));
+                    } else {
+                        if (previousValue != null) {
+                            m_db.dictionaryBookmarkDao().delete(new DictionaryBookmark(seq, previousValue));
+                        }
+                    }
+                }
 
                 return null;
             }
         }.execute();
+    }
+
+    @Override
+    public void disconnectDatabase() {
+        super.disconnectDatabase();
+
+        cleanSearchEntries();
+
+        if (m_searchEntriesLiveData != null) {
+            m_searchEntriesLiveData.setValue(null);
+        }
+    }
+
+    protected void cleanSearchEntries() {
+        if (m_searchEntries != null) {
+            m_searchEntries.removeObserver(m_searchObserver);
+            m_searchEntries = null;
+        }
+    }
+
+    @Override
+    protected void onCleared() {
+        super.onCleared();
+
+        cleanSearchEntries();
+
+        m_searchEntriesLiveData.setValue(null);
+        m_searchEntriesLiveData = null;
     }
 }

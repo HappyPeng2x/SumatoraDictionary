@@ -16,15 +16,23 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.db;
 
-import androidx.room.Database;
-import androidx.room.RoomDatabase;
+import java.util.List;
 
-@Database(entities = {DictionaryEntry.class, DictionaryControl.class, DictionaryTranslation.class,
-        DictionaryBookmark.class, DictionaryIndex.class}, version = 2, exportSchema = false)
-abstract public class DictionaryDatabase extends RoomDatabase {
-    public static final String DATABASE_NAME = "DictionaryDatabase";
+import androidx.lifecycle.LiveData;
+import androidx.room.Dao;
+import androidx.room.Delete;
+import androidx.room.Insert;
+import androidx.room.OnConflictStrategy;
+import androidx.room.Query;
 
-    public abstract DictionaryEntryDao dictionaryEntryDao();
-    public abstract DictionaryControlDao dictionaryControlDao();
-    public abstract DictionaryBookmarkDao dictionaryBookmarkDao();
+@Dao
+public interface DictionaryBookmarkDao {
+    @Query("SELECT * FROM DictionaryBookmark")
+    LiveData<List<DictionaryBookmark>> getAllLive();
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    void insert(DictionaryBookmark aBookmark);
+
+    @Delete
+    void delete(DictionaryBookmark aBookmark);
 }

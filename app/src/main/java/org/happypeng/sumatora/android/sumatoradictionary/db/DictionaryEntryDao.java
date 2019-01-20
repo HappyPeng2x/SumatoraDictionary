@@ -27,9 +27,8 @@ import androidx.room.Update;
 public interface DictionaryEntryDao {
     @Query("SELECT Min(SortOrder) AS entryOrder, DictionaryEntry.seq, DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
             + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, DictionaryTranslation.lang, "
-            + "DictionaryTranslation.gloss, DictionaryEntry.bookmarkFolder "
-            + "FROM DictionaryEntry, " //" LEFT JOIN DictionaryBookmark ON DictionaryEntry.seq = DictionaryBookmark.seq, "
-            + "DictionaryTranslation, "
+            + "DictionaryTranslation.gloss "
+            + "FROM DictionaryEntry, DictionaryTranslation, "
             + "("
             + "SELECT 1 AS SortOrder, DictionaryIndex.`rowid` AS seq FROM DictionaryIndex "
             + "WHERE DictionaryIndex.writingsPrio MATCH :term UNION ALL "
@@ -59,7 +58,4 @@ public interface DictionaryEntryDao {
             + "WHERE A.seq = DictionaryEntry.seq AND A.seq = DictionaryTranslation.seq AND DictionaryTranslation.lang = :lang "
             + "GROUP BY A.seq ORDER BY Min(A.SortOrder), A.seq")
     DataSource.Factory<Integer, DictionarySearchResult> search(String term, String lang);
-
-    @Query("UPDATE DictionaryEntry SET bookmarkFolder = :folder WHERE seq = :seq")
-    void updateBookmark(long seq, Integer folder);
 }

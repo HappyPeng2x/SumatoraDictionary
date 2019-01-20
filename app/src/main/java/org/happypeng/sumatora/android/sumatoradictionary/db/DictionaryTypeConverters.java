@@ -16,15 +16,17 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.db;
 
-import androidx.room.Database;
-import androidx.room.RoomDatabase;
+import java.util.HashMap;
+import java.util.List;
 
-@Database(entities = {DictionaryEntry.class, DictionaryControl.class, DictionaryTranslation.class,
-        DictionaryBookmark.class, DictionaryIndex.class}, version = 2, exportSchema = false)
-abstract public class DictionaryDatabase extends RoomDatabase {
-    public static final String DATABASE_NAME = "DictionaryDatabase";
+public class DictionaryTypeConverters {
+    public static HashMap<Long, Long> hashMapFromBookmarks(List<DictionaryBookmark> aList) {
+        HashMap<Long, Long> res = new HashMap<>();
 
-    public abstract DictionaryEntryDao dictionaryEntryDao();
-    public abstract DictionaryControlDao dictionaryControlDao();
-    public abstract DictionaryBookmarkDao dictionaryBookmarkDao();
+        for (DictionaryBookmark d : aList) {
+            res.put(d.seq, d.bookmark);
+        }
+
+        return res;
+    }
 }

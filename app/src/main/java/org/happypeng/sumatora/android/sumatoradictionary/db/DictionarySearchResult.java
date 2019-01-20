@@ -28,7 +28,6 @@ public class DictionarySearchResult {
     public String writings;
     public String lang;
     public String gloss;
-    public Integer bookmarkFolder;
 
     public static DiffUtil.ItemCallback<DictionarySearchResult> DIFF_CALLBACK = new  DiffUtil.ItemCallback<DictionarySearchResult>() {
         @Override
@@ -38,10 +37,8 @@ public class DictionarySearchResult {
 
         @Override
         public boolean areContentsTheSame(@NonNull DictionarySearchResult oldItem, @NonNull DictionarySearchResult newItem) {
-            return oldItem.seq == newItem.seq && oldItem.lang.equals(newItem.lang) &&
-                    ((oldItem.bookmarkFolder != null && oldItem.bookmarkFolder.equals(newItem.bookmarkFolder)) ||
-                            (newItem.bookmarkFolder != null && newItem.bookmarkFolder.equals(oldItem.bookmarkFolder)));
-        }
+            return oldItem.seq == newItem.seq && oldItem.lang.equals(newItem.lang);
+     }
     };
 
     @Override
@@ -56,8 +53,6 @@ public class DictionarySearchResult {
 
         DictionarySearchResult dictionarySearchResult = (DictionarySearchResult) obj;
 
-        return seq == dictionarySearchResult.seq && lang.equals(dictionarySearchResult.lang) &&
-                ((bookmarkFolder != null && bookmarkFolder.equals(dictionarySearchResult.bookmarkFolder)) ||
-                        (dictionarySearchResult.bookmarkFolder != null && dictionarySearchResult.bookmarkFolder.equals(bookmarkFolder)));
+        return seq == dictionarySearchResult.seq && lang.equals(dictionarySearchResult.lang);
     }
 }

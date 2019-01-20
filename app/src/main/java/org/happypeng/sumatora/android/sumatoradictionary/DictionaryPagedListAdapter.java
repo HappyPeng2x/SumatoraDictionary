@@ -26,6 +26,7 @@ import android.text.Spanned;
 import android.text.style.BackgroundColorSpan;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.RelativeSizeSpan;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -35,20 +36,40 @@ import android.widget.TextView;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryEntry;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchResult;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class DictionaryPagedListAdapter extends PagedListAdapter<DictionarySearchResult, DictionaryPagedListAdapter.DictionaryEntryItemViewHolder> {
+    private HashMap<Long, Long> m_bookmarks;
+
     public interface ClickListener {
-        void onClick(View aView, DictionarySearchResult aEntry);
+        void onClick(View aView, DictionarySearchResult aEntry, Long aBookmark);
     }
 
     private ClickListener m_bookmarkClickListener;
 
-    public DictionaryPagedListAdapter() {
+    public DictionaryPagedListAdapter(HashMap<Long, Long> aBookmarks) {
         super(DictionarySearchResult.DIFF_CALLBACK);
+
+        m_bookmarks = aBookmarks;
+
+        setHasStableIds(true);
+    }
+
+    @Override
+    public long getItemId(int position) {
+        return getItem(position).seq;
     }
 
     public void setBookmarkClickListener(ClickListener aListener) {
         m_bookmarkClickListener = aListener;
+    }
+
+    public void setBookmarks(HashMap<Long, Long> aBookmarks) {
+        m_bookmarks = aBookmarks;
+
+        notifyDataSetChanged();
     }
 
     @Override
@@ -60,18 +81,26 @@ public class DictionaryPagedListAdapter extends PagedListAdapter<DictionarySearc
         return holder;
     }
 
-    @Override
+        @Override
     public void onBindViewHolder(DictionaryEntryItemViewHolder holder, int position) {
         DictionarySearchResult entry = getItem(position);
 
         if (entry != null) {
-            holder.bindTo(entry);
+            Long bookmark = null;
+
+            if (m_bookmarks != null) {
+                bookmark = m_bookmarks.get(entry.seq);
+            }
+
+            holder.bindTo(entry, bookmark);
         }
     }
 
     static class DictionaryEntryItemViewHolder extends RecyclerView.ViewHolder {
         private TextView m_textViewView;
         private ImageButton m_bookmarkStar;
+
+        private Long m_bookmark;
 
         private ClickListener m_bookmarkClickListener;
 
@@ -86,14 +115,23 @@ public class DictionaryPagedListAdapter extends PagedListAdapter<DictionarySearc
             m_bookmarkClickListener = aListener;
         }
 
-        public void bindTo(final DictionarySearchResult entry) {
+        public void updateBookmark(Long bookmark) {
+            m_bookmark = bookmark;
+
+            if (m_bookmark != null) {
+                m_bookmarkStar.setImageResource(R.drawable.ic_baseline_star_24px);
+            } else {
+                m_bookmarkStar.setImageResource(R.drawable.ic_outline_star_border_24px);
+            }
+        }
+
+        public void bindTo(final DictionarySearchResult entry, Long bookmark) {
             SpannableStringBuilder sb = new SpannableStringBuilder();
             int writingsLength = 0;
             int readingsLength = 0;
             int startPos = 0;
 
-            sb.append(entry.entryOrder + " " + entry.seq + " ");
-            writingsLength = writingsLength + sb.length();
+            m_bookmark = bookmark;
 
             for (String w : entry.writingsPrio.split(" ")) {
                 startPos = sb.length();
@@ -157,12 +195,12 @@ public class DictionaryPagedListAdapter extends PagedListAdapter<DictionarySearc
                 m_bookmarkStar.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-                        m_bookmarkClickListener.onClick(v, entry);
+                        m_bookmarkClickListener.onClick(v, entry, m_bookmark);
                     }
                 });
             }
 
-            if (entry.bookmarkFolder != null) {
+            if (m_bookmark != null) {
                 m_bookmarkStar.setImageResource(R.drawable.ic_baseline_star_24px);
             } else {
                 m_bookmarkStar.setImageResource(R.drawable.ic_outline_star_border_24px);

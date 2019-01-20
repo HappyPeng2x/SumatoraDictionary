@@ -19,8 +19,13 @@ package org.happypeng.sumatora.android.sumatoradictionary.model;
 import android.app.Application;
 
 import org.happypeng.sumatora.android.sumatoradictionary.DictionaryApplication;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchResult;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryTypeConverters;
+
+import java.util.HashMap;
+import java.util.List;
 
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
@@ -29,17 +34,17 @@ import androidx.lifecycle.Observer;
 import androidx.paging.PagedList;
 
 public class DictionaryViewModel extends AndroidViewModel {
-    protected MutableLiveData<PagedList<DictionarySearchResult>> m_searchEntriesLiveData;
-    protected LiveData<PagedList<DictionarySearchResult>> m_searchEntries;
-    protected Observer<PagedList<DictionarySearchResult>> m_searchObserver;
-
     protected DictionaryDatabase m_db;
     protected LiveData<DictionaryDatabase> m_dbLiveData;
     protected Observer<DictionaryDatabase> m_dbObserver;
     protected MutableLiveData<Boolean> m_dbReady;
 
-    public LiveData<PagedList<DictionarySearchResult>> getSearchEntries() {
-        return m_searchEntriesLiveData;
+    protected LiveData<List<DictionaryBookmark>> m_bookmarksList;
+    protected MutableLiveData<HashMap<Long, Long>> m_bookmarksLiveData;
+    protected Observer<List<DictionaryBookmark>> m_bookmarksObserver;
+
+    public LiveData<HashMap<Long, Long>> getBookmarks() {
+        return m_bookmarksLiveData;
     }
 
     public LiveData<Boolean> getDatabaseReady() {
@@ -50,14 +55,27 @@ public class DictionaryViewModel extends AndroidViewModel {
         super(aApp);
 
         m_dbReady = new MutableLiveData<Boolean>();
-        m_searchEntriesLiveData = new MutableLiveData<PagedList<DictionarySearchResult>>();
 
         DictionaryApplication app = (DictionaryApplication) aApp;
+
+        m_bookmarksLiveData = new MutableLiveData<>();
+
+        m_bookmarksObserver = new Observer<List<DictionaryBookmark>>() {
+            @Override
+            public void onChanged(List<DictionaryBookmark> dictionaryBookmarks) {
+                m_bookmarksLiveData.setValue(DictionaryTypeConverters.hashMapFromBookmarks(dictionaryBookmarks));
+            }
+        };
 
         m_dbLiveData = app.getDictionaryDatabase();
 
         if (m_dbLiveData.getValue() != null) {
             m_dbReady.setValue(true);
+
+            m_bookmarksList = m_db.dictionaryBookmarkDao().getAllLive();
+
+            m_bookmarksList.observeForever(m_bookmarksObserver);
+
         } else {
             m_dbReady.setValue(false);
         }
@@ -65,14 +83,15 @@ public class DictionaryViewModel extends AndroidViewModel {
         m_dbObserver = new Observer<DictionaryDatabase>() {
             @Override
             public void onChanged(DictionaryDatabase aDictionaryDatabase) {
-                cleanSearchEntries();
-
-                m_searchEntriesLiveData.setValue(null);
+                disconnectDatabase();
 
                 m_db = aDictionaryDatabase;
 
-                if (aDictionaryDatabase != null) {
+                if (m_db != null) {
                     m_dbReady.setValue(true);
+
+                    m_bookmarksList = m_db.dictionaryBookmarkDao().getAllLive();
+                    m_bookmarksList.observeForever(m_bookmarksObserver);
                 } else {
                     m_dbReady.setValue(false);
                 }
@@ -80,28 +99,17 @@ public class DictionaryViewModel extends AndroidViewModel {
         };
 
         m_dbLiveData.observeForever(m_dbObserver);
-
-        m_searchObserver = new Observer<PagedList<DictionarySearchResult>>() {
-            @Override
-            public void onChanged(PagedList<DictionarySearchResult> aList) {
-                m_searchEntriesLiveData.setValue(aList);
-            }
-        };
     }
 
-    protected void cleanSearchEntries() {
-        if (m_searchEntries != null) {
-            m_searchEntries.removeObserver(m_searchObserver);
-            m_searchEntries = null;
+    public void disconnectDatabase() {
+        if (m_bookmarksList != null) {
+            m_bookmarksList.removeObserver(m_bookmarksObserver);
         }
     }
 
     @Override
     protected void onCleared() {
-        cleanSearchEntries();
-
-        m_searchEntriesLiveData.setValue(null);
-        m_searchEntriesLiveData = null;
+        m_bookmarksLiveData = null;
 
         m_dbLiveData.removeObserver(m_dbObserver);
         m_dbLiveData = null;

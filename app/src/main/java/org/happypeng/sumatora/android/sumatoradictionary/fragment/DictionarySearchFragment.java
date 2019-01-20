@@ -31,6 +31,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -45,6 +46,9 @@ import org.happypeng.sumatora.android.sumatoradictionary.R;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryEntry;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchResult;
 import org.happypeng.sumatora.android.sumatoradictionary.model.DictionarySearchFragmentModel;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class DictionarySearchFragment extends Fragment {
     private RecyclerView m_recyclerView;
@@ -173,21 +177,31 @@ public class DictionarySearchFragment extends Fragment {
                     }
                 });
 
+
+
         if (viewModel.getDatabaseReady().getValue()) {
             setReady();
         } else {
             setInPreparation();
         }
 
-        final DictionaryPagedListAdapter pagedListAdapter = new DictionaryPagedListAdapter();
+        final DictionaryPagedListAdapter pagedListAdapter = new DictionaryPagedListAdapter(viewModel.getBookmarks().getValue());
+
+        viewModel.getBookmarks().observe(this,
+                new Observer<HashMap<Long, Long>>() {
+                    @Override
+                    public void onChanged(HashMap<Long, Long> aBookmarks) {
+                         pagedListAdapter.setBookmarks(aBookmarks);
+                    }
+                });
 
         pagedListAdapter.setBookmarkClickListener(new DictionaryPagedListAdapter.ClickListener() {
             @Override
-            public void onClick(View aView, DictionarySearchResult aEntry) {
-                if (aEntry.bookmarkFolder == null) {
-                    viewModel.updateBookmark(aEntry.seq, 1);
+            public void onClick(View aView, DictionarySearchResult aEntry, Long aBookmark) {
+                if (aBookmark == null) {
+                    viewModel.updateBookmark(aEntry.seq, Long.valueOf(1), aBookmark);
                 } else {
-                    viewModel.updateBookmark(aEntry.seq, null);
+                    viewModel.updateBookmark(aEntry.seq, null, aBookmark);
                 }
             }
         });
@@ -203,6 +217,8 @@ public class DictionarySearchFragment extends Fragment {
                 }
 
                 pagedListAdapter.submitList(aList);
+
+                m_recyclerView.scrollToPosition(0);
             }
         });
 
