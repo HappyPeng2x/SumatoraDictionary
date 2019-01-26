@@ -39,14 +39,6 @@ public class DictionaryViewModel extends AndroidViewModel {
     protected Observer<DictionaryDatabase> m_dbObserver;
     protected MutableLiveData<Boolean> m_dbReady;
 
-    protected LiveData<List<DictionaryBookmark>> m_bookmarksList;
-    protected MutableLiveData<HashMap<Long, Long>> m_bookmarksLiveData;
-    protected Observer<List<DictionaryBookmark>> m_bookmarksObserver;
-
-    public LiveData<HashMap<Long, Long>> getBookmarks() {
-        return m_bookmarksLiveData;
-    }
-
     public LiveData<Boolean> getDatabaseReady() {
         return m_dbReady;
     }
@@ -58,23 +50,10 @@ public class DictionaryViewModel extends AndroidViewModel {
 
         DictionaryApplication app = (DictionaryApplication) aApp;
 
-        m_bookmarksLiveData = new MutableLiveData<>();
-
-        m_bookmarksObserver = new Observer<List<DictionaryBookmark>>() {
-            @Override
-            public void onChanged(List<DictionaryBookmark> dictionaryBookmarks) {
-                m_bookmarksLiveData.setValue(DictionaryTypeConverters.hashMapFromBookmarks(dictionaryBookmarks));
-            }
-        };
-
         m_dbLiveData = app.getDictionaryDatabase();
 
         if (m_dbLiveData.getValue() != null) {
             m_dbReady.setValue(true);
-
-            m_bookmarksList = m_db.dictionaryBookmarkDao().getAllLive();
-
-            m_bookmarksList.observeForever(m_bookmarksObserver);
 
         } else {
             m_dbReady.setValue(false);
@@ -83,15 +62,16 @@ public class DictionaryViewModel extends AndroidViewModel {
         m_dbObserver = new Observer<DictionaryDatabase>() {
             @Override
             public void onChanged(DictionaryDatabase aDictionaryDatabase) {
-                disconnectDatabase();
+                if (m_db != null) {
+                    disconnectDatabase();
+                }
 
                 m_db = aDictionaryDatabase;
 
                 if (m_db != null) {
                     m_dbReady.setValue(true);
 
-                    m_bookmarksList = m_db.dictionaryBookmarkDao().getAllLive();
-                    m_bookmarksList.observeForever(m_bookmarksObserver);
+                    connectDatabase();
                 } else {
                     m_dbReady.setValue(false);
                 }
@@ -101,18 +81,15 @@ public class DictionaryViewModel extends AndroidViewModel {
         m_dbLiveData.observeForever(m_dbObserver);
     }
 
-    public void disconnectDatabase() {
-        if (m_bookmarksList != null) {
-            m_bookmarksList.removeObserver(m_bookmarksObserver);
-        }
+    protected void disconnectDatabase() {
     }
 
     @Override
     protected void onCleared() {
-        m_bookmarksLiveData = null;
-
         m_dbLiveData.removeObserver(m_dbObserver);
         m_dbLiveData = null;
         m_db = null;
     }
+
+    protected void connectDatabase() {}
 }

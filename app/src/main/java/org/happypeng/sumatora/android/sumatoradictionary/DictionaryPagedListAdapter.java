@@ -34,23 +34,25 @@ import android.widget.ImageButton;
 import android.widget.TextView;
 
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryEntry;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElementDiffUtil;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchResult;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class DictionaryPagedListAdapter extends PagedListAdapter<DictionarySearchResult, DictionaryPagedListAdapter.DictionaryEntryItemViewHolder> {
+public class DictionaryPagedListAdapter<T extends DictionarySearchElement> extends PagedListAdapter<T, DictionaryPagedListAdapter.DictionaryEntryItemViewHolder> {
     private HashMap<Long, Long> m_bookmarks;
 
     public interface ClickListener {
-        void onClick(View aView, DictionarySearchResult aEntry, Long aBookmark);
+        void onClick(View aView, DictionarySearchElement aEntry, Long aBookmark);
     }
 
     private ClickListener m_bookmarkClickListener;
 
     public DictionaryPagedListAdapter(HashMap<Long, Long> aBookmarks) {
-        super(DictionarySearchResult.DIFF_CALLBACK);
+        super(DictionarySearchElementDiffUtil.<T>getDiffUtil());
 
         m_bookmarks = aBookmarks;
 
@@ -59,7 +61,7 @@ public class DictionaryPagedListAdapter extends PagedListAdapter<DictionarySearc
 
     @Override
     public long getItemId(int position) {
-        return getItem(position).seq;
+        return getItem(position).getSeq();
     }
 
     public void setBookmarkClickListener(ClickListener aListener) {
@@ -83,13 +85,13 @@ public class DictionaryPagedListAdapter extends PagedListAdapter<DictionarySearc
 
         @Override
     public void onBindViewHolder(DictionaryEntryItemViewHolder holder, int position) {
-        DictionarySearchResult entry = getItem(position);
+        DictionarySearchElement entry = getItem(position);
 
         if (entry != null) {
             Long bookmark = null;
 
             if (m_bookmarks != null) {
-                bookmark = m_bookmarks.get(entry.seq);
+                bookmark = m_bookmarks.get(entry.getSeq());
             }
 
             holder.bindTo(entry, bookmark);
@@ -125,7 +127,7 @@ public class DictionaryPagedListAdapter extends PagedListAdapter<DictionarySearc
             }
         }
 
-        public void bindTo(final DictionarySearchResult entry, Long bookmark) {
+        public void bindTo(final DictionarySearchElement entry, Long bookmark) {
             SpannableStringBuilder sb = new SpannableStringBuilder();
             int writingsLength = 0;
             int readingsLength = 0;
@@ -133,16 +135,21 @@ public class DictionaryPagedListAdapter extends PagedListAdapter<DictionarySearc
 
             m_bookmark = bookmark;
 
-            for (String w : entry.writingsPrio.split(" ")) {
+            // For debug purposes only
+            // sb.append(Integer.toString(entry.entryOrder) + " " + entry.seq + " ");
+
+            for (String w : entry.getWritingsPrio().split(" ")) {
                 startPos = sb.length();
 
-                sb.append(w);
+                if (w.length() > 0) {
+                    sb.append(w);
 
-                sb.setSpan(new BackgroundColorSpan(Color.parseColor("#ccffcc")),
-                        startPos, sb.length(),
-                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                    sb.setSpan(new BackgroundColorSpan(Color.parseColor("#ccffcc")),
+                            startPos, sb.length(),
+                            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
 
-                writingsLength = writingsLength + w.length();
+                    writingsLength = writingsLength + w.length();
+                }
             }
 
             if (writingsLength > 0) {
@@ -151,8 +158,10 @@ public class DictionaryPagedListAdapter extends PagedListAdapter<DictionarySearc
                 writingsLength = writingsLength + 1;
             }
 
-            sb.append(entry.writings);
-            writingsLength = writingsLength + entry.writings.length();
+            if (entry.getWritings().length() > 0) {
+                sb.append(entry.getWritings());
+                writingsLength = writingsLength + entry.getWritings().length();
+            }
 
             if (writingsLength > 0) {
                 sb.append(" ");
@@ -160,16 +169,18 @@ public class DictionaryPagedListAdapter extends PagedListAdapter<DictionarySearc
                 writingsLength = writingsLength + 1;
             }
 
-            for (String r : entry.readingsPrio.split(" ")) {
+            for (String r : entry.getReadingsPrio().split(" ")) {
                 startPos = sb.length();
 
-                sb.append(r);
+                if (r.length() > 0) {
+                    sb.append(r);
 
-                sb.setSpan(new BackgroundColorSpan(Color.parseColor("#ccffcc")),
-                        startPos, sb.length(),
-                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                    sb.setSpan(new BackgroundColorSpan(Color.parseColor("#ccffcc")),
+                            startPos, sb.length(),
+                            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
 
-                readingsLength = readingsLength + r.length();
+                    readingsLength = readingsLength + r.length();
+                }
             }
 
             if (readingsLength > 0) {
@@ -178,16 +189,20 @@ public class DictionaryPagedListAdapter extends PagedListAdapter<DictionarySearc
                 readingsLength = readingsLength + 1;
             }
 
-            sb.append(entry.readings);
-            readingsLength = readingsLength + entry.readings.length();
+            if (entry.getReadings().length() > 0) {
+                sb.append(entry.getReadings());
+                readingsLength = readingsLength + entry.getReadings().length();
+            }
 
             sb.append("\n");
             readingsLength = readingsLength + 1;
 
-            sb.append(entry.gloss);
+            if (entry.getGloss().length() > 0) {
+                sb.append(entry.getGloss());
 
-            sb.setSpan(new ForegroundColorSpan(Color.GRAY), writingsLength, writingsLength + readingsLength, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-            sb.setSpan(new RelativeSizeSpan(1.5f), 0, writingsLength + readingsLength, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                sb.setSpan(new ForegroundColorSpan(Color.GRAY), writingsLength, writingsLength + readingsLength, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                sb.setSpan(new RelativeSizeSpan(1.5f), 0, writingsLength + readingsLength, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
 
             m_textViewView.setText(sb);
 

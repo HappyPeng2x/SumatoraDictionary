@@ -16,19 +16,18 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.db;
 
-import androidx.room.Database;
-import androidx.room.RoomDatabase;
-import androidx.room.TypeConverters;
+import androidx.paging.DataSource;
+import androidx.room.Dao;
+import androidx.room.Insert;
+import androidx.room.OnConflictStrategy;
+import androidx.room.Query;
+import androidx.room.Update;
 
-@Database(entities = {DictionaryEntry.class, DictionaryControl.class, DictionaryTranslation.class,
-        DictionaryBookmark.class, DictionaryIndex.class, DictionarySearchResult.class}, version = 3,
-        exportSchema = false)
-// @TypeConverters({DictionaryTypeConverters.class})
-abstract public class DictionaryDatabase extends RoomDatabase {
-    public static final String DATABASE_NAME = "DictionaryDatabase";
+@Dao
+public interface DictionarySearchResultDao {
+    @Query("SELECT * FROM DictionarySearchResult ORDER BY entryOrder, seq")
+    DataSource.Factory<Integer, DictionarySearchResult> getAllPaged();
 
-    public abstract DictionaryEntryDao dictionaryEntryDao();
-    public abstract DictionaryControlDao dictionaryControlDao();
-    public abstract DictionaryBookmarkDao dictionaryBookmarkDao();
-    public abstract DictionarySearchResultDao dictionarySearchResultDao();
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    void insertResult(DictionarySearchResult aResult);
 }

@@ -18,25 +18,44 @@ package org.happypeng.sumatora.android.sumatoradictionary.model;
 
 import android.app.Application;
 
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmarkElement;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchResult;
+
+import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MutableLiveData;
 import androidx.paging.LivePagedListBuilder;
 import androidx.paging.PagedList;
 
 public class DictionaryBookmarkFragmentModel extends DictionaryViewModel {
+    protected LiveData<PagedList<DictionaryBookmarkElement>> m_bookmarkElements;
+    protected MutableLiveData<Boolean> m_bookmarkElementsReady;
+
     public DictionaryBookmarkFragmentModel(Application aApp) {
         super(aApp);
+
+        m_bookmarkElementsReady = new MutableLiveData<>();
+        m_bookmarkElementsReady.setValue(false);
     }
 
-    public void listBookmarks(String aBookmark, String aLang) {
-        //cleanSearchEntries();
+    public LiveData<Boolean> getBookmarkElementsReady() {
+        return m_bookmarkElementsReady;
+    }
 
-        PagedList.Config pagedListConfig =
+    public LiveData<PagedList<DictionaryBookmarkElement>> getBookmarkElements()
+    {
+        return m_bookmarkElements;
+    }
+
+    @Override
+    protected void connectDatabase() {
+        super.connectDatabase();
+
+        final PagedList.Config pagedListConfig =
                 (new PagedList.Config.Builder()).setEnablePlaceholders(false)
                         .setPrefetchDistance(100)
                         .setPageSize(100).build();
 
-/*        m_searchEntries = (new LivePagedListBuilder(m_db.dictionaryEntryDao().listBookmarks(aBookmark, aLang),
+        m_bookmarkElements = (new LivePagedListBuilder(m_db.dictionaryBookmarkDao().getAllDetails("eng"),
                 pagedListConfig)).build();
-
-        m_searchEntries.observeForever(m_searchObserver);*/
     }
 }

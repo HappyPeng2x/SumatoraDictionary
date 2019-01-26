@@ -43,11 +43,14 @@ import android.widget.TextView;
 import org.happypeng.sumatora.android.sumatoradictionary.Dictionary;
 import org.happypeng.sumatora.android.sumatoradictionary.DictionaryPagedListAdapter;
 import org.happypeng.sumatora.android.sumatoradictionary.R;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryEntry;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchResult;
 import org.happypeng.sumatora.android.sumatoradictionary.model.DictionarySearchFragmentModel;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class DictionarySearchFragment extends Fragment {
@@ -60,6 +63,9 @@ public class DictionarySearchFragment extends Fragment {
 
     private ProgressBar m_progress_bar;
     private TextView m_status_text;
+
+    private Observer<PagedList<DictionarySearchResult>> m_searchResultObserver;
+
 
     public DictionarySearchFragment() {
         // Required empty public constructor
@@ -165,11 +171,27 @@ public class DictionarySearchFragment extends Fragment {
 
         final DictionarySearchFragmentModel viewModel = ViewModelProviders.of(getActivity()).get(DictionarySearchFragmentModel.class);
 
-        viewModel.getDatabaseReady().observe(this,
+        final DictionaryPagedListAdapter pagedListAdapter = new DictionaryPagedListAdapter(viewModel.getBookmarks().getValue());
+
+        m_searchResultObserver = new Observer<PagedList<DictionarySearchResult>>() {
+            @Override
+            public void onChanged(PagedList<DictionarySearchResult> dictionarySearchResults) {
+                System.out.println("SOMETHING HAS CHANGED");
+
+                pagedListAdapter.submitList(dictionarySearchResults);
+            }
+        };
+
+        viewModel.getSearchEntriesReady().observe(this,
                 new Observer<Boolean>() {
                     @Override
                     public void onChanged(Boolean aDbReady) {
                         if (aDbReady) {
+                            System.out.println("OBSERVER CONNECTED");
+
+                            viewModel.getSearchEntries().observe(DictionarySearchFragment.this,
+                                    m_searchResultObserver);
+
                             setReady();
                         } else {
                             setInPreparation();
@@ -177,15 +199,11 @@ public class DictionarySearchFragment extends Fragment {
                     }
                 });
 
-
-
-        if (viewModel.getDatabaseReady().getValue()) {
+        if (viewModel.getSearchEntriesReady().getValue()) {
             setReady();
         } else {
             setInPreparation();
         }
-
-        final DictionaryPagedListAdapter pagedListAdapter = new DictionaryPagedListAdapter(viewModel.getBookmarks().getValue());
 
         viewModel.getBookmarks().observe(this,
                 new Observer<HashMap<Long, Long>>() {
@@ -197,11 +215,11 @@ public class DictionarySearchFragment extends Fragment {
 
         pagedListAdapter.setBookmarkClickListener(new DictionaryPagedListAdapter.ClickListener() {
             @Override
-            public void onClick(View aView, DictionarySearchResult aEntry, Long aBookmark) {
+            public void onClick(View aView, DictionarySearchElement aEntry, Long aBookmark) {
                 if (aBookmark == null) {
-                    viewModel.updateBookmark(aEntry.seq, Long.valueOf(1), aBookmark);
+                    viewModel.updateBookmark(aEntry.getSeq(), Long.valueOf(1), aBookmark);
                 } else {
-                    viewModel.updateBookmark(aEntry.seq, null, aBookmark);
+                    viewModel.updateBookmark(aEntry.getSeq(), null, aBookmark);
                 }
             }
         });
@@ -209,23 +227,11 @@ public class DictionarySearchFragment extends Fragment {
         m_recyclerView.setAdapter(pagedListAdapter);
 
         // New search button logic
-        viewModel.getSearchEntries().observe(this, new Observer<PagedList<DictionarySearchResult>>() {
-            @Override
-            public void onChanged(PagedList<DictionarySearchResult> aList) {
-                if (viewModel.getDatabaseReady().getValue()) {
-                    setReady();
-                }
-
-                pagedListAdapter.submitList(aList);
-
-                m_recyclerView.scrollToPosition(0);
-            }
-        });
-
         m_search_button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                setSearchingDictionary();
+                // So fast we don't need it anymore!
+                //setSearchingDictionary();
 
                 viewModel.search(m_edit_text.getText().toString(), "eng");
             }

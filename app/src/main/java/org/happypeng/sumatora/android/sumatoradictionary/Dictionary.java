@@ -104,14 +104,14 @@ public class Dictionary extends AppCompatActivity {
                         break;
                     case R.id.navigation_view_item_bookmarks:
                         if (m_dictionaryBookmarkFragment == null) {
-                            // m_dictionaryBookmarkFragment = new DictionaryBookmarkFragment();
+                            m_dictionaryBookmarkFragment = new DictionaryBookmarkFragment();
 
                             // Bundle bundle = new Bundle();
                             // bundle.putString("bookmark", "bookmarks");
                             // m_dictionaryBookmarkFragment.setArguments(bundle);
                         }
 
-                        // switchToFragment(m_dictionaryBookmarkFragment, "BOOKMARK_FRAGMENT");
+                        switchToFragment(m_dictionaryBookmarkFragment, "BOOKMARK_FRAGMENT");
 
                         break;
                 }

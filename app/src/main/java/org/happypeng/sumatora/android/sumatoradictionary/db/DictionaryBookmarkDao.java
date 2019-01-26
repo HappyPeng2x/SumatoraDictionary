@@ -19,6 +19,7 @@ package org.happypeng.sumatora.android.sumatoradictionary.db;
 import java.util.List;
 
 import androidx.lifecycle.LiveData;
+import androidx.paging.DataSource;
 import androidx.room.Dao;
 import androidx.room.Delete;
 import androidx.room.Insert;
@@ -29,6 +30,15 @@ import androidx.room.Query;
 public interface DictionaryBookmarkDao {
     @Query("SELECT * FROM DictionaryBookmark")
     LiveData<List<DictionaryBookmark>> getAllLive();
+
+    @Query("SELECT 1 as entryOrder, DictionaryBookmark.seq, DictionaryEntry.seq, "
+            + "DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
+            + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, "
+            + "DictionaryTranslation.lang, DictionaryTranslation.gloss "
+            + "FROM DictionaryBookmark, DictionaryEntry, DictionaryTranslation "
+            + "WHERE DictionaryBookmark.seq = DictionaryEntry.seq AND "
+            + " DictionaryTranslation.seq = DictionaryBookmark.seq AND DictionaryTranslation.lang = :lang")
+    DataSource.Factory<Integer, DictionaryBookmarkElement> getAllDetails(String lang);
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void insert(DictionaryBookmark aBookmark);

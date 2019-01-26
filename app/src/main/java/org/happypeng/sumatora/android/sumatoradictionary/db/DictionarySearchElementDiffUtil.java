@@ -18,50 +18,19 @@ package org.happypeng.sumatora.android.sumatoradictionary.db;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.DiffUtil;
-import androidx.room.Entity;
 
-@Entity(primaryKeys = {"seq"})
-public class DictionarySearchResult implements DictionarySearchElement {
-    public int entryOrder;
-    public long seq;
-    public String readingsPrio;
-    public String readings;
-    public String writingsPrio;
-    public String writings;
-    public String lang;
-    public String gloss;
+public class DictionarySearchElementDiffUtil {
+    public static <T extends DictionarySearchElement> DiffUtil.ItemCallback<T> getDiffUtil() {
+        return new DiffUtil.ItemCallback<T>() {
+            @Override
+            public boolean areItemsTheSame(@NonNull DictionarySearchElement oldItem, @NonNull DictionarySearchElement newItem) {
+                return oldItem.getSeq() == newItem.getSeq() && oldItem.getLang().equals(newItem.getLang());
+            }
 
-    public DictionarySearchResult() { super(); }
-
-    public int getEntryOrder() {
-        return entryOrder;
-    }
-
-    public long getSeq() {
-        return seq;
-    }
-
-    public String getReadingsPrio() {
-        return readingsPrio;
-    }
-
-    public String getReadings() {
-        return readings;
-    }
-
-    public String getWritingsPrio() {
-        return writingsPrio;
-    }
-
-    public String getWritings() {
-        return writings;
-    }
-
-    public String getLang() {
-        return lang;
-    }
-
-    public String getGloss() {
-        return gloss;
+            @Override
+            public boolean areContentsTheSame(@NonNull DictionarySearchElement oldItem, @NonNull DictionarySearchElement newItem) {
+                return oldItem.getSeq() == newItem.getSeq() && oldItem.getLang().equals(newItem.getLang());
+            }
+        };
     }
 }

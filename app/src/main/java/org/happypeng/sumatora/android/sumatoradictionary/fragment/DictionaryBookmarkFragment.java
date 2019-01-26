@@ -39,6 +39,7 @@ import android.widget.TextView;
 
 import org.happypeng.sumatora.android.sumatoradictionary.DictionaryPagedListAdapter;
 import org.happypeng.sumatora.android.sumatoradictionary.R;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmarkElement;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryEntry;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchResult;
 import org.happypeng.sumatora.android.sumatoradictionary.model.DictionaryBookmarkFragmentModel;
@@ -101,16 +102,23 @@ public class DictionaryBookmarkFragment extends Fragment {
 
         final DictionaryBookmarkFragmentModel viewModel = ViewModelProviders.of(getActivity()).get(DictionaryBookmarkFragmentModel.class);
 
-        viewModel.getDatabaseReady().observe(this,
+        final DictionaryPagedListAdapter pagedListAdapter = new DictionaryPagedListAdapter(null);
+
+        viewModel.getBookmarkElementsReady().observe(this,
                 new Observer<Boolean>() {
                     @Override
                     public void onChanged(Boolean aDbReady) {
                         if (aDbReady) {
                             setReady();
 
-                            if (m_bookmark != null) {
-                                viewModel.listBookmarks(m_bookmark, "eng");
-                            }
+                            // observe list
+                            viewModel.getBookmarkElements().observe(DictionaryBookmarkFragment.this,
+                                    new Observer<PagedList<DictionaryBookmarkElement>>() {
+                                        @Override
+                                        public void onChanged(PagedList<DictionaryBookmarkElement> dictionaryBookmarkElements) {
+                                            pagedListAdapter.submitList(dictionaryBookmarkElements);
+                                        }
+                                    });
                         } else {
                             setInPreparation();
                         }
@@ -123,8 +131,6 @@ public class DictionaryBookmarkFragment extends Fragment {
             setInPreparation();
         }
 
-        final DictionaryPagedListAdapter pagedListAdapter = new DictionaryPagedListAdapter(viewModel.getBookmarks().getValue());
-
         m_recyclerView.setAdapter(pagedListAdapter);
 
 /*        viewModel.getSearchEntries().observe(this, new Observer<PagedList<DictionarySearchResult>>() {
@@ -134,7 +140,7 @@ public class DictionaryBookmarkFragment extends Fragment {
             }
         });*/
 
-        Bundle bundle = getArguments();
+/*        Bundle bundle = getArguments();
 
         if (bundle != null) {
             String bookmark = bundle.getString("bookmark");
@@ -148,7 +154,7 @@ public class DictionaryBookmarkFragment extends Fragment {
 
                 bundle.remove("bookmark");
             }
-        }
+        }*/
 
         return view;
     }

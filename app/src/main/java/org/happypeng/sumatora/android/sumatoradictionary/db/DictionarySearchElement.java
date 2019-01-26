@@ -16,19 +16,13 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.db;
 
-import androidx.room.Database;
-import androidx.room.RoomDatabase;
-import androidx.room.TypeConverters;
-
-@Database(entities = {DictionaryEntry.class, DictionaryControl.class, DictionaryTranslation.class,
-        DictionaryBookmark.class, DictionaryIndex.class, DictionarySearchResult.class}, version = 3,
-        exportSchema = false)
-// @TypeConverters({DictionaryTypeConverters.class})
-abstract public class DictionaryDatabase extends RoomDatabase {
-    public static final String DATABASE_NAME = "DictionaryDatabase";
-
-    public abstract DictionaryEntryDao dictionaryEntryDao();
-    public abstract DictionaryControlDao dictionaryControlDao();
-    public abstract DictionaryBookmarkDao dictionaryBookmarkDao();
-    public abstract DictionarySearchResultDao dictionarySearchResultDao();
+public interface DictionarySearchElement {
+    int getEntryOrder();
+    long getSeq();
+    String getReadingsPrio();
+    String getReadings();
+    String getWritingsPrio();
+    String getWritings();
+    String getLang();
+    String getGloss();
 }

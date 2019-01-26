@@ -16,12 +16,7 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.db;
 
-import androidx.annotation.NonNull;
-import androidx.recyclerview.widget.DiffUtil;
-import androidx.room.Entity;
-
-@Entity(primaryKeys = {"seq"})
-public class DictionarySearchResult implements DictionarySearchElement {
+public class DictionaryBookmarkElement implements DictionarySearchElement {
     public int entryOrder;
     public long seq;
     public String readingsPrio;
@@ -31,7 +26,7 @@ public class DictionarySearchResult implements DictionarySearchElement {
     public String lang;
     public String gloss;
 
-    public DictionarySearchResult() { super(); }
+    public DictionaryBookmarkElement() { super(); }
 
     public int getEntryOrder() {
         return entryOrder;
