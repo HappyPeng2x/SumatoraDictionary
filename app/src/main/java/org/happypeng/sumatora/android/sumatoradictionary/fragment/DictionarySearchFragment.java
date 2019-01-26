@@ -176,8 +176,6 @@ public class DictionarySearchFragment extends Fragment {
         m_searchResultObserver = new Observer<PagedList<DictionarySearchResult>>() {
             @Override
             public void onChanged(PagedList<DictionarySearchResult> dictionarySearchResults) {
-                System.out.println("SOMETHING HAS CHANGED");
-
                 pagedListAdapter.submitList(dictionarySearchResults);
             }
         };
@@ -187,8 +185,6 @@ public class DictionarySearchFragment extends Fragment {
                     @Override
                     public void onChanged(Boolean aDbReady) {
                         if (aDbReady) {
-                            System.out.println("OBSERVER CONNECTED");
-
                             viewModel.getSearchEntries().observe(DictionarySearchFragment.this,
                                     m_searchResultObserver);
 

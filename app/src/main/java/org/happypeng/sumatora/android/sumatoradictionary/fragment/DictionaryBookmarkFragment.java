@@ -41,6 +41,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.DictionaryPagedListAdap
 import org.happypeng.sumatora.android.sumatoradictionary.R;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmarkElement;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryEntry;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchResult;
 import org.happypeng.sumatora.android.sumatoradictionary.model.DictionaryBookmarkFragmentModel;
 import org.happypeng.sumatora.android.sumatoradictionary.model.DictionarySearchFragmentModel;
@@ -133,28 +134,13 @@ public class DictionaryBookmarkFragment extends Fragment {
 
         m_recyclerView.setAdapter(pagedListAdapter);
 
-/*        viewModel.getSearchEntries().observe(this, new Observer<PagedList<DictionarySearchResult>>() {
+        pagedListAdapter.setBookmarkClickListener(new DictionaryPagedListAdapter.ClickListener() {
             @Override
-            public void onChanged(PagedList<DictionarySearchResult> aList) {
-                // pagedListAdapter.submitList(aList);
+            public void onClick(View aView, DictionarySearchElement aEntry, Long aBookmark) {
+                    viewModel.deleteBookmark(aEntry.getSeq());
             }
-        });*/
+        });
 
-/*        Bundle bundle = getArguments();
-
-        if (bundle != null) {
-            String bookmark = bundle.getString("bookmark");
-
-            if (bookmark != null) {
-                m_bookmark = bookmark;
-
-                if (viewModel.getDatabaseReady().getValue()) {
-                    viewModel.listBookmarks(m_bookmark, "eng");
-                }
-
-                bundle.remove("bookmark");
-            }
-        }*/
 
         return view;
     }
