@@ -16,8 +16,7 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.db;
 
-public class DictionaryBookmarkElement implements DictionarySearchElement {
-    public int entryOrder;
+public class DictionaryBookmarkElement implements DictionarySearchElementBase {
     public long seq;
     public String readingsPrio;
     public String readings;
@@ -25,12 +24,9 @@ public class DictionaryBookmarkElement implements DictionarySearchElement {
     public String writings;
     public String lang;
     public String gloss;
+    public long bookmark;
 
     public DictionaryBookmarkElement() { super(); }
-
-    public int getEntryOrder() {
-        return entryOrder;
-    }
 
     public long getSeq() {
         return seq;
@@ -59,4 +55,6 @@ public class DictionaryBookmarkElement implements DictionarySearchElement {
     public String getGloss() {
         return gloss;
     }
+
+    public long getBookmark() { return bookmark; }
 }

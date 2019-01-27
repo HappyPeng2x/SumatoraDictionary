@@ -31,13 +31,15 @@ public interface DictionaryBookmarkDao {
     @Query("SELECT * FROM DictionaryBookmark")
     LiveData<List<DictionaryBookmark>> getAllLive();
 
-    @Query("SELECT 1 as entryOrder, DictionaryBookmark.seq, DictionaryEntry.seq, "
+    @Query("SELECT DictionaryBookmark.seq, "
             + "DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
             + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, "
-            + "DictionaryTranslation.lang, DictionaryTranslation.gloss "
+            + "DictionaryTranslation.lang, DictionaryTranslation.gloss, "
+            + "DictionaryBookmark.bookmark "
             + "FROM DictionaryBookmark, DictionaryEntry, DictionaryTranslation "
             + "WHERE DictionaryBookmark.seq = DictionaryEntry.seq AND "
-            + " DictionaryTranslation.seq = DictionaryBookmark.seq AND DictionaryTranslation.lang = :lang")
+            + " DictionaryTranslation.seq = DictionaryBookmark.seq AND DictionaryTranslation.lang = :lang "
+            + "ORDER BY DictionaryBookmark.seq")
     DataSource.Factory<Integer, DictionaryBookmarkElement> getAllDetails(String lang);
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -45,4 +47,7 @@ public interface DictionaryBookmarkDao {
 
     @Delete
     void delete(DictionaryBookmark aBookmark);
+
+    @Query("DELETE FROM DictionaryBookmark WHERE seq = :seq")
+    void delete(long seq);
 }

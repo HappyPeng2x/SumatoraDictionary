@@ -32,19 +32,14 @@ import androidx.recyclerview.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.EditText;
-import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import org.happypeng.sumatora.android.sumatoradictionary.DictionaryPagedListAdapter;
 import org.happypeng.sumatora.android.sumatoradictionary.R;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmarkElement;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryEntry;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchResult;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElementBase;
 import org.happypeng.sumatora.android.sumatoradictionary.model.DictionaryBookmarkFragmentModel;
-import org.happypeng.sumatora.android.sumatoradictionary.model.DictionarySearchFragmentModel;
 
 public class DictionaryBookmarkFragment extends Fragment {
     private RecyclerView m_recyclerView;
@@ -103,7 +98,7 @@ public class DictionaryBookmarkFragment extends Fragment {
 
         final DictionaryBookmarkFragmentModel viewModel = ViewModelProviders.of(getActivity()).get(DictionaryBookmarkFragmentModel.class);
 
-        final DictionaryPagedListAdapter pagedListAdapter = new DictionaryPagedListAdapter(null);
+        final DictionaryPagedListAdapter pagedListAdapter = new DictionaryPagedListAdapter();
 
         viewModel.getBookmarkElementsReady().observe(this,
                 new Observer<Boolean>() {
@@ -136,7 +131,7 @@ public class DictionaryBookmarkFragment extends Fragment {
 
         pagedListAdapter.setBookmarkClickListener(new DictionaryPagedListAdapter.ClickListener() {
             @Override
-            public void onClick(View aView, DictionarySearchElement aEntry, Long aBookmark) {
+            public void onClick(View aView, DictionarySearchElementBase aEntry) {
                     viewModel.deleteBookmark(aEntry.getSeq());
             }
         });

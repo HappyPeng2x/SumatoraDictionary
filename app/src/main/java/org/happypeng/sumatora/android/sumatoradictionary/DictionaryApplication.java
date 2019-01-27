@@ -132,7 +132,7 @@ public class DictionaryApplication extends Application {
     public void onCreate() {
         super.onCreate();
 
-        m_dictionaryDatabase = new MutableLiveData<>(null);
+        m_dictionaryDatabase = new MutableLiveData<DictionaryDatabase>();
 
         new InitializeDBTask().execute(this);
     }

@@ -28,6 +28,16 @@ public interface DictionarySearchResultDao {
     @Query("SELECT * FROM DictionarySearchResult ORDER BY entryOrder, seq")
     DataSource.Factory<Integer, DictionarySearchResult> getAllPaged();
 
+    @Query("SELECT DictionarySearchResult.entryOrder, DictionarySearchResult.seq, " +
+            "DictionarySearchResult.readingsPrio, DictionarySearchResult.readings, " +
+            "DictionarySearchResult.writingsPrio, DictionarySearchResult.writings, " +
+            "DictionarySearchResult.lang, DictionarySearchResult.gloss, " +
+            "DictionaryBookmark.bookmark " +
+            "FROM DictionarySearchResult LEFT JOIN DictionaryBookmark " +
+            "ON DictionarySearchResult.seq = DictionaryBookmark.seq " +
+            "ORDER BY DictionarySearchResult.entryOrder, DictionarySearchResult.seq")
+    DataSource.Factory<Integer, DictionarySearchElement> getAllBookmarkedPaged();
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     void insertResult(DictionarySearchResult aResult);
 }

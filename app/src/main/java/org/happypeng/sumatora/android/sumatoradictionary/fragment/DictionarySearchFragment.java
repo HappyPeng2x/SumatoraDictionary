@@ -16,7 +16,6 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.fragment;
 
-import android.os.AsyncTask;
 import android.os.Bundle;
 
 import androidx.appcompat.app.ActionBar;
@@ -31,7 +30,6 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -40,18 +38,14 @@ import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
-import org.happypeng.sumatora.android.sumatoradictionary.Dictionary;
 import org.happypeng.sumatora.android.sumatoradictionary.DictionaryPagedListAdapter;
 import org.happypeng.sumatora.android.sumatoradictionary.R;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryEntry;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElementBase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchResult;
 import org.happypeng.sumatora.android.sumatoradictionary.model.DictionarySearchFragmentModel;
 
 import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 public class DictionarySearchFragment extends Fragment {
     private RecyclerView m_recyclerView;
@@ -64,7 +58,7 @@ public class DictionarySearchFragment extends Fragment {
     private ProgressBar m_progress_bar;
     private TextView m_status_text;
 
-    private Observer<PagedList<DictionarySearchResult>> m_searchResultObserver;
+    private Observer<PagedList<DictionarySearchElement>> m_searchResultObserver;
 
 
     public DictionarySearchFragment() {
@@ -171,11 +165,11 @@ public class DictionarySearchFragment extends Fragment {
 
         final DictionarySearchFragmentModel viewModel = ViewModelProviders.of(getActivity()).get(DictionarySearchFragmentModel.class);
 
-        final DictionaryPagedListAdapter pagedListAdapter = new DictionaryPagedListAdapter(viewModel.getBookmarks().getValue());
+        final DictionaryPagedListAdapter pagedListAdapter = new DictionaryPagedListAdapter();
 
-        m_searchResultObserver = new Observer<PagedList<DictionarySearchResult>>() {
+        m_searchResultObserver = new Observer<PagedList<DictionarySearchElement>>() {
             @Override
-            public void onChanged(PagedList<DictionarySearchResult> dictionarySearchResults) {
+            public void onChanged(PagedList<DictionarySearchElement> dictionarySearchResults) {
                 pagedListAdapter.submitList(dictionarySearchResults);
             }
         };
@@ -201,21 +195,21 @@ public class DictionarySearchFragment extends Fragment {
             setInPreparation();
         }
 
-        viewModel.getBookmarks().observe(this,
+/*        viewModel.getBookmarks().observe(this,
                 new Observer<HashMap<Long, Long>>() {
                     @Override
                     public void onChanged(HashMap<Long, Long> aBookmarks) {
                          pagedListAdapter.setBookmarks(aBookmarks);
                     }
-                });
+                });*/
 
         pagedListAdapter.setBookmarkClickListener(new DictionaryPagedListAdapter.ClickListener() {
             @Override
-            public void onClick(View aView, DictionarySearchElement aEntry, Long aBookmark) {
-                if (aBookmark == null) {
-                    viewModel.updateBookmark(aEntry.getSeq(), Long.valueOf(1), aBookmark);
+            public void onClick(View aView, DictionarySearchElementBase aEntry) {
+                if (aEntry.getBookmark() == 0) {
+                    viewModel.updateBookmark(aEntry.getSeq(), 1);
                 } else {
-                    viewModel.updateBookmark(aEntry.getSeq(), null, aBookmark);
+                    viewModel.updateBookmark(aEntry.getSeq(), 0);
                 }
             }
         });

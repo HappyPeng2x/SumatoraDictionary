@@ -16,7 +16,6 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary;
 
-import androidx.annotation.Nullable;
 import androidx.paging.PagedListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -26,35 +25,30 @@ import android.text.Spanned;
 import android.text.style.BackgroundColorSpan;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.RelativeSizeSpan;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
 import android.widget.TextView;
 
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryEntry;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElementBase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElementDiffUtil;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchResult;
 
 import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
-public class DictionaryPagedListAdapter<T extends DictionarySearchElement> extends PagedListAdapter<T, DictionaryPagedListAdapter.DictionaryEntryItemViewHolder> {
-    private HashMap<Long, Long> m_bookmarks;
+public class DictionaryPagedListAdapter<T extends DictionarySearchElementBase> extends PagedListAdapter<T, DictionaryPagedListAdapter.DictionaryEntryItemViewHolder> {
+    // private HashMap<Long, Long> m_bookmarks;
 
     public interface ClickListener {
-        void onClick(View aView, DictionarySearchElement aEntry, Long aBookmark);
+        void onClick(View aView, DictionarySearchElementBase aEntry);
     }
 
     private ClickListener m_bookmarkClickListener;
 
-    public DictionaryPagedListAdapter(HashMap<Long, Long> aBookmarks) {
+    public DictionaryPagedListAdapter() {
         super(DictionarySearchElementDiffUtil.<T>getDiffUtil());
 
-        m_bookmarks = aBookmarks;
+        // m_bookmarks = aBookmarks;
 
         setHasStableIds(true);
     }
@@ -68,11 +62,11 @@ public class DictionaryPagedListAdapter<T extends DictionarySearchElement> exten
         m_bookmarkClickListener = aListener;
     }
 
-    public void setBookmarks(HashMap<Long, Long> aBookmarks) {
-        m_bookmarks = aBookmarks;
+    //public void setBookmarks(HashMap<Long, Long> aBookmarks) {
+        // m_bookmarks = aBookmarks;
 
-        notifyDataSetChanged();
-    }
+        // notifyDataSetChanged();
+    //}
 
     @Override
     public DictionaryEntryItemViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
@@ -85,16 +79,16 @@ public class DictionaryPagedListAdapter<T extends DictionarySearchElement> exten
 
         @Override
     public void onBindViewHolder(DictionaryEntryItemViewHolder holder, int position) {
-        DictionarySearchElement entry = getItem(position);
+        DictionarySearchElementBase entry = getItem(position);
 
         if (entry != null) {
-            Long bookmark = null;
+            //Long bookmark = null;
 
-            if (m_bookmarks != null) {
-                bookmark = m_bookmarks.get(entry.getSeq());
-            }
+            //if (m_bookmarks != null) {
+            //    bookmark = m_bookmarks.get(entry.getSeq());
+            //}
 
-            holder.bindTo(entry, bookmark);
+            holder.bindTo(entry);
         }
     }
 
@@ -102,7 +96,7 @@ public class DictionaryPagedListAdapter<T extends DictionarySearchElement> exten
         private TextView m_textViewView;
         private ImageButton m_bookmarkStar;
 
-        private Long m_bookmark;
+        //private Long m_bookmark;
 
         private ClickListener m_bookmarkClickListener;
 
@@ -116,7 +110,7 @@ public class DictionaryPagedListAdapter<T extends DictionarySearchElement> exten
         public void setBookmarkClickListener(ClickListener aListener) {
             m_bookmarkClickListener = aListener;
         }
-
+/*
         public void updateBookmark(Long bookmark) {
             m_bookmark = bookmark;
 
@@ -125,15 +119,15 @@ public class DictionaryPagedListAdapter<T extends DictionarySearchElement> exten
             } else {
                 m_bookmarkStar.setImageResource(R.drawable.ic_outline_star_border_24px);
             }
-        }
+        }*/
 
-        public void bindTo(final DictionarySearchElement entry, Long bookmark) {
+        public void bindTo(final DictionarySearchElementBase entry) {
             SpannableStringBuilder sb = new SpannableStringBuilder();
             int writingsLength = 0;
             int readingsLength = 0;
             int startPos = 0;
 
-            m_bookmark = bookmark;
+            // m_bookmark = bookmark;
 
             // For debug purposes only
             // sb.append(Integer.toString(entry.entryOrder) + " " + entry.seq + " ");
@@ -206,16 +200,18 @@ public class DictionaryPagedListAdapter<T extends DictionarySearchElement> exten
 
             m_textViewView.setText(sb);
 
+
             if (m_bookmarkClickListener != null) {
                 m_bookmarkStar.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-                        m_bookmarkClickListener.onClick(v, entry, m_bookmark);
+                        m_bookmarkClickListener.onClick(v, entry);
                     }
                 });
             }
 
-            if (m_bookmark != null) {
+
+            if (entry.getBookmark() != 0) {
                 m_bookmarkStar.setImageResource(R.drawable.ic_baseline_star_24px);
             } else {
                 m_bookmarkStar.setImageResource(R.drawable.ic_outline_star_border_24px);

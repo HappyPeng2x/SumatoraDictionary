@@ -19,19 +19,12 @@ package org.happypeng.sumatora.android.sumatoradictionary.model;
 import android.app.Application;
 
 import org.happypeng.sumatora.android.sumatoradictionary.DictionaryApplication;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryDatabase;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchResult;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryTypeConverters;
-
-import java.util.HashMap;
-import java.util.List;
 
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Observer;
-import androidx.paging.PagedList;
 
 public class DictionaryViewModel extends AndroidViewModel {
     protected DictionaryDatabase m_db;

@@ -16,13 +16,50 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.db;
 
-public interface DictionarySearchElement {
-    int getEntryOrder();
-    long getSeq();
-    String getReadingsPrio();
-    String getReadings();
-    String getWritingsPrio();
-    String getWritings();
-    String getLang();
-    String getGloss();
+public class DictionarySearchElement implements DictionarySearchElementBase {
+    public int entryOrder;
+    public long seq;
+    public String readingsPrio;
+    public String readings;
+    public String writingsPrio;
+    public String writings;
+    public String lang;
+    public String gloss;
+    public long bookmark;
+
+    public DictionarySearchElement() { }
+
+    public int getEntryOrder() {
+        return entryOrder;
+    }
+
+    public long getSeq() {
+        return seq;
+    }
+
+    public String getReadingsPrio() {
+        return readingsPrio;
+    }
+
+    public String getReadings() {
+        return readings;
+    }
+
+    public String getWritingsPrio() {
+        return writingsPrio;
+    }
+
+    public String getWritings() {
+        return writings;
+    }
+
+    public String getLang() {
+        return lang;
+    }
+
+    public String getGloss() {
+        return gloss;
+    }
+
+    public long getBookmark() { return bookmark; }
 }
