@@ -18,6 +18,7 @@ package org.happypeng.sumatora.android.sumatoradictionary.fragment;
 
 import android.os.Bundle;
 
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
@@ -140,6 +141,8 @@ public class DictionarySearchFragment extends Fragment {
 
         m_recyclerView = (RecyclerView) view.findViewById(R.id.recyclerView);
 
+        m_recyclerView.setItemAnimator(null);
+
         LinearLayoutManager layoutManager = new LinearLayoutManager(getContext());
         layoutManager.setOrientation(RecyclerView.VERTICAL);
         m_recyclerView.setLayoutManager(layoutManager);
@@ -166,6 +169,42 @@ public class DictionarySearchFragment extends Fragment {
         final DictionarySearchFragmentModel viewModel = ViewModelProviders.of(getActivity()).get(DictionarySearchFragmentModel.class);
 
         final DictionaryPagedListAdapter pagedListAdapter = new DictionaryPagedListAdapter();
+
+        pagedListAdapter.registerAdapterDataObserver(new RecyclerView.AdapterDataObserver() {
+            @Override
+            public void onChanged() {
+                super.onChanged();
+            }
+
+            @Override
+            public void onItemRangeChanged(int positionStart, int itemCount) {
+                super.onItemRangeChanged(positionStart, itemCount);
+            }
+
+            @Override
+            public void onItemRangeChanged(int positionStart, int itemCount, @Nullable Object payload) {
+                super.onItemRangeChanged(positionStart, itemCount, payload);
+            }
+
+            @Override
+            public void onItemRangeInserted(int positionStart, int itemCount) {
+                super.onItemRangeInserted(positionStart, itemCount);
+
+                //System.out.println("ITEM RANGE INSERTED " + positionStart + itemCount);
+            }
+
+            @Override
+            public void onItemRangeRemoved(int positionStart, int itemCount) {
+                super.onItemRangeRemoved(positionStart, itemCount);
+
+                // System.out.println("ITEM RANGE REMOVED " + positionStart + itemCount);
+            }
+
+            @Override
+            public void onItemRangeMoved(int fromPosition, int toPosition, int itemCount) {
+                super.onItemRangeMoved(fromPosition, toPosition, itemCount);
+            }
+        });
 
         m_searchResultObserver = new Observer<PagedList<DictionarySearchElement>>() {
             @Override

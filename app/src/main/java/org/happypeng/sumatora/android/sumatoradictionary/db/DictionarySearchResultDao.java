@@ -16,6 +16,8 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.db;
 
+import java.util.List;
+
 import androidx.paging.DataSource;
 import androidx.room.Dao;
 import androidx.room.Insert;
@@ -37,6 +39,38 @@ public interface DictionarySearchResultDao {
             "ON DictionarySearchResult.seq = DictionaryBookmark.seq " +
             "ORDER BY DictionarySearchResult.entryOrder, DictionarySearchResult.seq")
     DataSource.Factory<Integer, DictionarySearchElement> getAllBookmarkedPaged();
+
+    @Query("SELECT DictionarySearchResult.entryOrder, DictionarySearchResult.seq, " +
+            "DictionarySearchResult.readingsPrio, DictionarySearchResult.readings, " +
+            "DictionarySearchResult.writingsPrio, DictionarySearchResult.writings, " +
+            "DictionarySearchResult.lang, DictionarySearchResult.gloss, " +
+            "DictionaryBookmark.bookmark " +
+            "FROM DictionarySearchResult LEFT JOIN DictionaryBookmark " +
+            "ON DictionarySearchResult.seq = DictionaryBookmark.seq " +
+            "WHERE (DictionarySearchResult.entryOrder = :entryOrder AND DictionarySearchResult.seq > :seq) OR " +
+            " DictionarySearchResult.entryOrder > :entryOrder " +
+            "ORDER BY DictionarySearchResult.entryOrder, DictionarySearchResult.seq " +
+            "LIMIT :count OFFSET :offset")
+    List<DictionarySearchElement> getAllBookmarkedSeqCount(int entryOrder, long seq, int count, int offset);
+
+    @Query("SELECT COUNT(DictionarySearchResult.seq) " +
+            "FROM DictionarySearchResult LEFT JOIN DictionaryBookmark " +
+            "ON DictionarySearchResult.seq = DictionaryBookmark.seq " +
+            "WHERE (DictionarySearchResult.entryOrder = :entryOrder AND DictionarySearchResult.seq < :seq) OR " +
+            " DictionarySearchResult.entryOrder < :entryOrder ")
+    int countBefore(int entryOrder, long seq);
+
+    @Query("SELECT DictionarySearchResult.entryOrder, DictionarySearchResult.seq, " +
+            "DictionarySearchResult.readingsPrio, DictionarySearchResult.readings, " +
+            "DictionarySearchResult.writingsPrio, DictionarySearchResult.writings, " +
+            "DictionarySearchResult.lang, DictionarySearchResult.gloss, " +
+            "DictionaryBookmark.bookmark " +
+            "FROM DictionarySearchResult LEFT JOIN DictionaryBookmark " +
+            "ON DictionarySearchResult.seq = DictionaryBookmark.seq " +
+            "WHERE (DictionarySearchResult.entryOrder = :entryOrder AND DictionarySearchResult.seq < :seq) OR " +
+            " DictionarySearchResult.entryOrder < :entryOrder " +
+            "ORDER BY DictionarySearchResult.entryOrder, DictionarySearchResult.seq")
+    List<DictionarySearchElement> getAllBefore(int entryOrder, long seq);
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     void insertResult(DictionarySearchResult aResult);

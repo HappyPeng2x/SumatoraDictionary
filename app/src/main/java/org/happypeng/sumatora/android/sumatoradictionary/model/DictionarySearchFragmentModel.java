@@ -27,6 +27,8 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryEntry;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchResult;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryTypeConverters;
+import org.happypeng.sumatora.android.sumatoradictionary.db.source.DictionaryDataSource;
+import org.happypeng.sumatora.android.sumatoradictionary.db.source.DictionarySearchResultKey;
 
 import java.util.HashMap;
 import java.util.Iterator;
@@ -230,7 +232,38 @@ public class DictionarySearchFragmentModel extends DictionaryViewModel {
                                 .setPrefetchDistance(30)
                                 .setPageSize(30).build();
 
-                m_searchEntries = (new LivePagedListBuilder(m_db.dictionarySearchResultDao().getAllBookmarkedPaged(),
+                DictionaryDataSource.Factory factory = new DictionaryDataSource.Factory
+                        (new DictionaryDataSource.DictionaryQuery() {
+                            @Override
+                            public List<DictionarySearchElement> queryAfter(DictionarySearchResultKey afterKey, int count) {
+                                return m_db.dictionarySearchResultDao().getAllBookmarkedSeqCount(afterKey.entryOrder, afterKey.seq, count, 0);
+                            }
+
+                            @Override
+                            public List<DictionarySearchElement> queryBefore(DictionarySearchResultKey beforeKey, int count) {
+                                int pCount =  m_db.dictionarySearchResultDao().countBefore(beforeKey.entryOrder, beforeKey.seq);
+
+                                if (pCount >= count) {
+                                    return m_db.dictionarySearchResultDao().getAllBookmarkedSeqCount(0, 0, count, pCount - count);
+                                }
+
+                                return m_db.dictionarySearchResultDao().getAllBookmarkedSeqCount(0, 0, pCount, 0);
+                            }
+                        }, m_db);
+
+/*                m_searchEntries = (new LivePagedListBuilder(m_db.dictionarySearchResultDao().getAllBookmarkedPaged(),
+                        pagedListConfig))
+                        .setBoundaryCallback(new PagedList.BoundaryCallback() {
+                            @Override
+                            public void onItemAtEndLoaded(@NonNull Object itemAtEnd) {
+                                super.onItemAtEndLoaded(itemAtEnd);
+
+                                executeNextQuery();
+                            }
+                        })
+                        .build();*/
+
+                m_searchEntries = (new LivePagedListBuilder(factory,
                         pagedListConfig))
                         .setBoundaryCallback(new PagedList.BoundaryCallback() {
                             @Override
