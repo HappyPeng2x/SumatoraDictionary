@@ -16,9 +16,6 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary;
 
-import androidx.annotation.NonNull;
-import androidx.paging.PagedListAdapter;
-
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -26,20 +23,18 @@ import android.view.ViewGroup;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElementDiffUtil;
 
-import java.util.HashMap;
+import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.ListAdapter;
 
-public class DictionaryPagedListAdapter extends PagedListAdapter<DictionarySearchElement, DictionarySearchElementViewHolder> {
-    private HashMap<Long, Long> m_bookmarks;
-
+public class DictionaryListAdapter extends ListAdapter<DictionarySearchElement, DictionarySearchElementViewHolder> {
     private DictionarySearchElementViewHolder.ClickListener m_bookmarkClickListener;
 
-    public DictionaryPagedListAdapter() {
+    public DictionaryListAdapter() {
         super(DictionarySearchElementDiffUtil.getDiffUtil());
 
         setHasStableIds(true);
     }
 
-    // No placeholders = no null values
     @Override
     public long getItemId(int position) {
         return getItem(position).getSeq();
@@ -49,16 +44,10 @@ public class DictionaryPagedListAdapter extends PagedListAdapter<DictionarySearc
         m_bookmarkClickListener = aListener;
     }
 
-    public void setBookmarks(HashMap<Long, Long> aBookmarks) {
-        m_bookmarks = aBookmarks;
-
-        notifyDataSetChanged();
-    }
-
     @NonNull
     @Override
     public DictionarySearchElementViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        LayoutInflater layoutInflater = LayoutInflater.from(parent.getContext());
+        LayoutInflater layoutInflater = android.view.LayoutInflater.from(parent.getContext());
         View view = layoutInflater.inflate(R.layout.cell_cards, parent, false);
         DictionarySearchElementViewHolder holder = new DictionarySearchElementViewHolder(view);
         holder.setBookmarkClickListener(m_bookmarkClickListener);
@@ -66,23 +55,7 @@ public class DictionaryPagedListAdapter extends PagedListAdapter<DictionarySearc
     }
 
     @Override
-    public void onBindViewHolder(DictionarySearchElementViewHolder holder, int position) {
-        DictionarySearchElement entry = getItem(position);
-
-        if (entry != null) {
-            Long bookmark = null;
-
-            if (m_bookmarks != null) {
-                bookmark = m_bookmarks.get(entry.getSeq());
-
-                if (bookmark != null) {
-                    entry.bookmark = bookmark;
-                } else {
-                    entry.bookmark = 0;
-                }
-            }
-
-            holder.bindTo(entry);
-        }
+    public void onBindViewHolder(@NonNull DictionarySearchElementViewHolder holder, int position) {
+        holder.bindTo(getItem(position));
     }
 }

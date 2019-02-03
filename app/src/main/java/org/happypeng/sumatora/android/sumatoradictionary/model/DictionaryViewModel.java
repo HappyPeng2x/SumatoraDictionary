@@ -30,27 +30,13 @@ public class DictionaryViewModel extends AndroidViewModel {
     protected DictionaryDatabase m_db;
     protected LiveData<DictionaryDatabase> m_dbLiveData;
     protected Observer<DictionaryDatabase> m_dbObserver;
-    protected MutableLiveData<Boolean> m_dbReady;
-
-    public LiveData<Boolean> getDatabaseReady() {
-        return m_dbReady;
-    }
 
     public DictionaryViewModel(Application aApp) {
         super(aApp);
 
-        m_dbReady = new MutableLiveData<Boolean>();
-
         DictionaryApplication app = (DictionaryApplication) aApp;
 
         m_dbLiveData = app.getDictionaryDatabase();
-
-        if (m_dbLiveData.getValue() != null) {
-            m_dbReady.setValue(true);
-
-        } else {
-            m_dbReady.setValue(false);
-        }
 
         m_dbObserver = new Observer<DictionaryDatabase>() {
             @Override
@@ -62,11 +48,7 @@ public class DictionaryViewModel extends AndroidViewModel {
                 m_db = aDictionaryDatabase;
 
                 if (m_db != null) {
-                    m_dbReady.setValue(true);
-
                     connectDatabase();
-                } else {
-                    m_dbReady.setValue(false);
                 }
             }
         };
@@ -75,14 +57,17 @@ public class DictionaryViewModel extends AndroidViewModel {
     }
 
     protected void disconnectDatabase() {
+        m_db = null;
     }
 
     @Override
     protected void onCleared() {
+        disconnectDatabase();
+
         m_dbLiveData.removeObserver(m_dbObserver);
         m_dbLiveData = null;
-        m_db = null;
     }
 
-    protected void connectDatabase() {}
+    protected void connectDatabase() {
+    }
 }

@@ -16,7 +16,7 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.db;
 
-public class DictionarySearchElement implements DictionarySearchElementBase {
+public class DictionarySearchElement {
     public int entryOrder;
     public long seq;
     public String readingsPrio;

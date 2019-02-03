@@ -31,7 +31,7 @@ public interface DictionaryBookmarkDao {
     @Query("SELECT * FROM DictionaryBookmark")
     LiveData<List<DictionaryBookmark>> getAllLive();
 
-    @Query("SELECT DictionaryBookmark.seq, "
+    /*@Query("SELECT DictionaryBookmark.seq, "
             + "DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
             + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, "
             + "DictionaryTranslation.lang, DictionaryTranslation.gloss, "
@@ -41,6 +41,17 @@ public interface DictionaryBookmarkDao {
             + " DictionaryTranslation.seq = DictionaryBookmark.seq AND DictionaryTranslation.lang = :lang "
             + "ORDER BY DictionaryBookmark.seq")
     DataSource.Factory<Integer, DictionaryBookmarkElement> getAllDetails(String lang);
+*/
+    @Query("SELECT 1 as entryOrder, DictionaryBookmark.seq, "
+            + "DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
+            + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, "
+            + "DictionaryTranslation.lang, DictionaryTranslation.gloss, "
+            + "DictionaryBookmark.bookmark "
+            + "FROM DictionaryBookmark, DictionaryEntry, DictionaryTranslation "
+            + "WHERE DictionaryBookmark.seq = DictionaryEntry.seq AND "
+            + " DictionaryTranslation.seq = DictionaryBookmark.seq AND DictionaryTranslation.lang = :lang "
+            + "ORDER BY DictionaryBookmark.seq")
+    LiveData<List<DictionarySearchElement>> getAllDetailsLive(String lang);
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void insert(DictionaryBookmark aBookmark);

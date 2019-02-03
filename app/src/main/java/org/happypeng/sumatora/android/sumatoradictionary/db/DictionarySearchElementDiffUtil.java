@@ -20,18 +20,21 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.DiffUtil;
 
 public class DictionarySearchElementDiffUtil {
-    public static <T extends DictionarySearchElementBase> DiffUtil.ItemCallback<T> getDiffUtil() {
-        return new DiffUtil.ItemCallback<T>() {
-            @Override
-            public boolean areItemsTheSame(@NonNull DictionarySearchElementBase oldItem, @NonNull DictionarySearchElementBase newItem) {
-                return oldItem.getSeq() == newItem.getSeq() && oldItem.getLang().equals(newItem.getLang());
-            }
+    private final static DiffUtil.ItemCallback<DictionarySearchElement> DIFF_UTIL =
+            new DiffUtil.ItemCallback<DictionarySearchElement>() {
+                @Override
+                public boolean areItemsTheSame(@NonNull DictionarySearchElement oldItem, @NonNull DictionarySearchElement newItem) {
+                    return oldItem.getSeq() == newItem.getSeq() && oldItem.getLang().equals(newItem.getLang());
+                }
 
-            @Override
-            public boolean areContentsTheSame(@NonNull DictionarySearchElementBase oldItem, @NonNull DictionarySearchElementBase newItem) {
-                return oldItem.getSeq() == newItem.getSeq() && oldItem.getLang().equals(newItem.getLang()) &&
-                        oldItem.getBookmark() == newItem.getBookmark();
-            }
-        };
+                @Override
+                public boolean areContentsTheSame(@NonNull DictionarySearchElement oldItem, @NonNull DictionarySearchElement newItem) {
+                    return oldItem.getSeq() == newItem.getSeq() && oldItem.getLang().equals(newItem.getLang()) &&
+                            oldItem.getBookmark() == newItem.getBookmark();
+                }
+            };
+
+    public static DiffUtil.ItemCallback<DictionarySearchElement> getDiffUtil() {
+        return DIFF_UTIL;
     }
 }

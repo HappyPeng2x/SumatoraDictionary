@@ -17,24 +17,17 @@
 package org.happypeng.sumatora.android.sumatoradictionary.model;
 
 import android.app.Application;
-import android.database.sqlite.SQLiteStatement;
 import android.os.AsyncTask;
 import android.util.Log;
 
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryDatabase;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryEntry;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchResult;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryTypeConverters;
-import org.happypeng.sumatora.android.sumatoradictionary.db.source.DictionaryDataSource;
-import org.happypeng.sumatora.android.sumatoradictionary.db.source.DictionarySearchResultKey;
 
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Set;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
@@ -42,14 +35,12 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Observer;
 import androidx.paging.LivePagedListBuilder;
 import androidx.paging.PagedList;
-import androidx.room.InvalidationTracker;
-import androidx.room.Query;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 import androidx.sqlite.db.SupportSQLiteStatement;
 
 public class DictionarySearchFragmentModel extends DictionaryViewModel {
     protected LiveData<PagedList<DictionarySearchElement>> m_searchEntries;
-    protected MutableLiveData<Boolean> m_searchEntriesReady;
+    protected MutableLiveData<LiveData<PagedList<DictionarySearchElement>>> m_searchEntriesLive;
 
     private final String SQL_QUERY_EXACT_PRIO =
             "INSERT INTO DictionarySearchResult SELECT ? AS entryOrder, DictionaryEntry.seq, DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
@@ -155,30 +146,29 @@ public class DictionarySearchFragmentModel extends DictionaryViewModel {
     private String m_queryTerm;
     private String m_queryLang;
 
-/*    protected LiveData<List<DictionaryBookmark>> m_bookmarksList;
+    protected LiveData<List<DictionaryBookmark>> m_bookmarksList;
     protected MutableLiveData<HashMap<Long, Long>> m_bookmarksLiveData;
-    protected Observer<List<DictionaryBookmark>> m_bookmarksObserver;*/
+    protected Observer<List<DictionaryBookmark>> m_bookmarksObserver;
 
-/*
+
     public LiveData<HashMap<Long, Long>> getBookmarks() {
         return m_bookmarksLiveData;
     }
-*/
+
 
     public DictionarySearchFragmentModel(Application aApp) {
         super(aApp);
 
-/*        m_bookmarksLiveData = new MutableLiveData<>();
+        m_bookmarksLiveData = new MutableLiveData<>();
 
         m_bookmarksObserver = new Observer<List<DictionaryBookmark>>() {
             @Override
             public void onChanged(List<DictionaryBookmark> dictionaryBookmarks) {
                 m_bookmarksLiveData.setValue(DictionaryTypeConverters.hashMapFromBookmarks(dictionaryBookmarks));
             }
-        };*/
+        };
 
-        m_searchEntriesReady = new MutableLiveData<>();
-        m_searchEntriesReady.setValue(false);
+        m_searchEntriesLive = new MutableLiveData<>();
     }
 
     @Override
@@ -186,8 +176,8 @@ public class DictionarySearchFragmentModel extends DictionaryViewModel {
     {
         super.connectDatabase();
 
-/*        m_bookmarksList = m_db.dictionaryBookmarkDao().getAllLive();
-        m_bookmarksList.observeForever(m_bookmarksObserver);*/
+        m_bookmarksList = m_db.dictionaryBookmarkDao().getAllLive();
+        m_bookmarksList.observeForever(m_bookmarksObserver);
 
         final SupportSQLiteDatabase sqlDb = m_db.getOpenHelper().getWritableDatabase();
 
@@ -230,40 +220,9 @@ public class DictionarySearchFragmentModel extends DictionaryViewModel {
                 final PagedList.Config pagedListConfig =
                         (new PagedList.Config.Builder()).setEnablePlaceholders(false)
                                 .setPrefetchDistance(30)
-                                .setPageSize(30).build();
+                                .setPageSize(50).build();
 
-                DictionaryDataSource.Factory factory = new DictionaryDataSource.Factory
-                        (new DictionaryDataSource.DictionaryQuery() {
-                            @Override
-                            public List<DictionarySearchElement> queryAfter(DictionarySearchResultKey afterKey, int count) {
-                                return m_db.dictionarySearchResultDao().getAllBookmarkedSeqCount(afterKey.entryOrder, afterKey.seq, count, 0);
-                            }
-
-                            @Override
-                            public List<DictionarySearchElement> queryBefore(DictionarySearchResultKey beforeKey, int count) {
-                                int pCount =  m_db.dictionarySearchResultDao().countBefore(beforeKey.entryOrder, beforeKey.seq);
-
-                                if (pCount >= count) {
-                                    return m_db.dictionarySearchResultDao().getAllBookmarkedSeqCount(0, 0, count, pCount - count);
-                                }
-
-                                return m_db.dictionarySearchResultDao().getAllBookmarkedSeqCount(0, 0, pCount, 0);
-                            }
-                        }, m_db);
-
-/*                m_searchEntries = (new LivePagedListBuilder(m_db.dictionarySearchResultDao().getAllBookmarkedPaged(),
-                        pagedListConfig))
-                        .setBoundaryCallback(new PagedList.BoundaryCallback() {
-                            @Override
-                            public void onItemAtEndLoaded(@NonNull Object itemAtEnd) {
-                                super.onItemAtEndLoaded(itemAtEnd);
-
-                                executeNextQuery();
-                            }
-                        })
-                        .build();*/
-
-                m_searchEntries = (new LivePagedListBuilder(factory,
+                m_searchEntries = (new LivePagedListBuilder(m_db.dictionarySearchResultDao().getAllPaged(),
                         pagedListConfig))
                         .setBoundaryCallback(new PagedList.BoundaryCallback() {
                             @Override
@@ -275,7 +234,7 @@ public class DictionarySearchFragmentModel extends DictionaryViewModel {
                         })
                         .build();
 
-                m_searchEntriesReady.setValue(true);
+                m_searchEntriesLive.setValue(m_searchEntries);
             }
         }.execute();
     }
@@ -284,8 +243,8 @@ public class DictionarySearchFragmentModel extends DictionaryViewModel {
         return m_searchEntries;
     }
 
-    public LiveData<Boolean> getSearchEntriesReady() {
-        return m_searchEntriesReady;
+    public LiveData<LiveData<PagedList<DictionarySearchElement>>> getSearchEntriesLive() {
+        return m_searchEntriesLive;
     }
 
     private synchronized long executeNextQueryBackground() {
@@ -328,8 +287,6 @@ public class DictionarySearchFragmentModel extends DictionaryViewModel {
 
         m_queryIterator = m_queries.iterator();
 
-        // executeNextQuery();
-
         new AsyncTask<Void, Void, Void>() {
             @Override
             protected Void doInBackground(Void... voids) {
@@ -370,15 +327,13 @@ public class DictionarySearchFragmentModel extends DictionaryViewModel {
 
     @Override
     public void disconnectDatabase() {
-        if (m_searchEntriesReady != null) {
-            m_searchEntriesReady.setValue(false);
+        if (m_searchEntriesLive != null) {
+            m_searchEntriesLive.setValue(null);
         }
 
-/*
         if (m_bookmarksList != null) {
             m_bookmarksList.removeObserver(m_bookmarksObserver);
         }
-*/
 
         super.disconnectDatabase();
 
@@ -397,9 +352,10 @@ public class DictionarySearchFragmentModel extends DictionaryViewModel {
         m_queryDeleteResults = null;
     }
 
-/*    @Override
+    @Override
     public void onCleared()
     {
         m_bookmarksLiveData = null;
-    }*/
+        m_searchEntriesLive = null;
+    }
 }

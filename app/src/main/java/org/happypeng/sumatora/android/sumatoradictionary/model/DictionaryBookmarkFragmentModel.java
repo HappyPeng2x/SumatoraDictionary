@@ -19,35 +19,20 @@ package org.happypeng.sumatora.android.sumatoradictionary.model;
 import android.app.Application;
 import android.os.AsyncTask;
 
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmarkElement;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchResult;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
+
+import java.util.List;
 
 import androidx.lifecycle.LiveData;
-import androidx.lifecycle.MutableLiveData;
-import androidx.paging.LivePagedListBuilder;
-import androidx.paging.PagedList;
-import androidx.sqlite.db.SupportSQLiteStatement;
 
 public class DictionaryBookmarkFragmentModel extends DictionaryViewModel {
-    protected LiveData<PagedList<DictionaryBookmarkElement>> m_bookmarkElements;
-    protected MutableLiveData<Boolean> m_bookmarkElementsReady;
-
-    private SupportSQLiteStatement m_deleteStatement;
+    private LiveData<List<DictionarySearchElement>> m_bookmarkElements;
 
     public DictionaryBookmarkFragmentModel(Application aApp) {
         super(aApp);
-
-        if (m_bookmarkElementsReady == null) {
-            m_bookmarkElementsReady = new MutableLiveData<>();
-            m_bookmarkElementsReady.setValue(false);
-        }
     }
 
-    public LiveData<Boolean> getBookmarkElementsReady() {
-        return m_bookmarkElementsReady;
-    }
-
-    public LiveData<PagedList<DictionaryBookmarkElement>> getBookmarkElements()
+    public LiveData<List<DictionarySearchElement>> getBookmarkElements()
     {
         return m_bookmarkElements;
     }
@@ -57,45 +42,15 @@ public class DictionaryBookmarkFragmentModel extends DictionaryViewModel {
     protected void connectDatabase() {
         super.connectDatabase();
 
-        final PagedList.Config pagedListConfig =
-                (new PagedList.Config.Builder()).setEnablePlaceholders(false)
-                        .setPrefetchDistance(100)
-                        .setPageSize(100).build();
-
-        if (m_bookmarkElementsReady == null) {
-            m_bookmarkElementsReady = new MutableLiveData<>();
-            m_bookmarkElementsReady.setValue(true);
-        }
-
-        m_bookmarkElements = (new LivePagedListBuilder(m_db.dictionaryBookmarkDao().getAllDetails("eng"),
-                pagedListConfig)).build();
-
-        m_deleteStatement = m_db.getOpenHelper().getWritableDatabase().compileStatement("DELETE FROM DictionaryBookmark WHERE seq = ?");
+        m_bookmarkElements = m_db.dictionaryBookmarkDao().getAllDetailsLive("eng");
     }
 
-    @Override
-    public void disconnectDatabase()
-    {
-        if (m_deleteStatement != null) {
-            try {
-                m_deleteStatement.close();
-            } catch (Exception e) {
-                System.err.println(e.toString());
-            }
-        }
-    }
 
     public void deleteBookmark(final long aSeq) {
         new AsyncTask<Void, Void, Void>() {
             @Override
             protected Void doInBackground(Void... voids) {
-                m_db.beginTransaction();
-
-                m_deleteStatement.bindLong(1, aSeq);
-                m_deleteStatement.executeUpdateDelete();
-
-                m_db.setTransactionSuccessful();
-                m_db.endTransaction();
+                m_db.dictionaryBookmarkDao().delete(aSeq);
 
                 return null;
             }

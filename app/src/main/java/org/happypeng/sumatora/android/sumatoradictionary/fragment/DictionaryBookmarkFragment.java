@@ -25,7 +25,6 @@ import androidx.appcompat.widget.Toolbar;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProviders;
-import androidx.paging.PagedList;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -35,11 +34,13 @@ import android.view.ViewGroup;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
-import org.happypeng.sumatora.android.sumatoradictionary.DictionaryPagedListAdapter;
+import org.happypeng.sumatora.android.sumatoradictionary.DictionaryListAdapter;
+import org.happypeng.sumatora.android.sumatoradictionary.DictionarySearchElementViewHolder;
 import org.happypeng.sumatora.android.sumatoradictionary.R;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmarkElement;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElementBase;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
 import org.happypeng.sumatora.android.sumatoradictionary.model.DictionaryBookmarkFragmentModel;
+
+import java.util.List;
 
 public class DictionaryBookmarkFragment extends Fragment {
     private RecyclerView m_recyclerView;
@@ -98,44 +99,25 @@ public class DictionaryBookmarkFragment extends Fragment {
 
         final DictionaryBookmarkFragmentModel viewModel = ViewModelProviders.of(getActivity()).get(DictionaryBookmarkFragmentModel.class);
 
-        final DictionaryPagedListAdapter pagedListAdapter = new DictionaryPagedListAdapter();
+        final DictionaryListAdapter listAdapter = new DictionaryListAdapter();
 
-        viewModel.getBookmarkElementsReady().observe(this,
-                new Observer<Boolean>() {
+        viewModel.getBookmarkElements().observe(this,
+                new Observer<List<DictionarySearchElement>>()
+                {
                     @Override
-                    public void onChanged(Boolean aDbReady) {
-                        if (aDbReady) {
-                            setReady();
-
-                            // observe list
-                            viewModel.getBookmarkElements().observe(DictionaryBookmarkFragment.this,
-                                    new Observer<PagedList<DictionaryBookmarkElement>>() {
-                                        @Override
-                                        public void onChanged(PagedList<DictionaryBookmarkElement> dictionaryBookmarkElements) {
-                                            pagedListAdapter.submitList(dictionaryBookmarkElements);
-                                        }
-                                    });
-                        } else {
-                            setInPreparation();
-                        }
+                    public void onChanged(List<DictionarySearchElement> dictionarySearchElements) {
+                        listAdapter.submitList(dictionarySearchElements);
                     }
                 });
 
-        if (viewModel.getDatabaseReady().getValue()) {
-            setReady();
-        } else {
-            setInPreparation();
-        }
+        m_recyclerView.setAdapter(listAdapter);
 
-        m_recyclerView.setAdapter(pagedListAdapter);
-
-        pagedListAdapter.setBookmarkClickListener(new DictionaryPagedListAdapter.ClickListener() {
+        listAdapter.setBookmarkClickListener(new DictionarySearchElementViewHolder.ClickListener() {
             @Override
-            public void onClick(View aView, DictionarySearchElementBase aEntry) {
+            public void onClick(View aView, DictionarySearchElement aEntry) {
                     viewModel.deleteBookmark(aEntry.getSeq());
             }
         });
-
 
         return view;
     }

@@ -23,6 +23,7 @@ import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.LiveData;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProviders;
 import androidx.paging.PagedList;
@@ -40,10 +41,9 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import org.happypeng.sumatora.android.sumatoradictionary.DictionaryPagedListAdapter;
+import org.happypeng.sumatora.android.sumatoradictionary.DictionarySearchElementViewHolder;
 import org.happypeng.sumatora.android.sumatoradictionary.R;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElementBase;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchResult;
 import org.happypeng.sumatora.android.sumatoradictionary.model.DictionarySearchFragmentModel;
 
 import java.util.HashMap;
@@ -141,11 +141,11 @@ public class DictionarySearchFragment extends Fragment {
 
         m_recyclerView = (RecyclerView) view.findViewById(R.id.recyclerView);
 
-        m_recyclerView.setItemAnimator(null);
-
         LinearLayoutManager layoutManager = new LinearLayoutManager(getContext());
         layoutManager.setOrientation(RecyclerView.VERTICAL);
         m_recyclerView.setLayoutManager(layoutManager);
+
+        setInPreparation();
 
         m_edit_text.addTextChangedListener(new TextWatcher() {
             @Override
@@ -170,42 +170,6 @@ public class DictionarySearchFragment extends Fragment {
 
         final DictionaryPagedListAdapter pagedListAdapter = new DictionaryPagedListAdapter();
 
-        pagedListAdapter.registerAdapterDataObserver(new RecyclerView.AdapterDataObserver() {
-            @Override
-            public void onChanged() {
-                super.onChanged();
-            }
-
-            @Override
-            public void onItemRangeChanged(int positionStart, int itemCount) {
-                super.onItemRangeChanged(positionStart, itemCount);
-            }
-
-            @Override
-            public void onItemRangeChanged(int positionStart, int itemCount, @Nullable Object payload) {
-                super.onItemRangeChanged(positionStart, itemCount, payload);
-            }
-
-            @Override
-            public void onItemRangeInserted(int positionStart, int itemCount) {
-                super.onItemRangeInserted(positionStart, itemCount);
-
-                //System.out.println("ITEM RANGE INSERTED " + positionStart + itemCount);
-            }
-
-            @Override
-            public void onItemRangeRemoved(int positionStart, int itemCount) {
-                super.onItemRangeRemoved(positionStart, itemCount);
-
-                // System.out.println("ITEM RANGE REMOVED " + positionStart + itemCount);
-            }
-
-            @Override
-            public void onItemRangeMoved(int fromPosition, int toPosition, int itemCount) {
-                super.onItemRangeMoved(fromPosition, toPosition, itemCount);
-            }
-        });
-
         m_searchResultObserver = new Observer<PagedList<DictionarySearchElement>>() {
             @Override
             public void onChanged(PagedList<DictionarySearchElement> dictionarySearchResults) {
@@ -213,12 +177,12 @@ public class DictionarySearchFragment extends Fragment {
             }
         };
 
-        viewModel.getSearchEntriesReady().observe(this,
-                new Observer<Boolean>() {
+        viewModel.getSearchEntriesLive().observe(this,
+                new Observer<LiveData<PagedList<DictionarySearchElement>>>() {
                     @Override
-                    public void onChanged(Boolean aDbReady) {
-                        if (aDbReady) {
-                            viewModel.getSearchEntries().observe(DictionarySearchFragment.this,
+                    public void onChanged(LiveData<PagedList<DictionarySearchElement>> aLiveData) {
+                        if (aLiveData != null) {
+                            aLiveData.observe(DictionarySearchFragment.this,
                                     m_searchResultObserver);
 
                             setReady();
@@ -228,23 +192,25 @@ public class DictionarySearchFragment extends Fragment {
                     }
                 });
 
+/*
         if (viewModel.getSearchEntriesReady().getValue()) {
             setReady();
         } else {
             setInPreparation();
         }
+*/
 
-/*        viewModel.getBookmarks().observe(this,
+        viewModel.getBookmarks().observe(this,
                 new Observer<HashMap<Long, Long>>() {
                     @Override
                     public void onChanged(HashMap<Long, Long> aBookmarks) {
                          pagedListAdapter.setBookmarks(aBookmarks);
                     }
-                });*/
+                });
 
-        pagedListAdapter.setBookmarkClickListener(new DictionaryPagedListAdapter.ClickListener() {
+        pagedListAdapter.setBookmarkClickListener(new DictionarySearchElementViewHolder.ClickListener() {
             @Override
-            public void onClick(View aView, DictionarySearchElementBase aEntry) {
+            public void onClick(View aView, DictionarySearchElement aEntry) {
                 if (aEntry.getBookmark() == 0) {
                     viewModel.updateBookmark(aEntry.getSeq(), 1);
                 } else {
