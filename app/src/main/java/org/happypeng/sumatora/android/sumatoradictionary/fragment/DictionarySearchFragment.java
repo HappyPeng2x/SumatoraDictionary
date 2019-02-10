@@ -33,6 +33,8 @@ import androidx.recyclerview.widget.RecyclerView;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
@@ -192,14 +194,6 @@ public class DictionarySearchFragment extends Fragment {
                     }
                 });
 
-/*
-        if (viewModel.getSearchEntriesReady().getValue()) {
-            setReady();
-        } else {
-            setInPreparation();
-        }
-*/
-
         viewModel.getBookmarks().observe(this,
                 new Observer<HashMap<Long, Long>>() {
                     @Override
@@ -241,5 +235,4 @@ public class DictionarySearchFragment extends Fragment {
 
         return view;
     }
-
 }

@@ -14,7 +14,16 @@
         android:layout_height="?attr/actionBarSize"
         android:background="?attr/colorPrimary"
         android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
-        app:popupTheme="@style/ThemeOverlay.AppCompat.Light" />
+        app:title="Bookmarks"
+        app:popupTheme="@style/ThemeOverlay.AppCompat.Light">
+
+<!--        <ImageButton
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/ic_outline_star_border_24px"
+            android:background="?android:selectableItemBackground" />-->
+
+    </androidx.appcompat.widget.Toolbar>
 
     <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
         xmlns:tools="http://schemas.android.com/tools"

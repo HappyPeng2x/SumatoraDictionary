@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-
     package="org.happypeng.sumatora.android.sumatoradictionary">
 
     <!--android:roundIcon="@mipmap/ic_launcher_round"-->
@@ -34,6 +33,16 @@
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".AboutActivity" />
         </activity>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="org.happypeng.sumatora.android.sumatoradictionary.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/provider_paths" />
+        </provider>
     </application>
 
 </manifest>
