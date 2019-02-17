@@ -28,11 +28,20 @@ import androidx.recyclerview.widget.ListAdapter;
 
 public class DictionaryListAdapter extends ListAdapter<DictionarySearchElement, DictionarySearchElementViewHolder> {
     private DictionarySearchElementViewHolder.ClickListener m_bookmarkClickListener;
+    private boolean m_disableBookmarkButton;
 
     public DictionaryListAdapter() {
         super(DictionarySearchElementDiffUtil.getDiffUtil());
 
         setHasStableIds(true);
+
+        m_disableBookmarkButton = false;
+    }
+
+    public DictionaryListAdapter(boolean aDisableBookmarkButton) {
+        this();
+
+        m_disableBookmarkButton = aDisableBookmarkButton;
     }
 
     @Override
@@ -51,6 +60,11 @@ public class DictionaryListAdapter extends ListAdapter<DictionarySearchElement, 
         View view = layoutInflater.inflate(R.layout.cell_cards, parent, false);
         DictionarySearchElementViewHolder holder = new DictionarySearchElementViewHolder(view);
         holder.setBookmarkClickListener(m_bookmarkClickListener);
+
+        if (m_disableBookmarkButton) {
+            holder.disableBookmarkButton();
+        }
+
         return holder;
     }
 

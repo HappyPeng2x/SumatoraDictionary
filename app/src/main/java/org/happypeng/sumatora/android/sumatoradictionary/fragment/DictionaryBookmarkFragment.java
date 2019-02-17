@@ -218,19 +218,6 @@ public class DictionaryBookmarkFragment extends Fragment {
         }
     }
 
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        switch (item.getItemId()) {
-            case R.id.share_bookmarks:
-                shareBookmarks();
-                break;
-            default:
-                break;
-        }
-        return true;
-    }
-
     private void colorMenu(Menu aMenu) {
         Context ctx = getContext();
 

@@ -27,6 +27,8 @@ import androidx.fragment.app.FragmentTransaction;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.drawerlayout.widget.DrawerLayout;
 
+import android.net.Uri;
+import android.os.ParcelFileDescriptor;
 import android.view.MenuItem;
 
 import android.os.Bundle;
@@ -38,6 +40,8 @@ import com.google.android.material.navigation.NavigationView;
 
 import org.happypeng.sumatora.android.sumatoradictionary.fragment.DictionaryBookmarkFragment;
 import org.happypeng.sumatora.android.sumatoradictionary.fragment.DictionarySearchFragment;
+
+import java.io.FileDescriptor;
 
 public class Dictionary extends AppCompatActivity {
     private DrawerLayout m_drawer_layout;
@@ -105,10 +109,6 @@ public class Dictionary extends AppCompatActivity {
                     case R.id.navigation_view_item_bookmarks:
                         if (m_dictionaryBookmarkFragment == null) {
                             m_dictionaryBookmarkFragment = new DictionaryBookmarkFragment();
-
-                            // Bundle bundle = new Bundle();
-                            // bundle.putString("bookmark", "bookmarks");
-                            // m_dictionaryBookmarkFragment.setArguments(bundle);
                         }
 
                         switchToFragment(m_dictionaryBookmarkFragment, "BOOKMARK_FRAGMENT");
@@ -122,13 +122,37 @@ public class Dictionary extends AppCompatActivity {
 
         m_drawer_layout = (DrawerLayout) findViewById(R.id.nav_drawer);
 
-        FragmentManager fm = getSupportFragmentManager();
+        Intent receivedIntent = getIntent();
+        String receivedAction = getIntent().getAction();
+        String receivedType = receivedIntent.getType();
 
-        m_dictionarySearchFragment = new DictionarySearchFragment();
+        if (receivedAction != null && receivedAction.equals(Intent.ACTION_SEND)) {
+            Uri receivedUri = (Uri) receivedIntent.getParcelableExtra(Intent.EXTRA_STREAM);
 
-        FragmentTransaction fragmentTransaction = fm.beginTransaction();
-        fragmentTransaction.replace(R.id.dictionary_fragment_container, m_dictionarySearchFragment, "SEARCH_FRAGMENT");
-        fragmentTransaction.commit();
+            try {
+                ParcelFileDescriptor pfd = getContentResolver().openFileDescriptor(receivedUri, "r");
+                FileDescriptor fd = pfd.getFileDescriptor();
+
+                // treat
+
+                pfd.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+                System.err.println(e.toString());
+            }
+
+            if (m_dictionaryBookmarkFragment == null) {
+                m_dictionaryBookmarkFragment = new DictionaryBookmarkFragment();
+            }
+
+            switchToFragment(m_dictionaryBookmarkFragment, "BOOKMARK_FRAGMENT");
+        } else {
+            if (m_dictionarySearchFragment == null) {
+                m_dictionarySearchFragment = new DictionarySearchFragment();
+            }
+
+            switchToFragment(m_dictionarySearchFragment, "SEARCH_FRAGMENT");
+        }
     }
 
     @Override

@@ -160,15 +160,20 @@ public class DictionarySearchFragmentModel extends DictionaryViewModel {
         super(aApp);
 
         m_bookmarksLiveData = new MutableLiveData<>();
-
-        m_bookmarksObserver = new Observer<List<DictionaryBookmark>>() {
-            @Override
-            public void onChanged(List<DictionaryBookmark> dictionaryBookmarks) {
-                m_bookmarksLiveData.setValue(DictionaryTypeConverters.hashMapFromBookmarks(dictionaryBookmarks));
-            }
-        };
-
         m_searchEntriesLive = new MutableLiveData<>();
+    }
+
+    private Observer<List<DictionaryBookmark>> getBookmarksObserver() {
+        if (m_bookmarksObserver == null) {
+            m_bookmarksObserver = new Observer<List<DictionaryBookmark>>() {
+                @Override
+                public void onChanged(List<DictionaryBookmark> dictionaryBookmarks) {
+                    m_bookmarksLiveData.setValue(DictionaryTypeConverters.hashMapFromBookmarks(dictionaryBookmarks));
+                }
+            };
+        }
+
+        return m_bookmarksObserver;
     }
 
     @Override
@@ -177,7 +182,7 @@ public class DictionarySearchFragmentModel extends DictionaryViewModel {
         super.connectDatabase();
 
         m_bookmarksList = m_db.dictionaryBookmarkDao().getAllLive();
-        m_bookmarksList.observeForever(m_bookmarksObserver);
+        m_bookmarksList.observeForever(getBookmarksObserver());
 
         final SupportSQLiteDatabase sqlDb = m_db.getOpenHelper().getWritableDatabase();
 
@@ -355,6 +360,8 @@ public class DictionarySearchFragmentModel extends DictionaryViewModel {
     @Override
     public void onCleared()
     {
+        disconnectDatabase();
+
         m_bookmarksLiveData = null;
         m_searchEntriesLive = null;
     }

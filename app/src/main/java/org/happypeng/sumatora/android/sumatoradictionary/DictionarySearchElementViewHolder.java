@@ -47,6 +47,10 @@ public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
         m_bookmarkStar = (ImageButton) itemView.findViewById(R.id.bookmark_star);
     }
 
+    void disableBookmarkButton() {
+        m_bookmarkStar.setVisibility(View.GONE);
+    }
+
     public void setBookmarkClickListener(ClickListener aListener) {
         m_bookmarkClickListener = aListener;
     }

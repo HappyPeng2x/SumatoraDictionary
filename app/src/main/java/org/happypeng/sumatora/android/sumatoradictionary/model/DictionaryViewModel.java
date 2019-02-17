@@ -27,11 +27,11 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Observer;
 
 public class DictionaryViewModel extends AndroidViewModel {
-    protected DictionaryDatabase m_db;
-    protected LiveData<DictionaryDatabase> m_dbLiveData;
-    protected Observer<DictionaryDatabase> m_dbObserver;
+    DictionaryDatabase m_db;
+    private LiveData<DictionaryDatabase> m_dbLiveData;
+    private Observer<DictionaryDatabase> m_dbObserver;
 
-    public DictionaryViewModel(Application aApp) {
+    DictionaryViewModel(Application aApp) {
         super(aApp);
 
         DictionaryApplication app = (DictionaryApplication) aApp;

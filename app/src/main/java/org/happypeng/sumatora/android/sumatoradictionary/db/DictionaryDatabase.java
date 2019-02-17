@@ -21,7 +21,7 @@ import androidx.room.RoomDatabase;
 import androidx.room.TypeConverters;
 
 @Database(entities = {DictionaryEntry.class, DictionaryControl.class, DictionaryTranslation.class,
-        DictionaryBookmark.class, DictionaryIndex.class, DictionarySearchResult.class}, version = 3,
+        DictionaryBookmark.class, DictionaryBookmarkImport.class, DictionaryIndex.class, DictionarySearchResult.class}, version = 3,
         exportSchema = false)
 // @TypeConverters({DictionaryTypeConverters.class})
 abstract public class DictionaryDatabase extends RoomDatabase {
@@ -31,4 +31,5 @@ abstract public class DictionaryDatabase extends RoomDatabase {
     public abstract DictionaryControlDao dictionaryControlDao();
     public abstract DictionaryBookmarkDao dictionaryBookmarkDao();
     public abstract DictionarySearchResultDao dictionarySearchResultDao();
+    public abstract DictionaryBookmarkImportDao dictionaryBookmarkImportDao();
 }

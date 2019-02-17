@@ -19,11 +19,15 @@ package org.happypeng.sumatora.android.sumatoradictionary.xml;
 import android.util.Xml;
 
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
+import org.xmlpull.v1.XmlPullParser;
+import org.xmlpull.v1.XmlPullParserFactory;
 import org.xmlpull.v1.XmlSerializer;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.util.LinkedList;
 import java.util.List;
 
 public class DictionaryBookmarkXML {
@@ -49,5 +53,62 @@ public class DictionaryBookmarkXML {
         serializer.endDocument();
 
         serializer.flush();
+    }
+
+    public static List<Long> readXML(InputStream aStream) {
+        List<Long> result = new LinkedList<Long>();
+
+        try {
+            XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
+            XmlPullParser xpp = factory.newPullParser();
+
+            xpp.setInput(aStream, null);
+
+            boolean documentStart = false;
+            boolean bookmarksOpen = false;
+
+            int eventType = xpp.getEventType();
+
+            while (eventType != XmlPullParser.END_DOCUMENT) {
+                if(eventType == XmlPullParser.START_DOCUMENT) {
+                    documentStart = true;
+                } else if(eventType == XmlPullParser.START_TAG) {
+                    if (documentStart && !bookmarksOpen) {
+                        if (xpp.getName().equals("bookmarks")) {
+                            bookmarksOpen = true;
+                        } else {
+                            System.err.println("Unkown tag: " + xpp.getName());
+                            return null;
+                        }
+                    } else if (bookmarksOpen) {
+                        if (xpp.getName().equals("bookmark")) {
+                            String seqStr = xpp.getAttributeValue(null, "seq");
+
+                            if (seqStr != null) {
+                                result.add(Long.valueOf(seqStr));
+                            } else {
+                                System.err.println("seq attribute not found for line " + xpp.getLineNumber());
+                            }
+                        } else {
+                            System.err.println("Unkown tag: " + xpp.getName());
+                            return null;
+                        }
+                    }
+                } else if(eventType == XmlPullParser.END_TAG) {
+                    if (bookmarksOpen && xpp.getName().equals("bookmarks")) {
+                        bookmarksOpen = false;
+                    }
+                }
+
+                eventType = xpp.next();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.err.println(e.toString());
+
+            return null;
+        }
+
+        return result;
     }
 }

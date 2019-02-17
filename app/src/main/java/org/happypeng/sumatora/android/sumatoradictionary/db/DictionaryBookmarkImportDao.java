@@ -19,7 +19,6 @@ package org.happypeng.sumatora.android.sumatoradictionary.db;
 import java.util.List;
 
 import androidx.lifecycle.LiveData;
-import androidx.paging.DataSource;
 import androidx.room.Dao;
 import androidx.room.Delete;
 import androidx.room.Insert;
@@ -27,27 +26,21 @@ import androidx.room.OnConflictStrategy;
 import androidx.room.Query;
 
 @Dao
-public interface DictionaryBookmarkDao {
-    @Query("SELECT * FROM DictionaryBookmark")
-    LiveData<List<DictionaryBookmark>> getAllLive();
-
-    @Query("SELECT 1 as entryOrder, DictionaryBookmark.seq, "
+public interface DictionaryBookmarkImportDao {
+    @Query("SELECT 1 as entryOrder, DictionaryBookmarkImport.seq, "
             + "DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
             + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, "
             + "DictionaryTranslation.lang, DictionaryTranslation.gloss, "
-            + "DictionaryBookmark.bookmark "
-            + "FROM DictionaryBookmark, DictionaryEntry, DictionaryTranslation "
-            + "WHERE DictionaryBookmark.seq = DictionaryEntry.seq AND "
-            + " DictionaryTranslation.seq = DictionaryBookmark.seq AND DictionaryTranslation.lang = :lang "
-            + "ORDER BY DictionaryBookmark.seq")
+            + "DictionaryBookmarkImport.bookmark "
+            + "FROM DictionaryBookmarkImport, DictionaryEntry, DictionaryTranslation "
+            + "WHERE DictionaryBookmarkImport.seq = DictionaryEntry.seq AND "
+            + " DictionaryTranslation.seq = DictionaryBookmarkImport.seq AND DictionaryTranslation.lang = :lang "
+            + "ORDER BY DictionaryBookmarkImport.seq")
     LiveData<List<DictionarySearchElement>> getAllDetailsLive(String lang);
 
+    @Query("DELETE FROM DictionaryBookmarkImport")
+    void deleteAll();
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void insert(DictionaryBookmark aBookmark);
-
-    @Delete
-    void delete(DictionaryBookmark aBookmark);
-
-    @Query("DELETE FROM DictionaryBookmark WHERE seq = :seq")
-    void delete(long seq);
+    void insertMany(List<DictionaryBookmarkImport> aBookmarkList);
 }
