@@ -161,6 +161,9 @@ public class DictionarySearchFragmentModel extends DictionaryViewModel {
 
         m_bookmarksLiveData = new MutableLiveData<>();
         m_searchEntriesLive = new MutableLiveData<>();
+
+        m_queries = null;
+        m_queryIterator = null;
     }
 
     private Observer<List<DictionaryBookmark>> getBookmarksObserver() {
@@ -184,31 +187,31 @@ public class DictionarySearchFragmentModel extends DictionaryViewModel {
         m_bookmarksList = m_db.dictionaryBookmarkDao().getAllLive();
         m_bookmarksList.observeForever(getBookmarksObserver());
 
-        final SupportSQLiteDatabase sqlDb = m_db.getOpenHelper().getWritableDatabase();
-
-        final SupportSQLiteStatement queryExactPrio = sqlDb.compileStatement(SQL_QUERY_EXACT_PRIO);
-        final SupportSQLiteStatement queryExactNonPrio = sqlDb.compileStatement(SQL_QUERY_EXACT_NONPRIO);
-        final SupportSQLiteStatement queryBeginPrio = sqlDb.compileStatement(SQL_QUERY_BEGIN_PRIO);
-        final SupportSQLiteStatement queryBeginNonPrio = sqlDb.compileStatement(SQL_QUERY_BEGIN_NONPRIO);
-        final SupportSQLiteStatement queryPartsPrio = sqlDb.compileStatement(SQL_QUERY_PARTS_PRIO);
-        final SupportSQLiteStatement queryPartsNonPrio = sqlDb.compileStatement(SQL_QUERY_PARTS_NONPRIO);
-
-        m_queryDeleteResults = sqlDb.compileStatement(SQL_QUERY_DELETE_RESULTS);
-
-        m_queries = new LinkedList<QueryStatement>();
-
-        m_queries.add(new QueryStatement(1, queryExactPrio));
-        m_queries.add(new QueryStatement(2, queryExactNonPrio));
-        m_queries.add(new QueryStatement(3, queryBeginPrio));
-        m_queries.add(new QueryStatement(4, queryBeginNonPrio));
-        m_queries.add(new QueryStatement(5, queryPartsPrio));
-        m_queries.add(new QueryStatement(6, queryPartsNonPrio));
-
-        m_queryIterator = m_queries.iterator();
-
          new AsyncTask<Void, Void, Void>() {
             @Override
             protected Void doInBackground(Void... voids) {
+                final SupportSQLiteDatabase sqlDb = m_db.getOpenHelper().getWritableDatabase();
+
+                final SupportSQLiteStatement queryExactPrio = sqlDb.compileStatement(SQL_QUERY_EXACT_PRIO);
+                final SupportSQLiteStatement queryExactNonPrio = sqlDb.compileStatement(SQL_QUERY_EXACT_NONPRIO);
+                final SupportSQLiteStatement queryBeginPrio = sqlDb.compileStatement(SQL_QUERY_BEGIN_PRIO);
+                final SupportSQLiteStatement queryBeginNonPrio = sqlDb.compileStatement(SQL_QUERY_BEGIN_NONPRIO);
+                final SupportSQLiteStatement queryPartsPrio = sqlDb.compileStatement(SQL_QUERY_PARTS_PRIO);
+                final SupportSQLiteStatement queryPartsNonPrio = sqlDb.compileStatement(SQL_QUERY_PARTS_NONPRIO);
+
+                m_queryDeleteResults = sqlDb.compileStatement(SQL_QUERY_DELETE_RESULTS);
+
+                m_queries = new LinkedList<QueryStatement>();
+
+                m_queries.add(new QueryStatement(1, queryExactPrio));
+                m_queries.add(new QueryStatement(2, queryExactNonPrio));
+                m_queries.add(new QueryStatement(3, queryBeginPrio));
+                m_queries.add(new QueryStatement(4, queryBeginNonPrio));
+                m_queries.add(new QueryStatement(5, queryPartsPrio));
+                m_queries.add(new QueryStatement(6, queryPartsNonPrio));
+
+                m_queryIterator = m_queries.iterator();
+
                 // Should disappear if we are to implement persistance
                 m_db.beginTransaction();
 

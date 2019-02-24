@@ -45,6 +45,9 @@ public interface DictionaryBookmarkDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void insert(DictionaryBookmark aBookmark);
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    void insertMany(List<DictionaryBookmark> aBookmark);
+
     @Delete
     void delete(DictionaryBookmark aBookmark);
 

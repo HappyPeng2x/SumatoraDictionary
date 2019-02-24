@@ -18,8 +18,12 @@ package org.happypeng.sumatora.android.sumatoradictionary;
 
 import android.app.Application;
 
+import android.database.Cursor;
+import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.AsyncTask;
+import android.os.StrictMode;
+import android.util.Log;
 
 import com.fstyle.library.helper.AssetSQLiteOpenHelperFactory;
 
@@ -31,6 +35,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryTypeConver
 
 import java.io.File;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 
 import androidx.lifecycle.LiveData;
@@ -46,15 +51,6 @@ public class DictionaryApplication extends Application {
         return m_dictionaryDatabase;
     }
 
-/*    private boolean hasExistingDatabase() {
-        return getDatabasePath(DATABASE_NAME).exists();
-    }
-
-    private SQLiteDatabase openExistingDatabaseSQL() {
-        return SQLiteDatabase.openDatabase(getDatabasePath(DATABASE_NAME).getAbsolutePath(),
-                null, SQLiteDatabase.OPEN_READWRITE);
-    }*/
-
     protected DictionaryDatabase getDatabase() {
         return Room.databaseBuilder(this,
                 DictionaryDatabase.class,
@@ -65,64 +61,173 @@ public class DictionaryApplication extends Application {
     }
 
     private static class InitializeDBTask extends AsyncTask<DictionaryApplication, Void, Void> {
+        private boolean hasExistingDatabase(DictionaryApplication aApp) {
+            return aApp.getDatabasePath(DATABASE_NAME).exists();
+        }
+
+        private SQLiteDatabase openExistingDatabaseSQL(DictionaryApplication aApp) {
+            return SQLiteDatabase.openDatabase(aApp.getDatabasePath(DATABASE_NAME).getAbsolutePath(),
+                    null, SQLiteDatabase.OPEN_READWRITE);
+        }
+
+        private List<DictionaryBookmark> extractBookmarks(SQLiteDatabase aDb, long aVersion) {
+            if (aDb == null) {
+                return null;
+            }
+
+            LinkedList<DictionaryBookmark> list = new LinkedList<>();
+
+            Cursor cur = null;
+
+            if (aVersion == 0) {
+                try {
+                    cur = aDb.rawQuery("SELECT seq FROM DictionaryEntry WHERE lang='eng' AND bookmark != ''", null);
+                } catch(SQLException e) {
+                    if (BuildConfig.DEBUG_MESSAGE) {
+                        Log.d("MIGRATE_DB","DB version is 0 but there are no bookmarks in DictionaryEntry, trying DictionaryBookmark");
+                    }
+                }
+
+                if (cur == null) {
+                    try {
+                        cur = aDb.rawQuery("SELECT * FROM DictionaryBookmark", null);
+                    } catch (SQLException e) {
+                        if (BuildConfig.DEBUG_MESSAGE) {
+                            Log.d("MIGRATE_DB","No DictionaryBookmark table either, giving up import");
+                        }
+                    }
+                }
+            } else {
+                cur = aDb.rawQuery("SELECT * FROM DictionaryBookmark", null);
+            }
+
+            if (cur != null) {
+                if (BuildConfig.DEBUG_MESSAGE) {
+                    Log.d("MIGRATE_DB", "Importing bookmarks from old database");
+                }
+
+                if (cur.getCount() != 0) {
+                    while (cur.moveToNext()) {
+                        if (BuildConfig.DEBUG_MESSAGE) {
+                            Log.d("MIGRATE_DB", "Bookmark: " + cur.getLong(0));
+                        }
+
+                        list.add(new DictionaryBookmark(cur.getLong(0), 1));
+                    }
+                }
+
+                cur.close();
+            }
+
+            return list;
+        }
+
+        private long checkDatabaseVersion(SQLiteDatabase aDb) {
+            if (aDb == null) {
+                return 0;
+            }
+
+            Cursor cur = aDb.rawQuery("SELECT value FROM DictionaryControl WHERE control='version'", null);
+            long version = 0;
+
+            if (cur.getCount() == 0) {
+                return 0;
+            }
+
+            while (cur.moveToNext()) {
+                version = cur.getLong(0);
+            };
+
+            cur.close();
+
+            return version;
+        }
+
+        private long checkDatabaseDate(SQLiteDatabase aDb) {
+            if (aDb == null) {
+                return 0;
+            }
+
+            Cursor cur = aDb.rawQuery("SELECT value FROM DictionaryControl WHERE control='date'", null);
+            long date = 0;
+
+            if (cur.getCount() == 0) {
+                return 0;
+            }
+
+            while (cur.moveToNext()) {
+                date = cur.getLong(0);
+            };
+
+            cur.close();
+
+            return date;
+        }
+
         protected Void doInBackground(DictionaryApplication... aParams) {
             if (aParams.length == 0) {
                 return null;
             }
 
+            int currentDate = aParams[0].getResources().getInteger(R.integer.database_date);
+            int currentVersion = aParams[0].getResources().getInteger(R.integer.database_version);
+            int databaseReset = aParams[0].getResources().getInteger(R.integer.database_reset);
+
             // Remove older versions database
             File f = new File(aParams[0].getApplicationInfo().dataDir + "/JMdict.db");
             f.delete();
 
-            System.out.println("Starting database check...");
+            if (BuildConfig.DEBUG_MESSAGE) {
+                Log.d("MIGRATE_DB", "Starting database check");
+            }
+
+            long version = 0;
+            long date = 0;
+
+            SQLiteDatabase sqlDB = null;
+
+            if (hasExistingDatabase(aParams[0])) {
+                sqlDB = openExistingDatabaseSQL(aParams[0]);
+                version = checkDatabaseVersion(sqlDB);
+                date = checkDatabaseDate(sqlDB);
+            }
+
+            List<DictionaryBookmark> bookmarks = null;
+
+            if (version < currentVersion || date < currentDate || databaseReset != 0) {
+                if (BuildConfig.DEBUG_MESSAGE) {
+                    Log.d("MIGRATE_DB", "Recreating database");
+                }
+
+                if (sqlDB != null) {
+                    bookmarks = extractBookmarks(sqlDB, version);
+
+                    sqlDB.close();
+                    sqlDB = null;
+                }
+
+                aParams[0].deleteDatabase(DictionaryApplication.DATABASE_NAME);
+            } else {
+                if (BuildConfig.DEBUG_MESSAGE) {
+                    Log.d("MIGRATE_DB", "Using database as it is");
+                }
+            }
+
+            if (sqlDB != null) {
+                sqlDB.close();
+            }
 
             DictionaryDatabase db = aParams[0].getDatabase();
 
-            DictionaryControlDao controlDao = db.dictionaryControlDao();
-
-            Long imported = controlDao.get("imported");
-
-            if (imported == null || imported != 1) { // We are dealing with freshly imported DB
-                System.out.println("Database freshly imported...");
-
-                controlDao.insert(new DictionaryControl("imported", 1));
-
-                System.out.println("We just set this value: " + controlDao.get("imported"));
-            } else {
-                // The DB has been copied in the past, but is it the right version and up to date ?
-                Long version = controlDao.get("version");
-                Long date = controlDao.get("date");
-
-                int currentDate = aParams[0].getResources().getInteger(R.integer.database_date);
-                int currentVersion = aParams[0].getResources().getInteger(R.integer.database_version);
-                int databaseReset = aParams[0].getResources().getInteger(R.integer.database_reset);
-
-                if ((version == null || version < currentVersion) ||
-                        (date == null || date < currentDate) || databaseReset != 0) {
-                    System.out.println("Recreating database...");
-
-                    // The current DB is older than advertised by assets
-                    controlDao = null;
-
-                    db.close();
-
-                    // Import fresh database
-                    // aParams[0].deleteDatabase(DictionaryApplication.DATABASE_NAME);
-                    db = aParams[0].getDatabase();
-
-                    controlDao = db.dictionaryControlDao();
-
-                    controlDao.insert(new DictionaryControl("imported", 1));
-                    controlDao.insert(new DictionaryControl("version", currentVersion));
-                    controlDao.insert(new DictionaryControl("date", currentDate));
-                } else {
-                    System.out.println("Using database as is...");
-                }
+            if (bookmarks != null) {
+                db.dictionaryBookmarkDao().insertMany(bookmarks);
             }
 
             aParams[0].m_dictionaryDatabase.postValue(db);
 
-            System.out.println("Database check ended...");
+            if (BuildConfig.DEBUG_MESSAGE) {
+                Log.d("MIGRATE_DB", "Database check ended");
+            }
 
             return null;
         }
@@ -131,6 +236,19 @@ public class DictionaryApplication extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
+
+        if (BuildConfig.DEBUG) {
+            StrictMode.setThreadPolicy(new StrictMode.ThreadPolicy.Builder()
+                    .detectAll()
+                    .penaltyLog()
+                    .build());
+            StrictMode.setVmPolicy(new StrictMode.VmPolicy.Builder()
+                    .detectAll()
+                    .penaltyLog()
+                    .penaltyDeath()
+                    .build());
+        }
+
 
         m_dictionaryDatabase = new MutableLiveData<DictionaryDatabase>();
 

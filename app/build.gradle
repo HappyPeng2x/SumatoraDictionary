@@ -18,8 +18,10 @@ android {
         applicationId "org.happypeng.sumatora.android.sumatoradictionary"
         minSdkVersion 14
         targetSdkVersion 28
-        versionCode 6
-        versionName "0.3.1alpha1"
+        versionCode 7
+        versionName "0.3.1alpha2"
+
+        buildConfigField("boolean", "DEBUG_MESSAGE", "true");
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         testInstrumentationRunnerArguments disableAnalytics: 'true'

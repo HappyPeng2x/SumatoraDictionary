@@ -49,8 +49,6 @@ public class Dictionary extends AppCompatActivity {
     private DictionaryBookmarkFragment m_dictionaryBookmarkFragment;
     private DictionarySearchFragment m_dictionarySearchFragment;
 
-    private final boolean DEVELOPER_MODE = false;
-
     private static final int DELAY_MILLIS = 250;
 
     private void startActivityWithDelay(@NonNull final Class activity) {
@@ -72,18 +70,6 @@ public class Dictionary extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        if (DEVELOPER_MODE) {
-            StrictMode.setThreadPolicy(new StrictMode.ThreadPolicy.Builder()
-                    .detectAll()
-                    .penaltyLog()
-                    .build());
-            StrictMode.setVmPolicy(new StrictMode.VmPolicy.Builder()
-                    .detectAll()
-                    .penaltyLog()
-                    .penaltyDeath()
-                    .build());
-        }
-
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.activity_dictionary);
