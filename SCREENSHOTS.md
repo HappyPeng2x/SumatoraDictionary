@@ -20,6 +20,3 @@
 
 ![](/screenshots/Screenshot_1551520652.png)
 
-## About box
-
-![](/screenshots/Screenshot_1546160777.png)
