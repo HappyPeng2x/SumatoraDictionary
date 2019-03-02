@@ -18,7 +18,7 @@
 
 ## Bookmarks import
 
-#[](/screenshots/Screenshot_1551520652.png)
+![](/screenshots/Screenshot_1551520652.png)
 
 ## About box
 
