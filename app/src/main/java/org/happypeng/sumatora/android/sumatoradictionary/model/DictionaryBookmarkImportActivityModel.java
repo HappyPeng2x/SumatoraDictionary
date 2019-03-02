@@ -19,9 +19,10 @@ package org.happypeng.sumatora.android.sumatoradictionary.model;
 import android.app.Application;
 import android.net.Uri;
 import android.os.AsyncTask;
-import android.renderscript.ScriptGroup;
 
+import org.happypeng.sumatora.android.sumatoradictionary.DictionaryApplication;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmarkImport;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
 import org.happypeng.sumatora.android.sumatoradictionary.xml.DictionaryBookmarkXML;
 
@@ -29,39 +30,91 @@ import java.io.InputStream;
 import java.util.LinkedList;
 import java.util.List;
 
+import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MediatorLiveData;
 import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.Observer;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 
-public class DictionaryBookmarkImportActivityModel extends DictionaryViewModel {
+public class DictionaryBookmarkImportActivityModel extends AndroidViewModel {
+    private DictionaryApplication mApp;
+
     private LiveData<List<DictionarySearchElement>> m_bookmarkElements;
-    private MutableLiveData<Integer> m_errorLive;
+    private MutableLiveData<Integer> mError;
+
+    private MediatorLiveData<List<DictionarySearchElement>> mBookmarkElements;
+    private LiveData<List<DictionarySearchElement>> mBookmarkElementsLive;
+    private MutableLiveData<String> mLang;
+
+    public MutableLiveData<String> getLang() { return mLang; }
+    public LiveData<List<DictionarySearchElement>> getBookmarks() { return mBookmarkElements; }
 
     public DictionaryBookmarkImportActivityModel(Application aApp) {
         super(aApp);
 
-        m_errorLive = new MutableLiveData<>();
+        mApp = (DictionaryApplication) aApp;
+
+        mError = new MutableLiveData<>();
+        mLang = new MutableLiveData<>();
+
+        mLang.setValue("eng");
+
+        mBookmarkElements = new MediatorLiveData<>();
+
+        mBookmarkElements.addSource(mApp.getDictionaryDatabase(),
+                new Observer<DictionaryDatabase>() {
+                    @Override
+                    public void onChanged(DictionaryDatabase dictionaryDatabase) {
+                        if (dictionaryDatabase != null && mLang.getValue() != null) {
+                            mBookmarkElementsLive = dictionaryDatabase.dictionaryBookmarkImportDao().getAllDetailsLive(mLang.getValue());
+
+                            mBookmarkElements.addSource(mBookmarkElementsLive,
+                                    new Observer<List<DictionarySearchElement>>() {
+                                        @Override
+                                        public void onChanged(List<DictionarySearchElement> dictionarySearchElements) {
+                                            mBookmarkElements.setValue(dictionarySearchElements);
+                                        }
+                                    });
+                        } else {
+                            if (mBookmarkElementsLive != null) {
+                                mBookmarkElements.removeSource(mBookmarkElementsLive);
+                                mBookmarkElementsLive = null;
+                            }
+                        }
+                    }
+                });
+
+        mBookmarkElements.addSource(mLang,
+                new Observer<String>() {
+                    @Override
+                    public void onChanged(String s) {
+                        if (mBookmarkElementsLive != null) {
+                            mBookmarkElements.removeSource(mBookmarkElementsLive);
+                            mBookmarkElementsLive = null;
+                        }
+
+                        if (mApp.getDictionaryDatabase().getValue() != null) {
+                            mBookmarkElementsLive = mApp.getDictionaryDatabase().getValue().dictionaryBookmarkImportDao().getAllDetailsLive(mLang.getValue());
+
+                            mBookmarkElements.addSource(mBookmarkElementsLive,
+                                    new Observer<List<DictionarySearchElement>>() {
+                                        @Override
+                                        public void onChanged(List<DictionarySearchElement> dictionarySearchElements) {
+                                            mBookmarkElements.setValue(dictionarySearchElements);
+                                        }
+                                    });
+                        }
+                    }
+                });
     }
 
-    public LiveData<Integer> getErrorLive() {
-        return m_errorLive;
-    }
-
-    public LiveData<List<DictionarySearchElement>> getBookmarkElements()
-    {
-        return m_bookmarkElements;
-    }
-
-    // Please note that this can be called before the rest of the constructor after super()
-    @Override
-    protected void connectDatabase() {
-        super.connectDatabase();
-
-        m_bookmarkElements = m_db.dictionaryBookmarkImportDao().getAllDetailsLive("eng");
+    public LiveData<Integer> getError() {
+        return mError;
     }
 
     public void commitBookmarks() {
-        if (m_db == null) {
+        if (mApp.getDictionaryDatabase().getValue() == null) {
             System.err.println("Trying to commit bookmarks without DB");
 
             return;
@@ -71,16 +124,18 @@ public class DictionaryBookmarkImportActivityModel extends DictionaryViewModel {
             @Override
             protected Void doInBackground(Void... voids) {
                 try {
-                    m_db.beginTransaction();
+                    final DictionaryDatabase db = mApp.getDictionaryDatabase().getValue();
 
-                    SupportSQLiteDatabase sqldb = m_db.getOpenHelper().getWritableDatabase();
+                    db.beginTransaction();
+
+                    SupportSQLiteDatabase sqldb = db.getOpenHelper().getWritableDatabase();
 
                     sqldb.execSQL("INSERT OR IGNORE INTO DictionaryBookmark SELECT * FROM DictionaryBookmarkImport");
 
-                    m_db.setTransactionSuccessful();
-                    m_db.endTransaction();
+                    db.setTransactionSuccessful();
+                    db.endTransaction();
 
-                    m_db.dictionaryBookmarkImportDao().deleteAll();
+                    db.dictionaryBookmarkImportDao().deleteAll();
                 } catch(Exception e) {
                     System.err.println(e.toString());
                 }
@@ -91,7 +146,9 @@ public class DictionaryBookmarkImportActivityModel extends DictionaryViewModel {
     }
 
     public void deleteAll() {
-        if (m_db == null) {
+        if (mApp.getDictionaryDatabase().getValue() == null) {
+            System.err.println("Trying to commit bookmarks without DB");
+
             return;
         }
 
@@ -99,7 +156,7 @@ public class DictionaryBookmarkImportActivityModel extends DictionaryViewModel {
 
             @Override
             protected Void doInBackground(Void... voids) {
-                m_db.dictionaryBookmarkImportDao().deleteAll();
+                mApp.getDictionaryDatabase().getValue().dictionaryBookmarkImportDao().deleteAll();
 
                 return null;
             }
@@ -107,8 +164,8 @@ public class DictionaryBookmarkImportActivityModel extends DictionaryViewModel {
     }
 
     public void importBookmarks(final Uri aUri) {
-        if (m_db == null) {
-            System.err.println("Trying to import bookmarks without DB");
+        if (mApp.getDictionaryDatabase().getValue() == null) {
+            System.err.println("Trying to commit bookmarks without DB");
 
             return;
         }
@@ -117,14 +174,18 @@ public class DictionaryBookmarkImportActivityModel extends DictionaryViewModel {
             @Override
             protected Void doInBackground(Void... voids) {
                 try {
-                    m_db.dictionaryBookmarkImportDao().deleteAll();
+                    final DictionaryDatabase db = mApp.getDictionaryDatabase().getValue();
+
+                    db.dictionaryBookmarkImportDao().deleteAll();
 
                     InputStream is = getApplication().getContentResolver().openInputStream(aUri);
                     List<Long> seqs = DictionaryBookmarkXML.readXML(is);
+                    is.close();
+
                     List<DictionaryBookmarkImport> dbiList = new LinkedList<DictionaryBookmarkImport>();
 
                     if (seqs == null) {
-                        m_errorLive.postValue(1);
+                        mError.postValue(1);
 
                         return null;
                     }
@@ -133,9 +194,9 @@ public class DictionaryBookmarkImportActivityModel extends DictionaryViewModel {
                         dbiList.add(new DictionaryBookmarkImport(seq, 1));
                     }
 
-                    m_db.dictionaryBookmarkImportDao().insertMany(dbiList);
+                    db.dictionaryBookmarkImportDao().insertMany(dbiList);
                 } catch(Exception e) {
-                    m_errorLive.postValue(2);
+                    mError.postValue(2);
 
                     System.err.println(e.toString());
                 }

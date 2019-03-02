@@ -28,13 +28,9 @@ import android.util.Log;
 import com.fstyle.library.helper.AssetSQLiteOpenHelperFactory;
 
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryControl;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryControlDao;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryDatabase;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryTypeConverters;
 
 import java.io.File;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -66,8 +62,16 @@ public class DictionaryApplication extends Application {
         }
 
         private SQLiteDatabase openExistingDatabaseSQL(DictionaryApplication aApp) {
-            return SQLiteDatabase.openDatabase(aApp.getDatabasePath(DATABASE_NAME).getAbsolutePath(),
-                    null, SQLiteDatabase.OPEN_READWRITE);
+            try {
+                return SQLiteDatabase.openDatabase(aApp.getDatabasePath(DATABASE_NAME).getAbsolutePath(),
+                        null, SQLiteDatabase.OPEN_READWRITE);
+            } catch(SQLException e) {
+                if (BuildConfig.DEBUG_MESSAGE) {
+                    Log.d("MIGRATE_DB", "DB corrupted, recreating it");
+                }
+
+                return null;
+            }
         }
 
         private List<DictionaryBookmark> extractBookmarks(SQLiteDatabase aDb, long aVersion) {
@@ -188,8 +192,11 @@ public class DictionaryApplication extends Application {
 
             if (hasExistingDatabase(aParams[0])) {
                 sqlDB = openExistingDatabaseSQL(aParams[0]);
-                version = checkDatabaseVersion(sqlDB);
-                date = checkDatabaseDate(sqlDB);
+
+                if (sqlDB != null) {
+                    version = checkDatabaseVersion(sqlDB);
+                    date = checkDatabaseDate(sqlDB);
+                }
             }
 
             List<DictionaryBookmark> bookmarks = null;

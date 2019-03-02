@@ -59,29 +59,38 @@ import java.util.List;
 public class DictionaryBookmarksImportActivity extends AppCompatActivity {
     private ProgressBar m_progressBar;
     private TextView m_statusText;
-    private RecyclerView m_recyclerView;
     private List<DictionarySearchElement> m_bookmarks;
+
+    private boolean m_ready;
 
     private void setInPreparation()
     {
-        m_statusText.setVisibility(View.VISIBLE);
-        m_progressBar.setVisibility(View.VISIBLE);
+        if (m_ready) {
+            m_statusText.setVisibility(View.VISIBLE);
+            m_progressBar.setVisibility(View.VISIBLE);
 
-        m_progressBar.setIndeterminate(true);
-        m_progressBar.animate();
+            m_progressBar.setIndeterminate(true);
+            m_progressBar.animate();
 
-        m_statusText.setText("Loading database...");
+            m_statusText.setText("Loading database...");
+
+            m_ready = false;
+        }
     }
 
     private void setReady()
     {
-        m_progressBar.setIndeterminate(false);
-        m_progressBar.setMax(0);
+        if (!m_ready) {
+            m_progressBar.setIndeterminate(false);
+            m_progressBar.setMax(0);
 
-        m_statusText.setText("");
+            m_statusText.setText("");
 
-        m_statusText.setVisibility(View.GONE);
-        m_progressBar.setVisibility(View.GONE);
+            m_statusText.setVisibility(View.GONE);
+            m_progressBar.setVisibility(View.GONE);
+
+            m_ready = true;
+        }
     }
 
     @Override
@@ -98,7 +107,7 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
         m_statusText = (TextView) findViewById(R.id.dictionary_bookmarks_import_statustext);
 
         // set up recycler view
-        m_recyclerView = (RecyclerView) findViewById(R.id.dictionary_bookmarks_import_recyclerview);
+        RecyclerView m_recyclerView = (RecyclerView) findViewById(R.id.dictionary_bookmarks_import_recyclerview);
 
         LinearLayoutManager layoutManager = new LinearLayoutManager(this);
         layoutManager.setOrientation(RecyclerView.VERTICAL);
@@ -109,7 +118,7 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
 
         listAdapter.submitList(null);
 
-        viewModel.getBookmarkElements().observe(this,
+        viewModel.getBookmarks().observe(this,
                 new Observer<List<DictionarySearchElement>>()
                 {
                     @Override
@@ -121,6 +130,8 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
                 });
 
         m_recyclerView.setAdapter(listAdapter);
+
+        m_ready = true;
 
         setInPreparation();
 
@@ -155,7 +166,7 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
             }
         });
 
-        viewModel.getErrorLive().observe(this, new Observer<Integer>() {
+        viewModel.getError().observe(this, new Observer<Integer>() {
             @Override
             public void onChanged(Integer integer) {
                 AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(DictionaryBookmarksImportActivity.this);

@@ -34,12 +34,14 @@
             android:id="@+id/dictionary_bookmarks_import_progressbar"
             style="@style/Base.Widget.AppCompat.ProgressBar.Horizontal"
             android:layout_width="match_parent"
+            android:indeterminate="true"
             android:layout_height="wrap_content" />
 
         <TextView
             android:id="@+id/dictionary_bookmarks_import_statustext"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:text="Loading database..."
             android:ems="10" />
     </LinearLayout>
 </LinearLayout>

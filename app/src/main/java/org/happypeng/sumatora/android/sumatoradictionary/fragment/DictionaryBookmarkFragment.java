@@ -63,7 +63,7 @@ import java.util.List;
 public class DictionaryBookmarkFragment extends Fragment {
     private static final String AUTHORITY = "org.happypeng.sumatora.android.sumatoradictionary.fileprovider";
 
-    private RecyclerView m_recyclerView;
+    private boolean m_ready;
 
     private ProgressBar m_progressBar;
     private TextView m_statusText;
@@ -78,24 +78,32 @@ public class DictionaryBookmarkFragment extends Fragment {
 
     private void setInPreparation()
     {
-        m_statusText.setVisibility(View.VISIBLE);
-        m_progressBar.setVisibility(View.VISIBLE);
+        if (m_ready) {
+            m_statusText.setVisibility(View.VISIBLE);
+            m_progressBar.setVisibility(View.VISIBLE);
 
-        m_progressBar.setIndeterminate(true);
-        m_progressBar.animate();
+            m_progressBar.setIndeterminate(true);
+            m_progressBar.animate();
 
-        m_statusText.setText("Loading database...");
+            m_statusText.setText("Loading database...");
+
+            m_ready = false;
+        }
     }
 
     private void setReady()
     {
-        m_progressBar.setIndeterminate(false);
-        m_progressBar.setMax(0);
+        if (!m_ready) {
+            m_progressBar.setIndeterminate(false);
+            m_progressBar.setMax(0);
 
-        m_statusText.setText("");
+            m_statusText.setText("");
 
-        m_statusText.setVisibility(View.GONE);
-        m_progressBar.setVisibility(View.GONE);
+            m_statusText.setVisibility(View.GONE);
+            m_progressBar.setVisibility(View.GONE);
+
+            m_ready = true;
+        }
     }
 
     @Override
@@ -116,7 +124,11 @@ public class DictionaryBookmarkFragment extends Fragment {
         m_progressBar = (ProgressBar) view.findViewById(R.id.dictionary_bookmark_fragment_progressbar);
         m_statusText = (TextView) view.findViewById(R.id.dictionary_bookmark_fragment_statustext);
 
-        m_recyclerView = (RecyclerView) view.findViewById(R.id.dictionary_bookmark_fragment_recyclerview);
+        m_ready = true;
+
+        setInPreparation();
+
+        RecyclerView m_recyclerView = (RecyclerView) view.findViewById(R.id.dictionary_bookmark_fragment_recyclerview);
 
         LinearLayoutManager layoutManager = new LinearLayoutManager(getContext());
         layoutManager.setOrientation(RecyclerView.VERTICAL);
@@ -126,11 +138,17 @@ public class DictionaryBookmarkFragment extends Fragment {
 
         final DictionaryListAdapter listAdapter = new DictionaryListAdapter();
 
-        viewModel.getBookmarkElements().observe(this,
+        viewModel.getBookmarks().observe(this,
                 new Observer<List<DictionarySearchElement>>()
                 {
                     @Override
                     public void onChanged(List<DictionarySearchElement> dictionarySearchElements) {
+                        if (dictionarySearchElements != null) {
+                            setReady();
+                        } else {
+                            setInPreparation();
+                        }
+
                         listAdapter.submitList(dictionarySearchElements);
 
                         m_bookmarks = dictionarySearchElements;

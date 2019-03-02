@@ -19,38 +19,93 @@ package org.happypeng.sumatora.android.sumatoradictionary.model;
 import android.app.Application;
 import android.os.AsyncTask;
 
+import org.happypeng.sumatora.android.sumatoradictionary.DictionaryApplication;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
 
 import java.util.List;
 
+import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MediatorLiveData;
+import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.Observer;
 
-public class DictionaryBookmarkFragmentModel extends DictionaryViewModel {
-    private LiveData<List<DictionarySearchElement>> m_bookmarkElements;
+public class DictionaryBookmarkFragmentModel extends AndroidViewModel {
+    private DictionaryApplication mApp;
+
+    private MediatorLiveData<List<DictionarySearchElement>> mBookmarkElements;
+    private LiveData<List<DictionarySearchElement>> mBookmarkElementsLive;
+    private MutableLiveData<String> mLang;
+
+    public MutableLiveData<String> getLang() { return mLang; }
+    public LiveData<List<DictionarySearchElement>> getBookmarks() { return mBookmarkElements; }
 
     public DictionaryBookmarkFragmentModel(Application aApp) {
         super(aApp);
+
+        mApp = (DictionaryApplication) aApp;
+
+        mLang = new MutableLiveData<>();
+
+        mLang.setValue("eng");
+
+        mBookmarkElements = new MediatorLiveData<>();
+
+        mBookmarkElements.addSource(mApp.getDictionaryDatabase(),
+                new Observer<DictionaryDatabase>() {
+                    @Override
+                    public void onChanged(DictionaryDatabase dictionaryDatabase) {
+                        if (dictionaryDatabase != null && mLang.getValue() != null) {
+                            mBookmarkElementsLive = dictionaryDatabase.dictionaryBookmarkDao().getAllDetailsLive(mLang.getValue());
+
+                            mBookmarkElements.addSource(mBookmarkElementsLive,
+                                    new Observer<List<DictionarySearchElement>>() {
+                                        @Override
+                                        public void onChanged(List<DictionarySearchElement> dictionarySearchElements) {
+                                            mBookmarkElements.setValue(dictionarySearchElements);
+                                        }
+                                    });
+                        } else {
+                            if (mBookmarkElementsLive != null) {
+                                mBookmarkElements.removeSource(mBookmarkElementsLive);
+                                mBookmarkElementsLive = null;
+                            }
+                        }
+                    }
+                });
+
+        mBookmarkElements.addSource(mLang,
+                new Observer<String>() {
+                    @Override
+                    public void onChanged(String s) {
+                        if (mBookmarkElementsLive != null) {
+                            mBookmarkElements.removeSource(mBookmarkElementsLive);
+                            mBookmarkElementsLive = null;
+                        }
+
+                        if (mApp.getDictionaryDatabase().getValue() != null) {
+                            mBookmarkElementsLive = mApp.getDictionaryDatabase().getValue().dictionaryBookmarkDao().getAllDetailsLive(mLang.getValue());
+
+                            mBookmarkElements.addSource(mBookmarkElementsLive,
+                                    new Observer<List<DictionarySearchElement>>() {
+                                        @Override
+                                        public void onChanged(List<DictionarySearchElement> dictionarySearchElements) {
+                                            mBookmarkElements.setValue(dictionarySearchElements);
+                                        }
+                                    });
+                        }
+                    }
+                });
     }
-
-    public LiveData<List<DictionarySearchElement>> getBookmarkElements()
-    {
-        return m_bookmarkElements;
-    }
-
-    // Please note that this can be called before the rest of the constructor after super()
-    @Override
-    protected void connectDatabase() {
-        super.connectDatabase();
-
-        m_bookmarkElements = m_db.dictionaryBookmarkDao().getAllDetailsLive("eng");
-    }
-
 
     public void deleteBookmark(final long aSeq) {
         new AsyncTask<Void, Void, Void>() {
             @Override
             protected Void doInBackground(Void... voids) {
-                m_db.dictionaryBookmarkDao().delete(aSeq);
+                if (mApp.getDictionaryDatabase().getValue() != null) {
+                    mApp.getDictionaryDatabase().getValue().dictionaryBookmarkDao().delete(aSeq);
+                }
 
                 return null;
             }

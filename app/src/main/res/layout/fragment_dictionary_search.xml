@@ -86,7 +86,8 @@
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/recyclerView"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:layout_height="0dp"
                 android:scrollbars="vertical" />
 
             <ProgressBar
@@ -94,13 +95,13 @@
                 style="@style/Base.Widget.AppCompat.ProgressBar.Horizontal"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:visibility="gone" />
+                android:indeterminate="true" />
 
             <TextView
                 android:id="@+id/statusText"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:visibility="gone"
+                android:text="Loading database..."
                 android:ems="10" />
         </LinearLayout>
     </RelativeLayout>
