@@ -2,12 +2,21 @@
 
 ## Search screen
 
-![](/screenshots/Screenshot_1546160764.png)
+![](/screenshots/Screenshot_1551520549.png)
 
 ## Navigation drawer
 
-![](/screenshots/Screenshot_1546160772.png)
+![](/screenshots/Screenshot_1551520634.png)
 
-## About box
+## Bookmarks
 
-![](/screenshots/Screenshot_1546160777.png)
+![](/screenshots/Screenshot_1551520596.png)
+
+## Bookmarks export
+
+![](/screenshots/Screenshot_1551520604.png)
+
+## Bookmarks import
+
+![](/screenshots/Screenshot_1551520652.png)
+

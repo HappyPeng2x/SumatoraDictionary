@@ -18,11 +18,18 @@ package org.happypeng.sumatora.android.sumatoradictionary.db;
 
 import androidx.room.Database;
 import androidx.room.RoomDatabase;
+import androidx.room.TypeConverters;
 
-@Database(entities = {DictionaryEntry.class, DictionaryControl.class}, version = 1, exportSchema = false)
+@Database(entities = {DictionaryEntry.class, DictionaryControl.class, DictionaryTranslation.class,
+        DictionaryBookmark.class, DictionaryBookmarkImport.class, DictionaryIndex.class, DictionarySearchResult.class}, version = 3,
+        exportSchema = false)
+// @TypeConverters({DictionaryTypeConverters.class})
 abstract public class DictionaryDatabase extends RoomDatabase {
     public static final String DATABASE_NAME = "DictionaryDatabase";
 
     public abstract DictionaryEntryDao dictionaryEntryDao();
     public abstract DictionaryControlDao dictionaryControlDao();
+    public abstract DictionaryBookmarkDao dictionaryBookmarkDao();
+    public abstract DictionarySearchResultDao dictionarySearchResultDao();
+    public abstract DictionaryBookmarkImportDao dictionaryBookmarkImportDao();
 }

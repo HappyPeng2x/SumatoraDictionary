@@ -16,113 +16,73 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary;
 
+import androidx.annotation.NonNull;
 import androidx.paging.PagedListAdapter;
-import androidx.recyclerview.widget.RecyclerView;
 
-import android.graphics.Color;
-import android.text.SpannableStringBuilder;
-import android.text.Spanned;
-import android.text.style.BackgroundColorSpan;
-import android.text.style.ForegroundColorSpan;
-import android.text.style.RelativeSizeSpan;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.TextView;
 
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryEntry;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElementDiffUtil;
 
+import java.util.HashMap;
 
-public class DictionaryPagedListAdapter extends PagedListAdapter<DictionaryEntry, DictionaryPagedListAdapter.DictionaryEntryItemViewHolder> {
-    protected DictionaryPagedListAdapter() {
-        super(DictionaryEntry.DIFF_CALLBACK);
+public class DictionaryPagedListAdapter extends PagedListAdapter<DictionarySearchElement, DictionarySearchElementViewHolder> {
+    private HashMap<Long, Long> m_bookmarks;
+
+    private DictionarySearchElementViewHolder.ClickListener m_bookmarkClickListener;
+
+    public DictionaryPagedListAdapter() {
+        super(DictionarySearchElementDiffUtil.getDiffUtil());
+
+        setHasStableIds(true);
     }
 
+    // No placeholders = no null values
     @Override
-    public DictionaryEntryItemViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+    public long getItemId(int position) {
+        return getItem(position).getSeq();
+    }
+
+    public void setBookmarkClickListener(DictionarySearchElementViewHolder.ClickListener aListener) {
+        m_bookmarkClickListener = aListener;
+    }
+
+    public void setBookmarks(HashMap<Long, Long> aBookmarks) {
+        m_bookmarks = aBookmarks;
+
+        notifyDataSetChanged();
+    }
+
+    @NonNull
+    @Override
+    public DictionarySearchElementViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         LayoutInflater layoutInflater = LayoutInflater.from(parent.getContext());
         View view = layoutInflater.inflate(R.layout.cell_cards, parent, false);
-        return new DictionaryEntryItemViewHolder(view);
+        DictionarySearchElementViewHolder holder = new DictionarySearchElementViewHolder(view);
+        holder.setBookmarkClickListener(m_bookmarkClickListener);
+        return holder;
     }
 
     @Override
-    public void onBindViewHolder(DictionaryEntryItemViewHolder holder, int position) {
-        DictionaryEntry entry = getItem(position);
+    public void onBindViewHolder(DictionarySearchElementViewHolder holder, int position) {
+        DictionarySearchElement entry = getItem(position);
 
         if (entry != null) {
+            Long bookmark = null;
+
+            if (m_bookmarks != null) {
+                bookmark = m_bookmarks.get(entry.getSeq());
+
+                if (bookmark != null) {
+                    entry.bookmark = bookmark;
+                } else {
+                    entry.bookmark = 0;
+                }
+            }
+
             holder.bindTo(entry);
-        }
-    }
-
-    static class DictionaryEntryItemViewHolder extends RecyclerView.ViewHolder {
-        private TextView m_textViewView;
-
-        public DictionaryEntryItemViewHolder(View itemView) {
-            super(itemView);
-
-            m_textViewView = (TextView) itemView.findViewById(R.id.text);
-        }
-
-        public void bindTo(DictionaryEntry entry) {
-            SpannableStringBuilder sb = new SpannableStringBuilder();
-            int writingsLength = 0;
-            int readingsLength = 0;
-
-            for (String w : entry.writings.split(" ")) {
-                if (w.contains("/")) {
-                    String nw = w.replace("/", "");
-
-                    sb.append(nw,
-                            new BackgroundColorSpan(Color.parseColor("#ccffcc")), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-
-                    writingsLength = writingsLength + nw.length();
-                } else {
-                    String nw = w.replace("-", "");
-
-                    sb.append(nw);
-
-                    writingsLength = writingsLength + nw.length();
-                }
-
-                if (!w.isEmpty()) {
-                    sb.append(" ");
-
-                    writingsLength = writingsLength + 1;
-                }
-            }
-
-            for (String r : entry.readings.split(" ")) {
-                if (r.contains("/")) {
-                    String nr = r.replace("/", "");
-
-                    sb.append(nr,
-                            new BackgroundColorSpan(Color.parseColor("#ccffcc")), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-
-                    readingsLength = readingsLength + nr.length();
-                } else {
-                    String nr = r.replace("-", "");
-
-                    sb.append(nr);
-
-                    readingsLength = readingsLength + nr.length();
-                }
-
-                if (!r.isEmpty()) {
-                    sb.append(" ");
-
-                    readingsLength = readingsLength + 1;
-                }
-            }
-
-            sb.append("\n");
-            readingsLength = readingsLength + 1;
-
-            sb.append(entry.gloss);
-
-            sb.setSpan(new ForegroundColorSpan(Color.GRAY), writingsLength, writingsLength + readingsLength, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-            sb.setSpan(new RelativeSizeSpan(1.5f), 0, writingsLength + readingsLength, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-
-            m_textViewView.setText(sb);
         }
     }
 }

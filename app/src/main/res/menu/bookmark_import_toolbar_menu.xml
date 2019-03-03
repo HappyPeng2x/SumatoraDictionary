@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/import_bookmarks"
+        android:orderInCategory="100"
+        android:title="Import"
+        android:icon="@drawable/ic_outline_check_24px"
+        app:showAsAction="always" />
+    <item
+        android:id="@+id/cancel_import"
+        android:orderInCategory="100"
+        android:title="Cancel"
+        android:icon="@drawable/ic_outline_close_24px"
+        app:showAsAction="always" />
+</menu>

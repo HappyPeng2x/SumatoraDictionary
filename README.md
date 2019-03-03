@@ -4,6 +4,12 @@ An offline Japanese dictionary for Android.
 
 Please see the [screenshots](/SCREENSHOTS.md).
 
+## Features
+
+Sumatora has the following distinctive features:
+- very fast search and display of exact term/term at the beginning/term included 
+- bookmarks and bookmark export/import.
+
 ## License
 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.

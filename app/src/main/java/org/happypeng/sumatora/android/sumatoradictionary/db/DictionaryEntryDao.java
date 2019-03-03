@@ -18,14 +18,44 @@ package org.happypeng.sumatora.android.sumatoradictionary.db;
 
 import androidx.paging.DataSource;
 import androidx.room.Dao;
+import androidx.room.Insert;
+import androidx.room.OnConflictStrategy;
 import androidx.room.Query;
+import androidx.room.Update;
 
 @Dao
 public interface DictionaryEntryDao {
-    @Query("SELECT * FROM DictionaryEntry WHERE (readings LIKE '%' || :expr || '%' OR writings LIKE '%' || :expr || '%') AND lang=:lang " +
-            "ORDER BY writings LIKE '%/' || :expr || '/%' DESC, readings LIKE '%/' || :expr || '/%' DESC, " +
-            "writings LIKE '%-' || :expr || '-%' DESC, readings LIKE '%-' || :expr || '-%' DESC, " +
-            "writings LIKE '%/' || :expr || '%' DESC, readings LIKE '%/' || :expr || '%' DESC, " +
-            "writings LIKE '%-' || :expr || '%' DESC, readings LIKE '%-' || :expr || '%' DESC ")
-    public DataSource.Factory<Integer, DictionaryEntry> search(String expr, String lang);
+    @Query("SELECT Min(SortOrder) AS entryOrder, DictionaryEntry.seq, DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
+            + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, DictionaryTranslation.lang, "
+            + "DictionaryTranslation.gloss "
+            + "FROM DictionaryEntry, DictionaryTranslation, "
+            + "("
+            + "SELECT 1 AS SortOrder, DictionaryIndex.`rowid` AS seq FROM DictionaryIndex "
+            + "WHERE DictionaryIndex.writingsPrio MATCH :term UNION ALL "
+            + "SELECT 2 AS SortOrder, DictionaryIndex.`rowid` AS seq FROM DictionaryIndex "
+            + "WHERE DictionaryIndex.readingsPrio MATCH :term UNION ALL "
+            + "SELECT 3 AS SortOrder, DictionaryIndex.`rowid` AS seq FROM DictionaryIndex "
+            + "WHERE DictionaryIndex.writingsPrio MATCH :term || '*' UNION ALL "
+            + "SELECT 4 AS SortOrder, DictionaryIndex.`rowid` AS seq FROM DictionaryIndex "
+            + "WHERE DictionaryIndex.readingsPrio MATCH :term || '*' UNION ALL "
+            + "SELECT 5 AS SortOrder, DictionaryIndex.`rowid` AS seq FROM DictionaryIndex "
+            + "WHERE DictionaryIndex.writingsPrioParts MATCH :term || '*' UNION ALL "
+            + "SELECT 6 AS SortOrder, DictionaryIndex.`rowid` AS seq FROM DictionaryIndex "
+            + "WHERE DictionaryIndex.readingsPrioParts MATCH :term || '*' UNION ALL "
+            + "SELECT 7 AS SortOrder, DictionaryIndex.`rowid` AS seq FROM DictionaryIndex "
+            + "WHERE DictionaryIndex.writings MATCH :term UNION ALL "
+            + "SELECT 8 AS SortOrder, DictionaryIndex.`rowid` AS seq FROM DictionaryIndex "
+            + "WHERE DictionaryIndex.readings MATCH :term UNION ALL "
+            + "SELECT 9 AS SortOrder, DictionaryIndex.`rowid` AS seq FROM DictionaryIndex "
+            + "WHERE DictionaryIndex.writings MATCH :term || '*' UNION ALL "
+            + "SELECT 10 AS SortOrder, DictionaryIndex.`rowid` AS seq FROM DictionaryIndex "
+            + "WHERE DictionaryIndex.readings MATCH :term || '*' UNION ALL "
+            + "SELECT 11 AS SortOrder, DictionaryIndex.`rowid` AS seq FROM DictionaryIndex "
+            + "WHERE DictionaryIndex.writingsParts MATCH :term || '*' UNION ALL "
+            + "SELECT 12 AS SortOrder, DictionaryIndex.`rowid` AS seq FROM DictionaryIndex "
+            + "WHERE DictionaryIndex.readingsParts MATCH :term || '*'"
+            + ") AS A "
+            + "WHERE A.seq = DictionaryEntry.seq AND A.seq = DictionaryTranslation.seq AND DictionaryTranslation.lang = :lang "
+            + "GROUP BY A.seq ORDER BY Min(A.SortOrder), A.seq")
+    DataSource.Factory<Integer, DictionarySearchResult> search(String term, String lang);
 }

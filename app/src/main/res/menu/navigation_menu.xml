@@ -11,6 +11,11 @@
             android:checked="true"
             android:icon="@drawable/ic_outline_search_24px"
             android:title="@string/nav_drawer_item_home" />
+        <item
+            android:id="@+id/navigation_view_item_bookmarks"
+            android:checked="true"
+            android:icon="@drawable/ic_outline_bookmarks_24px"
+            android:title="@string/nav_drawer_item_bookmarks" />
     </group>
 
     <group

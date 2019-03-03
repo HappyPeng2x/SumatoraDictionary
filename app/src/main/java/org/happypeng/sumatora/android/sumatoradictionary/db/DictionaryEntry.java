@@ -21,42 +21,19 @@ import androidx.room.Entity;
 import androidx.room.PrimaryKey;
 import androidx.annotation.NonNull;
 
-@Entity(primaryKeys = {"seq", "lang"})
+@Entity(primaryKeys = {"seq"})
 public class DictionaryEntry {
     public long seq;
+    public String readingsPrio;
+    public String readingsPrioParts;
     public String readings;
+    public String readingsParts;
+    public String writingsPrio;
+    public String writingsPrioParts;
     public String writings;
-    @NonNull public String lang;
-    public String gloss;
-    public String bookmark;
+    public String writingsParts;
+    public Integer bookmarkFolder;
 
     public DictionaryEntry() {
-    }
-
-    public static DiffUtil.ItemCallback<DictionaryEntry> DIFF_CALLBACK = new  DiffUtil.ItemCallback<DictionaryEntry>() {
-        @Override
-        public boolean areItemsTheSame(@NonNull DictionaryEntry oldItem, @NonNull DictionaryEntry newItem) {
-            return oldItem.seq == newItem.seq && oldItem.lang == newItem.lang;
-        }
-
-        @Override
-        public boolean areContentsTheSame(@NonNull DictionaryEntry oldItem, @NonNull DictionaryEntry newItem) {
-            return oldItem.equals(newItem);
-        }
-    };
-
-    @Override
-    public boolean equals(Object obj) {
-        if (obj == this) {
-            return true;
-        }
-
-        DictionaryEntry dictionaryEntry = (DictionaryEntry) obj;
-
-        return readings.equals(dictionaryEntry.readings) &&
-                writings.equals(dictionaryEntry.writings) &&
-                lang.equals(dictionaryEntry.lang) &&
-                gloss.equals(dictionaryEntry.gloss) &&
-                bookmark.equals(dictionaryEntry.bookmark);
     }
 }
