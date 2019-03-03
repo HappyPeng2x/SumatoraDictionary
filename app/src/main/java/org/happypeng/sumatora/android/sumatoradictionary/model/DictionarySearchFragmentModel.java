@@ -134,6 +134,12 @@ public class DictionarySearchFragmentModel extends AndroidViewModel {
             @Override
             public void onChanged(QueryTool.QueriesList queryStatements) {
                 resetIterator();
+
+                if (mApp.getDictionaryDatabase().getValue() != null && mQueryTerm.getValue() != null && mQueryLang.getValue() != null
+                        && mQueryIterator.getValue() != null) {
+                    QueryTool.executeNextStatement(mApp.getDictionaryDatabase().getValue(), mQueryTerm.getValue(),
+                            mQueryLang.getValue(), mQueryIterator.getValue());
+                }
             }
         });
 

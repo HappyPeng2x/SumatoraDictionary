@@ -59,6 +59,8 @@ public class DictionarySearchFragment extends Fragment {
 
     private boolean m_ready;
 
+    private String m_intentSearchTerm;
+
     public DictionarySearchFragment() {
         // Required empty public constructor
     }
@@ -153,9 +155,9 @@ public class DictionarySearchFragment extends Fragment {
             @Override
             public void afterTextChanged(Editable s) {
                 if (s.length() > 0) {
-                    m_magic_cross.setVisibility(android.view.View.VISIBLE);
+                    m_magic_cross.setVisibility(View.VISIBLE);
                 } else {
-                    m_magic_cross.setVisibility(android.view.View.GONE);
+                    m_magic_cross.setVisibility(View.GONE);
                 }
             }
         });
@@ -219,6 +221,15 @@ public class DictionarySearchFragment extends Fragment {
             }
         });
 
+        if (m_intentSearchTerm != null) {
+            m_edit_text.setText(m_intentSearchTerm);
+            viewModel.getQueryTerm().setValue(m_intentSearchTerm);
+        }
+
         return view;
+    }
+
+    public void setIntentSearchTerm(String aTerm) {
+        m_intentSearchTerm = aTerm;
     }
 }

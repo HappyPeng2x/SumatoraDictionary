@@ -28,6 +28,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.drawerlayout.widget.DrawerLayout;
 
 import android.net.Uri;
+import android.os.Build;
 import android.os.ParcelFileDescriptor;
 import android.view.MenuItem;
 
@@ -108,36 +109,23 @@ public class Dictionary extends AppCompatActivity {
 
         m_drawer_layout = (DrawerLayout) findViewById(R.id.nav_drawer);
 
-        Intent receivedIntent = getIntent();
-        String receivedAction = getIntent().getAction();
-        String receivedType = receivedIntent.getType();
+        if (m_dictionarySearchFragment == null) {
+            m_dictionarySearchFragment = new DictionarySearchFragment();
+        }
 
-        if (receivedAction != null && receivedAction.equals(Intent.ACTION_SEND)) {
-            Uri receivedUri = (Uri) receivedIntent.getParcelableExtra(Intent.EXTRA_STREAM);
+        switchToFragment(m_dictionarySearchFragment, "SEARCH_FRAGMENT");
 
-            try {
-                ParcelFileDescriptor pfd = getContentResolver().openFileDescriptor(receivedUri, "r");
-                FileDescriptor fd = pfd.getFileDescriptor();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            Intent receivedIntent = getIntent();
+            String receivedAction = getIntent().getAction();
 
-                // treat
+            if (receivedAction != null && receivedAction.equals(Intent.ACTION_PROCESS_TEXT)) {
+                CharSequence processText = receivedIntent.getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT);
 
-                pfd.close();
-            } catch (Exception e) {
-                e.printStackTrace();
-                System.err.println(e.toString());
+                if (processText != null) {
+                    m_dictionarySearchFragment.setIntentSearchTerm(processText.toString());
+                }
             }
-
-            if (m_dictionaryBookmarkFragment == null) {
-                m_dictionaryBookmarkFragment = new DictionaryBookmarkFragment();
-            }
-
-            switchToFragment(m_dictionaryBookmarkFragment, "BOOKMARK_FRAGMENT");
-        } else {
-            if (m_dictionarySearchFragment == null) {
-                m_dictionarySearchFragment = new DictionarySearchFragment();
-            }
-
-            switchToFragment(m_dictionarySearchFragment, "SEARCH_FRAGMENT");
         }
     }
 
