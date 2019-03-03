@@ -83,26 +83,22 @@ public class DictionaryApplication extends Application {
 
             Cursor cur = null;
 
-            if (aVersion == 0) {
+            try {
+                cur = aDb.rawQuery("SELECT * FROM DictionaryBookmark", null);
+            } catch(SQLException e) {
+                if (BuildConfig.DEBUG_MESSAGE) {
+                    Log.d("MIGRATE_DB","No table DictionaryBookmark");
+                }
+            }
+
+            if (cur == null) {
                 try {
                     cur = aDb.rawQuery("SELECT seq FROM DictionaryEntry WHERE lang='eng' AND bookmark != ''", null);
                 } catch(SQLException e) {
                     if (BuildConfig.DEBUG_MESSAGE) {
-                        Log.d("MIGRATE_DB","DB version is 0 but there are no bookmarks in DictionaryEntry, trying DictionaryBookmark");
+                        Log.d("MIGRATE_DB","No table DictionaryEntry");
                     }
                 }
-
-                if (cur == null) {
-                    try {
-                        cur = aDb.rawQuery("SELECT * FROM DictionaryBookmark", null);
-                    } catch (SQLException e) {
-                        if (BuildConfig.DEBUG_MESSAGE) {
-                            Log.d("MIGRATE_DB","No DictionaryBookmark table either, giving up import");
-                        }
-                    }
-                }
-            } else {
-                cur = aDb.rawQuery("SELECT * FROM DictionaryBookmark", null);
             }
 
             if (cur != null) {
