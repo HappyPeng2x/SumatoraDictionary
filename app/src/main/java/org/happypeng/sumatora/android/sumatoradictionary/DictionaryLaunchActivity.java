@@ -38,11 +38,13 @@ public class DictionaryLaunchActivity extends AppCompatActivity {
         Intent inboundIntent = getIntent();
         String receivedAction = inboundIntent.getAction();
 
-        CharSequence searchTerm = null;
+        String searchTerm = null;
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
                 receivedAction != null && receivedAction.equals(Intent.ACTION_PROCESS_TEXT)) {
-                searchTerm = inboundIntent.getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT);
+            searchTerm = inboundIntent.getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT).toString();
+        } else if (receivedAction != null && receivedAction.equals(Intent.ACTION_SEND))  {
+            searchTerm = inboundIntent.getStringExtra(Intent.EXTRA_TEXT);
         }
 
         final Intent notificationIntent = new Intent(this, Dictionary.class);
