@@ -174,8 +174,15 @@ public class DictionarySearchFragmentModel extends AndroidViewModel {
         new AsyncTask<Void, Void, Void>() {
             @Override
             protected Void doInBackground(Void... voids) {
-                if (mQueries.getValue() != null && mQueries.getValue().deleteStatement != null) {
+                if (mApp.getDictionaryDatabase().getValue() != null && mQueries.getValue() != null && mQueries.getValue().deleteStatement != null) {
+                    DictionaryDatabase db = mApp.getDictionaryDatabase().getValue();
+
+                    db.beginTransaction();
+
                     mQueries.getValue().deleteStatement.executeUpdateDelete();
+
+                    db.setTransactionSuccessful();
+                    db.endTransaction();
                 }
 
                 return null;

@@ -23,7 +23,6 @@ import androidx.room.TypeConverters;
 @Database(entities = {DictionaryEntry.class, DictionaryControl.class, DictionaryTranslation.class,
         DictionaryBookmark.class, DictionaryBookmarkImport.class, DictionaryIndex.class, DictionarySearchResult.class}, version = 3,
         exportSchema = false)
-// @TypeConverters({DictionaryTypeConverters.class})
 abstract public class DictionaryDatabase extends RoomDatabase {
     public static final String DATABASE_NAME = "DictionaryDatabase";
 

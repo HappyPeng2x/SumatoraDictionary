@@ -115,17 +115,14 @@ public class Dictionary extends AppCompatActivity {
 
         switchToFragment(m_dictionarySearchFragment, "SEARCH_FRAGMENT");
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            Intent receivedIntent = getIntent();
-            String receivedAction = getIntent().getAction();
+        processIntent(getIntent());
+    }
 
-            if (receivedAction != null && receivedAction.equals(Intent.ACTION_PROCESS_TEXT)) {
-                CharSequence processText = receivedIntent.getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT);
+    private void processIntent(Intent aIntent) {
 
-                if (processText != null) {
-                    m_dictionarySearchFragment.setIntentSearchTerm(processText.toString());
-                }
-            }
+        if (aIntent.hasExtra("SEARCH_TERM") &&
+                m_dictionarySearchFragment != null) {
+            m_dictionarySearchFragment.processIntentTerm(aIntent.getCharSequenceExtra("SEARCH_TERM").toString());
         }
     }
 
@@ -144,5 +141,10 @@ public class Dictionary extends AppCompatActivity {
         }
 
         return true;
+    }
+
+    @Override
+    protected void onNewIntent(Intent aIntent) {
+        processIntent(aIntent);
     }
 }

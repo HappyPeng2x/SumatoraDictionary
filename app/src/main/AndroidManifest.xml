@@ -9,6 +9,16 @@
         android:label="@string/app_name"
         android:supportsRtl="true">
 
+        <activity android:name=".DictionaryLaunchActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.PROCESS_TEXT" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
+
         <activity
             android:name=".DictionaryBookmarksImportActivity"
             android:theme="@style/AppTheme">
@@ -16,7 +26,9 @@
                 <action android:name="android.intent.action.SEND" />
                 <action android:name="android.intent.action.VIEW" />
                 <action android:name="android.intent.action.EDIT" />
+
                 <category android:name="android.intent.category.DEFAULT" />
+
                 <data
                     android:mimeType="text/xml"
                     android:scheme="content" />
@@ -25,21 +37,21 @@
 
         <activity
             android:name=".Dictionary"
-            android:theme="@style/AppTheme"
-            android:label="@string/app_name">
+            android:label="@string/app_name"
+            android:launchMode="singleTask"
+            android:taskAffinity=""
+            android:theme="@style/AppTheme">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.PROCESS_TEXT" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="text/plain" />
-            </intent-filter>
         </activity>
+
         <activity
             android:name=".AboutActivity"
             android:theme="@style/Theme.Mal.Light" />
+
         <activity
             android:name=".LicenseActivity"
             android:label="License"
