@@ -4,6 +4,10 @@
 
 ![](/screenshots/Screenshot_1551520549.png)
 
+## Search from other apps
+
+![](/screenshots/Screenshot_1551599195.png)
+
 ## Navigation drawer
 
 ![](/screenshots/Screenshot_1551520634.png)

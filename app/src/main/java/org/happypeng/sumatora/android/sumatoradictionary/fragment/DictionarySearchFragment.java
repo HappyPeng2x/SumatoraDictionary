@@ -59,6 +59,10 @@ public class DictionarySearchFragment extends Fragment {
 
     private boolean m_ready;
 
+    private String m_intentSearchTerm;
+
+    private DictionarySearchFragmentModel m_viewModel;
+
     public DictionarySearchFragment() {
         // Required empty public constructor
     }
@@ -153,24 +157,25 @@ public class DictionarySearchFragment extends Fragment {
             @Override
             public void afterTextChanged(Editable s) {
                 if (s.length() > 0) {
-                    m_magic_cross.setVisibility(android.view.View.VISIBLE);
+                    m_magic_cross.setVisibility(View.VISIBLE);
                 } else {
-                    m_magic_cross.setVisibility(android.view.View.GONE);
+                    m_magic_cross.setVisibility(View.GONE);
                 }
             }
         });
 
-        final DictionarySearchFragmentModel viewModel = ViewModelProviders.of(getActivity()).get(DictionarySearchFragmentModel.class);
+        m_viewModel = ViewModelProviders.of(getActivity()).get(DictionarySearchFragmentModel.class);
+
         final DictionaryPagedListAdapter pagedListAdapter = new DictionaryPagedListAdapter();
 
-        viewModel.getQueryIterator().observe(this, new Observer<Iterator<QueryTool.QueryStatement>>() {
+        m_viewModel.getQueryIterator().observe(this, new Observer<Iterator<QueryTool.QueryStatement>>() {
             @Override
             public void onChanged(Iterator<QueryTool.QueryStatement> queryStatementIterator) {
                 // nothing to do
             }
         });
 
-        viewModel.getSearchEntries().observe(this,
+        m_viewModel.getSearchEntries().observe(this,
                 new Observer<PagedList<DictionarySearchElement>>() {
                     @Override
                     public void onChanged(PagedList<DictionarySearchElement> dictionarySearchElements) {
@@ -184,7 +189,7 @@ public class DictionarySearchFragment extends Fragment {
                     }
                 });
 
-        viewModel.getBookmarksHash().observe(this,
+        m_viewModel.getBookmarksHash().observe(this,
                 new Observer<HashMap<Long, Long>>() {
                     @Override
                     public void onChanged(HashMap<Long, Long> aBookmarks) {
@@ -196,9 +201,9 @@ public class DictionarySearchFragment extends Fragment {
             @Override
             public void onClick(View aView, DictionarySearchElement aEntry) {
                 if (aEntry.getBookmark() == 0) {
-                    viewModel.updateBookmark(aEntry.getSeq(), 1);
+                    m_viewModel.updateBookmark(aEntry.getSeq(), 1);
                 } else {
-                    viewModel.updateBookmark(aEntry.getSeq(), 0);
+                    m_viewModel.updateBookmark(aEntry.getSeq(), 0);
                 }
             }
         });
@@ -208,7 +213,7 @@ public class DictionarySearchFragment extends Fragment {
         m_search_button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                viewModel.getQueryTerm().setValue(m_edit_text.getText().toString());
+                m_viewModel.getQueryTerm().setValue(m_edit_text.getText().toString());
             }
         });
 
@@ -219,6 +224,21 @@ public class DictionarySearchFragment extends Fragment {
             }
         });
 
+        if (m_intentSearchTerm != null) {
+            processIntentTerm(m_intentSearchTerm);
+        }
+
         return view;
+    }
+
+    public void processIntentTerm(String aTerm)
+    {
+        if (m_viewModel != null) {
+            m_edit_text.setText(aTerm);
+            m_viewModel.getQueryTerm().setValue(aTerm);
+            m_intentSearchTerm = null;
+        } else {
+            m_intentSearchTerm = aTerm;
+        }
     }
 }
