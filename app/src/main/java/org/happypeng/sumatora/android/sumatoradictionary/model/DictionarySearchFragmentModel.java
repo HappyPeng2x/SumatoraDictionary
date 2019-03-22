@@ -23,6 +23,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.DictionaryApplication;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
+import org.happypeng.sumatora.android.sumatoradictionary.db.tools.DictionaryQuery;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.QueryTool;
 
 import java.util.HashMap;
@@ -43,31 +44,17 @@ import androidx.paging.PagedList;
 public class DictionarySearchFragmentModel extends AndroidViewModel {
     private DictionaryApplication mApp;
 
-    private LiveData<PagedList<DictionarySearchElement>> mSearchEntries;
-
-    private LiveData<QueryTool.QueriesList> mQueries;
-    private MediatorLiveData<Iterator<QueryTool.QueryStatement>> mQueryIterator;
-
     private LiveData<HashMap<Long, Long>> mBookmarksHash;
-
-    private MutableLiveData<String> mQueryTerm;
-    private MutableLiveData<String> mQueryLang;
-
-    public MutableLiveData<String> getQueryTerm() { return mQueryTerm; }
-    public MutableLiveData<String> getQueryLang() { return mQueryLang; }
     public LiveData<HashMap<Long, Long>> getBookmarksHash() { return mBookmarksHash; }
-    public LiveData<PagedList<DictionarySearchElement>> getSearchEntries() { return mSearchEntries; }
-    public LiveData<Iterator<QueryTool.QueryStatement>> getQueryIterator() { return mQueryIterator; }
+
+    private final DictionaryQuery mDictionaryQuery;
 
     public DictionarySearchFragmentModel(Application aApp) {
         super(aApp);
 
         mApp = (DictionaryApplication) aApp;
 
-        mQueryTerm = new MutableLiveData<>();
-        mQueryLang = new MutableLiveData<>();
-
-        mQueryLang.setValue("eng");
+        mDictionaryQuery = new DictionaryQuery(mApp);
 
         LiveData<List<DictionaryBookmark>> mBookmarks = Transformations.switchMap(mApp.getDictionaryDatabase(),
                 new Function<DictionaryDatabase, LiveData<List<DictionaryBookmark>>>() {
@@ -89,112 +76,6 @@ public class DictionarySearchFragmentModel extends AndroidViewModel {
                 return result;
             }
         });
-
-        mQueries = Transformations.switchMap(mApp.getDictionaryDatabase(),
-                new Function<DictionaryDatabase, LiveData<QueryTool.QueriesList>>() {
-                    @Override
-                    public LiveData<QueryTool.QueriesList> apply(DictionaryDatabase input) {
-                        return QueryTool.getQueriesList(input);
-                    }
-                });
-
-        mSearchEntries = Transformations.switchMap(mApp.getDictionaryDatabase(),
-                new Function<DictionaryDatabase, LiveData<PagedList<DictionarySearchElement>>>() {
-                    @Override
-                    public LiveData<PagedList<DictionarySearchElement>> apply(final DictionaryDatabase input) {
-                        if (input != null) {
-                            final PagedList.Config pagedListConfig =
-                                    (new PagedList.Config.Builder()).setEnablePlaceholders(false)
-                                            .setPrefetchDistance(30)
-                                            .setPageSize(50).build();
-
-                            return (new LivePagedListBuilder<Integer, DictionarySearchElement>(input.dictionarySearchResultDao().getAllPaged(),
-                                    pagedListConfig))
-                                    .setBoundaryCallback(new PagedList.BoundaryCallback<DictionarySearchElement>() {
-                                        @Override
-                                        public void onItemAtEndLoaded(@NonNull DictionarySearchElement itemAtEnd) {
-                                            super.onItemAtEndLoaded(itemAtEnd);
-
-                                            if (mQueryTerm.getValue() != null && mQueryLang.getValue() != null
-                                                    && mQueryIterator.getValue() != null) {
-                                                QueryTool.executeNextStatement(input, mQueryTerm.getValue(),
-                                                        mQueryLang.getValue(), mQueryIterator.getValue());
-                                            }
-                                        }
-                                    }).build();
-                        } else {
-                            return null;
-                        }
-                    }
-                });
-
-        mQueryIterator = new MediatorLiveData<>();
-
-        mQueryIterator.addSource(mQueries, new Observer<QueryTool.QueriesList>() {
-            @Override
-            public void onChanged(QueryTool.QueriesList queryStatements) {
-                resetIterator();
-
-                if (mApp.getDictionaryDatabase().getValue() != null && mQueryTerm.getValue() != null && mQueryLang.getValue() != null
-                        && mQueryIterator.getValue() != null) {
-                    QueryTool.executeNextStatement(mApp.getDictionaryDatabase().getValue(), mQueryTerm.getValue(),
-                            mQueryLang.getValue(), mQueryIterator.getValue());
-                }
-            }
-        });
-
-        mQueryIterator.addSource(mQueryTerm, new Observer<String>() {
-            @Override
-            public void onChanged(String s) {
-                resetIterator();
-
-                if (mApp.getDictionaryDatabase().getValue() != null && mQueryTerm.getValue() != null && mQueryLang.getValue() != null
-                        && mQueryIterator.getValue() != null) {
-                    QueryTool.executeNextStatement(mApp.getDictionaryDatabase().getValue(), mQueryTerm.getValue(),
-                            mQueryLang.getValue(), mQueryIterator.getValue());
-                }
-            }
-        });
-
-        mQueryIterator.addSource(mQueryLang, new Observer<String>() {
-            @Override
-            public void onChanged(String s) {
-                resetIterator();
-
-                if (mApp.getDictionaryDatabase().getValue() != null && mQueryTerm.getValue() != null && mQueryLang.getValue() != null
-                        && mQueryIterator.getValue() != null) {
-                    QueryTool.executeNextStatement(mApp.getDictionaryDatabase().getValue(), mQueryTerm.getValue(),
-                            mQueryLang.getValue(), mQueryIterator.getValue());
-                }
-            }
-        });
-    }
-
-    private void resetIterator() {
-        new AsyncTask<Void, Void, Void>() {
-            @Override
-            protected Void doInBackground(Void... voids) {
-                if (mApp.getDictionaryDatabase().getValue() != null && mQueries.getValue() != null && mQueries.getValue().deleteStatement != null) {
-                    DictionaryDatabase db = mApp.getDictionaryDatabase().getValue();
-
-                    db.beginTransaction();
-
-                    mQueries.getValue().deleteStatement.executeUpdateDelete();
-
-                    db.setTransactionSuccessful();
-                    db.endTransaction();
-                }
-
-                return null;
-            }
-        }.execute();
-
-        if (mQueryLang.getValue() != null && mQueryTerm.getValue() != null && mQueries.getValue() != null &&
-                mQueries.getValue().queriesList != null) {
-            mQueryIterator.setValue(mQueries.getValue().queriesList.iterator());
-        } else {
-            mQueryIterator.setValue(null);
-        }
     }
 
     public void updateBookmark(final long seq, final long bookmark) {
@@ -212,5 +93,9 @@ public class DictionarySearchFragmentModel extends AndroidViewModel {
                 return null;
             }
         }.execute();
+    }
+
+    public DictionaryQuery getDictionaryQuery() {
+        return mDictionaryQuery;
     }
 }

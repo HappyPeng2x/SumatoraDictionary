@@ -8,6 +8,10 @@
 
 ![](/screenshots/Screenshot_1551599195.png)
 
+## Search from other apps (using sharing)
+
+![](/screenshots/Screenshot_1553243720.png)
+
 ## Navigation drawer
 
 ![](/screenshots/Screenshot_1551520634.png)

@@ -9,7 +9,7 @@ Please see the [screenshots](/SCREENSHOTS.md).
 Sumatora has the following distinctive features:
 - very fast search and display of exact term/term at the beginning/term included 
 - bookmarks and bookmark export/import
-- search selected text in applications using contextual menu.
+- search selected text in applications using contextual menu (or sharing).
 
 ## License
 

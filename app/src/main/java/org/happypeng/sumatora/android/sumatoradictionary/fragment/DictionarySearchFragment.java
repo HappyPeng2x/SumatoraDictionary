@@ -12,7 +12,7 @@
         GNU General Public License for more details.
 
         You should have received a copy of the GNU General Public License
-        along with this program.  If not, see <http://www.gnu.org/licenses/>.*/
+        along with this program.  If not, see <http://www.gnu.org/licenses/>. */
 
 package org.happypeng.sumatora.android.sumatoradictionary.fragment;
 
@@ -168,14 +168,9 @@ public class DictionarySearchFragment extends Fragment {
 
         final DictionaryPagedListAdapter pagedListAdapter = new DictionaryPagedListAdapter();
 
-        m_viewModel.getQueryIterator().observe(this, new Observer<Iterator<QueryTool.QueryStatement>>() {
-            @Override
-            public void onChanged(Iterator<QueryTool.QueryStatement> queryStatementIterator) {
-                // nothing to do
-            }
-        });
+        m_viewModel.getDictionaryQuery().observe(this);
 
-        m_viewModel.getSearchEntries().observe(this,
+        m_viewModel.getDictionaryQuery().getSearchEntries().observe(this,
                 new Observer<PagedList<DictionarySearchElement>>() {
                     @Override
                     public void onChanged(PagedList<DictionarySearchElement> dictionarySearchElements) {
@@ -213,7 +208,7 @@ public class DictionarySearchFragment extends Fragment {
         m_search_button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                m_viewModel.getQueryTerm().setValue(m_edit_text.getText().toString());
+                m_viewModel.getDictionaryQuery().setQueryTerm(m_edit_text.getText().toString());
             }
         });
 
@@ -234,8 +229,9 @@ public class DictionarySearchFragment extends Fragment {
     public void processIntentTerm(String aTerm)
     {
         if (m_viewModel != null) {
-            m_edit_text.setText(aTerm);
-            m_viewModel.getQueryTerm().setValue(aTerm);
+            m_edit_text.setText("");
+            m_edit_text.append(aTerm);
+            m_viewModel.getDictionaryQuery().setQueryTerm(aTerm);
             m_intentSearchTerm = null;
         } else {
             m_intentSearchTerm = aTerm;

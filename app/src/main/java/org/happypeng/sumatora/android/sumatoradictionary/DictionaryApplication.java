@@ -29,6 +29,7 @@ import com.fstyle.library.helper.AssetSQLiteOpenHelperFactory;
 
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryDatabase;
+import org.happypeng.sumatora.android.sumatoradictionary.db.tools.QueryTool;
 
 import java.io.File;
 import java.util.LinkedList;
@@ -39,6 +40,9 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.room.Room;
 
 public class DictionaryApplication extends Application {
+    static public final String SQL_QUERY_DELETE_RESULTS =
+            "DELETE FROM DictionarySearchResult";
+
     static final String DATABASE_NAME = "JMdict.db";
 
     protected MutableLiveData<DictionaryDatabase> m_dictionaryDatabase;
@@ -225,6 +229,15 @@ public class DictionaryApplication extends Application {
             if (bookmarks != null) {
                 db.dictionaryBookmarkDao().insertMany(bookmarks);
             }
+
+            // Removing results from previous launch
+            // In the future there will be persistence
+            db.beginTransaction();
+
+            db.getOpenHelper().getWritableDatabase().execSQL(SQL_QUERY_DELETE_RESULTS);
+
+            db.setTransactionSuccessful();
+            db.endTransaction();
 
             aParams[0].m_dictionaryDatabase.postValue(db);
 

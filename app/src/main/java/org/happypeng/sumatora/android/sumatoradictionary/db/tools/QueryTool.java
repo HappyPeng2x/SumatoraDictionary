@@ -133,11 +133,61 @@ public class QueryTool {
 
             return statement.executeInsert();
         }
+
+        public int getOrder() { return order; }
     }
 
-    public static class QueriesList {
-        public List<QueryStatement> queriesList;
-        public SupportSQLiteStatement deleteStatement;
+    static class QueriesList {
+        private List<QueryStatement> mQueriesList;
+        private SupportSQLiteStatement mDeleteStatement;
+
+        private final DictionaryDatabase mDB;
+        private final MutableLiveData<Boolean> mHasResults;
+
+        QueriesList(final DictionaryDatabase aDB) {
+            mDB = aDB;
+
+            mHasResults = new MutableLiveData<>();
+        }
+
+        Iterator<QueryStatement> getIterator() {
+            return mQueriesList.iterator();
+        }
+
+        MutableLiveData<Boolean> getHasResults() {
+            return mHasResults;
+        }
+
+        void resetHasResults() {
+            mHasResults.setValue(true);
+        }
+
+        private void setQueriesList(final List<QueryStatement> aQueriesList) {
+            mQueriesList = aQueriesList;
+        }
+
+        private void setDeleteStatement(final SupportSQLiteStatement aDeleteStatement) {
+            mDeleteStatement = aDeleteStatement;
+        }
+
+        private SupportSQLiteStatement getDeleteStatement() {
+            return mDeleteStatement;
+        }
+
+        void executeNextStatement(@NonNull String aQueryTerm,
+                                  @NonNull String aLang,
+                                  @NonNull Iterator<QueryStatement> aIterator,
+                                  boolean aDelete) {
+            new ExecuteNextStatementAsyncTask(mDB, aQueryTerm, aLang, aIterator, this, aDelete, mHasResults).execute();
+        }
+
+        static LiveData<QueriesList> build(@NonNull final DictionaryDatabase aDB) {
+            final InitializeQueryAsyncTask asyncTask = new InitializeQueryAsyncTask(aDB);
+
+            asyncTask.execute();
+
+            return asyncTask.getLiveData();
+        }
     }
 
     private static class InitializeQueryAsyncTask extends AsyncTask<Void, Void, QueriesList> {
@@ -173,10 +223,10 @@ public class QueryTool {
             queriesList.add(new QueryStatement(5, queryPartsPrio));
             queriesList.add(new QueryStatement(6, queryPartsNonPrio));
 
-            final QueriesList result = new QueriesList();
+            final QueriesList result = new QueriesList(mDB);
 
-            result.queriesList = Collections.unmodifiableList(queriesList);
-            result.deleteStatement = sqlDb.compileStatement(SQL_QUERY_DELETE_RESULTS);
+            result.setQueriesList(Collections.unmodifiableList(queriesList));
+            result.setDeleteStatement(sqlDb.compileStatement(SQL_QUERY_DELETE_RESULTS));
 
             return result;
         }
@@ -187,28 +237,41 @@ public class QueryTool {
         }
     }
 
-    private static class ExecuteNextStatementAsyncTask extends AsyncTask<Void, Void, Void>  {
+    private static class ExecuteNextStatementAsyncTask extends AsyncTask<Void, Void, Long>  {
         private final DictionaryDatabase mDB;
         private final String mQueryTerm;
         private final String mLang;
         private final Iterator<QueryStatement> mIterator;
+        private final QueriesList mQueriesList;
+        private final boolean mDelete;
+        private final MutableLiveData<Boolean> mHasResults;
 
         ExecuteNextStatementAsyncTask(@NonNull DictionaryDatabase aDB,
                                       @NonNull String aQueryTerm, @NonNull String aLang,
-                                      @NonNull Iterator<QueryStatement> aIterator) {
+                                      @NonNull Iterator<QueryStatement> aIterator,
+                                      @NonNull QueriesList aQueriesList,
+                                      boolean aDelete,
+                                      @NonNull MutableLiveData<Boolean> aHasResult) {
             super();
 
             mDB = aDB;
             mQueryTerm = aQueryTerm;
             mLang = aLang;
             mIterator = aIterator;
+            mQueriesList = aQueriesList;
+            mDelete = aDelete;
+            mHasResults = aHasResult;
         }
 
         @Override
-        protected final Void doInBackground(Void... params) {
+        protected final Long doInBackground(Void... params) {
             long res = -1;
 
             mDB.beginTransaction();
+
+            if (mDelete) {
+                mQueriesList.getDeleteStatement().executeUpdateDelete();
+            }
 
             while (mIterator.hasNext() && res < 0) {
                 res = mIterator.next().execute(mQueryTerm, mLang);
@@ -217,21 +280,16 @@ public class QueryTool {
             mDB.setTransactionSuccessful();
             mDB.endTransaction();
 
-            return null;
+            return res;
         }
-    }
 
-    public static LiveData<QueriesList> getQueriesList(@NonNull DictionaryDatabase aDB) {
-        final InitializeQueryAsyncTask asyncTask = new InitializeQueryAsyncTask(aDB);
+        @Override
+        protected void onPostExecute(Long aRes)
+        {
+            if (aRes != null && aRes >= 0) {
+                mHasResults.setValue(true);
+            }
+        }
 
-        asyncTask.execute();
-
-        return asyncTask.getLiveData();
-    }
-
-    public static void executeNextStatement(@NonNull DictionaryDatabase aDB,
-                                            @NonNull String aQueryTerm, @NonNull String aLang,
-                                            @NonNull Iterator<QueryStatement> aIterator) {
-        new ExecuteNextStatementAsyncTask(aDB, aQueryTerm, aLang, aIterator).execute();
     }
 }
