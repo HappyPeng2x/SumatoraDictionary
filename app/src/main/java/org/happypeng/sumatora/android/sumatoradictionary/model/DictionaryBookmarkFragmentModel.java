@@ -36,9 +36,7 @@ public class DictionaryBookmarkFragmentModel extends AndroidViewModel {
 
     private MediatorLiveData<List<DictionarySearchElement>> mBookmarkElements;
     private LiveData<List<DictionarySearchElement>> mBookmarkElementsLive;
-    private MutableLiveData<String> mLang;
 
-    public MutableLiveData<String> getLang() { return mLang; }
     public LiveData<List<DictionarySearchElement>> getBookmarks() { return mBookmarkElements; }
 
     public DictionaryBookmarkFragmentModel(Application aApp) {
@@ -46,18 +44,14 @@ public class DictionaryBookmarkFragmentModel extends AndroidViewModel {
 
         mApp = (DictionaryApplication) aApp;
 
-        mLang = new MutableLiveData<>();
-
-        mLang.setValue("eng");
-
         mBookmarkElements = new MediatorLiveData<>();
 
         mBookmarkElements.addSource(mApp.getDictionaryDatabase(),
                 new Observer<DictionaryDatabase>() {
                     @Override
                     public void onChanged(DictionaryDatabase dictionaryDatabase) {
-                        if (dictionaryDatabase != null && mLang.getValue() != null) {
-                            mBookmarkElementsLive = dictionaryDatabase.dictionaryBookmarkDao().getAllDetailsLive(mLang.getValue());
+                        if (dictionaryDatabase != null && mApp.getLang().getValue() != null) {
+                            mBookmarkElementsLive = dictionaryDatabase.dictionaryBookmarkDao().getAllDetailsLive(mApp.getLang().getValue());
 
                             mBookmarkElements.addSource(mBookmarkElementsLive,
                                     new Observer<List<DictionarySearchElement>>() {
@@ -75,7 +69,7 @@ public class DictionaryBookmarkFragmentModel extends AndroidViewModel {
                     }
                 });
 
-        mBookmarkElements.addSource(mLang,
+        mBookmarkElements.addSource(mApp.getLang(),
                 new Observer<String>() {
                     @Override
                     public void onChanged(String s) {
@@ -85,7 +79,7 @@ public class DictionaryBookmarkFragmentModel extends AndroidViewModel {
                         }
 
                         if (mApp.getDictionaryDatabase().getValue() != null) {
-                            mBookmarkElementsLive = mApp.getDictionaryDatabase().getValue().dictionaryBookmarkDao().getAllDetailsLive(mLang.getValue());
+                            mBookmarkElementsLive = mApp.getDictionaryDatabase().getValue().dictionaryBookmarkDao().getAllDetailsLive(mApp.getLang().getValue());
 
                             mBookmarkElements.addSource(mBookmarkElementsLive,
                                     new Observer<List<DictionarySearchElement>>() {
@@ -111,4 +105,6 @@ public class DictionaryBookmarkFragmentModel extends AndroidViewModel {
             }
         }.execute();
     }
+
+    public DictionaryApplication getDictionaryApplication() { return mApp; }
 }

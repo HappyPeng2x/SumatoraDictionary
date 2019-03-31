@@ -98,4 +98,6 @@ public class DictionarySearchFragmentModel extends AndroidViewModel {
     public DictionaryQuery getDictionaryQuery() {
         return mDictionaryQuery;
     }
+
+    public DictionaryApplication getDictionaryApplication() { return mApp; }
 }

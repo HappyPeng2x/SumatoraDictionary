@@ -49,15 +49,11 @@ public class DictionaryQuery {
     private final MediatorLiveData<Iterator<QueryTool.QueryStatement>> mQueryIterator;
 
     private final MutableLiveData<String> mQueryTerm;
-    private final MutableLiveData<String> mQueryLang;
 
     public DictionaryQuery(final DictionaryApplication aApp) {
         mApp = aApp;
 
         mQueryTerm = new MutableLiveData<>();
-        mQueryLang = new MutableLiveData<>();
-
-        mQueryLang.setValue("eng");
 
         mQueries = Transformations.switchMap(mApp.getDictionaryDatabase(),
                 new Function<DictionaryDatabase, LiveData<QueryTool.QueriesList>>() {
@@ -84,10 +80,10 @@ public class DictionaryQuery {
                                         public void onItemAtEndLoaded(@NonNull DictionarySearchElement itemAtEnd) {
                                             super.onItemAtEndLoaded(itemAtEnd);
 
-                                            if (mQueryTerm.getValue() != null && mQueryLang.getValue() != null
+                                            if (mQueryTerm.getValue() != null && mApp.getLang().getValue() != null
                                                     && mQueryIterator.getValue() != null && mQueries.getValue() != null) {
                                                 mQueries.getValue().executeNextStatement(mQueryTerm.getValue(),
-                                                        mQueryLang.getValue(), mQueryIterator.getValue(), false);
+                                                        mApp.getLang().getValue(), mQueryIterator.getValue(), false);
                                             }
                                         }
                                     }).build();
@@ -113,7 +109,7 @@ public class DictionaryQuery {
             }
         });
 
-        mQueryIterator.addSource(mQueryLang, new Observer<String>() {
+        mQueryIterator.addSource(mApp.getLang(), new Observer<String>() {
             @Override
             public void onChanged(String s) {
                 updateQueryIterator();
@@ -125,12 +121,12 @@ public class DictionaryQuery {
         if (mQueries.getValue() != null) {
             mQueries.getValue().resetHasResults();
 
-            if (mApp.getDictionaryDatabase().getValue() != null && mQueryTerm.getValue() != null && mQueryLang.getValue() != null) {
+            if (mApp.getDictionaryDatabase().getValue() != null && mApp.getLang() != null && mApp.getLang().getValue() != null && mQueryTerm.getValue() != null) {
                 mQueryIterator.setValue(mQueries.getValue().getIterator());
 
                 if (mQueryIterator.getValue() != null) {
                     mQueries.getValue().executeNextStatement(mQueryTerm.getValue(),
-                            mQueryLang.getValue(), mQueryIterator.getValue(), true);
+                            mApp.getLang().getValue(), mQueryIterator.getValue(), true);
                 } else {
                     if (BuildConfig.DEBUG_MESSAGE) {
                         Log.d("DICT_QUERY", "Queries list gave us a null iterator");
@@ -148,14 +144,6 @@ public class DictionaryQuery {
 
     public void setQueryTerm(String aString) {
         mQueryTerm.setValue(aString);
-    }
-
-    public LiveData<String> getQueryLang() {
-        return mQueryLang;
-    }
-
-    public void setQueryLang(String aString) {
-        mQueryLang.setValue(aString);
     }
 
     public LiveData<PagedList<DictionarySearchElement>> getSearchEntries() {

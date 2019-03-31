@@ -29,6 +29,7 @@ import com.fstyle.library.helper.AssetSQLiteOpenHelperFactory;
 
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryDatabase;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryLanguage;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.QueryTool;
 
 import java.io.File;
@@ -46,10 +47,16 @@ public class DictionaryApplication extends Application {
     static final String DATABASE_NAME = "JMdict.db";
 
     protected MutableLiveData<DictionaryDatabase> m_dictionaryDatabase;
+    protected MutableLiveData<List<DictionaryLanguage>> m_dictionaryLanguage;
+    protected MutableLiveData<String> m_lang;
 
     public LiveData<DictionaryDatabase> getDictionaryDatabase() {
         return m_dictionaryDatabase;
     }
+    public LiveData<List<DictionaryLanguage>> getDictionaryLanguage() { return m_dictionaryLanguage; }
+
+    public LiveData<String> getLang() { return m_lang; }
+    public void setLang(final String aLang) { m_lang.setValue(aLang); }
 
     protected DictionaryDatabase getDatabase() {
         return Room.databaseBuilder(this,
@@ -239,6 +246,15 @@ public class DictionaryApplication extends Application {
             db.setTransactionSuccessful();
             db.endTransaction();
 
+            List<DictionaryLanguage> languages = db.dictionaryLanguageDao().getAll();
+
+            if (BuildConfig.DEBUG_MESSAGE) {
+                for (DictionaryLanguage l : languages) {
+                    Log.d("INIT_DB", "Language: " + l.lang + " " + l.description);
+                }
+            }
+
+            aParams[0].m_dictionaryLanguage.postValue(languages);
             aParams[0].m_dictionaryDatabase.postValue(db);
 
             if (BuildConfig.DEBUG_MESSAGE) {
@@ -265,8 +281,11 @@ public class DictionaryApplication extends Application {
                     .build());
         }
 
+        m_dictionaryDatabase = new MutableLiveData<>();
+        m_dictionaryLanguage = new MutableLiveData<>();
+        m_lang = new MutableLiveData<>();
 
-        m_dictionaryDatabase = new MutableLiveData<DictionaryDatabase>();
+        m_lang.setValue("eng");
 
         new InitializeDBTask().execute(this);
     }
