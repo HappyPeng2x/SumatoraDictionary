@@ -122,7 +122,7 @@ public class Dictionary extends AppCompatActivity {
 
         if (aIntent.hasExtra("SEARCH_TERM") &&
                 m_dictionarySearchFragment != null) {
-            m_dictionarySearchFragment.processIntentTerm(aIntent.getStringExtra("SEARCH_TERM"));
+            m_dictionarySearchFragment.setIntentSearchTerm(aIntent.getStringExtra("SEARCH_TERM"));
         }
     }
 

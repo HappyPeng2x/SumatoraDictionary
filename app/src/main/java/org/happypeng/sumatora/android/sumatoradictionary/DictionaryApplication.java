@@ -265,7 +265,6 @@ public class DictionaryApplication extends Application {
                     .build());
         }
 
-
         m_dictionaryDatabase = new MutableLiveData<DictionaryDatabase>();
 
         new InitializeDBTask().execute(this);

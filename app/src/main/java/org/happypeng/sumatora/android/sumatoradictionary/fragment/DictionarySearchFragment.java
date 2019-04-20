@@ -18,6 +18,7 @@ package org.happypeng.sumatora.android.sumatoradictionary.fragment;
 
 import android.os.Bundle;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
@@ -41,6 +42,7 @@ import android.widget.TextView;
 import org.happypeng.sumatora.android.sumatoradictionary.DictionaryPagedListAdapter;
 import org.happypeng.sumatora.android.sumatoradictionary.DictionarySearchElementViewHolder;
 import org.happypeng.sumatora.android.sumatoradictionary.R;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.QueryTool;
 import org.happypeng.sumatora.android.sumatoradictionary.model.DictionarySearchFragmentModel;
@@ -57,8 +59,6 @@ public class DictionarySearchFragment extends Fragment {
     private ProgressBar m_progress_bar;
     private TextView m_status_text;
 
-    private boolean m_ready;
-
     private String m_intentSearchTerm;
 
     private DictionarySearchFragmentModel m_viewModel;
@@ -69,19 +69,28 @@ public class DictionarySearchFragment extends Fragment {
 
     private void setInPreparation()
     {
-        if (m_ready) {
-            m_status_text.setVisibility(View.VISIBLE);
-            m_progress_bar.setVisibility(View.VISIBLE);
+        m_status_text.setVisibility(View.VISIBLE);
+        m_progress_bar.setVisibility(View.VISIBLE);
 
-            m_progress_bar.setIndeterminate(true);
-            m_progress_bar.animate();
+        m_progress_bar.setIndeterminate(true);
+        m_progress_bar.animate();
 
-            m_search_button.setEnabled(false);
+        m_search_button.setEnabled(false);
 
-            m_status_text.setText("Loading database...");
+        m_status_text.setText("Loading database...");
+    }
 
-            m_ready = false;
-        }
+    private void setSearching()
+    {
+        m_status_text.setVisibility(View.VISIBLE);
+        m_progress_bar.setVisibility(View.VISIBLE);
+
+        m_progress_bar.setIndeterminate(true);
+        m_progress_bar.animate();
+
+        m_search_button.setEnabled(false);
+
+        m_status_text.setText("Searching...");
     }
 
     private void setNoResultsFound()
@@ -99,19 +108,15 @@ public class DictionarySearchFragment extends Fragment {
 
     private void setReady()
     {
-        if (!m_ready) {
-            m_progress_bar.setIndeterminate(false);
-            m_progress_bar.setMax(0);
+        m_progress_bar.setIndeterminate(false);
+        m_progress_bar.setMax(0);
 
-            m_search_button.setEnabled(true);
+        m_search_button.setEnabled(true);
 
-            m_status_text.setText("");
+        m_status_text.setText("");
 
-            m_status_text.setVisibility(View.GONE);
-            m_progress_bar.setVisibility(View.GONE);
-
-            m_ready = true;
-        }
+        m_status_text.setVisibility(View.GONE);
+        m_progress_bar.setVisibility(View.GONE);
     }
 
     @Override
@@ -136,8 +141,6 @@ public class DictionarySearchFragment extends Fragment {
         m_status_text = (TextView) view.findViewById(R.id.statusText);
 
         RecyclerView m_recyclerView = (RecyclerView) view.findViewById(R.id.recyclerView);
-
-        m_ready = true;
 
         setInPreparation();
 
@@ -168,19 +171,11 @@ public class DictionarySearchFragment extends Fragment {
 
         final DictionaryPagedListAdapter pagedListAdapter = new DictionaryPagedListAdapter();
 
-        m_viewModel.getDictionaryQuery().observe(this);
-
-        m_viewModel.getDictionaryQuery().getSearchEntries().observe(this,
+        m_viewModel.getSearchEntries().observe(this,
                 new Observer<PagedList<DictionarySearchElement>>() {
                     @Override
                     public void onChanged(PagedList<DictionarySearchElement> dictionarySearchElements) {
-                        if (dictionarySearchElements != null) {
-                            pagedListAdapter.submitList(dictionarySearchElements);
-
-                            setReady();
-                        } else {
-                            setInPreparation();
-                        }
+                        pagedListAdapter.submitList(dictionarySearchElements);
                     }
                 });
 
@@ -208,33 +203,49 @@ public class DictionarySearchFragment extends Fragment {
         m_search_button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                m_viewModel.getDictionaryQuery().setQueryTerm(m_edit_text.getText().toString());
+                m_viewModel.getDictionaryQuery().getValue().setTerm(m_edit_text.getText().toString(), "eng");
             }
         });
 
         m_magic_cross.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                setReady();
+
                 m_edit_text.setText("");
             }
         });
 
-        if (m_intentSearchTerm != null) {
-            processIntentTerm(m_intentSearchTerm);
-        }
+        m_viewModel.getQueryStatus().observe(this,
+                new Observer<Integer>() {
+                    @Override
+                    public void onChanged(Integer integer) {
+                        if (integer == QueryTool.QueriesList.STATUS_PRE_INITIALIZED) {
+                            setInPreparation();
+                        } else if (integer == QueryTool.QueriesList.STATUS_INITIALIZED) {
+                            setReady();
+
+                            if (m_intentSearchTerm != null) {
+                                m_edit_text.setText("");
+                                m_edit_text.append(m_intentSearchTerm);
+                                m_viewModel.getDictionaryQuery().getValue().setTerm(m_intentSearchTerm, "eng");
+                                m_intentSearchTerm = null;
+                            }
+                        } else if (integer == QueryTool.QueriesList.STATUS_SEARCHING) {
+                            setSearching();
+                        } else if (integer == QueryTool.QueriesList.STATUS_RESULTS_FOUND ||
+                            integer == QueryTool.QueriesList.STATUS_RESULTS_FOUND_ENDED) {
+                            setReady();
+                        } else if (integer == QueryTool.QueriesList.STATUS_NO_RESULTS_FOUND_ENDED) {
+                            setNoResultsFound();
+                        }
+                    }
+                });
 
         return view;
     }
 
-    public void processIntentTerm(String aTerm)
-    {
-        if (m_viewModel != null) {
-            m_edit_text.setText("");
-            m_edit_text.append(aTerm);
-            m_viewModel.getDictionaryQuery().setQueryTerm(aTerm);
-            m_intentSearchTerm = null;
-        } else {
-            m_intentSearchTerm = aTerm;
-        }
+    public void setIntentSearchTerm(@NonNull String aIntentSearchTerm) {
+        m_intentSearchTerm = aIntentSearchTerm;
     }
 }
