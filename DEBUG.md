@@ -7,4 +7,4 @@ It is possible to display and share logs by opening the Settings view from the s
 ![](/screenshots/Screenshot_1556779255.png)
 ![](/screenshots/Screenshot_1556779259.png)
 ![](/screenshots/Screenshot_1556779266.png)
-![](/screenshots/Screenshot_1556770271.png)
+![](/screenshots/Screenshot_1556779271.png)
