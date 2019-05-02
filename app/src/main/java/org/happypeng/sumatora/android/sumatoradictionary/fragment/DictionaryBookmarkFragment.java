@@ -72,7 +72,6 @@ public class DictionaryBookmarkFragment extends Fragment {
 
     private ShareActionProvider m_shareActionProvider;
 
-
     public DictionaryBookmarkFragment() {
     }
 

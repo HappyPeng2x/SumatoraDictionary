@@ -18,10 +18,13 @@ package org.happypeng.sumatora.android.sumatoradictionary;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import android.app.PendingIntent;
 import android.content.Intent;
+
 import android.os.Build;
 import android.os.Bundle;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 // We use this class so that Dictionary is brought in the front.
 // It is as if the application had been manually launched and the search word typed inside.
@@ -35,10 +38,30 @@ public class DictionaryLaunchActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        Logger log = LoggerFactory.getLogger(DictionaryLaunchActivity.class);
+
+        log.info("onCreate started");
+
         Intent inboundIntent = getIntent();
         String receivedAction = inboundIntent.getAction();
 
         String searchTerm = null;
+
+        log.info("receivedAction = " + receivedAction);
+
+        if (inboundIntent.getExtras() != null) {
+            for (String key : inboundIntent.getExtras().keySet()) {
+                log.info("inboundIntent has key " + key);
+
+                Object val = inboundIntent.getExtras().get(key);
+
+                if (val != null) {
+                    log.info("type " + val.getClass().getName() + " value " + val.toString());
+                } else {
+                    log.info("value is null");
+                }
+            }
+        }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
                 receivedAction != null && receivedAction.equals(Intent.ACTION_PROCESS_TEXT)) {

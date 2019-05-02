@@ -39,16 +39,20 @@ import android.os.StrictMode;
 
 import com.google.android.material.navigation.NavigationView;
 
+import org.happypeng.sumatora.android.sumatoradictionary.fragment.DebugFragment;
 import org.happypeng.sumatora.android.sumatoradictionary.fragment.DictionaryBookmarkFragment;
 import org.happypeng.sumatora.android.sumatoradictionary.fragment.DictionarySearchFragment;
+import org.happypeng.sumatora.android.sumatoradictionary.fragment.SettingsFragment;
 
 import java.io.FileDescriptor;
 
-public class Dictionary extends AppCompatActivity {
+public class Dictionary extends AppCompatActivity implements SettingsFragment.SettingsFragmentActions {
     private DrawerLayout m_drawer_layout;
 
     private DictionaryBookmarkFragment m_dictionaryBookmarkFragment;
     private DictionarySearchFragment m_dictionarySearchFragment;
+    private DebugFragment m_debugFragment;
+    private SettingsFragment m_settingsFragment;
 
     private static final int DELAY_MILLIS = 250;
 
@@ -66,6 +70,7 @@ public class Dictionary extends AppCompatActivity {
 
         FragmentTransaction fragmentTransaction = fm.beginTransaction();
         fragmentTransaction.replace(R.id.dictionary_fragment_container, aFragment, aTag);
+        fragmentTransaction.addToBackStack(aTag);
         fragmentTransaction.commit();
     }
 
@@ -99,6 +104,14 @@ public class Dictionary extends AppCompatActivity {
                         }
 
                         switchToFragment(m_dictionaryBookmarkFragment, "BOOKMARK_FRAGMENT");
+
+                        break;
+                    case R.id.navigation_view_item_settings:
+                        if (m_settingsFragment == null) {
+                            m_settingsFragment = new SettingsFragment();
+                        }
+
+                        switchToFragment(m_settingsFragment, "SETTINGS_FRAGMENT");
 
                         break;
                 }
@@ -146,5 +159,34 @@ public class Dictionary extends AppCompatActivity {
     @Override
     protected void onNewIntent(Intent aIntent) {
         processIntent(aIntent);
+    }
+
+    @Override
+    public void onAttachFragment(Fragment fragment) {
+        if (fragment instanceof SettingsFragment) {
+            SettingsFragment settingsFragment = (SettingsFragment) fragment;
+
+            settingsFragment.setFragmentActions(this);
+        }
+    }
+
+    @Override
+    public void displayLog() {
+        if (m_debugFragment == null) {
+            m_debugFragment = new DebugFragment();
+        }
+
+        switchToFragment(m_debugFragment, "DEBUG_FRAGMENT");
+    }
+
+    @Override
+    public void onBackPressed() {
+        FragmentManager fm = getSupportFragmentManager();
+
+        if (fm.getBackStackEntryCount() > 1) {
+            fm.popBackStack();
+        } else {
+            finish();
+        }
     }
 }

@@ -23,6 +23,10 @@
         android:checkableBehavior="none">
 
         <item
+            android:id="@+id/navigation_view_item_settings"
+            android:icon="@drawable/ic_outline_settings_24px"
+            android:title="@string/nav_drawer_settings" />
+        <item
             android:id="@+id/navigation_view_item_about"
             android:icon="@drawable/ic_info_white_24dp"
             android:title="@string/nav_drawer_about" />
