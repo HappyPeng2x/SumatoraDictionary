@@ -17,7 +17,6 @@
 package org.happypeng.sumatora.android.sumatoradictionary.db.tools;
 
 import android.os.AsyncTask;
-import android.util.Log;
 
 import org.happypeng.sumatora.android.sumatoradictionary.BuildConfig;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryDatabase;
@@ -34,6 +33,9 @@ import androidx.paging.LivePagedListBuilder;
 import androidx.paging.PagedList;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 import androidx.sqlite.db.SupportSQLiteStatement;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class QueryTool {
     static private final String SQL_QUERY_EXACT_PRIO =
@@ -115,15 +117,23 @@ public class QueryTool {
         private final int order;
         private final SupportSQLiteStatement statement;
 
+        private final Logger log;
+
         private QueryStatement(int aOrder, SupportSQLiteStatement aStatement) {
             order = aOrder;
             statement = aStatement;
+
+            if (BuildConfig.DEBUG_QUERYTOOL) {
+                log = LoggerFactory.getLogger(getClass());
+
+                log.info(this.hashCode() + " constructor order " + order);
+            }
         }
 
         @WorkerThread
         private long execute(String term, String lang) {
-            if (BuildConfig.DEBUG_MESSAGE) {
-                Log.d("DICT_QUERY", "Execute query " + order + " for term " + term);
+            if (BuildConfig.DEBUG_QUERYTOOL) {
+                log.info(this.hashCode() + " execute " + order + " term " + term);
             }
 
             statement.bindLong(1, order);
@@ -149,6 +159,8 @@ public class QueryTool {
         public static final int STATUS_NO_RESULTS_FOUND_ENDED = 5;
         public static final int STATUS_RESULTS_FOUND_ENDED = 6;
 
+        private final Logger mLog;
+
         private static class Statements {
             private QueryStatement[] mQueries;
             private SupportSQLiteStatement mDeleteStatement;
@@ -165,15 +177,23 @@ public class QueryTool {
 
         private final MutableLiveData<Long> mLastInsert;
 
-        private final MutableLiveData<Integer> mQueriesPosition;
+        private volatile int mQueriesPosition;
 
         private final LiveData<PagedList<DictionarySearchElement>> mSearchEntries;
 
         public QueriesList(final DictionaryDatabase aDB) {
+            if (BuildConfig.DEBUG_QUERYTOOL) {
+                mLog = LoggerFactory.getLogger(getClass());
+
+                mLog.info(hashCode() + " constructor");
+            }
+
             mDB = aDB;
 
             mStatus = new MutableLiveData<>();
-            mQueriesPosition = new MutableLiveData<>();
+
+            mQueriesPosition = 0;
+
             mStatements = new MutableLiveData<>();
 
             mLastInsert = new MutableLiveData<>();
@@ -184,6 +204,10 @@ public class QueryTool {
             final AsyncTask<Void, Void, Void> task = new AsyncTask<Void, Void, Void>() {
                 @Override
                 protected Void doInBackground(Void... voids) {
+                    if (BuildConfig.DEBUG_QUERYTOOL) {
+                        mLog.info(QueriesList.this.hashCode() + " init task started");
+                    }
+
                     final SupportSQLiteDatabase sqlDb = mDB.getOpenHelper().getWritableDatabase();
 
                     final SupportSQLiteStatement queryExactPrio = sqlDb.compileStatement(SQL_QUERY_EXACT_PRIO);
@@ -207,8 +231,20 @@ public class QueryTool {
                     s.mQueries = queriesArray;
                     s.mDeleteStatement = sqlDb.compileStatement(SQL_QUERY_DELETE_RESULTS);
 
+                    // We clear the results here. In the future there will be persistence.
+                    mDB.beginTransaction();
+
+                    s.mDeleteStatement.executeUpdateDelete();
+
+                    mDB.setTransactionSuccessful();
+                    mDB.endTransaction();
+
                     mStatements.postValue(s);
                     mStatus.postValue(STATUS_INITIALIZED);
+
+                    if (BuildConfig.DEBUG_QUERYTOOL) {
+                        mLog.info(QueriesList.this.hashCode() + " init task ended");
+                    }
 
                     return null;
                 }
@@ -228,6 +264,10 @@ public class QueryTool {
                                     .setBoundaryCallback(new PagedList.BoundaryCallback<DictionarySearchElement>() {
                                         @Override
                                         public void onItemAtEndLoaded(@NonNull DictionarySearchElement itemAtEnd) {
+                                            if (BuildConfig.DEBUG_QUERYTOOL) {
+                                                mLog.info(QueriesList.this.hashCode() + " boundary callback called");
+                                            }
+
                                             super.onItemAtEndLoaded(itemAtEnd);
 
                                             executeNextStatement();
@@ -248,6 +288,10 @@ public class QueryTool {
         }
 
         void executeNextStatement() {
+            if (BuildConfig.DEBUG_QUERYTOOL) {
+                mLog.info(hashCode() + " executeNextStatement called");
+            }
+
             if (mStatus.getValue() <= STATUS_INITIALIZED) {
                 return;
             }
@@ -255,6 +299,10 @@ public class QueryTool {
             final AsyncTask<Void, Void, Long> task = new AsyncTask<Void, Void, Long>() {
                 @Override
                 protected Long doInBackground(Void... voids) {
+                    if (BuildConfig.DEBUG_QUERYTOOL) {
+                        mLog.info(QueriesList.this.hashCode() + " executeNextStatement AsyncTask started");
+                    }
+
                     long res = -1;
 
                     mDB.beginTransaction();
@@ -265,13 +313,22 @@ public class QueryTool {
                         mStatus.postValue(QueriesList.STATUS_SEARCHING);
                     }
 
-                    while (res == -1 && mQueriesPosition.getValue() < mStatements.getValue().mQueries.length) {
-                        res = mStatements.getValue().mQueries[mQueriesPosition.getValue()].execute(mTerm, mLang);
-                        mQueriesPosition.postValue(mQueriesPosition.getValue() + 1);
+                    while (res == -1 && mQueriesPosition < mStatements.getValue().mQueries.length) {
+                        res = mStatements.getValue().mQueries[mQueriesPosition].execute(mTerm, mLang);
+
+                        if (BuildConfig.DEBUG_QUERYTOOL) {
+                            mLog.info(QueriesList.this.hashCode() + " position " + mQueriesPosition + " result " + res);
+                        }
+
+                        mQueriesPosition = mQueriesPosition + 1;
                     }
 
                     mDB.setTransactionSuccessful();
                     mDB.endTransaction();
+
+                    if (BuildConfig.DEBUG_QUERYTOOL) {
+                        mLog.info(QueriesList.this.hashCode() + " executeNextStatement AsyncTask ended");
+                    }
 
                     return res;
                 }
@@ -284,7 +341,7 @@ public class QueryTool {
                         mLastInsert.setValue(aLong);
                     }
 
-                    if (mQueriesPosition.getValue() >= mStatements.getValue().mQueries.length) {
+                    if (mQueriesPosition >= mStatements.getValue().mQueries.length) {
                         if (mLastInsert.getValue() >= 0) {
                             mStatus.setValue(STATUS_RESULTS_FOUND_ENDED);
                         } else {
@@ -332,7 +389,7 @@ public class QueryTool {
                 }.execute();
             } else {
                 mStatus.setValue(STATUS_TERM_SET);
-                mQueriesPosition.setValue(0);
+                mQueriesPosition = 0;
 
                 executeNextStatement();
             }

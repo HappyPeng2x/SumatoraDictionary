@@ -45,7 +45,6 @@ public class DictionarySearchFragmentModel extends AndroidViewModel {
         return mDictionaryQuery;
     }
 
-
     private final LiveData<PagedList<DictionarySearchElement>> mSearchEntries;
     public LiveData<PagedList<DictionarySearchElement>> getSearchEntries() { return mSearchEntries; }
 

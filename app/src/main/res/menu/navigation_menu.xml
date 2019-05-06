@@ -13,19 +13,19 @@
             android:title="@string/nav_drawer_item_home" />
         <item
             android:id="@+id/navigation_view_item_bookmarks"
-            android:checked="true"
+            android:checked="false"
             android:icon="@drawable/ic_outline_bookmarks_24px"
             android:title="@string/nav_drawer_item_bookmarks" />
+        <item
+            android:id="@+id/navigation_view_item_settings"
+            android:checked="false"
+            android:icon="@drawable/ic_outline_settings_24px"
+            android:title="@string/nav_drawer_settings" />
     </group>
 
     <group
         android:id="@+id/navigation_drawer_group_two"
         android:checkableBehavior="none">
-
-        <item
-            android:id="@+id/navigation_view_item_settings"
-            android:icon="@drawable/ic_outline_settings_24px"
-            android:title="@string/nav_drawer_settings" />
         <item
             android:id="@+id/navigation_view_item_about"
             android:icon="@drawable/ic_info_white_24dp"

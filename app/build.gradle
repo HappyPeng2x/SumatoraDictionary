@@ -18,8 +18,8 @@ android {
         applicationId "org.happypeng.sumatora.android.sumatoradictionary"
         minSdkVersion 14
         targetSdkVersion 28
-        versionCode 10
-        versionName "0.3.3"
+        versionCode 11
+        versionName "0.3.4rc1"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         testInstrumentationRunnerArguments disableAnalytics: 'true'
@@ -31,11 +31,19 @@ android {
         release {
             buildConfigField("boolean", "DEBUG_MESSAGE", "false");
 
+            buildConfigField("boolean", "DEBUG_QUERYTOOL", "false");
+            buildConfigField("boolean", "DEBUG_DICTIONARY_ACTIVITY", "false");
+            buildConfigField("boolean", "DEBUG_LAUNCH_ACTIVITY", "false");
+
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
         debug {
             buildConfigField("boolean", "DEBUG_MESSAGE", "true");
+
+            buildConfigField("boolean", "DEBUG_QUERYTOOL", "true");
+            buildConfigField("boolean", "DEBUG_DICTIONARY_ACTIVITY", "true");
+            buildConfigField("boolean", "DEBUG_LAUNCH_ACTIVITY", "true");
         }
     }
     buildToolsVersion '28.0.3'
