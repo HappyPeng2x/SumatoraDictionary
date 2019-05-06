@@ -127,6 +127,8 @@ public class QueryTool {
                 log = LoggerFactory.getLogger(getClass());
 
                 log.info(this.hashCode() + " constructor order " + order);
+            } else {
+                log = null;
             }
         }
 
@@ -186,6 +188,8 @@ public class QueryTool {
                 mLog = LoggerFactory.getLogger(getClass());
 
                 mLog.info(hashCode() + " constructor");
+            } else {
+                mLog = null;
             }
 
             mDB = aDB;
