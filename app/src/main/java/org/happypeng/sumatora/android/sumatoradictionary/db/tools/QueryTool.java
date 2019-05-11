@@ -176,6 +176,7 @@ public class QueryTool {
 
         private String mTerm;
         private String mLang;
+        private String mBackupLang;
 
         private final MutableLiveData<Long> mLastInsert;
 
@@ -308,6 +309,7 @@ public class QueryTool {
                     }
 
                     long res = -1;
+                    long backupRes = -1;
 
                     mDB.beginTransaction();
 
@@ -321,7 +323,19 @@ public class QueryTool {
                         res = mStatements.getValue().mQueries[mQueriesPosition].execute(mTerm, mLang);
 
                         if (BuildConfig.DEBUG_QUERYTOOL) {
-                            mLog.info(QueriesList.this.hashCode() + " position " + mQueriesPosition + " result " + res);
+                            mLog.info(QueriesList.this.hashCode() + " position " + mQueriesPosition + " lang " + mLang + " result " + res);
+                        }
+
+                        if (mBackupLang != null && !mBackupLang.equals(mLang)) {
+                            backupRes = mStatements.getValue().mQueries[mQueriesPosition].execute(mTerm, mBackupLang);
+
+                            if (BuildConfig.DEBUG_QUERYTOOL) {
+                                mLog.info(QueriesList.this.hashCode() + " position " + mQueriesPosition + " lang " + mBackupLang + " result " + res);
+                            }
+
+                            if (res == -1) {
+                                res = backupRes;
+                            }
                         }
 
                         mQueriesPosition = mQueriesPosition + 1;
@@ -364,13 +378,14 @@ public class QueryTool {
             return mSearchEntries;
         }
 
-        public void setTerm(@NonNull String aTerm, @NonNull String aLang) {
+        public void setTerm(@NonNull String aTerm, @NonNull String aLang, String aBackupLang) {
             if (mStatements.getValue() == null) {
                 return;
             }
 
             mTerm = aTerm;
             mLang = aLang;
+            mBackupLang = aBackupLang;
 
             mLastInsert.setValue(Long.valueOf(-1));
 

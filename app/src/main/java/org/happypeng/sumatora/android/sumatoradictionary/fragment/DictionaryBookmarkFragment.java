@@ -183,6 +183,15 @@ public class DictionaryBookmarkFragment extends Fragment {
             public void onChanged(String s) {
                 m_languageText.setText(s);
 
+                // Reason is that even if the content does not change, settings have changed
+                listAdapter.notifyDataSetChanged();
+            }
+        });
+
+        m_viewModel.getDictionaryApplication().getSettings().getBackupLang().observe(this, new Observer<String>() {
+            @Override
+            public void onChanged(String s) {
+                // Reason is that even if the content does not change, settings have changed
                 listAdapter.notifyDataSetChanged();
             }
         });

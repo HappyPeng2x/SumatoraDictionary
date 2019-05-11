@@ -31,11 +31,19 @@ android {
         release {
             buildConfigField("boolean", "DEBUG_MESSAGE", "false");
 
+            buildConfigField("boolean", "DEBUG_QUERYTOOL", "false");
+            buildConfigField("boolean", "DEBUG_DICTIONARY_ACTIVITY", "false");
+            buildConfigField("boolean", "DEBUG_LAUNCH_ACTIVITY", "false");
+
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
         debug {
             buildConfigField("boolean", "DEBUG_MESSAGE", "true");
+
+            buildConfigField("boolean", "DEBUG_QUERYTOOL", "true");
+            buildConfigField("boolean", "DEBUG_DICTIONARY_ACTIVITY", "true");
+            buildConfigField("boolean", "DEBUG_LAUNCH_ACTIVITY", "true");
         }
     }
     buildToolsVersion '28.0.3'
@@ -63,7 +71,6 @@ dependencies {
     implementation 'androidx.percentlayout:percentlayout:1.0.0'
     implementation 'com.google.android.material:material:1.0.0'
     implementation 'com.github.daniel-stoneuk:material-about-library:2.4.2'
-    implementation 'com.github.HappyPeng2x:RecyclerTreeView:1.2.3androidx'
 
     implementation "androidx.lifecycle:lifecycle-extensions:2.0.0"
     annotationProcessor "androidx.lifecycle:lifecycle-compiler:2.0.0"
@@ -75,4 +82,7 @@ dependencies {
     implementation "androidx.paging:paging-common:2.1.0"
 
     implementation "com.github.daolq3012:AssetSQLiteOpenHelper:V1.0.1"
+
+    implementation "org.slf4j:slf4j-api:1.7.25"
+    implementation "com.github.tony19:logback-android:2.0.0"
 }
