@@ -23,6 +23,8 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 
+import androidx.core.content.ContextCompat;
+
 import com.danielstone.materialaboutlibrary.MaterialAboutActivity;
 
 import com.danielstone.materialaboutlibrary.items.MaterialAboutItemOnClickAction;
@@ -95,7 +97,7 @@ public class AboutActivity extends MaterialAboutActivity {
                         })
                         .build())
                         .addItem(ConvenienceBuilder.createWebsiteActionItem(activity_context,
-                                getDrawable(R.drawable.ic_outline_public_24px), "Visit Website",
+                                ContextCompat.getDrawable(activity_context, R.drawable.ic_outline_public_24px), "Visit Website",
                                 true,
                                 Uri.parse("https://www.edrdg.org/jmdict/j_jmdict.html")))
                         .build())
@@ -121,7 +123,7 @@ public class AboutActivity extends MaterialAboutActivity {
                                 })
                                 .build())
                         .addItem(ConvenienceBuilder.createWebsiteActionItem(activity_context,
-                                getDrawable(R.drawable.ic_outline_public_24px), "Visit Website",
+                                ContextCompat.getDrawable(activity_context, R.drawable.ic_outline_public_24px), "Visit Website",
                                 true,
                                 Uri.parse("https://github.com/daniel-stoneuk/material-about-library")))
                         .build())
@@ -147,7 +149,7 @@ public class AboutActivity extends MaterialAboutActivity {
                                 })
                                 .build())
                         .addItem(ConvenienceBuilder.createWebsiteActionItem(activity_context,
-                                getDrawable(R.drawable.ic_outline_public_24px), "Visit Website",
+                                ContextCompat.getDrawable(activity_context, R.drawable.ic_outline_public_24px), "Visit Website",
                                 true,
                                 Uri.parse("https://material.io/tools/icons/")))
                         .build())
@@ -173,7 +175,7 @@ public class AboutActivity extends MaterialAboutActivity {
                                 })
                                 .build())
                         .addItem(ConvenienceBuilder.createWebsiteActionItem(activity_context,
-                                getDrawable(R.drawable.ic_outline_public_24px), "Visit Website",
+                                ContextCompat.getDrawable(activity_context, R.drawable.ic_outline_public_24px), "Visit Website",
                                 true,
                                 Uri.parse("https://www.creativetail.com/40-free-flat-animal-icons/")))
                         .build())
@@ -199,7 +201,7 @@ public class AboutActivity extends MaterialAboutActivity {
                                 })
                                 .build())
                         .addItem(ConvenienceBuilder.createWebsiteActionItem(activity_context,
-                                getDrawable(R.drawable.ic_outline_public_24px), "Visit Website",
+                                ContextCompat.getDrawable(activity_context, R.drawable.ic_outline_public_24px), "Visit Website",
                                 true,
                                 Uri.parse("https://github.com/Sottti/Material-Design-Nav-Drawer/tree/using_design_support_library")))
                         .build())
@@ -225,7 +227,7 @@ public class AboutActivity extends MaterialAboutActivity {
                                 })
                                 .build())
                         .addItem(ConvenienceBuilder.createWebsiteActionItem(activity_context,
-                                getDrawable(R.drawable.ic_outline_public_24px), "Visit Website",
+                                ContextCompat.getDrawable(activity_context, R.drawable.ic_outline_public_24px), "Visit Website",
                                 true,
                                 Uri.parse("https://unsplash.com/photos/5RBXc7R-YWs")))
                         .build())
@@ -251,9 +253,37 @@ public class AboutActivity extends MaterialAboutActivity {
                                 })
                                 .build())
                         .addItem(ConvenienceBuilder.createWebsiteActionItem(activity_context,
-                                getDrawable(R.drawable.ic_outline_public_24px), "Visit Website",
+                                ContextCompat.getDrawable(activity_context, R.drawable.ic_outline_public_24px),
+                                "Visit Website",
                                 true,
                                 Uri.parse("https://github.com/daolq3012/AssetSQLiteOpenHelper")))
+                        .build())
+
+                .addCard(new MaterialAboutCard.Builder()
+                        .title("logback-android")
+                        .addItem(new MaterialAboutActionItem.Builder()
+                                .text("Copyright")
+                                .icon(R.drawable.ic_outline_copyright_24px)
+                                .subText("Anthony Trinh and QOS.ch")
+                                .build())
+                        .addItem(new MaterialAboutActionItem.Builder()
+                                .text("License")
+                                .subText("Apache License, Version 2.0")
+                                .icon(R.drawable.ic_outline_class_24px)
+                                .setOnClickAction(new MaterialAboutItemOnClickAction() {
+                                    @Override
+                                    public void onClick() {
+                                        Intent intent = new Intent(activity_context, LicenseActivity.class);
+                                        intent.putExtra("asset", "Apache-2.0.txt");
+                                        startActivity(intent);
+                                    }
+                                })
+                                .build())
+                        .addItem(ConvenienceBuilder.createWebsiteActionItem(activity_context,
+                                ContextCompat.getDrawable(activity_context, R.drawable.ic_outline_public_24px),
+                                "Visit Website",
+                                true,
+                                Uri.parse("https://tony19.github.io/logback-android/index.html")))
                         .build())
 
                 .build();

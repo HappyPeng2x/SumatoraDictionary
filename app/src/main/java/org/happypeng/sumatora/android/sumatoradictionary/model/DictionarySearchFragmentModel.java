@@ -23,22 +23,15 @@ import org.happypeng.sumatora.android.sumatoradictionary.DictionaryApplication;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
-import org.happypeng.sumatora.android.sumatoradictionary.db.tools.DictionaryQuery;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.QueryTool;
 
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 
-import androidx.annotation.NonNull;
 import androidx.arch.core.util.Function;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
-import androidx.lifecycle.MediatorLiveData;
-import androidx.lifecycle.MutableLiveData;
-import androidx.lifecycle.Observer;
 import androidx.lifecycle.Transformations;
-import androidx.paging.LivePagedListBuilder;
 import androidx.paging.PagedList;
 
 public class DictionarySearchFragmentModel extends AndroidViewModel {
@@ -47,16 +40,47 @@ public class DictionarySearchFragmentModel extends AndroidViewModel {
     private LiveData<HashMap<Long, Long>> mBookmarksHash;
     public LiveData<HashMap<Long, Long>> getBookmarksHash() { return mBookmarksHash; }
 
-    private final DictionaryQuery mDictionaryQuery;
+    private final LiveData<QueryTool.QueriesList> mDictionaryQuery;
+    public LiveData<QueryTool.QueriesList> getDictionaryQuery() {
+        return mDictionaryQuery;
+    }
+
+    private final LiveData<PagedList<DictionarySearchElement>> mSearchEntries;
+    public LiveData<PagedList<DictionarySearchElement>> getSearchEntries() { return mSearchEntries; }
+
+    private final LiveData<Integer> mQueryStatus;
+    public LiveData<Integer> getQueryStatus() { return mQueryStatus; }
 
     public DictionarySearchFragmentModel(Application aApp) {
         super(aApp);
 
         mApp = (DictionaryApplication) aApp;
 
-        mDictionaryQuery = new DictionaryQuery(mApp);
+        mDictionaryQuery = Transformations.map(mApp.getDictionaryDatabase(),
+                new Function<DictionaryDatabase, QueryTool.QueriesList>() {
+                    @Override
+                    public QueryTool.QueriesList apply(DictionaryDatabase input) {
+                        return new QueryTool.QueriesList(input);
+                    }
+                });
 
-        LiveData<List<DictionaryBookmark>> mBookmarks = Transformations.switchMap(mApp.getDictionaryDatabase(),
+        mSearchEntries = Transformations.switchMap(mDictionaryQuery,
+                new Function<QueryTool.QueriesList, LiveData<PagedList<DictionarySearchElement>>>() {
+                    @Override
+                    public LiveData<PagedList<DictionarySearchElement>> apply(QueryTool.QueriesList input) {
+                        return input.getSearchEntries();
+                    }
+                });
+
+        mQueryStatus = Transformations.switchMap(mDictionaryQuery,
+                new Function<QueryTool.QueriesList, LiveData<Integer>>() {
+                    @Override
+                    public LiveData<Integer> apply(QueryTool.QueriesList input) {
+                        return input.getStatus();
+                    }
+                });
+
+        final LiveData<List<DictionaryBookmark>> mBookmarks = Transformations.switchMap(mApp.getDictionaryDatabase(),
                 new Function<DictionaryDatabase, LiveData<List<DictionaryBookmark>>>() {
                     @Override
                     public LiveData<List<DictionaryBookmark>> apply(DictionaryDatabase input) {
@@ -95,8 +119,8 @@ public class DictionarySearchFragmentModel extends AndroidViewModel {
         }.execute();
     }
 
-    public DictionaryQuery getDictionaryQuery() {
-        return mDictionaryQuery;
+    public LiveData<DictionaryDatabase> getDictionaryDatabase() {
+        return mApp.getDictionaryDatabase();
     }
 
     public DictionaryApplication getDictionaryApplication() { return mApp; }

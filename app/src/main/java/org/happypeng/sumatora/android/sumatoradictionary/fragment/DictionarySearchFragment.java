@@ -16,19 +16,12 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.fragment;
 
-import android.content.res.TypedArray;
-import android.graphics.PorterDuff;
-import android.graphics.PorterDuffColorFilter;
-import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.fragment.app.Fragment;
-import androidx.lifecycle.LiveData;
-import androidx.lifecycle.MediatorLiveData;
-import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProviders;
 import androidx.paging.PagedList;
@@ -37,32 +30,23 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.util.TypedValue;
 import android.view.LayoutInflater;
-import android.view.Menu;
-import android.view.MenuInflater;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.ImageButton;
-import android.widget.PopupMenu;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
-import org.happypeng.sumatora.android.sumatoradictionary.DictionaryBookmarksImportActivity;
 import org.happypeng.sumatora.android.sumatoradictionary.DictionaryPagedListAdapter;
 import org.happypeng.sumatora.android.sumatoradictionary.DictionarySearchElementViewHolder;
 import org.happypeng.sumatora.android.sumatoradictionary.R;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryLanguage;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.QueryTool;
-import org.happypeng.sumatora.android.sumatoradictionary.model.DictionaryBookmarkImportActivityModel;
 import org.happypeng.sumatora.android.sumatoradictionary.model.DictionarySearchFragmentModel;
 
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 
 public class DictionarySearchFragment extends Fragment {
     private ImageButton m_search_button;
@@ -78,10 +62,6 @@ public class DictionarySearchFragment extends Fragment {
     private String m_intentSearchTerm;
 
     private DictionarySearchFragmentModel m_viewModel;
-
-    private TextView m_languageText;
-
-    private PopupMenu m_languagePopupMenu;
 
     public DictionarySearchFragment() {
         // Required empty public constructor
@@ -137,8 +117,6 @@ public class DictionarySearchFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        m_languagePopupMenu = null;
-
         final AppCompatActivity activity = (AppCompatActivity) getActivity();
         final View view = inflater.inflate(R.layout.fragment_dictionary_search, container, false);
 
@@ -148,10 +126,6 @@ public class DictionarySearchFragment extends Fragment {
         final ActionBar actionBar = activity.getSupportActionBar();
         actionBar.setHomeAsUpIndicator(R.drawable.ic_menu_white_24dp);
         actionBar.setDisplayHomeAsUpEnabled(true);
-
-        setHasOptionsMenu(true);
-
-        m_languageText = (TextView) view.findViewById(R.id.search_fragment_language_text);
 
         m_search_button = (ImageButton) view.findViewById(R.id.button);
 
@@ -192,7 +166,7 @@ public class DictionarySearchFragment extends Fragment {
 
         m_viewModel = ViewModelProviders.of(getActivity()).get(DictionarySearchFragmentModel.class);
 
-        final DictionaryPagedListAdapter pagedListAdapter = new DictionaryPagedListAdapter(m_viewModel.getDictionaryApplication().getSettings());
+        final DictionaryPagedListAdapter pagedListAdapter = new DictionaryPagedListAdapter();
 
         m_viewModel.getDictionaryQuery().observe(this);
 
@@ -249,32 +223,6 @@ public class DictionarySearchFragment extends Fragment {
             processIntentTerm(m_intentSearchTerm);
         }
 
-        m_viewModel.getDictionaryApplication().getDictionaryLanguage().observe
-                (this, new Observer<List<DictionaryLanguage>>() {
-                    @Override
-                    public void onChanged(List<DictionaryLanguage> dictionaryLanguages) {
-                        m_languagePopupMenu = initLanguagePopupMenu(m_languageText, dictionaryLanguages);
-                    }
-                });
-
-        m_viewModel.getDictionaryApplication().getSettings().getLang().observe(this, new Observer<String>() {
-            @Override
-            public void onChanged(String s) {
-                m_languageText.setText(s);
-
-                pagedListAdapter.notifyDataSetChanged();
-            }
-        });
-
-        m_languageText.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (m_languagePopupMenu != null) {
-                    m_languagePopupMenu.show();
-                }
-            }
-        });
-
         return view;
     }
 
@@ -288,27 +236,5 @@ public class DictionarySearchFragment extends Fragment {
         } else {
             m_intentSearchTerm = aTerm;
         }
-    }
-
-    private PopupMenu initLanguagePopupMenu(final View aAnchor, final List<DictionaryLanguage> aLanguage) {
-        PopupMenu popupMenu = null;
-
-        if (aLanguage != null) {
-            popupMenu = new PopupMenu(getContext(), aAnchor);
-            Menu menu = popupMenu.getMenu();
-
-            for (final DictionaryLanguage l : aLanguage) {
-                menu.add(l.description).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
-                    @Override
-                    public boolean onMenuItemClick(MenuItem item) {
-                        m_viewModel.getDictionaryApplication().getSettings().setLang(l.lang);
-
-                        return false;
-                    }
-                });
-            }
-        }
-
-        return popupMenu;
     }
 }

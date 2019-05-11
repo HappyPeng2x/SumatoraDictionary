@@ -17,27 +17,29 @@
 package org.happypeng.sumatora.android.sumatoradictionary.db.tools;
 
 import android.os.AsyncTask;
-import android.util.Log;
 
 import org.happypeng.sumatora.android.sumatoradictionary.BuildConfig;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryDatabase;
-import org.happypeng.sumatora.android.sumatoradictionary.model.DictionarySearchFragmentModel;
-
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.WorkerThread;
+
+import androidx.arch.core.util.Function;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.Transformations;
+import androidx.paging.LivePagedListBuilder;
+import androidx.paging.PagedList;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 import androidx.sqlite.db.SupportSQLiteStatement;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class QueryTool {
     static private final String SQL_QUERY_EXACT_PRIO =
-            "INSERT OR IGNORE INTO DictionarySearchResult SELECT ? AS entryOrder, DictionaryEntry.seq, DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
+            "INSERT INTO DictionarySearchResult SELECT ? AS entryOrder, DictionaryEntry.seq, DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
                     + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, DictionaryTranslation.lang, "
                     + "DictionaryTranslation.gloss "
                     + "FROM DictionaryEntry, DictionaryTranslation, "
@@ -49,7 +51,7 @@ public class QueryTool {
                     + "GROUP BY A.seq";
 
     static private final String SQL_QUERY_EXACT_NONPRIO =
-            "INSERT OR IGNORE INTO DictionarySearchResult SELECT ? AS entryOrder, DictionaryEntry.seq, DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
+            "INSERT INTO DictionarySearchResult SELECT ? AS entryOrder, DictionaryEntry.seq, DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
                     + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, DictionaryTranslation.lang, "
                     + "DictionaryTranslation.gloss "
                     + "FROM DictionaryEntry, DictionaryTranslation, "
@@ -61,7 +63,7 @@ public class QueryTool {
                     + "GROUP BY A.seq";
 
     static private final String SQL_QUERY_BEGIN_PRIO =
-            "INSERT OR IGNORE INTO DictionarySearchResult SELECT ? AS entryOrder, DictionaryEntry.seq, DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
+            "INSERT INTO DictionarySearchResult SELECT ? AS entryOrder, DictionaryEntry.seq, DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
                     + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, DictionaryTranslation.lang, "
                     + "DictionaryTranslation.gloss "
                     + "FROM DictionaryEntry, DictionaryTranslation, "
@@ -73,7 +75,7 @@ public class QueryTool {
                     + "GROUP BY A.seq";
 
     static private final String SQL_QUERY_BEGIN_NONPRIO =
-            "INSERT OR IGNORE INTO DictionarySearchResult SELECT ? AS entryOrder, DictionaryEntry.seq, DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
+            "INSERT INTO DictionarySearchResult SELECT ? AS entryOrder, DictionaryEntry.seq, DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
                     + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, DictionaryTranslation.lang, "
                     + "DictionaryTranslation.gloss "
                     + "FROM DictionaryEntry, DictionaryTranslation, "
@@ -85,7 +87,7 @@ public class QueryTool {
                     + "GROUP BY A.seq";
 
     static private final String SQL_QUERY_PARTS_PRIO =
-            "INSERT OR IGNORE INTO DictionarySearchResult SELECT ? AS entryOrder, DictionaryEntry.seq, DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
+            "INSERT INTO DictionarySearchResult SELECT ? AS entryOrder, DictionaryEntry.seq, DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
                     + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, DictionaryTranslation.lang, "
                     + "DictionaryTranslation.gloss "
                     + "FROM DictionaryEntry, DictionaryTranslation, "
@@ -97,7 +99,7 @@ public class QueryTool {
                     + "GROUP BY A.seq";
 
     static private final String SQL_QUERY_PARTS_NONPRIO =
-            "INSERT OR IGNORE INTO DictionarySearchResult SELECT ? AS entryOrder, DictionaryEntry.seq, DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
+            "INSERT INTO DictionarySearchResult SELECT ? AS entryOrder, DictionaryEntry.seq, DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
                     + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, DictionaryTranslation.lang, "
                     + "DictionaryTranslation.gloss "
                     + "FROM DictionaryEntry, DictionaryTranslation, "
@@ -115,17 +117,25 @@ public class QueryTool {
         private final int order;
         private final SupportSQLiteStatement statement;
 
+        private final Logger log;
+
         private QueryStatement(int aOrder, SupportSQLiteStatement aStatement) {
             order = aOrder;
             statement = aStatement;
+
+            if (BuildConfig.DEBUG_QUERYTOOL) {
+                log = LoggerFactory.getLogger(getClass());
+
+                log.info(this.hashCode() + " constructor order " + order);
+            } else {
+                log = null;
+            }
         }
 
         @WorkerThread
-        private long execute(String term, String lang, String backupLang) {
-            long result, resultBackup;
-
-            if (BuildConfig.DEBUG_MESSAGE) {
-                Log.d("DICT_QUERY", "Execute query " + order + " for term " + term);
+        private long execute(String term, String lang) {
+            if (BuildConfig.DEBUG_QUERYTOOL) {
+                log.info(this.hashCode() + " execute " + order + " term " + term);
             }
 
             statement.bindLong(1, order);
@@ -133,186 +143,260 @@ public class QueryTool {
             statement.bindString(3, term);
             statement.bindString(4, lang);
 
-            result = statement.executeInsert();
-
-            if (backupLang != null && !backupLang.equals(lang)) {
-                statement.bindLong(1, order);
-                statement.bindString(2, term);
-                statement.bindString(3, term);
-                statement.bindString(4, backupLang);
-
-                resultBackup = statement.executeInsert();
-            } else {
-                resultBackup = -1;
-            }
-
-            if (resultBackup > 0) {
-                return resultBackup;
-            } else {
-                return result;
-            }
+            return statement.executeInsert();
         }
 
         public int getOrder() { return order; }
     }
 
-    static class QueriesList {
-        private List<QueryStatement> mQueriesList;
-        private SupportSQLiteStatement mDeleteStatement;
+    public static class QueriesList {
+        private static final int PAGE_SIZE = 30;
+        private static final int PREFETCH_DISTANCE = 50;
+
+        public static final int STATUS_PRE_INITIALIZED = 0;
+        public static final int STATUS_INITIALIZED = 1;
+        public static final int STATUS_TERM_SET = 2;
+        public static final int STATUS_SEARCHING = 3;
+        public static final int STATUS_RESULTS_FOUND = 4;
+        public static final int STATUS_NO_RESULTS_FOUND_ENDED = 5;
+        public static final int STATUS_RESULTS_FOUND_ENDED = 6;
+
+        private final Logger mLog;
+
+        private static class Statements {
+            private QueryStatement[] mQueries;
+            private SupportSQLiteStatement mDeleteStatement;
+        }
+
+        private final MutableLiveData<Statements> mStatements;
 
         private final DictionaryDatabase mDB;
-        private final MutableLiveData<Boolean> mHasResults;
 
-        QueriesList(final DictionaryDatabase aDB) {
+        private final MutableLiveData<Integer> mStatus;
+
+        private String mTerm;
+        private String mLang;
+
+        private final MutableLiveData<Long> mLastInsert;
+
+        private volatile int mQueriesPosition;
+
+        private final LiveData<PagedList<DictionarySearchElement>> mSearchEntries;
+
+        public QueriesList(final DictionaryDatabase aDB) {
+            if (BuildConfig.DEBUG_QUERYTOOL) {
+                mLog = LoggerFactory.getLogger(getClass());
+
+                mLog.info(hashCode() + " constructor");
+            } else {
+                mLog = null;
+            }
+
             mDB = aDB;
 
-            mHasResults = new MutableLiveData<>();
+            mStatus = new MutableLiveData<>();
+
+            mQueriesPosition = 0;
+
+            mStatements = new MutableLiveData<>();
+
+            mLastInsert = new MutableLiveData<>();
+            mLastInsert.setValue(Long.valueOf(-1));
+
+            mStatus.setValue(STATUS_PRE_INITIALIZED);
+
+            final AsyncTask<Void, Void, Void> task = new AsyncTask<Void, Void, Void>() {
+                @Override
+                protected Void doInBackground(Void... voids) {
+                    if (BuildConfig.DEBUG_QUERYTOOL) {
+                        mLog.info(QueriesList.this.hashCode() + " init task started");
+                    }
+
+                    final SupportSQLiteDatabase sqlDb = mDB.getOpenHelper().getWritableDatabase();
+
+                    final SupportSQLiteStatement queryExactPrio = sqlDb.compileStatement(SQL_QUERY_EXACT_PRIO);
+                    final SupportSQLiteStatement queryExactNonPrio = sqlDb.compileStatement(SQL_QUERY_EXACT_NONPRIO);
+                    final SupportSQLiteStatement queryBeginPrio = sqlDb.compileStatement(SQL_QUERY_BEGIN_PRIO);
+                    final SupportSQLiteStatement queryBeginNonPrio = sqlDb.compileStatement(SQL_QUERY_BEGIN_NONPRIO);
+                    final SupportSQLiteStatement queryPartsPrio = sqlDb.compileStatement(SQL_QUERY_PARTS_PRIO);
+                    final SupportSQLiteStatement queryPartsNonPrio = sqlDb.compileStatement(SQL_QUERY_PARTS_NONPRIO);
+
+                    final QueryStatement[] queriesArray = new QueryStatement[6];
+
+                    queriesArray[0] = new QueryStatement(1, queryExactPrio);
+                    queriesArray[1] = new QueryStatement(2, queryExactNonPrio);
+                    queriesArray[2] = new QueryStatement(3, queryBeginPrio);
+                    queriesArray[3] = new QueryStatement(4, queryBeginNonPrio);
+                    queriesArray[4] = new QueryStatement(5, queryPartsPrio);
+                    queriesArray[5] = new QueryStatement(6, queryPartsNonPrio);
+
+                    final Statements s = new Statements();
+
+                    s.mQueries = queriesArray;
+                    s.mDeleteStatement = sqlDb.compileStatement(SQL_QUERY_DELETE_RESULTS);
+
+                    // We clear the results here. In the future there will be persistence.
+                    mDB.beginTransaction();
+
+                    s.mDeleteStatement.executeUpdateDelete();
+
+                    mDB.setTransactionSuccessful();
+                    mDB.endTransaction();
+
+                    mStatements.postValue(s);
+                    mStatus.postValue(STATUS_INITIALIZED);
+
+                    if (BuildConfig.DEBUG_QUERYTOOL) {
+                        mLog.info(QueriesList.this.hashCode() + " init task ended");
+                    }
+
+                    return null;
+                }
+            }.execute();
+
+            final PagedList.Config pagedListConfig =
+                    (new PagedList.Config.Builder()).setEnablePlaceholders(false)
+                            .setPrefetchDistance(PAGE_SIZE)
+                            .setPageSize(PREFETCH_DISTANCE).build();
+
+            mSearchEntries = Transformations.switchMap(mStatements,
+                    new Function<Statements, LiveData<PagedList<DictionarySearchElement>>>() {
+                        @Override
+                        public LiveData<PagedList<DictionarySearchElement>> apply(Statements input) {
+                            return new LivePagedListBuilder<Integer, DictionarySearchElement>(aDB.dictionarySearchResultDao().getAllPaged(),
+                                    pagedListConfig)
+                                    .setBoundaryCallback(new PagedList.BoundaryCallback<DictionarySearchElement>() {
+                                        @Override
+                                        public void onItemAtEndLoaded(@NonNull DictionarySearchElement itemAtEnd) {
+                                            if (BuildConfig.DEBUG_QUERYTOOL) {
+                                                mLog.info(QueriesList.this.hashCode() + " boundary callback called");
+                                            }
+
+                                            super.onItemAtEndLoaded(itemAtEnd);
+
+                                            executeNextStatement();
+                                        }
+                                    }).build();
+                        }
+                    });
         }
 
-        Iterator<QueryStatement> getIterator() {
-            return mQueriesList.iterator();
-        }
-
-        MutableLiveData<Boolean> getHasResults() {
-            return mHasResults;
-        }
-
-        void resetHasResults() {
-            mHasResults.setValue(true);
-        }
-
-        private void setQueriesList(final List<QueryStatement> aQueriesList) {
-            mQueriesList = aQueriesList;
-        }
-
-        private void setDeleteStatement(final SupportSQLiteStatement aDeleteStatement) {
-            mDeleteStatement = aDeleteStatement;
-        }
+        public LiveData<Integer> getStatus() { return mStatus; }
 
         private SupportSQLiteStatement getDeleteStatement() {
-            return mDeleteStatement;
+            if (mStatements.getValue() != null) {
+                return mStatements.getValue().mDeleteStatement;
+            } else {
+                return null;
+            }
         }
 
-        void executeNextStatement(@NonNull String aQueryTerm,
-                                  @NonNull String aLang,
-                                  String aBackupLang,
-                                  @NonNull Iterator<QueryStatement> aIterator,
-                                  boolean aDelete) {
-            new ExecuteNextStatementAsyncTask(mDB, aQueryTerm, aLang, aBackupLang, aIterator, this, aDelete, mHasResults).execute();
+        void executeNextStatement() {
+            if (BuildConfig.DEBUG_QUERYTOOL) {
+                mLog.info(hashCode() + " executeNextStatement called");
+            }
+
+            if (mStatus.getValue() <= STATUS_INITIALIZED) {
+                return;
+            }
+
+            final AsyncTask<Void, Void, Long> task = new AsyncTask<Void, Void, Long>() {
+                @Override
+                protected Long doInBackground(Void... voids) {
+                    if (BuildConfig.DEBUG_QUERYTOOL) {
+                        mLog.info(QueriesList.this.hashCode() + " executeNextStatement AsyncTask started");
+                    }
+
+                    long res = -1;
+
+                    mDB.beginTransaction();
+
+                    if (mStatus.getValue() == QueriesList.STATUS_TERM_SET) {
+                        mStatements.getValue().mDeleteStatement.executeUpdateDelete();
+
+                        mStatus.postValue(QueriesList.STATUS_SEARCHING);
+                    }
+
+                    while (res == -1 && mQueriesPosition < mStatements.getValue().mQueries.length) {
+                        res = mStatements.getValue().mQueries[mQueriesPosition].execute(mTerm, mLang);
+
+                        if (BuildConfig.DEBUG_QUERYTOOL) {
+                            mLog.info(QueriesList.this.hashCode() + " position " + mQueriesPosition + " result " + res);
+                        }
+
+                        mQueriesPosition = mQueriesPosition + 1;
+                    }
+
+                    mDB.setTransactionSuccessful();
+                    mDB.endTransaction();
+
+                    if (BuildConfig.DEBUG_QUERYTOOL) {
+                        mLog.info(QueriesList.this.hashCode() + " executeNextStatement AsyncTask ended");
+                    }
+
+                    return res;
+                }
+
+                @Override
+                protected void onPostExecute(Long aLong) {
+                    super.onPostExecute(aLong);
+
+                    if (aLong >= 0) {
+                        mLastInsert.setValue(aLong);
+                    }
+
+                    if (mQueriesPosition >= mStatements.getValue().mQueries.length) {
+                        if (mLastInsert.getValue() >= 0) {
+                            mStatus.setValue(STATUS_RESULTS_FOUND_ENDED);
+                        } else {
+                            mStatus.setValue(STATUS_NO_RESULTS_FOUND_ENDED);
+                        }
+                    } else {
+                        if (mLastInsert.getValue() >= 0) {
+                            mStatus.setValue(STATUS_RESULTS_FOUND);
+                        }
+                    }
+                }
+            }.execute();
         }
 
-        static LiveData<QueriesList> build(@NonNull final DictionaryDatabase aDB) {
-            final InitializeQueryAsyncTask asyncTask = new InitializeQueryAsyncTask(aDB);
-
-            asyncTask.execute();
-
-            return asyncTask.getLiveData();
-        }
-    }
-
-    private static class InitializeQueryAsyncTask extends AsyncTask<Void, Void, QueriesList> {
-        private final DictionaryDatabase mDB;
-        private final MutableLiveData<QueriesList> mLiveData;
-
-        private InitializeQueryAsyncTask(@NonNull DictionaryDatabase aDB) {
-            super();
-
-            mDB = aDB;
-            mLiveData = new MutableLiveData<>();
+        public LiveData<PagedList<DictionarySearchElement>> getSearchEntries() {
+            return mSearchEntries;
         }
 
-        private LiveData<QueriesList> getLiveData() { return mLiveData; }
+        public void setTerm(@NonNull String aTerm, @NonNull String aLang) {
+            if (mStatements.getValue() == null) {
+                return;
+            }
 
-        @Override
-        protected QueriesList doInBackground(Void... voids) {
-            final SupportSQLiteDatabase sqlDb = mDB.getOpenHelper().getWritableDatabase();
-
-            final SupportSQLiteStatement queryExactPrio = sqlDb.compileStatement(SQL_QUERY_EXACT_PRIO);
-            final SupportSQLiteStatement queryExactNonPrio = sqlDb.compileStatement(SQL_QUERY_EXACT_NONPRIO);
-            final SupportSQLiteStatement queryBeginPrio = sqlDb.compileStatement(SQL_QUERY_BEGIN_PRIO);
-            final SupportSQLiteStatement queryBeginNonPrio = sqlDb.compileStatement(SQL_QUERY_BEGIN_NONPRIO);
-            final SupportSQLiteStatement queryPartsPrio = sqlDb.compileStatement(SQL_QUERY_PARTS_PRIO);
-            final SupportSQLiteStatement queryPartsNonPrio = sqlDb.compileStatement(SQL_QUERY_PARTS_NONPRIO);
-
-            final LinkedList<QueryStatement> queriesList = new LinkedList<QueryStatement>();
-
-            queriesList.add(new QueryStatement(1, queryExactPrio));
-            queriesList.add(new QueryStatement(2, queryExactNonPrio));
-            queriesList.add(new QueryStatement(3, queryBeginPrio));
-            queriesList.add(new QueryStatement(4, queryBeginNonPrio));
-            queriesList.add(new QueryStatement(5, queryPartsPrio));
-            queriesList.add(new QueryStatement(6, queryPartsNonPrio));
-
-            final QueriesList result = new QueriesList(mDB);
-
-            result.setQueriesList(Collections.unmodifiableList(queriesList));
-            result.setDeleteStatement(sqlDb.compileStatement(SQL_QUERY_DELETE_RESULTS));
-
-            return result;
-        }
-
-        @Override
-        protected void onPostExecute(QueriesList aList) {
-            mLiveData.setValue(aList);
-        }
-    }
-
-    private static class ExecuteNextStatementAsyncTask extends AsyncTask<Void, Void, Long>  {
-        private final DictionaryDatabase mDB;
-        private final String mQueryTerm;
-        private final String mLang;
-        private final String mBackupLang;
-        private final Iterator<QueryStatement> mIterator;
-        private final QueriesList mQueriesList;
-        private final boolean mDelete;
-        private final MutableLiveData<Boolean> mHasResults;
-
-        ExecuteNextStatementAsyncTask(@NonNull DictionaryDatabase aDB,
-                                      @NonNull String aQueryTerm, @NonNull String aLang,
-                                      String aBackupLang,
-                                      @NonNull Iterator<QueryStatement> aIterator,
-                                      @NonNull QueriesList aQueriesList,
-                                      boolean aDelete,
-                                      @NonNull MutableLiveData<Boolean> aHasResult) {
-            super();
-
-            mDB = aDB;
-            mQueryTerm = aQueryTerm;
+            mTerm = aTerm;
             mLang = aLang;
-            mBackupLang = aBackupLang;
-            mIterator = aIterator;
-            mQueriesList = aQueriesList;
-            mDelete = aDelete;
-            mHasResults = aHasResult;
-        }
 
-        @Override
-        protected final Long doInBackground(Void... params) {
-            long res = -1;
+            mLastInsert.setValue(Long.valueOf(-1));
 
-            mDB.beginTransaction();
+            if (aTerm.equals("")) {
+                // Execute delete, which will set status to STATUS_INITIALIZED
+                final AsyncTask<Void, Void, Void> deleteTask = new AsyncTask<Void, Void, Void>() {
+                    @Override
+                    protected Void doInBackground(Void... voids) {
+                        mDB.beginTransaction();
 
-            if (mDelete) {
-                mQueriesList.getDeleteStatement().executeUpdateDelete();
-            }
+                        mStatements.getValue().mDeleteStatement.executeUpdateDelete();
 
-            while (mIterator.hasNext() && res < 0) {
-                res = mIterator.next().execute(mQueryTerm, mLang, mBackupLang);
-            }
+                        mDB.setTransactionSuccessful();
+                        mDB.endTransaction();
 
-            mDB.setTransactionSuccessful();
-            mDB.endTransaction();
+                        mStatus.postValue(STATUS_INITIALIZED);
 
-            return res;
-        }
+                        return null;
+                    }
+                }.execute();
+            } else {
+                mStatus.setValue(STATUS_TERM_SET);
+                mQueriesPosition = 0;
 
-        @Override
-        protected void onPostExecute(Long aRes)
-        {
-            if (aRes != null && aRes >= 0) {
-                mHasResults.setValue(true);
+                executeNextStatement();
             }
         }
-
     }
 }

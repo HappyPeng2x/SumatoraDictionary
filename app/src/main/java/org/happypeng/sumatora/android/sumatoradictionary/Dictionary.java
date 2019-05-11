@@ -39,16 +39,40 @@ import android.os.StrictMode;
 
 import com.google.android.material.navigation.NavigationView;
 
+import org.happypeng.sumatora.android.sumatoradictionary.fragment.DebugFragment;
 import org.happypeng.sumatora.android.sumatoradictionary.fragment.DictionaryBookmarkFragment;
 import org.happypeng.sumatora.android.sumatoradictionary.fragment.DictionarySearchFragment;
+import org.happypeng.sumatora.android.sumatoradictionary.fragment.SettingsFragment;
 
 import java.io.FileDescriptor;
 
-public class Dictionary extends AppCompatActivity {
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class Dictionary extends AppCompatActivity implements SettingsFragment.SettingsFragmentActions {
     private DrawerLayout m_drawer_layout;
 
     private DictionaryBookmarkFragment m_dictionaryBookmarkFragment;
+    private boolean m_dictionaryBookmarkFragmentShown;
+
     private DictionarySearchFragment m_dictionarySearchFragment;
+
+    private DebugFragment m_debugFragment;
+    private boolean m_debugFragmentShown;
+
+    private SettingsFragment m_settingsFragment;
+    private boolean m_settingsFragmentShown;
+
+    // Fragment sequence: 1. search (always on) 2. bookmarks or settings 3. if 2 is settings, debug
+
+    private static String SEARCH_FRAGMENT_TAG = "SEARCH_FRAGMENT";
+    private static String BOOKMARK_FRAGMENT_TAG = "BOOKMARK_FRAGMENT";
+    private static String SETTINGS_FRAGMENT_TAG = "SETTINGS_FRAGMENT";
+    private static String DEBUG_FRAGMENT_TAG = "DEBUG_FRAGMENT";
+
+    private NavigationView m_navigationView;
+
+    private Logger m_log;
 
     private static final int DELAY_MILLIS = 250;
 
@@ -66,40 +90,107 @@ public class Dictionary extends AppCompatActivity {
 
         FragmentTransaction fragmentTransaction = fm.beginTransaction();
         fragmentTransaction.replace(R.id.dictionary_fragment_container, aFragment, aTag);
+
+        // We use our manual stack instead
+        // fragmentTransaction.addToBackStack(aTag);
+
         fragmentTransaction.commit();
+    }
+
+    private void switchToSearchFragment() {
+        if (m_dictionarySearchFragment == null) {
+            if (BuildConfig.DEBUG_DICTIONARY_ACTIVITY) {
+                m_log.info("search fragment created");
+            }
+
+            m_dictionarySearchFragment = new DictionarySearchFragment();
+        }
+
+        switchToFragment(m_dictionarySearchFragment, SEARCH_FRAGMENT_TAG);
+
+        m_debugFragmentShown = false;
+        m_dictionaryBookmarkFragmentShown = false;
+        m_settingsFragmentShown = false;
+
+        if (m_navigationView != null) {
+            m_navigationView.setCheckedItem(R.id.navigation_view_item_search);
+        }
+    }
+
+    private void switchToBookmarksFragment() {
+        if (m_dictionaryBookmarkFragment == null) {
+            m_dictionaryBookmarkFragment = new DictionaryBookmarkFragment();
+        }
+
+        switchToFragment(m_dictionaryBookmarkFragment, BOOKMARK_FRAGMENT_TAG);
+
+        m_debugFragmentShown = false;
+        m_settingsFragmentShown = false;
+        m_dictionaryBookmarkFragmentShown = true;
+
+        if (m_navigationView != null) {
+            m_navigationView.setCheckedItem(R.id.navigation_view_item_bookmarks);
+        }
+    }
+
+    private void switchToSettingsFragment() {
+        if (m_settingsFragment == null) {
+            m_settingsFragment = new SettingsFragment();
+        }
+
+        switchToFragment(m_settingsFragment, SETTINGS_FRAGMENT_TAG);
+
+        m_debugFragmentShown = false;
+        m_settingsFragmentShown = true;
+        m_dictionaryBookmarkFragmentShown = false;
+
+        if (m_navigationView != null) {
+            m_navigationView.setCheckedItem(R.id.navigation_view_item_settings);
+        }
+    }
+
+    private void switchToDebugFragment() {
+        if (m_debugFragment == null) {
+            m_debugFragment = new DebugFragment();
+        }
+
+        switchToFragment(m_debugFragment, DEBUG_FRAGMENT_TAG);
+
+        m_debugFragmentShown = true;
+        m_settingsFragmentShown = true;
+        m_dictionaryBookmarkFragmentShown = false;
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        if (BuildConfig.DEBUG_DICTIONARY_ACTIVITY) {
+            m_log = LoggerFactory.getLogger(this.getClass());
+
+            m_log.info("onCreate started");
+        }
+
         setContentView(R.layout.activity_dictionary);
 
-        final NavigationView nv = (NavigationView) findViewById(R.id.activity_main_navigation_view);
-        nv.setNavigationItemSelectedListener(new NavigationView.OnNavigationItemSelectedListener() {
+        m_navigationView = (NavigationView) findViewById(R.id.activity_main_navigation_view);
+        m_navigationView.setNavigationItemSelectedListener(new NavigationView.OnNavigationItemSelectedListener() {
             @Override
             public boolean onNavigationItemSelected(@NonNull MenuItem pMenuItem) {
                 m_drawer_layout.closeDrawer(GravityCompat.START);
 
                 switch (pMenuItem.getItemId()) {
                     case R.id.navigation_view_item_search:
-                        if (m_dictionarySearchFragment == null) {
-                            m_dictionarySearchFragment = new DictionarySearchFragment();
-                        }
-
-                        switchToFragment(m_dictionarySearchFragment, "SEARCH_FRAGMENT");
-
+                        switchToSearchFragment();
                         break;
                     case R.id.navigation_view_item_about:
                         startActivityWithDelay(AboutActivity.class);
                         break;
                     case R.id.navigation_view_item_bookmarks:
-                        if (m_dictionaryBookmarkFragment == null) {
-                            m_dictionaryBookmarkFragment = new DictionaryBookmarkFragment();
-                        }
-
-                        switchToFragment(m_dictionaryBookmarkFragment, "BOOKMARK_FRAGMENT");
-
+                        switchToBookmarksFragment();
+                        break;
+                    case R.id.navigation_view_item_settings:
+                        switchToSettingsFragment();
                         break;
                 }
 
@@ -109,20 +200,45 @@ public class Dictionary extends AppCompatActivity {
 
         m_drawer_layout = (DrawerLayout) findViewById(R.id.nav_drawer);
 
-        if (m_dictionarySearchFragment == null) {
-            m_dictionarySearchFragment = new DictionarySearchFragment();
-        }
-
-        switchToFragment(m_dictionarySearchFragment, "SEARCH_FRAGMENT");
-
-        processIntent(getIntent());
+        switchToSearchFragment();
     }
 
     private void processIntent(Intent aIntent) {
+        if (BuildConfig.DEBUG_DICTIONARY_ACTIVITY) {
+            if (m_log != null) {
+                if (aIntent == null) {
+                    m_log.info("intent is null");
+                } else {
+                    m_log.info("intent action is " + aIntent.getAction());
 
-        if (aIntent.hasExtra("SEARCH_TERM") &&
-                m_dictionarySearchFragment != null) {
-            m_dictionarySearchFragment.processIntentTerm(aIntent.getStringExtra("SEARCH_TERM"));
+                    if (aIntent.getExtras() != null) {
+                        for (String key : aIntent.getExtras().keySet()) {
+                            m_log.info("intent has key " + key);
+
+                            Object val = aIntent.getExtras().get(key);
+
+                            if (val != null) {
+                                m_log.info("type " + val.getClass().getName() + " value " + val.toString());
+                            } else {
+                                m_log.info("value is null");
+                            }
+                        }
+                    } else {
+                        m_log.info("intent has no extras");
+                    }
+                }
+            }
+        }
+
+        if (aIntent != null && aIntent.hasExtra("SEARCH_TERM"))
+        {
+            if (BuildConfig.DEBUG_DICTIONARY_ACTIVITY) {
+                m_log.info("setting search term to " + aIntent.getStringExtra("SEARCH_TERM"));
+            }
+
+            m_dictionarySearchFragment.setIntentSearchTerm(aIntent.getStringExtra("SEARCH_TERM"));
+
+            aIntent.removeExtra("SEARCH_TERM");
         }
     }
 
@@ -145,6 +261,69 @@ public class Dictionary extends AppCompatActivity {
 
     @Override
     protected void onNewIntent(Intent aIntent) {
-        processIntent(aIntent);
+        if (BuildConfig.DEBUG_DICTIONARY_ACTIVITY) {
+            m_log.info("received new intent");
+        }
+
+        setIntent(aIntent);
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+
+        if (BuildConfig.DEBUG_DICTIONARY_ACTIVITY) {
+            m_log.info("onStop called");
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        if (BuildConfig.DEBUG_DICTIONARY_ACTIVITY) {
+            m_log.info("onResume called");
+        }
+
+        Intent intent = getIntent();
+
+        if (intent != null && intent.hasExtra("SEARCH_TERM")) {
+            switchToSearchFragment();
+            processIntent(intent);
+        }
+    }
+
+    @Override
+    public void onAttachFragment(Fragment fragment) {
+        if (fragment instanceof SettingsFragment) {
+            SettingsFragment settingsFragment = (SettingsFragment) fragment;
+
+            settingsFragment.setFragmentActions(this);
+        }
+    }
+
+    @Override
+    public void displayLog() {
+        switchToDebugFragment();
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (m_debugFragmentShown) {
+            switchToSettingsFragment();
+        } else if (m_settingsFragmentShown || m_dictionaryBookmarkFragmentShown) {
+            switchToSearchFragment();
+        } else {
+            finish();
+        }
+
+        // We use our manual stack instead
+
+        /* FragmentManager fm = getSupportFragmentManager();
+        if (fm.getBackStackEntryCount() > 1) {
+            fm.popBackStack();
+        } else {
+            finish();
+        }*/
     }
 }
