@@ -80,10 +80,12 @@ public class DictionaryQuery {
                                         public void onItemAtEndLoaded(@NonNull DictionarySearchElement itemAtEnd) {
                                             super.onItemAtEndLoaded(itemAtEnd);
 
-                                            if (mQueryTerm.getValue() != null && mApp.getLang().getValue() != null
+                                            Settings settings = mApp.getSettings();
+
+                                            if (mQueryTerm.getValue() != null && settings.getLang().getValue() != null
                                                     && mQueryIterator.getValue() != null && mQueries.getValue() != null) {
                                                 mQueries.getValue().executeNextStatement(mQueryTerm.getValue(),
-                                                        mApp.getLang().getValue(), mQueryIterator.getValue(), false);
+                                                        settings.getLang().getValue(), settings.getBackupLang().getValue(), mQueryIterator.getValue(), false);
                                             }
                                         }
                                     }).build();
@@ -109,7 +111,7 @@ public class DictionaryQuery {
             }
         });
 
-        mQueryIterator.addSource(mApp.getLang(), new Observer<String>() {
+        mQueryIterator.addSource(mApp.getSettings().getLang(), new Observer<String>() {
             @Override
             public void onChanged(String s) {
                 updateQueryIterator();
@@ -121,12 +123,14 @@ public class DictionaryQuery {
         if (mQueries.getValue() != null) {
             mQueries.getValue().resetHasResults();
 
-            if (mApp.getDictionaryDatabase().getValue() != null && mApp.getLang() != null && mApp.getLang().getValue() != null && mQueryTerm.getValue() != null) {
+            Settings settings = mApp.getSettings();
+
+            if (mApp.getDictionaryDatabase().getValue() != null && settings != null && settings.getLang().getValue() != null && mQueryTerm.getValue() != null) {
                 mQueryIterator.setValue(mQueries.getValue().getIterator());
 
                 if (mQueryIterator.getValue() != null) {
                     mQueries.getValue().executeNextStatement(mQueryTerm.getValue(),
-                            mApp.getLang().getValue(), mQueryIterator.getValue(), true);
+                            settings.getLang().getValue(), settings.getBackupLang().getValue(), mQueryIterator.getValue(), true);
                 } else {
                     if (BuildConfig.DEBUG_MESSAGE) {
                         Log.d("DICT_QUERY", "Queries list gave us a null iterator");

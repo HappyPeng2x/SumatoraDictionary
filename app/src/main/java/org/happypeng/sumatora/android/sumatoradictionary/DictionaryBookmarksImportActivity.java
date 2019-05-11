@@ -21,6 +21,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Observer;
+import androidx.lifecycle.Transformations;
 import androidx.lifecycle.ViewModelProviders;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -41,10 +42,12 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.PopupMenu;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryDatabase;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryLanguage;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
 import org.happypeng.sumatora.android.sumatoradictionary.fragment.DictionaryBookmarkFragment;
 import org.happypeng.sumatora.android.sumatoradictionary.fragment.DictionarySearchFragment;
@@ -60,8 +63,16 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
     private ProgressBar m_progressBar;
     private TextView m_statusText;
     private List<DictionarySearchElement> m_bookmarks;
+    private TextView m_languageText;
+
+    private PopupMenu m_languagePopupMenu;
+
+    private DictionaryBookmarkImportActivityModel m_viewModel;
 
     private boolean m_ready;
+
+    private String m_currentLang;
+    private String m_currentBackupLang;
 
     private void setInPreparation()
     {
@@ -102,6 +113,8 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
         final Toolbar tb = (Toolbar) findViewById(R.id.dictionary_bookmarks_import_toolbar);
         setSupportActionBar(tb);
 
+        m_languageText = (TextView) findViewById(R.id.import_fragment_language_text);
+
         // set up progress bar
         m_progressBar = (ProgressBar) findViewById(R.id.dictionary_bookmarks_import_progressbar);
         m_statusText = (TextView) findViewById(R.id.dictionary_bookmarks_import_statustext);
@@ -113,16 +126,19 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
         layoutManager.setOrientation(RecyclerView.VERTICAL);
         m_recyclerView.setLayoutManager(layoutManager);
 
-        final DictionaryBookmarkImportActivityModel viewModel = ViewModelProviders.of(this).get(DictionaryBookmarkImportActivityModel.class);
-        final DictionaryListAdapter listAdapter = new DictionaryListAdapter(true);
+        m_viewModel = ViewModelProviders.of(this).get(DictionaryBookmarkImportActivityModel.class);
+        final DictionaryListAdapter listAdapter = new DictionaryListAdapter(true, m_viewModel.getDictionaryApplication().getSettings());
 
         listAdapter.submitList(null);
 
-        viewModel.getBookmarks().observe(this,
+        m_viewModel.getBookmarks().observe(this,
                 new Observer<List<DictionarySearchElement>>()
                 {
                     @Override
                     public void onChanged(List<DictionarySearchElement> dictionarySearchElements) {
+                        m_currentLang = m_viewModel.getDictionaryApplication().getSettings().getLang().getValue();
+                        m_currentBackupLang = m_viewModel.getDictionaryApplication().getSettings().getBackupLang().getValue();
+
                         listAdapter.submitList(dictionarySearchElements);
 
                         m_bookmarks = dictionarySearchElements;
@@ -152,13 +168,13 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
             return;
         }
 
-        final DictionaryApplication app = (DictionaryApplication) viewModel.getApplication();
+        final DictionaryApplication app = (DictionaryApplication) m_viewModel.getApplication();
 
         app.getDictionaryDatabase().observe(this, new Observer<DictionaryDatabase>() {
             @Override
             public void onChanged(DictionaryDatabase dictionaryDatabase) {
                 if (dictionaryDatabase != null) {
-                    viewModel.importBookmarks(data);
+                    m_viewModel.importBookmarks(data);
                     setReady();
                 } else {
                     setInPreparation();
@@ -166,7 +182,7 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
             }
         });
 
-        viewModel.getError().observe(this, new Observer<Integer>() {
+        m_viewModel.getError().observe(this, new Observer<Integer>() {
             @Override
             public void onChanged(Integer integer) {
                 AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(DictionaryBookmarksImportActivity.this);
@@ -184,6 +200,47 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
                         });
 
                 alertDialogBuilder.create().show();
+            }
+        });
+
+        m_viewModel.getDictionaryApplication().getDictionaryLanguage().observe
+                (this, new Observer<List<DictionaryLanguage>>() {
+                    @Override
+                    public void onChanged(List<DictionaryLanguage> dictionaryLanguages) {
+                        m_languagePopupMenu = initLanguagePopupMenu(m_languageText, dictionaryLanguages);
+                    }
+                });
+
+        m_languageText.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (m_languagePopupMenu != null) {
+                    m_languagePopupMenu.show();
+                }
+            }
+        });
+
+        m_viewModel.getDictionaryApplication().getSettings().getLang().observe(this, new Observer<String>() {
+            @Override
+            public void onChanged(String s) {
+                if (m_currentLang == null || !m_currentLang.equals(s)) {
+                    m_currentLang = s;
+
+                    m_languageText.setText(s);
+
+                    listAdapter.notifyDataSetChanged();
+                } // Otherwise we will get flicker
+            }
+        });
+
+        m_viewModel.getDictionaryApplication().getSettings().getBackupLang().observe(this, new Observer<String>() {
+            @Override
+            public void onChanged(String s) {
+                if (m_currentBackupLang == null || !m_currentBackupLang.equals(s)) {
+                    m_currentBackupLang = s;
+
+                    listAdapter.notifyDataSetChanged();
+                } // Otherwise we will get flicker
             }
         });
     }
@@ -241,5 +298,27 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
                 icon.setColorFilter(new PorterDuffColorFilter(color, PorterDuff.Mode.SRC_IN));
             }
         }
+    }
+
+    private PopupMenu initLanguagePopupMenu(final View aAnchor, final List<DictionaryLanguage> aLanguage) {
+        PopupMenu popupMenu = null;
+
+        if (aLanguage != null) {
+            popupMenu = new PopupMenu(this, aAnchor);
+            Menu menu = popupMenu.getMenu();
+
+            for (final DictionaryLanguage l : aLanguage) {
+                menu.add(l.description).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
+                    @Override
+                    public boolean onMenuItemClick(MenuItem item) {
+                        m_viewModel.getDictionaryApplication().getSettings().setLang(l.lang);
+
+                        return false;
+                    }
+                });
+            }
+        }
+
+        return popupMenu;
     }
 }

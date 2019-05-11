@@ -45,10 +45,10 @@ public class DictionaryBookmarkImportActivityModel extends AndroidViewModel {
 
     private MediatorLiveData<List<DictionarySearchElement>> mBookmarkElements;
     private LiveData<List<DictionarySearchElement>> mBookmarkElementsLive;
-    private MutableLiveData<String> mLang;
 
-    public MutableLiveData<String> getLang() { return mLang; }
     public LiveData<List<DictionarySearchElement>> getBookmarks() { return mBookmarkElements; }
+
+    public DictionaryApplication getDictionaryApplication() { return mApp; }
 
     public DictionaryBookmarkImportActivityModel(Application aApp) {
         super(aApp);
@@ -56,9 +56,6 @@ public class DictionaryBookmarkImportActivityModel extends AndroidViewModel {
         mApp = (DictionaryApplication) aApp;
 
         mError = new MutableLiveData<>();
-        mLang = new MutableLiveData<>();
-
-        mLang.setValue("eng");
 
         mBookmarkElements = new MediatorLiveData<>();
 
@@ -66,8 +63,9 @@ public class DictionaryBookmarkImportActivityModel extends AndroidViewModel {
                 new Observer<DictionaryDatabase>() {
                     @Override
                     public void onChanged(DictionaryDatabase dictionaryDatabase) {
-                        if (dictionaryDatabase != null && mLang.getValue() != null) {
-                            mBookmarkElementsLive = dictionaryDatabase.dictionaryBookmarkImportDao().getAllDetailsLive(mLang.getValue());
+                        if (dictionaryDatabase != null && mApp.getSettings().getLang().getValue() != null) {
+                            mBookmarkElementsLive = dictionaryDatabase.dictionaryBookmarkImportDao().getAllDetailsLive(mApp.getSettings().getLang().getValue(),
+                                    mApp.getSettings().getBackupLang().getValue());
 
                             mBookmarkElements.addSource(mBookmarkElementsLive,
                                     new Observer<List<DictionarySearchElement>>() {
@@ -85,7 +83,7 @@ public class DictionaryBookmarkImportActivityModel extends AndroidViewModel {
                     }
                 });
 
-        mBookmarkElements.addSource(mLang,
+        mBookmarkElements.addSource(mApp.getSettings().getLang(),
                 new Observer<String>() {
                     @Override
                     public void onChanged(String s) {
@@ -95,7 +93,32 @@ public class DictionaryBookmarkImportActivityModel extends AndroidViewModel {
                         }
 
                         if (mApp.getDictionaryDatabase().getValue() != null) {
-                            mBookmarkElementsLive = mApp.getDictionaryDatabase().getValue().dictionaryBookmarkImportDao().getAllDetailsLive(mLang.getValue());
+                            mBookmarkElementsLive = mApp.getDictionaryDatabase().getValue().dictionaryBookmarkImportDao().getAllDetailsLive(mApp.getSettings().getLang().getValue(),
+                                    mApp.getSettings().getBackupLang().getValue());
+
+                            mBookmarkElements.addSource(mBookmarkElementsLive,
+                                    new Observer<List<DictionarySearchElement>>() {
+                                        @Override
+                                        public void onChanged(List<DictionarySearchElement> dictionarySearchElements) {
+                                            mBookmarkElements.setValue(dictionarySearchElements);
+                                        }
+                                    });
+                        }
+                    }
+                });
+
+        mBookmarkElements.addSource(mApp.getSettings().getBackupLang(),
+                new Observer<String>() {
+                    @Override
+                    public void onChanged(String s) {
+                        if (mBookmarkElementsLive != null) {
+                            mBookmarkElements.removeSource(mBookmarkElementsLive);
+                            mBookmarkElementsLive = null;
+                        }
+
+                        if (mApp.getDictionaryDatabase().getValue() != null) {
+                            mBookmarkElementsLive = mApp.getDictionaryDatabase().getValue().dictionaryBookmarkImportDao().getAllDetailsLive(mApp.getSettings().getLang().getValue(),
+                                    mApp.getSettings().getBackupLang().getValue());
 
                             mBookmarkElements.addSource(mBookmarkElementsLive,
                                     new Observer<List<DictionarySearchElement>>() {

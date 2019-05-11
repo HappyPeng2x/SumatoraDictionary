@@ -53,6 +53,8 @@ public class DictionaryBookmarkXML {
         serializer.endDocument();
 
         serializer.flush();
+
+        fos.close();
     }
 
     public static List<Long> readXML(InputStream aStream) {

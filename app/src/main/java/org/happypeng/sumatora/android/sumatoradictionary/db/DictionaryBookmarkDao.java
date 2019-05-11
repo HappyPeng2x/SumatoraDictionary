@@ -34,13 +34,14 @@ public interface DictionaryBookmarkDao {
     @Query("SELECT 1 as entryOrder, DictionaryBookmark.seq, "
             + "DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
             + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, "
-            + "DictionaryTranslation.lang, DictionaryTranslation.gloss, "
+            + "IFNULL(LangTranslation.lang, BackupTranslation.lang) AS lang, IFNULL(LangTranslation.gloss, BackupTranslation.gloss) AS gloss, "
             + "DictionaryBookmark.bookmark "
-            + "FROM DictionaryBookmark, DictionaryEntry, DictionaryTranslation "
+            + "FROM DictionaryBookmark, DictionaryEntry, "
+            + "DictionaryTranslation AS BackupTranslation LEFT JOIN DictionaryTranslation AS LangTranslation ON LangTranslation.seq = BackupTranslation.seq AND LangTranslation.lang = :lang "
             + "WHERE DictionaryBookmark.seq = DictionaryEntry.seq AND "
-            + " DictionaryTranslation.seq = DictionaryBookmark.seq AND DictionaryTranslation.lang = :lang "
-            + "ORDER BY DictionaryBookmark.seq")
-    LiveData<List<DictionarySearchElement>> getAllDetailsLive(String lang);
+            + " BackupTranslation.seq = DictionaryBookmark.seq AND BackupTranslation.lang = :backupLang "
+            + "GROUP BY DictionaryBookmark.seq ORDER BY DictionaryBookmark.seq")
+    LiveData<List<DictionarySearchElement>> getAllDetailsLive(String lang, String backupLang);
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void insert(DictionaryBookmark aBookmark);

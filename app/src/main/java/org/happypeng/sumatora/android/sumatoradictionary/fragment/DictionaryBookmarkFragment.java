@@ -143,7 +143,7 @@ public class DictionaryBookmarkFragment extends Fragment {
 
         m_viewModel = ViewModelProviders.of(getActivity()).get(DictionaryBookmarkFragmentModel.class);
 
-        final DictionaryListAdapter listAdapter = new DictionaryListAdapter();
+        final DictionaryListAdapter listAdapter = new DictionaryListAdapter(m_viewModel.getDictionaryApplication().getSettings());
 
         m_viewModel.getBookmarks().observe(this,
                 new Observer<List<DictionarySearchElement>>() {
@@ -178,10 +178,12 @@ public class DictionaryBookmarkFragment extends Fragment {
                     }
                 });
 
-        m_viewModel.getDictionaryApplication().getLang().observe(this, new Observer<String>() {
+        m_viewModel.getDictionaryApplication().getSettings().getLang().observe(this, new Observer<String>() {
             @Override
             public void onChanged(String s) {
                 m_languageText.setText(s);
+
+                listAdapter.notifyDataSetChanged();
             }
         });
 
@@ -299,7 +301,7 @@ public class DictionaryBookmarkFragment extends Fragment {
                 menu.add(l.description).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
                     @Override
                     public boolean onMenuItemClick(MenuItem item) {
-                        m_viewModel.getDictionaryApplication().setLang(l.lang);
+                        m_viewModel.getDictionaryApplication().getSettings().setLang(l.lang);
 
                         return false;
                     }

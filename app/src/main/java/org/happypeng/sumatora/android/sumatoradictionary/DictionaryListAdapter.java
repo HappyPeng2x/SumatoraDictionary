@@ -22,6 +22,7 @@ import android.view.ViewGroup;
 
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElementDiffUtil;
+import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Settings;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.ListAdapter;
@@ -30,16 +31,20 @@ public class DictionaryListAdapter extends ListAdapter<DictionarySearchElement, 
     private DictionarySearchElementViewHolder.ClickListener m_bookmarkClickListener;
     private boolean m_disableBookmarkButton;
 
-    public DictionaryListAdapter() {
+    private final Settings m_settings;
+
+    public DictionaryListAdapter(@NonNull final Settings aSettings) {
         super(DictionarySearchElementDiffUtil.getDiffUtil());
 
         setHasStableIds(true);
 
         m_disableBookmarkButton = false;
+
+        m_settings = aSettings;
     }
 
-    public DictionaryListAdapter(boolean aDisableBookmarkButton) {
-        this();
+    public DictionaryListAdapter(boolean aDisableBookmarkButton, @NonNull final Settings aSettings) {
+        this(aSettings);
 
         m_disableBookmarkButton = aDisableBookmarkButton;
     }
@@ -58,7 +63,7 @@ public class DictionaryListAdapter extends ListAdapter<DictionarySearchElement, 
     public DictionarySearchElementViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         LayoutInflater layoutInflater = android.view.LayoutInflater.from(parent.getContext());
         View view = layoutInflater.inflate(R.layout.cell_cards, parent, false);
-        DictionarySearchElementViewHolder holder = new DictionarySearchElementViewHolder(view);
+        DictionarySearchElementViewHolder holder = new DictionarySearchElementViewHolder(view, m_settings);
         holder.setBookmarkClickListener(m_bookmarkClickListener);
 
         if (m_disableBookmarkButton) {

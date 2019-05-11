@@ -19,13 +19,12 @@ package org.happypeng.sumatora.android.sumatoradictionary.db;
 import androidx.annotation.NonNull;
 import androidx.room.Entity;
 
-@Entity(primaryKeys = {"lang"})
 public class DictionaryLanguage {
     @NonNull public String lang;
     @NonNull public String description;
 
-    DictionaryLanguage() {
-        lang = "";
-        description = "";
+    public DictionaryLanguage(final String aLang, final String aDescription) {
+        lang = aLang;
+        description = aDescription;
     }
 }

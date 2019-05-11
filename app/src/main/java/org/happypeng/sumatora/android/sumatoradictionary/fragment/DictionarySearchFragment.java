@@ -192,7 +192,7 @@ public class DictionarySearchFragment extends Fragment {
 
         m_viewModel = ViewModelProviders.of(getActivity()).get(DictionarySearchFragmentModel.class);
 
-        final DictionaryPagedListAdapter pagedListAdapter = new DictionaryPagedListAdapter();
+        final DictionaryPagedListAdapter pagedListAdapter = new DictionaryPagedListAdapter(m_viewModel.getDictionaryApplication().getSettings());
 
         m_viewModel.getDictionaryQuery().observe(this);
 
@@ -257,10 +257,12 @@ public class DictionarySearchFragment extends Fragment {
                     }
                 });
 
-        m_viewModel.getDictionaryApplication().getLang().observe(this, new Observer<String>() {
+        m_viewModel.getDictionaryApplication().getSettings().getLang().observe(this, new Observer<String>() {
             @Override
             public void onChanged(String s) {
                 m_languageText.setText(s);
+
+                pagedListAdapter.notifyDataSetChanged();
             }
         });
 
@@ -299,7 +301,7 @@ public class DictionarySearchFragment extends Fragment {
                 menu.add(l.description).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
                     @Override
                     public boolean onMenuItemClick(MenuItem item) {
-                        m_viewModel.getDictionaryApplication().setLang(l.lang);
+                        m_viewModel.getDictionaryApplication().getSettings().setLang(l.lang);
 
                         return false;
                     }

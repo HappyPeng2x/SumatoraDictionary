@@ -37,7 +37,7 @@ import androidx.sqlite.db.SupportSQLiteStatement;
 
 public class QueryTool {
     static private final String SQL_QUERY_EXACT_PRIO =
-            "INSERT INTO DictionarySearchResult SELECT ? AS entryOrder, DictionaryEntry.seq, DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
+            "INSERT OR IGNORE INTO DictionarySearchResult SELECT ? AS entryOrder, DictionaryEntry.seq, DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
                     + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, DictionaryTranslation.lang, "
                     + "DictionaryTranslation.gloss "
                     + "FROM DictionaryEntry, DictionaryTranslation, "
@@ -49,7 +49,7 @@ public class QueryTool {
                     + "GROUP BY A.seq";
 
     static private final String SQL_QUERY_EXACT_NONPRIO =
-            "INSERT INTO DictionarySearchResult SELECT ? AS entryOrder, DictionaryEntry.seq, DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
+            "INSERT OR IGNORE INTO DictionarySearchResult SELECT ? AS entryOrder, DictionaryEntry.seq, DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
                     + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, DictionaryTranslation.lang, "
                     + "DictionaryTranslation.gloss "
                     + "FROM DictionaryEntry, DictionaryTranslation, "
@@ -61,7 +61,7 @@ public class QueryTool {
                     + "GROUP BY A.seq";
 
     static private final String SQL_QUERY_BEGIN_PRIO =
-            "INSERT INTO DictionarySearchResult SELECT ? AS entryOrder, DictionaryEntry.seq, DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
+            "INSERT OR IGNORE INTO DictionarySearchResult SELECT ? AS entryOrder, DictionaryEntry.seq, DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
                     + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, DictionaryTranslation.lang, "
                     + "DictionaryTranslation.gloss "
                     + "FROM DictionaryEntry, DictionaryTranslation, "
@@ -73,7 +73,7 @@ public class QueryTool {
                     + "GROUP BY A.seq";
 
     static private final String SQL_QUERY_BEGIN_NONPRIO =
-            "INSERT INTO DictionarySearchResult SELECT ? AS entryOrder, DictionaryEntry.seq, DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
+            "INSERT OR IGNORE INTO DictionarySearchResult SELECT ? AS entryOrder, DictionaryEntry.seq, DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
                     + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, DictionaryTranslation.lang, "
                     + "DictionaryTranslation.gloss "
                     + "FROM DictionaryEntry, DictionaryTranslation, "
@@ -85,7 +85,7 @@ public class QueryTool {
                     + "GROUP BY A.seq";
 
     static private final String SQL_QUERY_PARTS_PRIO =
-            "INSERT INTO DictionarySearchResult SELECT ? AS entryOrder, DictionaryEntry.seq, DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
+            "INSERT OR IGNORE INTO DictionarySearchResult SELECT ? AS entryOrder, DictionaryEntry.seq, DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
                     + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, DictionaryTranslation.lang, "
                     + "DictionaryTranslation.gloss "
                     + "FROM DictionaryEntry, DictionaryTranslation, "
@@ -97,7 +97,7 @@ public class QueryTool {
                     + "GROUP BY A.seq";
 
     static private final String SQL_QUERY_PARTS_NONPRIO =
-            "INSERT INTO DictionarySearchResult SELECT ? AS entryOrder, DictionaryEntry.seq, DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
+            "INSERT OR IGNORE INTO DictionarySearchResult SELECT ? AS entryOrder, DictionaryEntry.seq, DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
                     + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, DictionaryTranslation.lang, "
                     + "DictionaryTranslation.gloss "
                     + "FROM DictionaryEntry, DictionaryTranslation, "
@@ -121,7 +121,9 @@ public class QueryTool {
         }
 
         @WorkerThread
-        private long execute(String term, String lang) {
+        private long execute(String term, String lang, String backupLang) {
+            long result, resultBackup;
+
             if (BuildConfig.DEBUG_MESSAGE) {
                 Log.d("DICT_QUERY", "Execute query " + order + " for term " + term);
             }
@@ -131,7 +133,24 @@ public class QueryTool {
             statement.bindString(3, term);
             statement.bindString(4, lang);
 
-            return statement.executeInsert();
+            result = statement.executeInsert();
+
+            if (backupLang != null && !backupLang.equals(lang)) {
+                statement.bindLong(1, order);
+                statement.bindString(2, term);
+                statement.bindString(3, term);
+                statement.bindString(4, backupLang);
+
+                resultBackup = statement.executeInsert();
+            } else {
+                resultBackup = -1;
+            }
+
+            if (resultBackup > 0) {
+                return resultBackup;
+            } else {
+                return result;
+            }
         }
 
         public int getOrder() { return order; }
@@ -176,9 +195,10 @@ public class QueryTool {
 
         void executeNextStatement(@NonNull String aQueryTerm,
                                   @NonNull String aLang,
+                                  String aBackupLang,
                                   @NonNull Iterator<QueryStatement> aIterator,
                                   boolean aDelete) {
-            new ExecuteNextStatementAsyncTask(mDB, aQueryTerm, aLang, aIterator, this, aDelete, mHasResults).execute();
+            new ExecuteNextStatementAsyncTask(mDB, aQueryTerm, aLang, aBackupLang, aIterator, this, aDelete, mHasResults).execute();
         }
 
         static LiveData<QueriesList> build(@NonNull final DictionaryDatabase aDB) {
@@ -241,6 +261,7 @@ public class QueryTool {
         private final DictionaryDatabase mDB;
         private final String mQueryTerm;
         private final String mLang;
+        private final String mBackupLang;
         private final Iterator<QueryStatement> mIterator;
         private final QueriesList mQueriesList;
         private final boolean mDelete;
@@ -248,6 +269,7 @@ public class QueryTool {
 
         ExecuteNextStatementAsyncTask(@NonNull DictionaryDatabase aDB,
                                       @NonNull String aQueryTerm, @NonNull String aLang,
+                                      String aBackupLang,
                                       @NonNull Iterator<QueryStatement> aIterator,
                                       @NonNull QueriesList aQueriesList,
                                       boolean aDelete,
@@ -257,6 +279,7 @@ public class QueryTool {
             mDB = aDB;
             mQueryTerm = aQueryTerm;
             mLang = aLang;
+            mBackupLang = aBackupLang;
             mIterator = aIterator;
             mQueriesList = aQueriesList;
             mDelete = aDelete;
@@ -274,7 +297,7 @@ public class QueryTool {
             }
 
             while (mIterator.hasNext() && res < 0) {
-                res = mIterator.next().execute(mQueryTerm, mLang);
+                res = mIterator.next().execute(mQueryTerm, mLang, mBackupLang);
             }
 
             mDB.setTransactionSuccessful();
