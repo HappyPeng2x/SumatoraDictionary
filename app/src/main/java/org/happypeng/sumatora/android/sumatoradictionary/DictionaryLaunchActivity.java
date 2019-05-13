@@ -38,27 +38,33 @@ public class DictionaryLaunchActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        Logger log = LoggerFactory.getLogger(DictionaryLaunchActivity.class);
+        Logger log = null;
 
-        log.info("onCreate started");
+        if (BuildConfig.DEBUG_LAUNCH_ACTIVITY) {
+            log = LoggerFactory.getLogger(this.getClass());
+
+            log.info("onCreate started");
+        }
 
         Intent inboundIntent = getIntent();
         String receivedAction = inboundIntent.getAction();
 
         String searchTerm = null;
 
-        log.info("receivedAction = " + receivedAction);
+        if (BuildConfig.DEBUG_LAUNCH_ACTIVITY) {
+            log.info("receivedAction = " + receivedAction);
 
-        if (inboundIntent.getExtras() != null) {
-            for (String key : inboundIntent.getExtras().keySet()) {
-                log.info("inboundIntent has key " + key);
+            if (inboundIntent.getExtras() != null) {
+                for (String key : inboundIntent.getExtras().keySet()) {
+                    log.info("inboundIntent has key " + key);
 
-                Object val = inboundIntent.getExtras().get(key);
+                    Object val = inboundIntent.getExtras().get(key);
 
-                if (val != null) {
-                    log.info("type " + val.getClass().getName() + " value " + val.toString());
-                } else {
-                    log.info("value is null");
+                    if (val != null) {
+                        log.info("type " + val.getClass().getName() + " value " + val.toString());
+                    } else {
+                        log.info("value is null");
+                    }
                 }
             }
         }

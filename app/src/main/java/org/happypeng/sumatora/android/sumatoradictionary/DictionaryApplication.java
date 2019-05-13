@@ -35,6 +35,8 @@ import java.io.File;
 import java.util.LinkedList;
 import java.util.List;
 
+import androidx.annotation.MainThread;
+import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.room.Room;
@@ -46,6 +48,9 @@ public class DictionaryApplication extends Application {
     static final String DATABASE_NAME = "JMdict.db";
 
     protected MutableLiveData<DictionaryDatabase> m_dictionaryDatabase;
+
+/*    protected MutableLiveData<String> m_queryTerm;
+    protected MutableLiveData<String> m_queryLang;*/
 
     public LiveData<DictionaryDatabase> getDictionaryDatabase() {
         return m_dictionaryDatabase;

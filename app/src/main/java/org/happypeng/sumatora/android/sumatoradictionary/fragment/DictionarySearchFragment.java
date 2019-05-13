@@ -171,7 +171,7 @@ public class DictionarySearchFragment extends Fragment {
 
         final DictionaryPagedListAdapter pagedListAdapter = new DictionaryPagedListAdapter();
 
-        m_viewModel.getSearchEntries().observe(this,
+        m_viewModel.getSearchEntries().observe(getViewLifecycleOwner(),
                 new Observer<PagedList<DictionarySearchElement>>() {
                     @Override
                     public void onChanged(PagedList<DictionarySearchElement> dictionarySearchElements) {
@@ -179,7 +179,7 @@ public class DictionarySearchFragment extends Fragment {
                     }
                 });
 
-        m_viewModel.getBookmarksHash().observe(this,
+        m_viewModel.getBookmarksHash().observe(getViewLifecycleOwner(),
                 new Observer<HashMap<Long, Long>>() {
                     @Override
                     public void onChanged(HashMap<Long, Long> aBookmarks) {
@@ -203,7 +203,11 @@ public class DictionarySearchFragment extends Fragment {
         m_search_button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                m_viewModel.getDictionaryQuery().getValue().setTerm(m_edit_text.getText().toString(), "eng");
+                m_intentSearchTerm = m_edit_text.getText().toString();
+
+                processIntentSearchTerm();
+
+                //m_viewModel.getDictionaryQuery().getValue().setTerm(m_edit_text.getText().toString(), "eng");
             }
         });
 
@@ -216,21 +220,16 @@ public class DictionarySearchFragment extends Fragment {
             }
         });
 
-        m_viewModel.getQueryStatus().observe(this,
+        Observer<Integer> observer =
                 new Observer<Integer>() {
                     @Override
                     public void onChanged(Integer integer) {
+                        processIntentSearchTerm();
+
                         if (integer == QueryTool.QueriesList.STATUS_PRE_INITIALIZED) {
                             setInPreparation();
                         } else if (integer == QueryTool.QueriesList.STATUS_INITIALIZED) {
                             setReady();
-
-                            if (m_intentSearchTerm != null) {
-                                m_edit_text.setText("");
-                                m_edit_text.append(m_intentSearchTerm);
-                                m_viewModel.getDictionaryQuery().getValue().setTerm(m_intentSearchTerm, "eng");
-                                m_intentSearchTerm = null;
-                            }
                         } else if (integer == QueryTool.QueriesList.STATUS_SEARCHING) {
                             setSearching();
                         } else if (integer == QueryTool.QueriesList.STATUS_RESULTS_FOUND ||
@@ -240,12 +239,47 @@ public class DictionarySearchFragment extends Fragment {
                             setNoResultsFound();
                         }
                     }
-                });
+                };
+
+        m_viewModel.getQueryStatus().observe(getViewLifecycleOwner(), observer);
 
         return view;
     }
 
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+
+        // Avoid using old pointers when view has been destroyed
+        m_search_button = null;
+        m_magic_cross = null;
+        m_edit_text = null;
+        m_progress_bar = null;
+        m_status_text = null;
+    }
+
+    private void processIntentSearchTerm() {
+        if (m_intentSearchTerm == null || m_intentSearchTerm.equals("") ||
+            m_viewModel.getDictionaryQuery().getValue() == null ||
+            m_edit_text == null) {
+            return;
+        }
+
+        // Very important in order not to create a loop:
+        // non-null m_intentSearchTerm indicates an intent to be processed,
+        // which will be processed when the query status changes.
+        String searchTerm = m_intentSearchTerm;
+        m_intentSearchTerm = null;
+
+        m_edit_text.setText("");
+        m_edit_text.append(searchTerm);
+
+        m_viewModel.getDictionaryQuery().getValue().setTerm(searchTerm, "eng");
+    }
+
     public void setIntentSearchTerm(@NonNull String aIntentSearchTerm) {
         m_intentSearchTerm = aIntentSearchTerm;
+
+        processIntentSearchTerm();
     }
 }
