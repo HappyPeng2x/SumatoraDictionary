@@ -280,6 +280,8 @@ public class QueryTool {
                                     }).build();
                         }
                     });
+
+            mTerm = "";
         }
 
         public LiveData<Integer> getStatus() { return mStatus; }
@@ -311,13 +313,24 @@ public class QueryTool {
                     long res = -1;
                     long backupRes = -1;
 
-                    mDB.beginTransaction();
-
                     if (mStatus.getValue() == QueriesList.STATUS_TERM_SET) {
+                        if (BuildConfig.DEBUG_QUERYTOOL) {
+                            mLog.info(QueriesList.this.hashCode() + " executeUpdateDelete");
+                        }
+
+                        // separate transaction for deleting and inserting
+                        // otherwise we risk a mix-up when changing languages
+                        mDB.beginTransaction();
+
                         mStatements.getValue().mDeleteStatement.executeUpdateDelete();
+
+                        mDB.setTransactionSuccessful();
+                        mDB.endTransaction();
 
                         mStatus.postValue(QueriesList.STATUS_SEARCHING);
                     }
+
+                    mDB.beginTransaction();
 
                     while (res == -1 && mQueriesPosition < mStatements.getValue().mQueries.length) {
                         res = mStatements.getValue().mQueries[mQueriesPosition].execute(mTerm, mLang);
@@ -327,6 +340,7 @@ public class QueryTool {
                         }
 
                         if (mBackupLang != null && !mBackupLang.equals(mLang)) {
+
                             backupRes = mStatements.getValue().mQueries[mQueriesPosition].execute(mTerm, mBackupLang);
 
                             if (BuildConfig.DEBUG_QUERYTOOL) {

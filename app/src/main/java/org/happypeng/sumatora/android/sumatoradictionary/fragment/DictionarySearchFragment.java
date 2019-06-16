@@ -49,11 +49,13 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryLanguage;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.QueryTool;
+import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Settings;
 import org.happypeng.sumatora.android.sumatoradictionary.model.DictionarySearchFragmentModel;
 
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 public class DictionarySearchFragment extends Fragment {
     private ImageButton m_search_button;
@@ -64,13 +66,15 @@ public class DictionarySearchFragment extends Fragment {
     private ProgressBar m_progress_bar;
     private TextView m_status_text;
 
-    private String m_intentSearchTerm;
-
     private DictionarySearchFragmentModel m_viewModel;
 
     private TextView m_languageText;
 
     private PopupMenu m_languagePopupMenu;
+
+    private DictionarySearchElementViewHolder.Status m_viewHolderStatus;
+
+    private String m_backupLang;
 
     public DictionarySearchFragment() {
         // Required empty public constructor
@@ -178,7 +182,8 @@ public class DictionarySearchFragment extends Fragment {
 
         m_viewModel = ViewModelProviders.of(getActivity()).get(DictionarySearchFragmentModel.class);
 
-        final DictionaryPagedListAdapter pagedListAdapter = new DictionaryPagedListAdapter(m_viewModel.getDictionaryApplication().getSettings());
+        m_viewHolderStatus = new DictionarySearchElementViewHolder.Status();
+        final DictionaryPagedListAdapter pagedListAdapter = new DictionaryPagedListAdapter(m_viewHolderStatus);
 
         m_viewModel.getSearchEntries().observe(getViewLifecycleOwner(),
                 new Observer<PagedList<DictionarySearchElement>>() {
@@ -212,11 +217,7 @@ public class DictionarySearchFragment extends Fragment {
         m_search_button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                m_intentSearchTerm = m_edit_text.getText().toString();
-
-                processIntentSearchTerm();
-
-                //m_viewModel.getDictionaryQuery().getValue().setTerm(m_edit_text.getText().toString(), "eng");
+                m_viewModel.setTerm(m_edit_text.getText().toString());
             }
         });
 
@@ -229,29 +230,6 @@ public class DictionarySearchFragment extends Fragment {
             }
         });
 
-        Observer<Integer> observer =
-                new Observer<Integer>() {
-                    @Override
-                    public void onChanged(Integer integer) {
-                        processIntentSearchTerm();
-
-                        if (integer == QueryTool.QueriesList.STATUS_PRE_INITIALIZED) {
-                            setInPreparation();
-                        } else if (integer == QueryTool.QueriesList.STATUS_INITIALIZED) {
-                            setReady();
-                        } else if (integer == QueryTool.QueriesList.STATUS_SEARCHING) {
-                            setSearching();
-                        } else if (integer == QueryTool.QueriesList.STATUS_RESULTS_FOUND ||
-                                integer == QueryTool.QueriesList.STATUS_RESULTS_FOUND_ENDED) {
-                            setReady();
-                        } else if (integer == QueryTool.QueriesList.STATUS_NO_RESULTS_FOUND_ENDED) {
-                            setNoResultsFound();
-                        }
-                    }
-                };
-
-        m_viewModel.getQueryStatus().observe(getViewLifecycleOwner(), observer);
-
         m_viewModel.getDictionaryApplication().getDictionaryLanguage().observe
                 (this, new Observer<List<DictionaryLanguage>>() {
                     @Override
@@ -260,20 +238,54 @@ public class DictionarySearchFragment extends Fragment {
                     }
                 });
 
-        m_viewModel.getDictionaryApplication().getSettings().getLang().observe(this, new Observer<String>() {
-            @Override
-            public void onChanged(String s) {
-                m_languageText.setText(s);
-
-                m_intentSearchTerm = m_edit_text.getText().toString();
-
-                processIntentSearchTerm();
-
-                // pagedListAdapter.notifyDataSetChanged();
-            }
-        });
-
         m_languageText = (TextView) view.findViewById(R.id.search_fragment_language_text);
+
+        m_viewModel.getStatus().observe(getViewLifecycleOwner(),
+                new Observer<DictionarySearchFragmentModel.Status>() {
+                    @Override
+                    public void onChanged(DictionarySearchFragmentModel.Status status) {
+                        if (!status.isInitialized()) {
+                            setInPreparation();
+
+                            return;
+                        }
+
+                        if (!m_languageText.getText().toString().equals(status.lang)) {
+                            m_languageText.setText(status.lang);
+
+                            pagedListAdapter.notifyDataSetChanged();
+                        }
+
+                        if ((m_backupLang == null && status.backupLang != null) ||
+                                (m_backupLang != null && !m_backupLang.equals(status.backupLang))) {
+                            m_backupLang = status.backupLang;
+
+                            pagedListAdapter.notifyDataSetChanged();
+                        }
+
+                        if (!m_edit_text.getText().toString().equals(status.term)) {
+                            m_edit_text.setText("");
+
+                            if (status.term != null) {
+                                m_edit_text.append(status.term);
+                            }
+                        }
+
+                        m_viewHolderStatus.lang = status.lang;
+                        
+                        if (status.queryStatus == QueryTool.QueriesList.STATUS_INITIALIZED) {
+                            setReady();
+                        } else if (status.queryStatus == QueryTool.QueriesList.STATUS_SEARCHING) {
+                            setSearching();
+                        } else if (status.queryStatus == QueryTool.QueriesList.STATUS_RESULTS_FOUND ||
+                                status.queryStatus == QueryTool.QueriesList.STATUS_RESULTS_FOUND_ENDED) {
+                            setReady();
+                        } else if (status.queryStatus == QueryTool.QueriesList.STATUS_NO_RESULTS_FOUND_ENDED) {
+                            setNoResultsFound();
+                        }
+                    }
+                });
+
 
         m_languageText.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -300,31 +312,8 @@ public class DictionarySearchFragment extends Fragment {
         m_languageText = null;
     }
 
-    private void processIntentSearchTerm() {
-        if (m_intentSearchTerm == null || m_intentSearchTerm.equals("") ||
-                m_viewModel.getDictionaryQuery().getValue() == null ||
-                m_edit_text == null) {
-            return;
-        }
-
-        // Very important in order not to create a loop:
-        // non-null m_intentSearchTerm indicates an intent to be processed,
-        // which will be processed when the query status changes.
-        String searchTerm = m_intentSearchTerm;
-        m_intentSearchTerm = null;
-
-        m_edit_text.setText("");
-        m_edit_text.append(searchTerm);
-
-        m_viewModel.getDictionaryQuery().getValue().setTerm(searchTerm,
-                m_viewModel.getDictionaryApplication().getSettings().getLang().getValue(),
-                m_viewModel.getDictionaryApplication().getSettings().getBackupLang().getValue());
-    }
-
     public void setIntentSearchTerm(@NonNull String aIntentSearchTerm) {
-        m_intentSearchTerm = aIntentSearchTerm;
-
-        processIntentSearchTerm();
+        m_viewModel.setTerm(aIntentSearchTerm);
     }
 
     private PopupMenu initLanguagePopupMenu(final View aAnchor, final List<DictionaryLanguage> aLanguage) {
@@ -338,7 +327,7 @@ public class DictionarySearchFragment extends Fragment {
                 menu.add(l.description).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
                     @Override
                     public boolean onMenuItemClick(MenuItem item) {
-                        m_viewModel.getDictionaryApplication().getSettings().setLang(l.lang);
+                        m_viewModel.getDictionaryApplication().getSettings().setValue(Settings.LANG, l.lang);
 
                         return false;
                     }

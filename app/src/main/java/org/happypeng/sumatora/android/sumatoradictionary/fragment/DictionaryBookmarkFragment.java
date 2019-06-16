@@ -56,6 +56,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.DictionarySearchElement
 import org.happypeng.sumatora.android.sumatoradictionary.R;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryLanguage;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
+import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Settings;
 import org.happypeng.sumatora.android.sumatoradictionary.model.DictionaryBookmarkFragmentModel;
 import org.happypeng.sumatora.android.sumatoradictionary.xml.DictionaryBookmarkXML;
 
@@ -143,23 +144,8 @@ public class DictionaryBookmarkFragment extends Fragment {
 
         m_viewModel = ViewModelProviders.of(getActivity()).get(DictionaryBookmarkFragmentModel.class);
 
-        final DictionaryListAdapter listAdapter = new DictionaryListAdapter(m_viewModel.getDictionaryApplication().getSettings());
-
-        m_viewModel.getBookmarks().observe(this,
-                new Observer<List<DictionarySearchElement>>() {
-                    @Override
-                    public void onChanged(List<DictionarySearchElement> dictionarySearchElements) {
-                        if (dictionarySearchElements != null) {
-                            setReady();
-                        } else {
-                            setInPreparation();
-                        }
-
-                        listAdapter.submitList(dictionarySearchElements);
-
-                        m_bookmarks = dictionarySearchElements;
-                    }
-                });
+        final DictionarySearchElementViewHolder.Status viewHolderStatus = new DictionarySearchElementViewHolder.Status();
+        final DictionaryListAdapter listAdapter = new DictionaryListAdapter(viewHolderStatus);
 
         m_recyclerView.setAdapter(listAdapter);
 
@@ -178,24 +164,6 @@ public class DictionaryBookmarkFragment extends Fragment {
                     }
                 });
 
-        m_viewModel.getDictionaryApplication().getSettings().getLang().observe(this, new Observer<String>() {
-            @Override
-            public void onChanged(String s) {
-                m_languageText.setText(s);
-
-                // Reason is that even if the content does not change, settings have changed
-                listAdapter.notifyDataSetChanged();
-            }
-        });
-
-        m_viewModel.getDictionaryApplication().getSettings().getBackupLang().observe(this, new Observer<String>() {
-            @Override
-            public void onChanged(String s) {
-                // Reason is that even if the content does not change, settings have changed
-                listAdapter.notifyDataSetChanged();
-            }
-        });
-
         m_languageText.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -204,6 +172,34 @@ public class DictionaryBookmarkFragment extends Fragment {
                 }
             }
         });
+
+        m_viewModel.getStatus().observe(getViewLifecycleOwner(),
+                new Observer<DictionaryBookmarkFragmentModel.Status>() {
+                    @Override
+                    public void onChanged(DictionaryBookmarkFragmentModel.Status status) {
+                        if (status.isInitialized()) {
+                            setReady();
+
+                            if (!m_languageText.getText().toString().equals(status.lang)) {
+                                m_languageText.setText(status.lang);
+                            }
+
+                            if (viewHolderStatus.lang == null) {
+                                viewHolderStatus.lang = status.lang;
+                            } else if (!viewHolderStatus.lang.equals(status.lang)) {
+                                viewHolderStatus.lang = status.lang;
+                                listAdapter.notifyDataSetChanged();
+                            }
+
+                            if (m_bookmarks != status.bookmarkElements) {
+                                listAdapter.submitList(status.bookmarkElements);
+                                m_bookmarks = status.bookmarkElements;
+                            }
+                        } else {
+                            setInPreparation();
+                        }
+                    }
+                });
 
         return view;
     }
@@ -310,7 +306,7 @@ public class DictionaryBookmarkFragment extends Fragment {
                 menu.add(l.description).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
                     @Override
                     public boolean onMenuItemClick(MenuItem item) {
-                        m_viewModel.getDictionaryApplication().getSettings().setLang(l.lang);
+                        m_viewModel.getDictionaryApplication().getSettings().setValue(Settings.LANG, l.lang);
 
                         return false;
                     }

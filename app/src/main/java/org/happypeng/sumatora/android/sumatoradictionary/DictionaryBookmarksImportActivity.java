@@ -36,7 +36,6 @@ import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.ParcelFileDescriptor;
-import android.provider.Settings;
 import android.util.TypedValue;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -49,6 +48,7 @@ import android.widget.TextView;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryLanguage;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
+import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Settings;
 import org.happypeng.sumatora.android.sumatoradictionary.fragment.DictionaryBookmarkFragment;
 import org.happypeng.sumatora.android.sumatoradictionary.fragment.DictionarySearchFragment;
 import org.happypeng.sumatora.android.sumatoradictionary.model.DictionaryBookmarkFragmentModel;
@@ -127,23 +127,11 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
         m_recyclerView.setLayoutManager(layoutManager);
 
         m_viewModel = ViewModelProviders.of(this).get(DictionaryBookmarkImportActivityModel.class);
-        final DictionaryListAdapter listAdapter = new DictionaryListAdapter(true, m_viewModel.getDictionaryApplication().getSettings());
+
+        final DictionarySearchElementViewHolder.Status viewHolderStatus = new DictionarySearchElementViewHolder.Status();
+        final DictionaryListAdapter listAdapter = new DictionaryListAdapter(true, viewHolderStatus);
 
         listAdapter.submitList(null);
-
-        m_viewModel.getBookmarks().observe(this,
-                new Observer<List<DictionarySearchElement>>()
-                {
-                    @Override
-                    public void onChanged(List<DictionarySearchElement> dictionarySearchElements) {
-                        m_currentLang = m_viewModel.getDictionaryApplication().getSettings().getLang().getValue();
-                        m_currentBackupLang = m_viewModel.getDictionaryApplication().getSettings().getBackupLang().getValue();
-
-                        listAdapter.submitList(dictionarySearchElements);
-
-                        m_bookmarks = dictionarySearchElements;
-                    }
-                });
 
         m_recyclerView.setAdapter(listAdapter);
 
@@ -220,29 +208,34 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
             }
         });
 
-        m_viewModel.getDictionaryApplication().getSettings().getLang().observe(this, new Observer<String>() {
-            @Override
-            public void onChanged(String s) {
-                if (m_currentLang == null || !m_currentLang.equals(s)) {
-                    m_currentLang = s;
+        m_viewModel.getStatus().observe(this,
+                new Observer<DictionaryBookmarkImportActivityModel.Status>() {
+                    @Override
+                    public void onChanged(DictionaryBookmarkImportActivityModel.Status status) {
+                        if (status.isInitialized()) {
+                            if (m_currentLang == null || !m_currentLang.equals(status.lang)) {
+                                m_currentLang = status.lang;
 
-                    m_languageText.setText(s);
+                                m_languageText.setText(status.lang);
 
-                    listAdapter.notifyDataSetChanged();
-                } // Otherwise we will get flicker
-            }
-        });
+                                viewHolderStatus.lang = status.lang;
 
-        m_viewModel.getDictionaryApplication().getSettings().getBackupLang().observe(this, new Observer<String>() {
-            @Override
-            public void onChanged(String s) {
-                if (m_currentBackupLang == null || !m_currentBackupLang.equals(s)) {
-                    m_currentBackupLang = s;
+                                listAdapter.notifyDataSetChanged();
+                            }
 
-                    listAdapter.notifyDataSetChanged();
-                } // Otherwise we will get flicker
-            }
-        });
+                            if (m_currentBackupLang == null || !m_currentBackupLang.equals(status.backupLang)) {
+                                m_currentBackupLang = status.backupLang;
+
+                                listAdapter.notifyDataSetChanged();
+                            }
+
+                            if (m_bookmarks != status.bookmarkElements) {
+                                listAdapter.submitList(status.bookmarkElements);
+                                m_bookmarks = status.bookmarkElements;
+                            }
+                        }
+                    }
+                });
     }
 
     @Override
@@ -311,7 +304,7 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
                 menu.add(l.description).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
                     @Override
                     public boolean onMenuItemClick(MenuItem item) {
-                        m_viewModel.getDictionaryApplication().getSettings().setLang(l.lang);
+                        m_viewModel.getDictionaryApplication().getSettings().setValue(Settings.LANG, l.lang);
 
                         return false;
                     }

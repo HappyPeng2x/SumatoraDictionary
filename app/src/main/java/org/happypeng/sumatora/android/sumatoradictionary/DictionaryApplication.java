@@ -30,6 +30,8 @@ import com.fstyle.library.helper.AssetSQLiteOpenHelperFactory;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryLanguage;
+import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
+import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentSetting;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Languages;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.QueryTool;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Settings;
@@ -38,6 +40,7 @@ import java.io.File;
 import java.util.LinkedList;
 import java.util.List;
 
+import androidx.annotation.WorkerThread;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.room.Room;
@@ -47,8 +50,11 @@ public class DictionaryApplication extends Application {
             "DELETE FROM DictionarySearchResult";
 
     static final String DATABASE_NAME = "JMdict.db";
+    static final String PERSISTENT_DATABASE_NAME = "PersistentDatabase.db";
 
     protected MutableLiveData<DictionaryDatabase> m_dictionaryDatabase;
+    protected MutableLiveData<PersistentDatabase> m_persistentDatabase;
+
     protected MutableLiveData<List<DictionaryLanguage>> m_dictionaryLanguage;
 
     private Settings m_settings;
@@ -60,6 +66,7 @@ public class DictionaryApplication extends Application {
 
     public Settings getSettings() { return m_settings; }
 
+    @WorkerThread
     protected DictionaryDatabase getDatabase() {
         return Room.databaseBuilder(this,
                 DictionaryDatabase.class,
@@ -67,6 +74,12 @@ public class DictionaryApplication extends Application {
                 .openHelperFactory(new AssetSQLiteOpenHelperFactory())
                 .fallbackToDestructiveMigration()
                 .build();
+    }
+
+    @WorkerThread
+    protected PersistentDatabase getPersistentDatabase() {
+        return Room.databaseBuilder(this,
+                PersistentDatabase.class, PERSISTENT_DATABASE_NAME).build();
     }
 
     private static class InitializeDBTask extends AsyncTask<DictionaryApplication, Void, Void> {
@@ -254,6 +267,15 @@ public class DictionaryApplication extends Application {
                 Log.d("MIGRATE_DB", "Database check ended");
             }
 
+            PersistentDatabase pDb = aParams[0].getPersistentDatabase();
+
+            aParams[0].m_persistentDatabase.postValue(pDb);
+            aParams[0].getSettings().postDatabase(pDb);
+
+            pDb.persistentSettingsDao().insertDefault(new PersistentSetting(Settings.LANG,
+                    Settings.LANG_DEFAULT));
+            pDb.persistentSettingsDao().insertDefault(new PersistentSetting(Settings.BACKUP_LANG,
+                    Settings.BACKUP_LANG_DEFAULT));
             return null;
         }
     }
@@ -276,11 +298,9 @@ public class DictionaryApplication extends Application {
 
         m_dictionaryDatabase = new MutableLiveData<>();
         m_dictionaryLanguage = new MutableLiveData<>();
+        m_persistentDatabase = new MutableLiveData<>();
 
         m_settings = new Settings();
-
-        m_settings.setLang("eng");
-        m_settings.setBackupLang("eng");
 
         m_dictionaryLanguage.setValue(Languages.getLanguages());
 

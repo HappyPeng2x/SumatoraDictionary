@@ -16,34 +16,63 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.db.tools;
 
+import android.os.AsyncTask;
+
 import androidx.annotation.MainThread;
+import androidx.annotation.NonNull;
+import androidx.annotation.WorkerThread;
+import androidx.arch.core.util.Function;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.Transformations;
+
+import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
+import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentSetting;
 
 public class Settings {
-    private final MutableLiveData<String> m_lang;
-    private final MutableLiveData<String> m_backupLang;
+    public static final String LANG = "lang";
+    public static final String BACKUP_LANG = "backupLang";
+
+    public static final String LANG_DEFAULT = "eng";
+    public static final String BACKUP_LANG_DEFAULT = "eng";
+
+    private MutableLiveData<PersistentDatabase> m_db;
 
     public Settings() {
-        m_lang = new MutableLiveData<>();
-        m_backupLang = new MutableLiveData<>();
+        m_db = new MutableLiveData<>();
     }
 
-    public LiveData<String> getLang() {
-        return  m_lang;
+    @WorkerThread
+    public void postDatabase(final PersistentDatabase aDB) {
+        m_db.postValue(aDB);
+    }
+
+    public LiveData<String> getValue(final String aName) {
+        return Transformations.switchMap(m_db,
+                new Function<PersistentDatabase, LiveData<String>>() {
+                    @Override
+                    public LiveData<String> apply(PersistentDatabase input) {
+                        return input.persistentSettingsDao().getValue(aName);
+                    }
+                });
+    }
+
+    @WorkerThread
+    public void postValue(final String aName, final String aValue) {
+        if (m_db.getValue() != null) {
+            m_db.getValue().persistentSettingsDao().insert(new PersistentSetting(aName, aValue));
+        }
     }
 
     @MainThread
-    public void setLang(final String aLang) {
-        m_lang.setValue(aLang);
-    }
+    public void setValue(final String aName, final String aValue) {
+        new AsyncTask<Void, Void, Void>() {
+            @Override
+            protected Void doInBackground(Void... voids) {
+                postValue(aName, aValue);
 
-    public LiveData<String> getBackupLang() {
-        return m_backupLang;
-    }
-
-    @MainThread
-    public void setBackupLang(final String aLang) {
-        m_backupLang.setValue(aLang);
+                return null;
+            }
+        }.execute();
     }
 }

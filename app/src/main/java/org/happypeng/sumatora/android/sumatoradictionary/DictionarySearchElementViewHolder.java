@@ -28,6 +28,7 @@ import android.widget.TextView;
 
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Settings;
+import org.happypeng.sumatora.android.sumatoradictionary.model.DictionarySearchFragmentModel;
 
 import androidx.cardview.widget.CardView;
 import androidx.recyclerview.widget.RecyclerView;
@@ -35,7 +36,11 @@ import androidx.recyclerview.widget.RecyclerView;
 import java.util.Set;
 
 public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
-    private final Settings m_settings;
+    public static class Status {
+        public String lang;
+    }
+
+    private final Status m_status;
 
     public interface ClickListener {
         void onClick(View aView, DictionarySearchElement aEntry);
@@ -47,14 +52,14 @@ public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
 
     private ClickListener m_bookmarkClickListener;
 
-    public DictionarySearchElementViewHolder(View itemView, final Settings aSettings) {
+    public DictionarySearchElementViewHolder(View itemView, final Status aStatus) {
         super(itemView);
 
         m_textViewView = (TextView) itemView.findViewById(R.id.text);
         m_bookmarkStar = (ImageButton) itemView.findViewById(R.id.bookmark_star);
         m_cardView = (CardView) itemView.findViewById(R.id.dictionary_card_view);
 
-        m_settings = aSettings;
+        m_status = aStatus;
     }
 
     void disableBookmarkButton() {
@@ -66,8 +71,7 @@ public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
     }
 
     public void bindTo(final DictionarySearchElement entry) {
-        if (m_settings.getLang().getValue() == null ||
-                !entry.lang.equals(m_settings.getLang().getValue())) {
+        if (!entry.lang.equals(m_status.lang)) {
             m_cardView.setCardBackgroundColor(Color.LTGRAY);
         } else {
             m_cardView.setCardBackgroundColor(Color.WHITE);

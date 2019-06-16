@@ -31,20 +31,20 @@ public class DictionaryListAdapter extends ListAdapter<DictionarySearchElement, 
     private DictionarySearchElementViewHolder.ClickListener m_bookmarkClickListener;
     private boolean m_disableBookmarkButton;
 
-    private final Settings m_settings;
+    private final DictionarySearchElementViewHolder.Status m_status;
 
-    public DictionaryListAdapter(@NonNull final Settings aSettings) {
+    public DictionaryListAdapter(@NonNull final DictionarySearchElementViewHolder.Status aStatus) {
         super(DictionarySearchElementDiffUtil.getDiffUtil());
 
         setHasStableIds(true);
 
         m_disableBookmarkButton = false;
 
-        m_settings = aSettings;
+        m_status = aStatus;
     }
 
-    public DictionaryListAdapter(boolean aDisableBookmarkButton, @NonNull final Settings aSettings) {
-        this(aSettings);
+    public DictionaryListAdapter(boolean aDisableBookmarkButton, @NonNull final DictionarySearchElementViewHolder.Status aStatus) {
+        this(aStatus);
 
         m_disableBookmarkButton = aDisableBookmarkButton;
     }
@@ -63,7 +63,7 @@ public class DictionaryListAdapter extends ListAdapter<DictionarySearchElement, 
     public DictionarySearchElementViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         LayoutInflater layoutInflater = android.view.LayoutInflater.from(parent.getContext());
         View view = layoutInflater.inflate(R.layout.cell_cards, parent, false);
-        DictionarySearchElementViewHolder holder = new DictionarySearchElementViewHolder(view, m_settings);
+        DictionarySearchElementViewHolder holder = new DictionarySearchElementViewHolder(view, m_status);
         holder.setBookmarkClickListener(m_bookmarkClickListener);
 
         if (m_disableBookmarkButton) {
