@@ -24,7 +24,7 @@ public class DictionarySearchElementDiffUtil {
             new DiffUtil.ItemCallback<DictionarySearchElement>() {
                 @Override
                 public boolean areItemsTheSame(@NonNull DictionarySearchElement oldItem, @NonNull DictionarySearchElement newItem) {
-                    return oldItem.getSeq() == newItem.getSeq() && oldItem.getLang().equals(newItem.getLang());
+                    return oldItem.getSeq() == newItem.getSeq();
                 }
 
                 @Override

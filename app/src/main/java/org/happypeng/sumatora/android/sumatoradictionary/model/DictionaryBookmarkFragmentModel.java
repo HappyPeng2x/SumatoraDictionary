@@ -22,79 +22,126 @@ import android.os.AsyncTask;
 import org.happypeng.sumatora.android.sumatoradictionary.DictionaryApplication;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
+import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Settings;
 
 import java.util.List;
 
+import androidx.arch.core.util.Function;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MediatorLiveData;
-import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Observer;
+import androidx.lifecycle.Transformations;
 
 public class DictionaryBookmarkFragmentModel extends AndroidViewModel {
     private DictionaryApplication mApp;
 
-    private MediatorLiveData<List<DictionarySearchElement>> mBookmarkElements;
-    private LiveData<List<DictionarySearchElement>> mBookmarkElementsLive;
-    private MutableLiveData<String> mLang;
+    private static class DatabaseStatus {
+        public String lang;
+        public String backupLang;
+        public DictionaryDatabase database;
 
-    public MutableLiveData<String> getLang() { return mLang; }
-    public LiveData<List<DictionarySearchElement>> getBookmarks() { return mBookmarkElements; }
+        void copyFrom(DatabaseStatus aStatus) {
+            lang = aStatus.lang;
+            backupLang = aStatus.backupLang;
+            database = aStatus.database;
+        }
+
+        public boolean isInitialized() {
+            return lang != null && backupLang != null && database != null;
+        }
+    }
+
+    public static class Status extends DatabaseStatus {
+        public List<DictionarySearchElement> bookmarkElements;
+
+        @Override
+        public boolean isInitialized() {
+            return super.isInitialized() && bookmarkElements != null;
+        }
+    }
+
+    final private MediatorLiveData<Status> m_status;
+
+    public LiveData<Status> getStatus() { return m_status; }
 
     public DictionaryBookmarkFragmentModel(Application aApp) {
         super(aApp);
 
         mApp = (DictionaryApplication) aApp;
 
-        mLang = new MutableLiveData<>();
+        final MediatorLiveData<DatabaseStatus> liveDatabaseStatus = new MediatorLiveData<>();
+        final DatabaseStatus databaseStatus = new DatabaseStatus();
 
-        mLang.setValue("eng");
-
-        mBookmarkElements = new MediatorLiveData<>();
-
-        mBookmarkElements.addSource(mApp.getDictionaryDatabase(),
-                new Observer<DictionaryDatabase>() {
+        liveDatabaseStatus.addSource(mApp.getSettings().getValue(Settings.LANG),
+                new Observer<String>() {
                     @Override
-                    public void onChanged(DictionaryDatabase dictionaryDatabase) {
-                        if (dictionaryDatabase != null && mLang.getValue() != null) {
-                            mBookmarkElementsLive = dictionaryDatabase.dictionaryBookmarkDao().getAllDetailsLive(mLang.getValue());
+                    public void onChanged(String s) {
+                        databaseStatus.lang = s;
 
-                            mBookmarkElements.addSource(mBookmarkElementsLive,
-                                    new Observer<List<DictionarySearchElement>>() {
-                                        @Override
-                                        public void onChanged(List<DictionarySearchElement> dictionarySearchElements) {
-                                            mBookmarkElements.setValue(dictionarySearchElements);
-                                        }
-                                    });
-                        } else {
-                            if (mBookmarkElementsLive != null) {
-                                mBookmarkElements.removeSource(mBookmarkElementsLive);
-                                mBookmarkElementsLive = null;
-                            }
+                        if (databaseStatus.isInitialized()) {
+                            liveDatabaseStatus.setValue(databaseStatus);
                         }
                     }
                 });
 
-        mBookmarkElements.addSource(mLang,
+        liveDatabaseStatus.addSource(mApp.getSettings().getValue(Settings.BACKUP_LANG),
                 new Observer<String>() {
                     @Override
                     public void onChanged(String s) {
-                        if (mBookmarkElementsLive != null) {
-                            mBookmarkElements.removeSource(mBookmarkElementsLive);
-                            mBookmarkElementsLive = null;
-                        }
+                        databaseStatus.backupLang = s;
 
-                        if (mApp.getDictionaryDatabase().getValue() != null) {
-                            mBookmarkElementsLive = mApp.getDictionaryDatabase().getValue().dictionaryBookmarkDao().getAllDetailsLive(mLang.getValue());
-
-                            mBookmarkElements.addSource(mBookmarkElementsLive,
-                                    new Observer<List<DictionarySearchElement>>() {
-                                        @Override
-                                        public void onChanged(List<DictionarySearchElement> dictionarySearchElements) {
-                                            mBookmarkElements.setValue(dictionarySearchElements);
-                                        }
-                                    });
+                        if (databaseStatus.isInitialized()) {
+                            liveDatabaseStatus.setValue(databaseStatus);
                         }
+                    }
+                });
+
+        liveDatabaseStatus.addSource(mApp.getDictionaryDatabase(),
+                new Observer<DictionaryDatabase>() {
+                    @Override
+                    public void onChanged(DictionaryDatabase dictionaryDatabase) {
+                        databaseStatus.database = dictionaryDatabase;
+
+                        if (databaseStatus.isInitialized()) {
+                            liveDatabaseStatus.setValue(databaseStatus);
+                        }
+                    }
+                });
+
+        LiveData<List<DictionarySearchElement>> bookmarkElements =
+                Transformations.switchMap(liveDatabaseStatus,
+                        new Function<DatabaseStatus, LiveData<List<DictionarySearchElement>>>() {
+                            @Override
+                            public LiveData<List<DictionarySearchElement>> apply(DatabaseStatus input) {
+                                if (input.isInitialized()) {
+                                    return input.database.dictionaryBookmarkDao().getAllDetailsLive(input.lang, input.backupLang);
+                                } else {
+                                    return null;
+                                }
+                            }
+                        });
+
+        m_status = new MediatorLiveData<>();
+        final Status status = new Status();
+
+        m_status.addSource(liveDatabaseStatus,
+                new Observer<DatabaseStatus>() {
+                    @Override
+                    public void onChanged(DatabaseStatus databaseStatus) {
+                        status.copyFrom(databaseStatus);
+
+                        m_status.setValue(status);
+                    }
+                });
+
+        m_status.addSource(bookmarkElements,
+                new Observer<List<DictionarySearchElement>>() {
+                    @Override
+                    public void onChanged(List<DictionarySearchElement> dictionarySearchElements) {
+                        status.bookmarkElements = dictionarySearchElements;
+
+                        m_status.setValue(status);
                     }
                 });
     }
@@ -111,4 +158,6 @@ public class DictionaryBookmarkFragmentModel extends AndroidViewModel {
             }
         }.execute();
     }
+
+    public DictionaryApplication getDictionaryApplication() { return mApp; }
 }

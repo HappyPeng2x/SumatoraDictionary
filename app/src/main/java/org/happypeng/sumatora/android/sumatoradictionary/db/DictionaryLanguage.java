@@ -16,24 +16,15 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.db;
 
-import androidx.recyclerview.widget.DiffUtil;
-import androidx.room.Entity;
-import androidx.room.PrimaryKey;
 import androidx.annotation.NonNull;
+import androidx.room.Entity;
 
-@Entity(primaryKeys = {"seq"})
-public class DictionaryEntry {
-    public long seq;
-    public String readingsPrio;
-    public String readingsPrioParts;
-    public String readings;
-    public String readingsParts;
-    public String writingsPrio;
-    public String writingsPrioParts;
-    public String writings;
-    public String writingsParts;
-    public Integer bookmarkFolder;
+public class DictionaryLanguage {
+    @NonNull public String lang;
+    @NonNull public String description;
 
-    public DictionaryEntry() {
+    public DictionaryLanguage(final String aLang, final String aDescription) {
+        lang = aLang;
+        description = aDescription;
     }
 }

@@ -17,11 +17,14 @@
         app:title="Bookmarks"
         app:popupTheme="@style/ThemeOverlay.AppCompat.Light">
 
-<!--        <ImageButton
+        <TextView
+            android:id="@+id/bookmark_fragment_language_text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:src="@drawable/ic_outline_star_border_24px"
-            android:background="?android:selectableItemBackground" />-->
+            android:text="eng"
+            android:textColor="@android:color/white"
+            android:layout_gravity="end"
+            style="@style/TextAppearance.AppCompat.Widget.ActionBar.Title" />
 
     </androidx.appcompat.widget.Toolbar>
 

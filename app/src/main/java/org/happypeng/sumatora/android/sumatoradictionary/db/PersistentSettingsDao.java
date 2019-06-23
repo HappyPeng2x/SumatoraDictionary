@@ -16,24 +16,23 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.db;
 
-import androidx.recyclerview.widget.DiffUtil;
-import androidx.room.Entity;
-import androidx.room.PrimaryKey;
-import androidx.annotation.NonNull;
+import androidx.lifecycle.LiveData;
+import androidx.room.Dao;
+import androidx.room.Insert;
+import androidx.room.OnConflictStrategy;
+import androidx.room.Query;
 
-@Entity(primaryKeys = {"seq"})
-public class DictionaryEntry {
-    public long seq;
-    public String readingsPrio;
-    public String readingsPrioParts;
-    public String readings;
-    public String readingsParts;
-    public String writingsPrio;
-    public String writingsPrioParts;
-    public String writings;
-    public String writingsParts;
-    public Integer bookmarkFolder;
+@Dao
+public interface PersistentSettingsDao {
+    @Query("SELECT value FROM PersistentSetting WHERE name=:aName")
+    LiveData<String> getValue(String aName);
 
-    public DictionaryEntry() {
-    }
+    @Query("SELECT value FROM PersistentSetting WHERE name=:aName")
+    String getValueDirect(String aName);
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    void insert(PersistentSetting aSetting);
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    void insertDefault(PersistentSetting aSetting);
 }

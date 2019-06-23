@@ -25,18 +25,23 @@ import android.view.ViewGroup;
 
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElementDiffUtil;
+import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Settings;
+import org.happypeng.sumatora.android.sumatoradictionary.model.DictionarySearchFragmentModel;
 
 import java.util.HashMap;
 
 public class DictionaryPagedListAdapter extends PagedListAdapter<DictionarySearchElement, DictionarySearchElementViewHolder> {
     private HashMap<Long, Long> m_bookmarks;
+    private final DictionarySearchElementViewHolder.Status m_status;
 
     private DictionarySearchElementViewHolder.ClickListener m_bookmarkClickListener;
 
-    public DictionaryPagedListAdapter() {
+    public DictionaryPagedListAdapter(@NonNull final DictionarySearchElementViewHolder.Status aStatus) {
         super(DictionarySearchElementDiffUtil.getDiffUtil());
 
         setHasStableIds(true);
+
+        m_status = aStatus;
     }
 
     // No placeholders = no null values
@@ -60,7 +65,7 @@ public class DictionaryPagedListAdapter extends PagedListAdapter<DictionarySearc
     public DictionarySearchElementViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         LayoutInflater layoutInflater = LayoutInflater.from(parent.getContext());
         View view = layoutInflater.inflate(R.layout.cell_cards, parent, false);
-        DictionarySearchElementViewHolder holder = new DictionarySearchElementViewHolder(view);
+        DictionarySearchElementViewHolder holder = new DictionarySearchElementViewHolder(view, m_status);
         holder.setBookmarkClickListener(m_bookmarkClickListener);
         return holder;
     }

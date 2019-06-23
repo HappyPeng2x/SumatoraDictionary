@@ -155,11 +155,10 @@ public class QueryTool {
 
         public static final int STATUS_PRE_INITIALIZED = 0;
         public static final int STATUS_INITIALIZED = 1;
-        public static final int STATUS_TERM_SET = 2;
-        public static final int STATUS_SEARCHING = 3;
-        public static final int STATUS_RESULTS_FOUND = 4;
-        public static final int STATUS_NO_RESULTS_FOUND_ENDED = 5;
-        public static final int STATUS_RESULTS_FOUND_ENDED = 6;
+        public static final int STATUS_SEARCHING = 2;
+        public static final int STATUS_RESULTS_FOUND = 3;
+        public static final int STATUS_NO_RESULTS_FOUND_ENDED = 4;
+        public static final int STATUS_RESULTS_FOUND_ENDED = 5;
 
         private final Logger mLog;
 
@@ -174,11 +173,11 @@ public class QueryTool {
 
         private final MutableLiveData<Integer> mStatus;
 
-        private String mTerm;
-        private String mLang;
+        private volatile String mTerm;
+        private volatile String mLang;
+        private volatile String mBackupLang;
 
-        private final MutableLiveData<Long> mLastInsert;
-
+        private volatile long mLastInsert;
         private volatile int mQueriesPosition;
 
         private final LiveData<PagedList<DictionarySearchElement>> mSearchEntries;
@@ -200,8 +199,7 @@ public class QueryTool {
 
             mStatements = new MutableLiveData<>();
 
-            mLastInsert = new MutableLiveData<>();
-            mLastInsert.setValue(Long.valueOf(-1));
+            mLastInsert = -1;
 
             mStatus.setValue(STATUS_PRE_INITIALIZED);
 
@@ -279,6 +277,8 @@ public class QueryTool {
                                     }).build();
                         }
                     });
+
+            mTerm = "";
         }
 
         public LiveData<Integer> getStatus() { return mStatus; }
@@ -291,71 +291,94 @@ public class QueryTool {
             }
         }
 
-        void executeNextStatement() {
+        @WorkerThread
+        private synchronized void executNextStatementImplementation(final boolean aResetTerm, final String aTerm, final String aLang,
+                                                                    final String aBackupLang) {
             if (BuildConfig.DEBUG_QUERYTOOL) {
-                mLog.info(hashCode() + " executeNextStatement called");
+                mLog.info(QueriesList.this.hashCode() + " executeNextStatementImplementation begin");
             }
 
-            if (mStatus.getValue() <= STATUS_INITIALIZED) {
+            mDB.runInTransaction(new Runnable() {
+                @Override
+                public void run() {
+                    long lastInsert = -1;
+                    long backupLastInsert = -1;
+
+                    if (aResetTerm) {
+                        if (!"".equals(aTerm)) {
+                            mStatus.postValue(QueriesList.STATUS_SEARCHING);
+                        } else {
+                            mStatus.postValue(QueriesList.STATUS_INITIALIZED);
+                        }
+
+                        mStatements.getValue().mDeleteStatement.executeUpdateDelete();
+
+                        mTerm = aTerm;
+                        mLang = aLang;
+                        mBackupLang = aBackupLang;
+
+                        mLastInsert = -1;
+                        mQueriesPosition = 0;
+                    }
+
+                    if (!"".equals(aTerm)) {
+                        while (lastInsert == -1 && mQueriesPosition < mStatements.getValue().mQueries.length) {
+                            lastInsert = mStatements.getValue().mQueries[mQueriesPosition].execute(aTerm, aLang);
+
+                            if (BuildConfig.DEBUG_QUERYTOOL) {
+                                mLog.info(QueriesList.this.hashCode() + " position " + mQueriesPosition + " lang " + aLang + " result " + lastInsert);
+                            }
+
+                            if (aBackupLang != null && !mBackupLang.equals(aLang)) {
+                                backupLastInsert = mStatements.getValue().mQueries[mQueriesPosition].execute(aTerm, aBackupLang);
+
+                                if (BuildConfig.DEBUG_QUERYTOOL) {
+                                    mLog.info(QueriesList.this.hashCode() + " position " + mQueriesPosition + " lang " + aBackupLang + " result " + lastInsert);
+                                }
+
+                                if (lastInsert == -1) {
+                                    lastInsert = backupLastInsert;
+                                }
+                            }
+
+                            mQueriesPosition = mQueriesPosition + 1;
+                        }
+
+                        if (lastInsert >= 0) {
+                            mLastInsert = lastInsert;
+                        }
+
+                        if (mQueriesPosition >= mStatements.getValue().mQueries.length) {
+                            if (mLastInsert >= 0) {
+                                mStatus.postValue(STATUS_RESULTS_FOUND_ENDED);
+                            } else {
+                                mStatus.postValue(STATUS_NO_RESULTS_FOUND_ENDED);
+                            }
+                        } else {
+                            if (mLastInsert >= 0) {
+                                mStatus.postValue(STATUS_RESULTS_FOUND);
+                            }
+                        }
+                    }
+                }
+            });
+
+            if (BuildConfig.DEBUG_QUERYTOOL) {
+                mLog.info(QueriesList.this.hashCode() + " executeNextStatementImplementation ends");
+            }
+        }
+
+        void executeNextStatement() {
+            if (mStatus.getValue() < STATUS_INITIALIZED) {
                 return;
             }
 
-            final AsyncTask<Void, Void, Long> task = new AsyncTask<Void, Void, Long>() {
+            final AsyncTask<Void, Void, Void> task = new AsyncTask<Void, Void, Void>() {
                 @Override
-                protected Long doInBackground(Void... voids) {
-                    if (BuildConfig.DEBUG_QUERYTOOL) {
-                        mLog.info(QueriesList.this.hashCode() + " executeNextStatement AsyncTask started");
-                    }
+                protected Void doInBackground(Void... voids) {
+                    executNextStatementImplementation(false, mTerm, mLang, mBackupLang);
 
-                    long res = -1;
-
-                    mDB.beginTransaction();
-
-                    if (mStatus.getValue() == QueriesList.STATUS_TERM_SET) {
-                        mStatements.getValue().mDeleteStatement.executeUpdateDelete();
-
-                        mStatus.postValue(QueriesList.STATUS_SEARCHING);
-                    }
-
-                    while (res == -1 && mQueriesPosition < mStatements.getValue().mQueries.length) {
-                        res = mStatements.getValue().mQueries[mQueriesPosition].execute(mTerm, mLang);
-
-                        if (BuildConfig.DEBUG_QUERYTOOL) {
-                            mLog.info(QueriesList.this.hashCode() + " position " + mQueriesPosition + " result " + res);
-                        }
-
-                        mQueriesPosition = mQueriesPosition + 1;
-                    }
-
-                    mDB.setTransactionSuccessful();
-                    mDB.endTransaction();
-
-                    if (BuildConfig.DEBUG_QUERYTOOL) {
-                        mLog.info(QueriesList.this.hashCode() + " executeNextStatement AsyncTask ended");
-                    }
-
-                    return res;
-                }
-
-                @Override
-                protected void onPostExecute(Long aLong) {
-                    super.onPostExecute(aLong);
-
-                    if (aLong >= 0) {
-                        mLastInsert.setValue(aLong);
-                    }
-
-                    if (mQueriesPosition >= mStatements.getValue().mQueries.length) {
-                        if (mLastInsert.getValue() >= 0) {
-                            mStatus.setValue(STATUS_RESULTS_FOUND_ENDED);
-                        } else {
-                            mStatus.setValue(STATUS_NO_RESULTS_FOUND_ENDED);
-                        }
-                    } else {
-                        if (mLastInsert.getValue() >= 0) {
-                            mStatus.setValue(STATUS_RESULTS_FOUND);
-                        }
-                    }
+                    return null;
                 }
             }.execute();
         }
@@ -364,39 +387,23 @@ public class QueryTool {
             return mSearchEntries;
         }
 
-        public void setTerm(@NonNull String aTerm, @NonNull String aLang) {
+        public void setTerm(@NonNull final String aTerm, @NonNull final String aLang, final String aBackupLang) {
             if (mStatements.getValue() == null) {
                 return;
             }
 
-            mTerm = aTerm;
-            mLang = aLang;
-
-            mLastInsert.setValue(Long.valueOf(-1));
-
-            if (aTerm.equals("")) {
-                // Execute delete, which will set status to STATUS_INITIALIZED
-                final AsyncTask<Void, Void, Void> deleteTask = new AsyncTask<Void, Void, Void>() {
-                    @Override
-                    protected Void doInBackground(Void... voids) {
-                        mDB.beginTransaction();
-
-                        mStatements.getValue().mDeleteStatement.executeUpdateDelete();
-
-                        mDB.setTransactionSuccessful();
-                        mDB.endTransaction();
-
-                        mStatus.postValue(STATUS_INITIALIZED);
-
-                        return null;
-                    }
-                }.execute();
-            } else {
-                mStatus.setValue(STATUS_TERM_SET);
-                mQueriesPosition = 0;
-
-                executeNextStatement();
+            if (mStatus.getValue() < STATUS_INITIALIZED) {
+                return;
             }
+
+            final AsyncTask<Void, Void, Void> task = new AsyncTask<Void, Void, Void>() {
+                @Override
+                protected Void doInBackground(Void... voids) {
+                    executNextStatementImplementation(true, aTerm, aLang, aBackupLang);
+
+                    return null;
+                }
+            }.execute();
         }
     }
 }

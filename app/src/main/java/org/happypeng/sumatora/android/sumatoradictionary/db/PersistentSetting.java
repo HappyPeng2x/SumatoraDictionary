@@ -16,24 +16,18 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.db;
 
-import androidx.recyclerview.widget.DiffUtil;
-import androidx.room.Entity;
-import androidx.room.PrimaryKey;
 import androidx.annotation.NonNull;
+import androidx.room.Entity;
 
-@Entity(primaryKeys = {"seq"})
-public class DictionaryEntry {
-    public long seq;
-    public String readingsPrio;
-    public String readingsPrioParts;
-    public String readings;
-    public String readingsParts;
-    public String writingsPrio;
-    public String writingsPrioParts;
-    public String writings;
-    public String writingsParts;
-    public Integer bookmarkFolder;
+@Entity(primaryKeys = {"name"})
+public class PersistentSetting {
+    @NonNull public String name;
+    @NonNull public String value;
 
-    public DictionaryEntry() {
+    public PersistentSetting() {}
+
+    public PersistentSetting(@NonNull final String aName, @NonNull final String aValue) {
+        name = aName;
+        value = aValue;
     }
 }
