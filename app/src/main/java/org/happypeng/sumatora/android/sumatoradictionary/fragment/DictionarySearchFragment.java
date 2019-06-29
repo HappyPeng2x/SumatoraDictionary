@@ -16,12 +16,15 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.fragment;
 
+import android.app.SearchManager;
+import android.content.Context;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.PopupMenu;
+import androidx.appcompat.widget.SearchView;
 import androidx.appcompat.widget.Toolbar;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.Observer;
@@ -30,15 +33,13 @@ import androidx.paging.PagedList;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import android.text.Editable;
-import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.Menu;
+import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.EditText;
-import android.widget.ImageButton;
+
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
@@ -53,16 +54,9 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Settings;
 import org.happypeng.sumatora.android.sumatoradictionary.model.DictionarySearchFragmentModel;
 
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
 
 public class DictionarySearchFragment extends Fragment {
-    private ImageButton m_search_button;
-    private ImageButton m_magic_cross;
-
-    private EditText m_edit_text;
-
     private ProgressBar m_progress_bar;
     private TextView m_status_text;
 
@@ -72,8 +66,11 @@ public class DictionarySearchFragment extends Fragment {
 
     private PopupMenu m_languagePopupMenu;
 
+    SearchView m_searchView;
+
     private DictionarySearchElementViewHolder.Status m_viewHolderStatus;
 
+    private String m_lang;
     private String m_backupLang;
 
     public DictionarySearchFragment() {
@@ -88,7 +85,9 @@ public class DictionarySearchFragment extends Fragment {
         m_progress_bar.setIndeterminate(true);
         m_progress_bar.animate();
 
-        m_search_button.setEnabled(false);
+        if (m_searchView != null) {
+            m_searchView.setActivated(false);
+        }
 
         m_status_text.setText("Loading database...");
     }
@@ -101,7 +100,9 @@ public class DictionarySearchFragment extends Fragment {
         m_progress_bar.setIndeterminate(true);
         m_progress_bar.animate();
 
-        m_search_button.setEnabled(false);
+        if (m_searchView != null) {
+            m_searchView.setActivated(false);
+        }
 
         m_status_text.setText("Searching...");
     }
@@ -111,7 +112,9 @@ public class DictionarySearchFragment extends Fragment {
         m_progress_bar.setIndeterminate(false);
         m_progress_bar.setMax(0);
 
-        m_search_button.setEnabled(true);
+        if (m_searchView != null) {
+            m_searchView.setActivated(true);
+        }
 
         m_status_text.setText("No results found.");
 
@@ -124,7 +127,9 @@ public class DictionarySearchFragment extends Fragment {
         m_progress_bar.setIndeterminate(false);
         m_progress_bar.setMax(0);
 
-        m_search_button.setEnabled(true);
+        if (m_searchView != null) {
+            m_searchView.setActivated(true);
+        }
 
         m_status_text.setText("");
 
@@ -145,10 +150,7 @@ public class DictionarySearchFragment extends Fragment {
         actionBar.setHomeAsUpIndicator(R.drawable.ic_menu_white_24dp);
         actionBar.setDisplayHomeAsUpEnabled(true);
 
-        m_search_button = (ImageButton) view.findViewById(R.id.button);
-
-        m_magic_cross = (ImageButton) view.findViewById(R.id.magic_cross);
-        m_edit_text = (EditText) view.findViewById(R.id.editText);
+        setHasOptionsMenu(true);
 
         m_progress_bar = (ProgressBar) view.findViewById(R.id.progressBar);
         m_status_text = (TextView) view.findViewById(R.id.statusText);
@@ -160,25 +162,6 @@ public class DictionarySearchFragment extends Fragment {
         LinearLayoutManager layoutManager = new LinearLayoutManager(getContext());
         layoutManager.setOrientation(RecyclerView.VERTICAL);
         m_recyclerView.setLayoutManager(layoutManager);
-
-        m_edit_text.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-            }
-
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-            }
-
-            @Override
-            public void afterTextChanged(Editable s) {
-                if (s.length() > 0) {
-                    m_magic_cross.setVisibility(View.VISIBLE);
-                } else {
-                    m_magic_cross.setVisibility(View.GONE);
-                }
-            }
-        });
 
         m_viewModel = ViewModelProviders.of(getActivity()).get(DictionarySearchFragmentModel.class);
 
@@ -214,31 +197,16 @@ public class DictionarySearchFragment extends Fragment {
 
         m_recyclerView.setAdapter(pagedListAdapter);
 
-        m_search_button.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                m_viewModel.setTerm(m_edit_text.getText().toString());
-            }
-        });
-
-        m_magic_cross.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                setReady();
-
-                m_edit_text.setText("");
-            }
-        });
-
         m_viewModel.getDictionaryApplication().getDictionaryLanguage().observe
                 (this, new Observer<List<DictionaryLanguage>>() {
                     @Override
                     public void onChanged(List<DictionaryLanguage> dictionaryLanguages) {
-                        m_languagePopupMenu = initLanguagePopupMenu(m_languageText, dictionaryLanguages);
+                        if (m_languageText != null && m_languagePopupMenu == null) {
+                            m_languagePopupMenu = initLanguagePopupMenu(m_languageText,
+                                    dictionaryLanguages);
+                        }
                     }
                 });
-
-        m_languageText = (TextView) view.findViewById(R.id.search_fragment_language_text);
 
         m_viewModel.getStatus().observe(getViewLifecycleOwner(),
                 new Observer<DictionarySearchFragmentModel.Status>() {
@@ -250,8 +218,12 @@ public class DictionarySearchFragment extends Fragment {
                             return;
                         }
 
-                        if (!m_languageText.getText().toString().equals(status.lang)) {
-                            m_languageText.setText(status.lang);
+                        if (m_lang == null || !m_lang.equals(status.lang)) {
+                            if (m_languageText != null) {
+                                m_languageText.setText(status.lang);
+                            }
+
+                            m_lang = status.lang;
 
                             pagedListAdapter.notifyDataSetChanged();
                         }
@@ -263,12 +235,8 @@ public class DictionarySearchFragment extends Fragment {
                             pagedListAdapter.notifyDataSetChanged();
                         }
 
-                        if (!m_edit_text.getText().toString().equals(status.term)) {
-                            m_edit_text.setText("");
-
-                            if (status.term != null) {
-                                m_edit_text.append(status.term);
-                            }
+                        if (m_searchView != null) {
+                            m_searchView.setQuery(status.term, false);
                         }
 
                         m_viewHolderStatus.lang = status.lang;
@@ -286,16 +254,6 @@ public class DictionarySearchFragment extends Fragment {
                     }
                 });
 
-
-        m_languageText.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (m_languagePopupMenu != null) {
-                    m_languagePopupMenu.show();
-                }
-            }
-        });
-
         return view;
     }
 
@@ -304,12 +262,11 @@ public class DictionarySearchFragment extends Fragment {
         super.onDestroyView();
 
         // Avoid using old pointers when view has been destroyed
-        m_search_button = null;
-        m_magic_cross = null;
-        m_edit_text = null;
         m_progress_bar = null;
         m_status_text = null;
         m_languageText = null;
+        m_languagePopupMenu = null;
+        m_searchView = null;
     }
 
     public void setIntentSearchTerm(@NonNull String aIntentSearchTerm) {
@@ -336,5 +293,37 @@ public class DictionarySearchFragment extends Fragment {
         }
 
         return popupMenu;
+    }
+
+    @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+        super.onCreateOptionsMenu(menu, inflater);
+
+        inflater.inflate(R.menu.search_toolbar_menu, menu);
+
+        SearchManager searchManager = (SearchManager) getActivity().getSystemService(Context.SEARCH_SERVICE);
+        MenuItem searchViewMenuItem = menu.findItem(R.id.menu_search);
+
+        m_searchView = (SearchView) searchViewMenuItem.getActionView();
+        m_searchView.setSearchableInfo(searchManager.getSearchableInfo(getActivity().getComponentName()));
+        m_searchView.setIconifiedByDefault(false);
+
+        MenuItem languageMenuItem = menu.findItem(R.id.search_fragment_menu_language_text);
+        m_languageText = languageMenuItem.getActionView().findViewById(R.id.menuitem_language_text);
+
+        m_languageText.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (m_languagePopupMenu == null &&
+                        m_viewModel.getDictionaryApplication().getDictionaryLanguage().getValue() != null) {
+                    m_languagePopupMenu = initLanguagePopupMenu(m_languageText,
+                            m_viewModel.getDictionaryApplication().getDictionaryLanguage().getValue());
+                }
+
+                if (m_languagePopupMenu != null) {
+                    m_languagePopupMenu.show();
+                }
+            }
+        });
     }
 }

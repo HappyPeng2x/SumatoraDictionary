@@ -203,7 +203,13 @@ public class Dictionary extends AppCompatActivity implements SettingsFragment.Se
         switchToSearchFragment();
     }
 
-    private void processIntent(Intent aIntent) {
+    private void transformSearchIntent(Intent aIntent) {
+        if (aIntent.hasExtra("query")) {
+            aIntent.putExtra("SEARCH_TERM", aIntent.getStringExtra("query"));
+        }
+    }
+
+    private void displayIntent(Intent aIntent) {
         if (BuildConfig.DEBUG_DICTIONARY_ACTIVITY) {
             if (m_log != null) {
                 if (aIntent == null) {
@@ -228,6 +234,12 @@ public class Dictionary extends AppCompatActivity implements SettingsFragment.Se
                     }
                 }
             }
+        }
+    }
+
+    private void processIntent(Intent aIntent) {
+        if (BuildConfig.DEBUG_DICTIONARY_ACTIVITY) {
+            displayIntent(aIntent);
         }
 
         if (aIntent != null && aIntent.hasExtra("SEARCH_TERM"))
@@ -261,10 +273,7 @@ public class Dictionary extends AppCompatActivity implements SettingsFragment.Se
 
     @Override
     protected void onNewIntent(Intent aIntent) {
-        if (BuildConfig.DEBUG_DICTIONARY_ACTIVITY) {
-            m_log.info("received new intent");
-        }
-
+        transformSearchIntent(aIntent);
         setIntent(aIntent);
     }
 
