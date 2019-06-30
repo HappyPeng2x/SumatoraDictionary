@@ -37,6 +37,7 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProviders;
+import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -148,6 +149,10 @@ public class DictionaryBookmarkFragment extends Fragment {
         final DictionaryListAdapter listAdapter = new DictionaryListAdapter(viewHolderStatus);
 
         m_recyclerView.setAdapter(listAdapter);
+
+        DividerItemDecoration itemDecor = new DividerItemDecoration(getContext(),
+                layoutManager.getOrientation());
+        m_recyclerView.addItemDecoration(itemDecor);
 
         listAdapter.setBookmarkClickListener(new DictionarySearchElementViewHolder.ClickListener() {
             @Override

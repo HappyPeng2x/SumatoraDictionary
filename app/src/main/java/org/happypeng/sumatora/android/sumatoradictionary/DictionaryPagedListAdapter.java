@@ -64,7 +64,7 @@ public class DictionaryPagedListAdapter extends PagedListAdapter<DictionarySearc
     @Override
     public DictionarySearchElementViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         LayoutInflater layoutInflater = LayoutInflater.from(parent.getContext());
-        View view = layoutInflater.inflate(R.layout.cell_cards, parent, false);
+        View view = layoutInflater.inflate(R.layout.word_card, parent, false);
         DictionarySearchElementViewHolder holder = new DictionarySearchElementViewHolder(view, m_status);
         holder.setBookmarkClickListener(m_bookmarkClickListener);
         return holder;

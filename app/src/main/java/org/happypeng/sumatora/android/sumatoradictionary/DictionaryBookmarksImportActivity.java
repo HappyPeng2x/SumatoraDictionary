@@ -23,6 +23,7 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.Transformations;
 import androidx.lifecycle.ViewModelProviders;
+import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -134,6 +135,10 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
         listAdapter.submitList(null);
 
         m_recyclerView.setAdapter(listAdapter);
+
+        DividerItemDecoration itemDecor = new DividerItemDecoration(this,
+                layoutManager.getOrientation());
+        m_recyclerView.addItemDecoration(itemDecor);
 
         m_ready = true;
 

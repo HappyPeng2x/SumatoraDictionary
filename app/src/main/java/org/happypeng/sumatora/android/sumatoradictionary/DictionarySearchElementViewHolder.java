@@ -23,6 +23,7 @@ import android.text.style.BackgroundColorSpan;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.RelativeSizeSpan;
 import android.view.View;
+import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.TextView;
 
@@ -48,16 +49,16 @@ public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
 
     private final TextView m_textViewView;
     private final ImageButton m_bookmarkStar;
-    private final CardView m_cardView;
+    private final FrameLayout m_cardView;
 
     private ClickListener m_bookmarkClickListener;
 
-    public DictionarySearchElementViewHolder(View itemView, final Status aStatus) {
+    DictionarySearchElementViewHolder(View itemView, final Status aStatus) {
         super(itemView);
 
-        m_textViewView = (TextView) itemView.findViewById(R.id.text);
-        m_bookmarkStar = (ImageButton) itemView.findViewById(R.id.bookmark_star);
-        m_cardView = (CardView) itemView.findViewById(R.id.dictionary_card_view);
+        m_textViewView = (TextView) itemView.findViewById(R.id.word_card_text);
+        m_bookmarkStar = (ImageButton) itemView.findViewById(R.id.word_card_bookmark_icon);
+        m_cardView = (FrameLayout) itemView.findViewById(R.id.word_card_view);
 
         m_status = aStatus;
     }
@@ -66,28 +67,27 @@ public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
         m_bookmarkStar.setVisibility(View.GONE);
     }
 
-    public void setBookmarkClickListener(ClickListener aListener) {
+    void setBookmarkClickListener(ClickListener aListener) {
         m_bookmarkClickListener = aListener;
     }
 
-    public void bindTo(final DictionarySearchElement entry) {
-        if (!entry.lang.equals(m_status.lang)) {
-            m_cardView.setCardBackgroundColor(Color.LTGRAY);
-        } else {
-            m_cardView.setCardBackgroundColor(Color.WHITE);
-        }
+/*
+    private SpannableStringBuilder renderEntry(final DictionarySearchElement aEntry) {
+        SpannableStringBuilder sb = new SpannableStringBuilder();
 
+
+
+        return sb;
+    }
+*/
+
+     private SpannableStringBuilder renderEntry(final DictionarySearchElement aEntry) {
         SpannableStringBuilder sb = new SpannableStringBuilder();
         int writingsLength = 0;
         int readingsLength = 0;
         int startPos = 0;
 
-        // m_bookmark = bookmark;
-
-        // For debug purposes only
-        // sb.append(Integer.toString(entry.entryOrder) + " " + entry.seq + " ");
-
-        for (String w : entry.getWritingsPrio().split(" ")) {
+        for (String w : aEntry.getWritingsPrio().split(" ")) {
             startPos = sb.length();
 
             if (w.length() > 0) {
@@ -107,9 +107,9 @@ public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
             writingsLength = writingsLength + 1;
         }
 
-        if (entry.getWritings().length() > 0) {
-            sb.append(entry.getWritings());
-            writingsLength = writingsLength + entry.getWritings().length();
+        if (aEntry.getWritings().length() > 0) {
+            sb.append(aEntry.getWritings());
+            writingsLength = writingsLength + aEntry.getWritings().length();
         }
 
         if (writingsLength > 0) {
@@ -118,7 +118,7 @@ public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
             writingsLength = writingsLength + 1;
         }
 
-        for (String r : entry.getReadingsPrio().split(" ")) {
+        for (String r : aEntry.getReadingsPrio().split(" ")) {
             startPos = sb.length();
 
             if (r.length() > 0) {
@@ -138,23 +138,32 @@ public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
             readingsLength = readingsLength + 1;
         }
 
-        if (entry.getReadings().length() > 0) {
-            sb.append(entry.getReadings());
-            readingsLength = readingsLength + entry.getReadings().length();
+        if (aEntry.getReadings().length() > 0) {
+            sb.append(aEntry.getReadings());
+            readingsLength = readingsLength + aEntry.getReadings().length();
         }
 
         sb.append("\n");
         readingsLength = readingsLength + 1;
 
-        if (entry.getGloss().length() > 0) {
-            sb.append(entry.getGloss());
+        if (aEntry.getGloss().length() > 0) {
+            sb.append(aEntry.getGloss());
 
             sb.setSpan(new ForegroundColorSpan(Color.GRAY), writingsLength, writingsLength + readingsLength, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             sb.setSpan(new RelativeSizeSpan(1.5f), 0, writingsLength + readingsLength, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
 
-        m_textViewView.setText(sb);
+        return sb;
+    }
 
+    void bindTo(final DictionarySearchElement entry) {
+        if (!entry.lang.equals(m_status.lang)) {
+            m_cardView.setBackgroundColor(Color.LTGRAY);
+        } else {
+            m_cardView.setBackgroundColor(Color.WHITE);
+        }
+
+        m_textViewView.setText(renderEntry(entry));
 
         if (m_bookmarkClickListener != null) {
             m_bookmarkStar.setOnClickListener(new View.OnClickListener() {
@@ -166,9 +175,9 @@ public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
         }
 
         if (entry.getBookmark() != 0) {
-            m_bookmarkStar.setImageResource(R.drawable.ic_baseline_star_24px);
+            m_bookmarkStar.setImageResource(R.drawable.ic_outline_bookmark_24px);
         } else {
-            m_bookmarkStar.setImageResource(R.drawable.ic_outline_star_border_24px);
+            m_bookmarkStar.setImageResource(R.drawable.ic_outline_bookmark_border_24px);
         }
     }
 }

@@ -30,6 +30,7 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProviders;
 import androidx.paging.PagedList;
+import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -162,6 +163,10 @@ public class DictionarySearchFragment extends Fragment {
         LinearLayoutManager layoutManager = new LinearLayoutManager(getContext());
         layoutManager.setOrientation(RecyclerView.VERTICAL);
         m_recyclerView.setLayoutManager(layoutManager);
+
+        DividerItemDecoration itemDecor = new DividerItemDecoration(getContext(),
+                layoutManager.getOrientation());
+        m_recyclerView.addItemDecoration(itemDecor);
 
         m_viewModel = ViewModelProviders.of(getActivity()).get(DictionarySearchFragmentModel.class);
 

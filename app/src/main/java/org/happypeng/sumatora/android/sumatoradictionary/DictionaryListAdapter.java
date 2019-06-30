@@ -43,7 +43,7 @@ public class DictionaryListAdapter extends ListAdapter<DictionarySearchElement, 
         m_status = aStatus;
     }
 
-    public DictionaryListAdapter(boolean aDisableBookmarkButton, @NonNull final DictionarySearchElementViewHolder.Status aStatus) {
+    DictionaryListAdapter(boolean aDisableBookmarkButton, @NonNull final DictionarySearchElementViewHolder.Status aStatus) {
         this(aStatus);
 
         m_disableBookmarkButton = aDisableBookmarkButton;
@@ -62,7 +62,7 @@ public class DictionaryListAdapter extends ListAdapter<DictionarySearchElement, 
     @Override
     public DictionarySearchElementViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         LayoutInflater layoutInflater = android.view.LayoutInflater.from(parent.getContext());
-        View view = layoutInflater.inflate(R.layout.cell_cards, parent, false);
+        View view = layoutInflater.inflate(R.layout.word_card, parent, false);
         DictionarySearchElementViewHolder holder = new DictionarySearchElementViewHolder(view, m_status);
         holder.setBookmarkClickListener(m_bookmarkClickListener);
 
