@@ -4,6 +4,9 @@
 
 ![](/screenshots/Screenshot_1551520549.png)
 
+## Multilingual search
+![](/screenshots/Screenshot_1561880402.png)
+
 ## Search from other apps
 
 ![](/screenshots/Screenshot_1551599195.png)

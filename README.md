@@ -7,6 +7,7 @@ Please see the [screenshots](/SCREENSHOTS.md).
 ## Features
 
 Sumatora has the following distinctive features:
+- multilingual search (supports English, German, Russian, Spanish, Dutch, Hungarian, Swedish, Slovenian and French)
 - very fast search and display of exact term/term at the beginning/term included 
 - bookmarks and bookmark export/import
 - search selected text in applications using contextual menu (or sharing).
