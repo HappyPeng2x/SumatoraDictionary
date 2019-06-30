@@ -20,7 +20,7 @@
                 app:fontFamily="sans-serif"
                 android:padding="6dp"
                 android:textColor="#000"
-                android:textSize="12sp"
+                android:textSize="14sp"
                 android:layout_weight="1"
                 tools:text="Text 1" />
 

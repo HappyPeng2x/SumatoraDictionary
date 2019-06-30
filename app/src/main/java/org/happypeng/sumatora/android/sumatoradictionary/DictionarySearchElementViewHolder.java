@@ -22,6 +22,7 @@ import android.text.Spanned;
 import android.text.style.BackgroundColorSpan;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.RelativeSizeSpan;
+import android.text.style.StyleSpan;
 import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
@@ -71,86 +72,110 @@ public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
         m_bookmarkClickListener = aListener;
     }
 
-/*
-    private SpannableStringBuilder renderEntry(final DictionarySearchElement aEntry) {
-        SpannableStringBuilder sb = new SpannableStringBuilder();
-
-
-
-        return sb;
-    }
-*/
-
      private SpannableStringBuilder renderEntry(final DictionarySearchElement aEntry) {
         SpannableStringBuilder sb = new SpannableStringBuilder();
-        int writingsLength = 0;
-        int readingsLength = 0;
-        int startPos = 0;
+
+        int writingsCount = 0;
 
         for (String w : aEntry.getWritingsPrio().split(" ")) {
-            startPos = sb.length();
-
             if (w.length() > 0) {
+                if (writingsCount > 0) {
+                    sb.append("・");
+                    sb.setSpan(new ForegroundColorSpan(Color.GRAY), sb.length() - 1, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                }
+
                 sb.append(w);
 
                 sb.setSpan(new BackgroundColorSpan(Color.parseColor("#ccffcc")),
-                        startPos, sb.length(),
+                        sb.length() - w.length(), sb.length(),
                         Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
 
-                writingsLength = writingsLength + w.length();
+                writingsCount = writingsCount + 1;
             }
         }
 
-        if (writingsLength > 0) {
+         for (String w : aEntry.getWritings().split(" ")) {
+             if (w.length() > 0) {
+                 if (writingsCount > 0) {
+                     sb.append("・");
+                     sb.setSpan(new ForegroundColorSpan(Color.GRAY), sb.length() - 1, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                 }
+
+                 sb.append(w);
+
+                 writingsCount = writingsCount + 1;
+             }
+         }
+
+        if (writingsCount > 0) {
             sb.append(" ");
-
-            writingsLength = writingsLength + 1;
         }
 
-        if (aEntry.getWritings().length() > 0) {
-            sb.append(aEntry.getWritings());
-            writingsLength = writingsLength + aEntry.getWritings().length();
-        }
+        sb.setSpan(new RelativeSizeSpan(1.4f), 0, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
 
-        if (writingsLength > 0) {
-            sb.append(" ");
+        sb.append("【");
+        sb.setSpan(new ForegroundColorSpan(Color.GRAY), sb.length()-1, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
 
-            writingsLength = writingsLength + 1;
-        }
+        int readingsCount = 0;
 
-        for (String r : aEntry.getReadingsPrio().split(" ")) {
-            startPos = sb.length();
+         for (String r : aEntry.getReadingsPrio().split(" ")) {
+             if (r.length() > 0) {
+                 if (readingsCount > 0) {
+                     sb.append("・");
+                     sb.setSpan(new ForegroundColorSpan(Color.GRAY), sb.length() - 1, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                 }
 
-            if (r.length() > 0) {
-                sb.append(r);
+                 sb.append(r);
 
-                sb.setSpan(new BackgroundColorSpan(Color.parseColor("#ccffcc")),
-                        startPos, sb.length(),
-                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                 sb.setSpan(new BackgroundColorSpan(Color.parseColor("#ccffcc")),
+                         sb.length() - r.length(), sb.length(),
+                         Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
 
-                readingsLength = readingsLength + r.length();
+                 readingsCount = readingsCount + 1;
+             }
+         }
+
+         for (String r : aEntry.getReadings().split(" ")) {
+             if (r.length() > 0) {
+                 if (readingsCount > 0) {
+                     sb.append("・");
+                     sb.setSpan(new ForegroundColorSpan(Color.GRAY), sb.length() - 1, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                 }
+
+                 sb.append(r);
+
+                 readingsCount = readingsCount + 1;
+             }
+         }
+
+        sb.append("】");
+        sb.setSpan(new ForegroundColorSpan(Color.GRAY), sb.length()-1, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        sb.append("　");
+
+        int glossCount = 0;
+
+        for (String g : aEntry.getGloss().split("\n")) {
+            if (g.length() > 0) {
+                if (glossCount > 0) {
+                    sb.append("　");
+                }
+
+                int dotIndex = g.indexOf(".");
+
+                if (dotIndex >= 0) {
+                    sb.append(g.substring(0, dotIndex + 1));
+                    sb.setSpan(new StyleSpan(android.graphics.Typeface.BOLD),
+                            sb.length() - dotIndex - 1, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+
+                    if (g.length() > dotIndex + 1) {
+                        sb.append(g.substring(dotIndex + 1));
+                    }
+                } else {
+                    sb.append(g);
+                }
+
+                glossCount = glossCount + 1;
             }
-        }
-
-        if (readingsLength > 0) {
-            sb.append(" ");
-
-            readingsLength = readingsLength + 1;
-        }
-
-        if (aEntry.getReadings().length() > 0) {
-            sb.append(aEntry.getReadings());
-            readingsLength = readingsLength + aEntry.getReadings().length();
-        }
-
-        sb.append("\n");
-        readingsLength = readingsLength + 1;
-
-        if (aEntry.getGloss().length() > 0) {
-            sb.append(aEntry.getGloss());
-
-            sb.setSpan(new ForegroundColorSpan(Color.GRAY), writingsLength, writingsLength + readingsLength, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-            sb.setSpan(new RelativeSizeSpan(1.5f), 0, writingsLength + readingsLength, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
 
         return sb;
