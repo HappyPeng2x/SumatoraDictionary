@@ -26,6 +26,9 @@ android {
         testInstrumentationRunnerArguments disableAnalytics: 'true'
 
         setProperty("archivesBaseName", "SumatoraDictionary-$versionName")
+        signingConfig signingConfigs.config
+
+        setProperty("archivesBaseName", "SumatoraDictionary-$versionName")
     }
     buildTypes {
         release {
