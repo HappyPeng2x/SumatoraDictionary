@@ -26,7 +26,6 @@ import androidx.room.TypeConverters;
 abstract public class DictionaryDatabase extends RoomDatabase {
     public static final String DATABASE_NAME = "DictionaryDatabase";
 
-    public abstract DictionaryEntryDao dictionaryEntryDao();
     public abstract DictionaryControlDao dictionaryControlDao();
     public abstract DictionaryBookmarkDao dictionaryBookmarkDao();
     public abstract DictionarySearchResultDao dictionarySearchResultDao();
