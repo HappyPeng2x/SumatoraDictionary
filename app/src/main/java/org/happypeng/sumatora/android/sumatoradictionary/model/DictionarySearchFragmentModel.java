@@ -21,8 +21,8 @@ import android.os.AsyncTask;
 
 import org.happypeng.sumatora.android.sumatoradictionary.DictionaryApplication;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
+import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.QueryTool;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Settings;
 
@@ -82,10 +82,10 @@ public class DictionarySearchFragmentModel extends AndroidViewModel {
 
         mApp = (DictionaryApplication) aApp;
 
-        final LiveData<QueryTool.QueriesList> dictionaryQuery = Transformations.map(mApp.getDictionaryDatabase(),
-                new Function<DictionaryDatabase, QueryTool.QueriesList>() {
+        final LiveData<QueryTool.QueriesList> dictionaryQuery = Transformations.map(mApp.getPersistentDatabase(),
+                new Function<PersistentDatabase, QueryTool.QueriesList>() {
                     @Override
-                    public QueryTool.QueriesList apply(DictionaryDatabase input) {
+                    public QueryTool.QueriesList apply(PersistentDatabase input) {
                         return new QueryTool.QueriesList(input);
                     }
                 });
@@ -106,10 +106,10 @@ public class DictionarySearchFragmentModel extends AndroidViewModel {
                     }
                 });
 
-        final LiveData<List<DictionaryBookmark>> bookmarks = Transformations.switchMap(mApp.getDictionaryDatabase(),
-                new Function<DictionaryDatabase, LiveData<List<DictionaryBookmark>>>() {
+        final LiveData<List<DictionaryBookmark>> bookmarks = Transformations.switchMap(mApp.getPersistentDatabase(),
+                new Function<PersistentDatabase, LiveData<List<DictionaryBookmark>>>() {
                     @Override
-                    public LiveData<List<DictionaryBookmark>> apply(DictionaryDatabase input) {
+                    public LiveData<List<DictionaryBookmark>> apply(PersistentDatabase input) {
                         return input.dictionaryBookmarkDao().getAllLive();
                     }
                 });
@@ -208,11 +208,11 @@ public class DictionarySearchFragmentModel extends AndroidViewModel {
         new AsyncTask<Void, Void, Void>() {
             @Override
             protected Void doInBackground(Void... aParams) {
-                if (mApp.getDictionaryDatabase().getValue() != null) {
+                if (mApp.getPersistentDatabase().getValue() != null) {
                     if (bookmark != 0) {
-                        mApp.getDictionaryDatabase().getValue().dictionaryBookmarkDao().insert(new DictionaryBookmark(seq, bookmark));
+                        mApp.getPersistentDatabase().getValue().dictionaryBookmarkDao().insert(new DictionaryBookmark(seq, bookmark));
                     } else {
-                        mApp.getDictionaryDatabase().getValue().dictionaryBookmarkDao().delete(seq);
+                        mApp.getPersistentDatabase().getValue().dictionaryBookmarkDao().delete(seq);
                     }
                 }
 
@@ -221,8 +221,8 @@ public class DictionarySearchFragmentModel extends AndroidViewModel {
         }.execute();
     }
 
-    public LiveData<DictionaryDatabase> getDictionaryDatabase() {
-        return mApp.getDictionaryDatabase();
+    public LiveData<PersistentDatabase> getPersistentDatabase() {
+        return mApp.getPersistentDatabase();
     }
 
     public DictionaryApplication getDictionaryApplication() { return mApp; }

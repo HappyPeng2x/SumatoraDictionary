@@ -19,8 +19,14 @@ android {
         applicationId "org.happypeng.sumatora.android.sumatoradictionary"
         minSdkVersion 14
         targetSdkVersion 28
-        versionCode 12
-        versionName "0.3.6"
+        versionCode 13
+        versionName "0.3.7"
+
+        javaCompileOptions {
+            annotationProcessorOptions {
+                arguments = ["room.schemaLocation":"$projectDir/schemas".toString()]
+            }
+        }
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         testInstrumentationRunnerArguments disableAnalytics: 'true'
@@ -79,8 +85,6 @@ dependencies {
 
     implementation "androidx.paging:paging-runtime:2.1.0"
     implementation "androidx.paging:paging-common:2.1.0"
-
-    implementation "com.github.daolq3012:AssetSQLiteOpenHelper:V1.0.1"
 
     implementation "org.slf4j:slf4j-api:1.7.25"
     implementation "com.github.tony19:logback-android:2.0.0"

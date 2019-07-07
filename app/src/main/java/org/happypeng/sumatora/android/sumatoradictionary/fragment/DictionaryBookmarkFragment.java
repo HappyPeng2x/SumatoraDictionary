@@ -321,4 +321,16 @@ public class DictionaryBookmarkFragment extends Fragment {
 
         return popupMenu;
     }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+
+        // Avoid using old pointers when view has been destroyed
+        m_progressBar = null;
+        m_statusText = null;
+        m_languageText = null;
+        m_languagePopupMenu = null;
+        m_bookmarks = null;
+    }
 }

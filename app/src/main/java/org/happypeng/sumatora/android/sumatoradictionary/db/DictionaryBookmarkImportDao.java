@@ -27,7 +27,7 @@ import androidx.room.Query;
 
 @Dao
 public interface DictionaryBookmarkImportDao {
-    @Query("SELECT 1 as entryOrder, DictionaryBookmarkImport.seq, "
+/*    @Query("SELECT 1 as entryOrder, DictionaryBookmarkImport.seq, "
             + "DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
             + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, "
             + "IFNULL(LangTranslation.lang, BackupTranslation.lang) AS lang, IFNULL(LangTranslation.gloss, BackupTranslation.gloss) AS gloss, "
@@ -37,10 +37,13 @@ public interface DictionaryBookmarkImportDao {
             + "WHERE DictionaryBookmarkImport.seq = DictionaryEntry.seq AND "
             + " BackupTranslation.seq = DictionaryBookmarkImport.seq AND BackupTranslation.lang = :backupLang "
             + "GROUP BY DictionaryBookmarkImport.seq ORDER BY DictionaryBookmarkImport.seq")
-    LiveData<List<DictionarySearchElement>> getAllDetailsLive(String lang, String backupLang);
+    LiveData<List<DictionarySearchElement>> getAllDetailsLive(String lang, String backupLang);*/
 
     @Query("DELETE FROM DictionaryBookmarkImport")
     void deleteAll();
+
+    @Query("SELECT entryOrder, seq, readingsPrio, readings, writingsPrio, writings, lang, gloss, bookmark FROM DictionaryBookmarkImport")
+    LiveData<List<DictionarySearchElement>> getAllDetailsLive();
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void insertMany(List<DictionaryBookmarkImport> aBookmarkList);

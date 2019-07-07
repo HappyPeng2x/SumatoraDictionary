@@ -46,9 +46,10 @@ import android.widget.PopupMenu;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryLanguage;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
+import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
+import org.happypeng.sumatora.android.sumatoradictionary.db.tools.BookmarkImportTool;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Settings;
 import org.happypeng.sumatora.android.sumatoradictionary.fragment.DictionaryBookmarkFragment;
 import org.happypeng.sumatora.android.sumatoradictionary.fragment.DictionarySearchFragment;
@@ -161,40 +162,9 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
             return;
         }
 
+        m_viewModel.setUri(data);
+
         final DictionaryApplication app = (DictionaryApplication) m_viewModel.getApplication();
-
-        app.getDictionaryDatabase().observe(this, new Observer<DictionaryDatabase>() {
-            @Override
-            public void onChanged(DictionaryDatabase dictionaryDatabase) {
-                if (dictionaryDatabase != null) {
-                    m_viewModel.importBookmarks(data);
-                    setReady();
-                } else {
-                    setInPreparation();
-                }
-            }
-        });
-
-        m_viewModel.getError().observe(this, new Observer<Integer>() {
-            @Override
-            public void onChanged(Integer integer) {
-                AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(DictionaryBookmarksImportActivity.this);
-
-                alertDialogBuilder.setMessage("Impossible to import file. Please check the contents.");
-                alertDialogBuilder.setTitle("Error");
-                alertDialogBuilder.setCancelable(true);
-
-                alertDialogBuilder.setPositiveButton("OK",
-                        new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialog, int which) {
-                                finish();
-                            }
-                        });
-
-                alertDialogBuilder.create().show();
-            }
-        });
 
         m_viewModel.getDictionaryApplication().getDictionaryLanguage().observe
                 (this, new Observer<List<DictionaryLanguage>>() {
@@ -217,7 +187,32 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
                 new Observer<DictionaryBookmarkImportActivityModel.Status>() {
                     @Override
                     public void onChanged(DictionaryBookmarkImportActivityModel.Status status) {
-                        if (status.isInitialized()) {
+                        if (status.toolStatus == BookmarkImportTool.STATUS_ERROR) {
+                            setReady();
+
+                            AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(DictionaryBookmarksImportActivity.this);
+
+                            alertDialogBuilder.setMessage("Impossible to import file. Please check the contents.");
+                            alertDialogBuilder.setTitle("Error");
+                            alertDialogBuilder.setCancelable(true);
+
+                            alertDialogBuilder.setPositiveButton("OK",
+                                    new DialogInterface.OnClickListener() {
+                                        @Override
+                                        public void onClick(DialogInterface dialog, int which) {
+                                            finish();
+                                        }
+                                    });
+
+                            alertDialogBuilder.create().show();
+                        } else if (status.isInitialized()) {
+                            setReady();
+
+                            if (m_bookmarks != status.bookmarkElements) {
+                                listAdapter.submitList(status.bookmarkElements);
+                                m_bookmarks = status.bookmarkElements;
+                            }
+
                             if (m_currentLang == null || !m_currentLang.equals(status.lang)) {
                                 m_currentLang = status.lang;
 
@@ -233,11 +228,8 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
 
                                 listAdapter.notifyDataSetChanged();
                             }
-
-                            if (m_bookmarks != status.bookmarkElements) {
-                                listAdapter.submitList(status.bookmarkElements);
-                                m_bookmarks = status.bookmarkElements;
-                            }
+                        } else {
+                            setInPreparation();
                         }
                     }
                 });
@@ -268,7 +260,7 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
         menu.findItem(R.id.cancel_import).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
             @Override
             public boolean onMenuItemClick(MenuItem item) {
-                viewModel.deleteAll();
+                viewModel.cancelImport();
 
                 finish();
 
