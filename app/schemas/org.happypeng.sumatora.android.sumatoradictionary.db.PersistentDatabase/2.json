@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 2,
-    "identityHash": "40d01b6397cc553c628c24420aa89213",
+    "identityHash": "0bfb62cbd3de9e7f60de85145869e4ac",
     "entities": [
       {
         "tableName": "PersistentSetting",
@@ -32,7 +32,7 @@
       },
       {
         "tableName": "DictionarySearchResult",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`entryOrder` INTEGER NOT NULL, `seq` INTEGER NOT NULL, `readingsPrio` TEXT, `readings` TEXT, `writingsPrio` TEXT, `writings` TEXT, `lang` TEXT, `gloss` TEXT, PRIMARY KEY(`seq`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`entryOrder` INTEGER NOT NULL, `seq` INTEGER NOT NULL, `readingsPrio` TEXT, `readings` TEXT, `writingsPrio` TEXT, `writings` TEXT, `pos` TEXT, `xref` TEXT, `ant` TEXT, `misc` TEXT, `lsource` TEXT, `dial` TEXT, `s_inf` TEXT, `field` TEXT, `lang` TEXT, `gloss` TEXT, PRIMARY KEY(`seq`))",
         "fields": [
           {
             "fieldPath": "entryOrder",
@@ -67,6 +67,54 @@
           {
             "fieldPath": "writings",
             "columnName": "writings",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "pos",
+            "columnName": "pos",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "xref",
+            "columnName": "xref",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "ant",
+            "columnName": "ant",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "misc",
+            "columnName": "misc",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "lsource",
+            "columnName": "lsource",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "dial",
+            "columnName": "dial",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "s_inf",
+            "columnName": "s_inf",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "field",
+            "columnName": "field",
             "affinity": "TEXT",
             "notNull": false
           },
@@ -120,7 +168,7 @@
       },
       {
         "tableName": "DictionaryBookmarkImport",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`entryOrder` INTEGER NOT NULL, `seq` INTEGER NOT NULL, `readingsPrio` TEXT, `readings` TEXT, `writingsPrio` TEXT, `writings` TEXT, `lang` TEXT, `gloss` TEXT, `bookmark` INTEGER NOT NULL, PRIMARY KEY(`seq`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`entryOrder` INTEGER NOT NULL, `seq` INTEGER NOT NULL, `readingsPrio` TEXT, `readings` TEXT, `writingsPrio` TEXT, `writings` TEXT, `pos` TEXT, `xref` TEXT, `ant` TEXT, `misc` TEXT, `lsource` TEXT, `dial` TEXT, `s_inf` TEXT, `field` TEXT, `lang` TEXT, `gloss` TEXT, `bookmark` INTEGER NOT NULL, PRIMARY KEY(`seq`))",
         "fields": [
           {
             "fieldPath": "entryOrder",
@@ -155,6 +203,54 @@
           {
             "fieldPath": "writings",
             "columnName": "writings",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "pos",
+            "columnName": "pos",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "xref",
+            "columnName": "xref",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "ant",
+            "columnName": "ant",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "misc",
+            "columnName": "misc",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "lsource",
+            "columnName": "lsource",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "dial",
+            "columnName": "dial",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "s_inf",
+            "columnName": "s_inf",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "field",
+            "columnName": "field",
             "affinity": "TEXT",
             "notNull": false
           },
@@ -188,7 +284,7 @@
       },
       {
         "tableName": "DictionaryBookmarkElement",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`entryOrder` INTEGER NOT NULL, `seq` INTEGER NOT NULL, `readingsPrio` TEXT, `readings` TEXT, `writingsPrio` TEXT, `writings` TEXT, `lang` TEXT, `gloss` TEXT, `bookmark` INTEGER NOT NULL, PRIMARY KEY(`seq`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`entryOrder` INTEGER NOT NULL, `seq` INTEGER NOT NULL, `readingsPrio` TEXT, `readings` TEXT, `writingsPrio` TEXT, `writings` TEXT, `pos` TEXT, `xref` TEXT, `ant` TEXT, `misc` TEXT, `lsource` TEXT, `dial` TEXT, `s_inf` TEXT, `field` TEXT, `lang` TEXT, `gloss` TEXT, `bookmark` INTEGER NOT NULL, PRIMARY KEY(`seq`))",
         "fields": [
           {
             "fieldPath": "entryOrder",
@@ -223,6 +319,54 @@
           {
             "fieldPath": "writings",
             "columnName": "writings",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "pos",
+            "columnName": "pos",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "xref",
+            "columnName": "xref",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "ant",
+            "columnName": "ant",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "misc",
+            "columnName": "misc",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "lsource",
+            "columnName": "lsource",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "dial",
+            "columnName": "dial",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "s_inf",
+            "columnName": "s_inf",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "field",
+            "columnName": "field",
             "affinity": "TEXT",
             "notNull": false
           },
@@ -258,7 +402,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '40d01b6397cc553c628c24420aa89213')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '0bfb62cbd3de9e7f60de85145869e4ac')"
     ]
   }
 }

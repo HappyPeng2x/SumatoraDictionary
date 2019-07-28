@@ -24,7 +24,11 @@ import java.util.List;
 
 @Dao
 public interface DictionaryBookmarkElementDao {
-    @Query("SELECT entryOrder, seq, readingsPrio, readings, writingsPrio, writings, lang, gloss, bookmark FROM DictionaryBookmarkElement")
+    @Query("SELECT entryOrder, seq, readingsPrio, readings, writingsPrio, writings, "
+            + "pos, xref, ant, "
+            + "misc, lsource, dial, "
+            + "s_inf, field, "
+            + "lang, gloss, bookmark FROM DictionaryBookmarkElement")
     LiveData<List<DictionarySearchElement>> getAllDetailsLive();
 
     @Query("DELETE FROM DictionaryBookmarkElement")

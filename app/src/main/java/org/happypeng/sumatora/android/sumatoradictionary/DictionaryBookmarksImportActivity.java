@@ -208,6 +208,8 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
                         } else if (status.isInitialized()) {
                             setReady();
 
+                            viewHolderStatus.entities = m_viewModel.getDictionaryApplication().getEntities();
+
                             if (m_bookmarks != status.bookmarkElements) {
                                 listAdapter.submitList(status.bookmarkElements);
                                 m_bookmarks = status.bookmarkElements;

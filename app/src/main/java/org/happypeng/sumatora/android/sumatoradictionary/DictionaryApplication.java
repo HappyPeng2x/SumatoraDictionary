@@ -44,6 +44,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
@@ -70,6 +71,8 @@ public class DictionaryApplication extends Application {
     protected MutableLiveData<BookmarkTool> m_bookmarkTool;
     protected MutableLiveData<BookmarkImportTool> m_bookmarkImportTool;
 
+    private HashMap<String, String> m_entities;
+
     private Settings m_settings;
 
     public LiveData<PersistentDatabase> getPersistentDatabase() { return m_persistentDatabase; }
@@ -78,6 +81,8 @@ public class DictionaryApplication extends Application {
     public LiveData<BookmarkImportTool> getBookmarkImportTool() { return m_bookmarkImportTool; }
 
     public Settings getSettings() { return m_settings; }
+
+    public HashMap<String, String> getEntities() { return m_entities; }
 
     static final Migration MIGRATION_1_2 = new Migration(1, 2) {
         @Override
@@ -90,10 +95,10 @@ public class DictionaryApplication extends Application {
                 log.info("Starting database migration");
             }
 
-            database.execSQL("CREATE TABLE IF NOT EXISTS DictionarySearchResult (`entryOrder` INTEGER NOT NULL, `seq` INTEGER NOT NULL, `readingsPrio` TEXT, `readings` TEXT, `writingsPrio` TEXT, `writings` TEXT, `lang` TEXT, `gloss` TEXT, PRIMARY KEY(`seq`))");
+            database.execSQL("CREATE TABLE IF NOT EXISTS DictionarySearchResult (`entryOrder` INTEGER NOT NULL, `seq` INTEGER NOT NULL, `readingsPrio` TEXT, `readings` TEXT, `writingsPrio` TEXT, `writings` TEXT, `pos` TEXT, `xref` TEXT, `ant` TEXT, `misc` TEXT, `lsource` TEXT, `dial` TEXT, `s_inf` TEXT, `field` TEXT, `lang` TEXT, `gloss` TEXT, PRIMARY KEY(`seq`))");
+            database.execSQL("CREATE TABLE IF NOT EXISTS DictionaryBookmarkElement (`entryOrder` INTEGER NOT NULL, `seq` INTEGER NOT NULL, `readingsPrio` TEXT, `readings` TEXT, `writingsPrio` TEXT, `writings` TEXT, `pos` TEXT, `xref` TEXT, `ant` TEXT, `misc` TEXT, `lsource` TEXT, `dial` TEXT, `s_inf` TEXT, `field` TEXT, `lang` TEXT, `gloss` TEXT, `bookmark` INTEGER NOT NULL, PRIMARY KEY(`seq`))");
+            database.execSQL("CREATE TABLE IF NOT EXISTS DictionaryBookmarkImport (`entryOrder` INTEGER NOT NULL, `seq` INTEGER NOT NULL, `readingsPrio` TEXT, `readings` TEXT, `writingsPrio` TEXT, `writings` TEXT, `pos` TEXT, `xref` TEXT, `ant` TEXT, `misc` TEXT, `lsource` TEXT, `dial` TEXT, `s_inf` TEXT, `field` TEXT, `lang` TEXT, `gloss` TEXT, `bookmark` INTEGER NOT NULL, PRIMARY KEY(`seq`))");
             database.execSQL("CREATE TABLE IF NOT EXISTS DictionaryBookmark (`seq` INTEGER NOT NULL, `bookmark` INTEGER NOT NULL, PRIMARY KEY(`seq`))");
-            database.execSQL("CREATE TABLE IF NOT EXISTS DictionaryBookmarkImport (`entryOrder` INTEGER NOT NULL, `seq` INTEGER NOT NULL, `readingsPrio` TEXT, `readings` TEXT, `writingsPrio` TEXT, `writings` TEXT, `lang` TEXT, `gloss` TEXT, `bookmark` INTEGER NOT NULL, PRIMARY KEY(`seq`))");
-            database.execSQL("CREATE TABLE IF NOT EXISTS DictionaryBookmarkElement (`entryOrder` INTEGER NOT NULL, `seq` INTEGER NOT NULL, `readingsPrio` TEXT, `readings` TEXT, `writingsPrio` TEXT, `writings` TEXT, `lang` TEXT, `gloss` TEXT, `bookmark` INTEGER NOT NULL, PRIMARY KEY(`seq`))");
 
             if (BuildConfig.DEBUG_DB_MIGRATION) {
                 log.info("Database migration ended");
@@ -391,6 +396,36 @@ public class DictionaryApplication extends Application {
                 pDb.dictionaryBookmarkDao().insertMany(bookmarks);
             }
 
+
+            try {
+                Cursor cur = pDb.getOpenHelper().getReadableDatabase().query("SELECT name, content FROM jmdict.DictionaryEntity");
+
+                if (cur != null) {
+                    if (cur.getCount() > 0) {
+                        HashMap<String, String> entities = new HashMap<>();
+
+                        while (cur.moveToNext()) {
+                            String name = cur.getString(0);
+                            String content = cur.getString(1);
+
+                            entities.put(name, content);
+                        }
+
+                        aParams[0].m_entities = entities;
+                    }
+
+                    cur.close();
+                } else {
+                    if (BuildConfig.DEBUG_DB_MIGRATION) {
+                        m_log.info("Cursor was null on select from DictionaryEntity");
+                    }
+                }
+            } catch (SQLException e) {
+                if (BuildConfig.DEBUG_DB_MIGRATION) {
+                    m_log.info("Could not select from DictionaryEntity");
+                }
+            }
+
             aParams[0].m_persistentDatabase.postValue(pDb);
             aParams[0].getSettings().postDatabase(pDb);
 
@@ -436,6 +471,8 @@ public class DictionaryApplication extends Application {
         m_settings = new Settings();
 
         m_dictionaryLanguage.setValue(Languages.getLanguages());
+
+        m_entities = null;
 
         new InitializeDBTask().execute(this);
     }

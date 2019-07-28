@@ -222,6 +222,8 @@ public class DictionarySearchFragment extends Fragment {
                             return;
                         }
 
+                        m_viewHolderStatus.entities = m_viewModel.getDictionaryApplication().getEntities();
+
                         if (m_lang == null || !m_lang.equals(status.lang)) {
                             if (m_languageText != null) {
                                 m_languageText.setText(status.lang);

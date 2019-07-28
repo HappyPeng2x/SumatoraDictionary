@@ -26,6 +26,14 @@ public class DictionarySearchResult {
     public String readings;
     public String writingsPrio;
     public String writings;
+    public String pos;
+    public String xref;
+    public String ant;
+    public String misc;
+    public String lsource;
+    public String dial;
+    public String s_inf;
+    public String field;
     public String lang;
     public String gloss;
 
@@ -62,4 +70,13 @@ public class DictionarySearchResult {
     public String getGloss() {
         return gloss;
     }
+
+    public String getPos() { return pos; }
+    public String getXref() { return xref; }
+    public String getAnt() { return ant; }
+    public String getMisc() { return misc; }
+    public String getLsource() { return lsource; }
+    public String getDial() { return dial; }
+    public String getS_inf() { return s_inf; }
+    public String getField() { return field; }
 }

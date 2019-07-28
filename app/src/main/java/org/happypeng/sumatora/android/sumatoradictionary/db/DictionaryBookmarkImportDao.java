@@ -27,22 +27,14 @@ import androidx.room.Query;
 
 @Dao
 public interface DictionaryBookmarkImportDao {
-/*    @Query("SELECT 1 as entryOrder, DictionaryBookmarkImport.seq, "
-            + "DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
-            + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, "
-            + "IFNULL(LangTranslation.lang, BackupTranslation.lang) AS lang, IFNULL(LangTranslation.gloss, BackupTranslation.gloss) AS gloss, "
-            + "DictionaryBookmarkImport.bookmark "
-            + "FROM DictionaryBookmarkImport, DictionaryEntry, "
-            + "DictionaryTranslation AS BackupTranslation LEFT JOIN DictionaryTranslation AS LangTranslation ON LangTranslation.seq = BackupTranslation.seq AND LangTranslation.lang = :lang "
-            + "WHERE DictionaryBookmarkImport.seq = DictionaryEntry.seq AND "
-            + " BackupTranslation.seq = DictionaryBookmarkImport.seq AND BackupTranslation.lang = :backupLang "
-            + "GROUP BY DictionaryBookmarkImport.seq ORDER BY DictionaryBookmarkImport.seq")
-    LiveData<List<DictionarySearchElement>> getAllDetailsLive(String lang, String backupLang);*/
-
     @Query("DELETE FROM DictionaryBookmarkImport")
     void deleteAll();
 
-    @Query("SELECT entryOrder, seq, readingsPrio, readings, writingsPrio, writings, lang, gloss, bookmark FROM DictionaryBookmarkImport")
+    @Query("SELECT entryOrder, seq, readingsPrio, readings, writingsPrio, writings, "
+            + "pos, xref, ant, "
+            + "misc, lsource, dial, "
+            + "s_inf, field, "
+            + "lang, gloss, bookmark FROM DictionaryBookmarkImport")
     LiveData<List<DictionarySearchElement>> getAllDetailsLive();
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)

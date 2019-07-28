@@ -30,6 +30,9 @@ public interface DictionarySearchResultDao {
     @Query("SELECT DictionarySearchResult.entryOrder, DictionarySearchResult.seq, " +
             "DictionarySearchResult.readingsPrio, DictionarySearchResult.readings, " +
             "DictionarySearchResult.writingsPrio, DictionarySearchResult.writings, " +
+            "DictionarySearchResult.pos, DictionarySearchResult.xref, DictionarySearchResult.ant, " +
+            "DictionarySearchResult.misc, DictionarySearchResult.lsource, DictionarySearchResult.dial, " +
+            "DictionarySearchResult.s_inf, DictionarySearchResult.field, " +
             "DictionarySearchResult.lang, DictionarySearchResult.gloss, " +
             "0 AS bookmark " +
             "FROM DictionarySearchResult " +

@@ -52,6 +52,7 @@ import android.widget.PopupMenu;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
+import org.happypeng.sumatora.android.sumatoradictionary.BuildConfig;
 import org.happypeng.sumatora.android.sumatoradictionary.DictionaryListAdapter;
 import org.happypeng.sumatora.android.sumatoradictionary.DictionarySearchElementViewHolder;
 import org.happypeng.sumatora.android.sumatoradictionary.R;
@@ -60,6 +61,8 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElem
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Settings;
 import org.happypeng.sumatora.android.sumatoradictionary.model.DictionaryBookmarkFragmentModel;
 import org.happypeng.sumatora.android.sumatoradictionary.xml.DictionaryBookmarkXML;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.List;
@@ -80,7 +83,12 @@ public class DictionaryBookmarkFragment extends Fragment {
 
     private PopupMenu m_languagePopupMenu;
 
+    private Logger m_log;
+
     public DictionaryBookmarkFragment() {
+        if (BuildConfig.DEBUG_UI) {
+            m_log = LoggerFactory.getLogger(this.getClass());
+        }
     }
 
     private void setInPreparation() {
@@ -184,6 +192,8 @@ public class DictionaryBookmarkFragment extends Fragment {
                     public void onChanged(DictionaryBookmarkFragmentModel.Status status) {
                         if (status.isInitialized()) {
                             setReady();
+
+                            viewHolderStatus.entities = m_viewModel.getDictionaryApplication().getEntities();
 
                             if (!m_languageText.getText().toString().equals(status.lang)) {
                                 m_languageText.setText(status.lang);

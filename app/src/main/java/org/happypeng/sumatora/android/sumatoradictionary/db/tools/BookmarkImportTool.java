@@ -37,7 +37,11 @@ import java.util.List;
 public class BookmarkImportTool {
     static private final String SQL_QUERY_INSERT_BOOKMARK_IMPORT =
             "INSERT INTO DictionaryBookmarkImport SELECT 0 AS entryOrder, DictionaryEntry.seq, DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
-                    + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, DictionaryTranslation.lang, "
+                    + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, "
+                    + "DictionaryEntry.pos, DictionaryEntry.xref, DictionaryEntry.ant, "
+                    + "DictionaryEntry.misc, DictionaryEntry.lsource, DictionaryEntry.dial, "
+                    + "DictionaryEntry.s_inf, DictionaryEntry.field, "
+                    + "DictionaryTranslation.lang, "
                     + "DictionaryTranslation.gloss, 1 "
                     + "FROM jmdict.DictionaryEntry, jmdict.DictionaryTranslation "
                     + "WHERE DictionaryEntry.seq = ? AND (DictionaryEntry.seq NOT IN (SELECT seq FROM DictionaryBookmarkImport)) AND DictionaryEntry.seq = DictionaryTranslation.seq AND DictionaryTranslation.lang = ? ";

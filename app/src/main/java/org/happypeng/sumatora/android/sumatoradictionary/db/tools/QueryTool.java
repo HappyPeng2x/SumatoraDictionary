@@ -40,7 +40,11 @@ import org.slf4j.LoggerFactory;
 public class QueryTool {
     static private final String SQL_QUERY_EXACT_PRIO =
             "INSERT INTO DictionarySearchResult SELECT ? AS entryOrder, DictionaryEntry.seq, DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
-                    + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, DictionaryTranslation.lang, "
+                    + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, "
+                    + "DictionaryEntry.pos, DictionaryEntry.xref, DictionaryEntry.ant, "
+                    + "DictionaryEntry.misc, DictionaryEntry.lsource, DictionaryEntry.dial, "
+                    + "DictionaryEntry.s_inf, DictionaryEntry.field, "
+                    + "DictionaryTranslation.lang, "
                     + "DictionaryTranslation.gloss "
                     + "FROM jmdict.DictionaryEntry, jmdict.DictionaryTranslation, "
                     + "("
@@ -52,7 +56,11 @@ public class QueryTool {
 
     static private final String SQL_QUERY_EXACT_NONPRIO =
             "INSERT INTO DictionarySearchResult SELECT ? AS entryOrder, DictionaryEntry.seq, DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
-                    + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, DictionaryTranslation.lang, "
+                    + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, "
+                    + "DictionaryEntry.pos, DictionaryEntry.xref, DictionaryEntry.ant, "
+                    + "DictionaryEntry.misc, DictionaryEntry.lsource, DictionaryEntry.dial, "
+                    + "DictionaryEntry.s_inf, DictionaryEntry.field, "
+                    + "DictionaryTranslation.lang, "
                     + "DictionaryTranslation.gloss "
                     + "FROM jmdict.DictionaryEntry, jmdict.DictionaryTranslation, "
                     + "("
@@ -64,7 +72,11 @@ public class QueryTool {
 
     static private final String SQL_QUERY_BEGIN_PRIO =
             "INSERT INTO DictionarySearchResult SELECT ? AS entryOrder, DictionaryEntry.seq, DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
-                    + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, DictionaryTranslation.lang, "
+                    + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, "
+                    + "DictionaryEntry.pos, DictionaryEntry.xref, DictionaryEntry.ant, "
+                    + "DictionaryEntry.misc, DictionaryEntry.lsource, DictionaryEntry.dial, "
+                    + "DictionaryEntry.s_inf, DictionaryEntry.field, "
+                    + "DictionaryTranslation.lang, "
                     + "DictionaryTranslation.gloss "
                     + "FROM jmdict.DictionaryEntry, jmdict.DictionaryTranslation, "
                     + "("
@@ -76,7 +88,11 @@ public class QueryTool {
 
     static private final String SQL_QUERY_BEGIN_NONPRIO =
             "INSERT INTO DictionarySearchResult SELECT ? AS entryOrder, DictionaryEntry.seq, DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
-                    + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, DictionaryTranslation.lang, "
+                    + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, "
+                    + "DictionaryEntry.pos, DictionaryEntry.xref, DictionaryEntry.ant, "
+                    + "DictionaryEntry.misc, DictionaryEntry.lsource, DictionaryEntry.dial, "
+                    + "DictionaryEntry.s_inf, DictionaryEntry.field, "
+                    + "DictionaryTranslation.lang, "
                     + "DictionaryTranslation.gloss "
                     + "FROM jmdict.DictionaryEntry, jmdict.DictionaryTranslation, "
                     + "("
@@ -88,7 +104,11 @@ public class QueryTool {
 
     static private final String SQL_QUERY_PARTS_PRIO =
             "INSERT INTO DictionarySearchResult SELECT ? AS entryOrder, DictionaryEntry.seq, DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
-                    + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, DictionaryTranslation.lang, "
+                    + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, "
+                    + "DictionaryEntry.pos, DictionaryEntry.xref, DictionaryEntry.ant, "
+                    + "DictionaryEntry.misc, DictionaryEntry.lsource, DictionaryEntry.dial, "
+                    + "DictionaryEntry.s_inf, DictionaryEntry.field, "
+                    + "DictionaryTranslation.lang, "
                     + "DictionaryTranslation.gloss "
                     + "FROM jmdict.DictionaryEntry, jmdict.DictionaryTranslation, "
                     + "("
@@ -100,7 +120,11 @@ public class QueryTool {
 
     static private final String SQL_QUERY_PARTS_NONPRIO =
             "INSERT INTO DictionarySearchResult SELECT ? AS entryOrder, DictionaryEntry.seq, DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
-                    + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, DictionaryTranslation.lang, "
+                    + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, "
+                    + "DictionaryEntry.pos, DictionaryEntry.xref, DictionaryEntry.ant, "
+                    + "DictionaryEntry.misc, DictionaryEntry.lsource, DictionaryEntry.dial, "
+                    + "DictionaryEntry.s_inf, DictionaryEntry.field, "
+                    + "DictionaryTranslation.lang, "
                     + "DictionaryTranslation.gloss "
                     + "FROM jmdict.DictionaryEntry, jmdict.DictionaryTranslation, "
                     + "("

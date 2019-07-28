@@ -26,6 +26,14 @@ public class DictionaryBookmarkImport {
     public String readings;
     public String writingsPrio;
     public String writings;
+    public String pos;
+    public String xref;
+    public String ant;
+    public String misc;
+    public String lsource;
+    public String dial;
+    public String s_inf;
+    public String field;
     public String lang;
     public String gloss;
     public long bookmark;

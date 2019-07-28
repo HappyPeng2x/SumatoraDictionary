@@ -29,7 +29,11 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 public class BookmarkTool {
     static private final String SQL_QUERY_INSERT_BOOKMARK_ELEMENTS =
             "INSERT INTO DictionaryBookmarkElement SELECT 0 AS entryOrder, DictionaryEntry.seq, DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
-                    + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, DictionaryTranslation.lang, "
+                    + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, "
+                    + "DictionaryEntry.pos, DictionaryEntry.xref, DictionaryEntry.ant, "
+                    + "DictionaryEntry.misc, DictionaryEntry.lsource, DictionaryEntry.dial, "
+                    + "DictionaryEntry.s_inf, DictionaryEntry.field, "
+                    + "DictionaryTranslation.lang, "
                     + "DictionaryTranslation.gloss, 1 "
                     + "FROM DictionaryBookmark, jmdict.DictionaryEntry, jmdict.DictionaryTranslation "
                     + "WHERE DictionaryBookmark.seq NOT IN (SELECT seq FROM DictionaryBookmarkElement) AND DictionaryBookmark.seq = DictionaryEntry.seq AND DictionaryBookmark.seq = DictionaryTranslation.seq AND DictionaryTranslation.lang = ? ";
