@@ -31,15 +31,20 @@ import android.widget.TextView;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Settings;
 import org.happypeng.sumatora.android.sumatoradictionary.model.DictionarySearchFragmentModel;
+import org.json.JSONArray;
+import org.json.JSONException;
 
+import androidx.annotation.NonNull;
 import androidx.cardview.widget.CardView;
 import androidx.recyclerview.widget.RecyclerView;
 
+import java.util.HashMap;
 import java.util.Set;
 
 public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
     public static class Status {
         public String lang;
+        public HashMap<String, String> entities;
     }
 
     private final Status m_status;
@@ -62,6 +67,41 @@ public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
         m_cardView = (FrameLayout) itemView.findViewById(R.id.word_card_view);
 
         m_status = aStatus;
+    }
+
+    @NonNull
+    private String renderJSONArray(final JSONArray aArray, String aSeparator,
+                                   boolean aResolveEntities) {
+        if (aArray == null) {
+            return "";
+        }
+
+        StringBuilder sb = new StringBuilder();
+
+        try {
+            for (int i = 0; i < aArray.length(); i++) {
+                String s = aArray.getString(i);
+
+                if (sb.length() > 0 && aSeparator != null) {
+                    sb.append(aSeparator);
+                }
+
+                if (aResolveEntities) {
+                    if (m_status.entities != null &&
+                        m_status.entities.containsKey(s)) {
+                        sb.append(m_status.entities.get(s));
+                    } else {
+                        System.err.println("Could not resolve entity: " + s);
+                    }
+                } else {
+                    sb.append(s);
+                }
+            }
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+        return sb.toString();
     }
 
     void disableBookmarkButton() {
@@ -154,29 +194,60 @@ public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
 
         int glossCount = 0;
 
-        for (String g : aEntry.getGloss().split("\n")) {
-            if (g.length() > 0) {
-                if (glossCount > 0) {
-                    sb.append("　");
-                }
+         try {
+             JSONArray gloss = new JSONArray(aEntry.getGloss());
+             JSONArray pos = null;
 
-                int dotIndex = g.indexOf(".");
+             String posStr = aEntry.getPos();
 
-                if (dotIndex >= 0) {
-                    sb.append(g.substring(0, dotIndex + 1));
-                    sb.setSpan(new StyleSpan(android.graphics.Typeface.BOLD),
-                            sb.length() - dotIndex - 1, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+             if (posStr != null) {
+                 pos = new JSONArray(posStr);
+             }
 
-                    if (g.length() > dotIndex + 1) {
-                        sb.append(g.substring(dotIndex + 1));
-                    }
-                } else {
-                    sb.append(g);
-                }
+             for (int i = 0; i < gloss.length(); i++) {
+                 JSONArray elements = gloss.getJSONArray(i);
+                 StringBuilder gb = new StringBuilder();
 
-                glossCount = glossCount + 1;
-            }
-        }
+                 for (int j = 0; j < elements.length(); j++) {
+                     if (gb.length() > 0) {
+                         gb.append(", ");
+                     }
+
+                     gb.append(elements.getString(j));
+                 }
+
+                 if (glossCount > 0) {
+                     sb.append("　");
+                 }
+
+                 String prefix = Integer.toString(glossCount + 1) + ". ";
+
+                 sb.append(prefix);
+
+                 sb.setSpan(new StyleSpan(android.graphics.Typeface.BOLD),
+                         sb.length() - prefix.length(), sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+
+                 if (pos != null && glossCount < pos.length()) {
+                     String p = renderJSONArray(pos.getJSONArray(glossCount), ", ", true);
+
+                     if (p.length() > 0) {
+                         sb.append(p);
+
+                         sb.setSpan(new ForegroundColorSpan(Color.parseColor("#3333aa")),
+                                 sb.length() - p.length(), sb.length(),
+                                 Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+
+                         sb.append(" ");
+                     }
+                 }
+
+                 sb.append(gb.toString());
+
+                 glossCount = glossCount + 1;
+             }
+         } catch (JSONException e) {
+             e.printStackTrace();
+         }
 
         return sb;
     }

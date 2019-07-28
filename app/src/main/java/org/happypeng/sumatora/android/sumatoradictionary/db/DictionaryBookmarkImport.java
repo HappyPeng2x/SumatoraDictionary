@@ -20,13 +20,23 @@ import androidx.room.Entity;
 
 @Entity(primaryKeys = {"seq"})
 public class DictionaryBookmarkImport {
+    public int entryOrder;
     public long seq;
+    public String readingsPrio;
+    public String readings;
+    public String writingsPrio;
+    public String writings;
+    public String pos;
+    public String xref;
+    public String ant;
+    public String misc;
+    public String lsource;
+    public String dial;
+    public String s_inf;
+    public String field;
+    public String lang;
+    public String gloss;
     public long bookmark;
 
-    public DictionaryBookmarkImport() {}
-
-    public DictionaryBookmarkImport(long aSeq, long aBookmark) {
-        seq = aSeq;
-        bookmark = aBookmark;
-    }
+    public DictionaryBookmarkImport() { super(); }
 }

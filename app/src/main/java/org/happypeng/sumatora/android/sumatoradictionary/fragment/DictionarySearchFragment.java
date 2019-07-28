@@ -47,7 +47,6 @@ import android.widget.TextView;
 import org.happypeng.sumatora.android.sumatoradictionary.DictionaryPagedListAdapter;
 import org.happypeng.sumatora.android.sumatoradictionary.DictionarySearchElementViewHolder;
 import org.happypeng.sumatora.android.sumatoradictionary.R;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryLanguage;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.QueryTool;
@@ -222,6 +221,8 @@ public class DictionarySearchFragment extends Fragment {
 
                             return;
                         }
+
+                        m_viewHolderStatus.entities = m_viewModel.getDictionaryApplication().getEntities();
 
                         if (m_lang == null || !m_lang.equals(status.lang)) {
                             if (m_languageText != null) {

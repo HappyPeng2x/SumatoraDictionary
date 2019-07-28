@@ -19,7 +19,6 @@ package org.happypeng.sumatora.android.sumatoradictionary.db.tools;
 import android.os.AsyncTask;
 
 import org.happypeng.sumatora.android.sumatoradictionary.BuildConfig;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
 
 import androidx.annotation.NonNull;
@@ -34,17 +33,22 @@ import androidx.paging.PagedList;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 import androidx.sqlite.db.SupportSQLiteStatement;
 
+import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class QueryTool {
     static private final String SQL_QUERY_EXACT_PRIO =
             "INSERT INTO DictionarySearchResult SELECT ? AS entryOrder, DictionaryEntry.seq, DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
-                    + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, DictionaryTranslation.lang, "
+                    + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, "
+                    + "DictionaryEntry.pos, DictionaryEntry.xref, DictionaryEntry.ant, "
+                    + "DictionaryEntry.misc, DictionaryEntry.lsource, DictionaryEntry.dial, "
+                    + "DictionaryEntry.s_inf, DictionaryEntry.field, "
+                    + "DictionaryTranslation.lang, "
                     + "DictionaryTranslation.gloss "
-                    + "FROM DictionaryEntry, DictionaryTranslation, "
+                    + "FROM jmdict.DictionaryEntry, jmdict.DictionaryTranslation, "
                     + "("
-                    + "SELECT DictionaryIndex.`rowid` AS seq FROM DictionaryIndex "
+                    + "SELECT DictionaryIndex.`rowid` AS seq FROM jmdict.DictionaryIndex "
                     + "WHERE writingsPrio MATCH 'writingsPrio:' || ? || ' OR readingsPrio:' || ? "
                     + ") AS A "
                     + "WHERE A.seq NOT IN (SELECT seq FROM DictionarySearchResult) AND A.seq = DictionaryEntry.seq AND A.seq = DictionaryTranslation.seq AND DictionaryTranslation.lang = ? "
@@ -52,11 +56,15 @@ public class QueryTool {
 
     static private final String SQL_QUERY_EXACT_NONPRIO =
             "INSERT INTO DictionarySearchResult SELECT ? AS entryOrder, DictionaryEntry.seq, DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
-                    + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, DictionaryTranslation.lang, "
+                    + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, "
+                    + "DictionaryEntry.pos, DictionaryEntry.xref, DictionaryEntry.ant, "
+                    + "DictionaryEntry.misc, DictionaryEntry.lsource, DictionaryEntry.dial, "
+                    + "DictionaryEntry.s_inf, DictionaryEntry.field, "
+                    + "DictionaryTranslation.lang, "
                     + "DictionaryTranslation.gloss "
-                    + "FROM DictionaryEntry, DictionaryTranslation, "
+                    + "FROM jmdict.DictionaryEntry, jmdict.DictionaryTranslation, "
                     + "("
-                    + "SELECT DictionaryIndex.`rowid` AS seq FROM DictionaryIndex "
+                    + "SELECT DictionaryIndex.`rowid` AS seq FROM jmdict.DictionaryIndex "
                     + "WHERE writingsPrio MATCH 'writings:' || ? || ' OR readings:' || ? "
                     + ") AS A "
                     + "WHERE A.seq NOT IN (SELECT seq FROM DictionarySearchResult) AND A.seq = DictionaryEntry.seq AND A.seq = DictionaryTranslation.seq AND DictionaryTranslation.lang = ? "
@@ -64,11 +72,15 @@ public class QueryTool {
 
     static private final String SQL_QUERY_BEGIN_PRIO =
             "INSERT INTO DictionarySearchResult SELECT ? AS entryOrder, DictionaryEntry.seq, DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
-                    + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, DictionaryTranslation.lang, "
+                    + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, "
+                    + "DictionaryEntry.pos, DictionaryEntry.xref, DictionaryEntry.ant, "
+                    + "DictionaryEntry.misc, DictionaryEntry.lsource, DictionaryEntry.dial, "
+                    + "DictionaryEntry.s_inf, DictionaryEntry.field, "
+                    + "DictionaryTranslation.lang, "
                     + "DictionaryTranslation.gloss "
-                    + "FROM DictionaryEntry, DictionaryTranslation, "
+                    + "FROM jmdict.DictionaryEntry, jmdict.DictionaryTranslation, "
                     + "("
-                    + "SELECT DictionaryIndex.`rowid` AS seq FROM DictionaryIndex "
+                    + "SELECT DictionaryIndex.`rowid` AS seq FROM jmdict.DictionaryIndex "
                     + "WHERE writingsPrio MATCH 'writingsPrio:' || ? || '* OR readingsPrio:' || ? || '*'"
                     + ") AS A "
                     + "WHERE A.seq NOT IN (SELECT seq FROM DictionarySearchResult) AND A.seq = DictionaryEntry.seq AND A.seq = DictionaryTranslation.seq AND DictionaryTranslation.lang = ? "
@@ -76,11 +88,15 @@ public class QueryTool {
 
     static private final String SQL_QUERY_BEGIN_NONPRIO =
             "INSERT INTO DictionarySearchResult SELECT ? AS entryOrder, DictionaryEntry.seq, DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
-                    + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, DictionaryTranslation.lang, "
+                    + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, "
+                    + "DictionaryEntry.pos, DictionaryEntry.xref, DictionaryEntry.ant, "
+                    + "DictionaryEntry.misc, DictionaryEntry.lsource, DictionaryEntry.dial, "
+                    + "DictionaryEntry.s_inf, DictionaryEntry.field, "
+                    + "DictionaryTranslation.lang, "
                     + "DictionaryTranslation.gloss "
-                    + "FROM DictionaryEntry, DictionaryTranslation, "
+                    + "FROM jmdict.DictionaryEntry, jmdict.DictionaryTranslation, "
                     + "("
-                    + "SELECT DictionaryIndex.`rowid` AS seq FROM DictionaryIndex "
+                    + "SELECT DictionaryIndex.`rowid` AS seq FROM jmdict.DictionaryIndex "
                     + "WHERE writingsPrio MATCH 'writings:' || ? || '* OR readings:' || ? || '*'"
                     + ") AS A "
                     + "WHERE A.seq NOT IN (SELECT seq FROM DictionarySearchResult) AND A.seq = DictionaryEntry.seq AND A.seq = DictionaryTranslation.seq AND DictionaryTranslation.lang = ? "
@@ -88,11 +104,15 @@ public class QueryTool {
 
     static private final String SQL_QUERY_PARTS_PRIO =
             "INSERT INTO DictionarySearchResult SELECT ? AS entryOrder, DictionaryEntry.seq, DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
-                    + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, DictionaryTranslation.lang, "
+                    + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, "
+                    + "DictionaryEntry.pos, DictionaryEntry.xref, DictionaryEntry.ant, "
+                    + "DictionaryEntry.misc, DictionaryEntry.lsource, DictionaryEntry.dial, "
+                    + "DictionaryEntry.s_inf, DictionaryEntry.field, "
+                    + "DictionaryTranslation.lang, "
                     + "DictionaryTranslation.gloss "
-                    + "FROM DictionaryEntry, DictionaryTranslation, "
+                    + "FROM jmdict.DictionaryEntry, jmdict.DictionaryTranslation, "
                     + "("
-                    + "SELECT DictionaryIndex.`rowid` AS seq FROM DictionaryIndex "
+                    + "SELECT DictionaryIndex.`rowid` AS seq FROM jmdict.DictionaryIndex "
                     + "WHERE writingsPrio MATCH 'writingsPrioParts:' || ? || '* OR readingsPrioParts:' || ? || '*'"
                     + ") AS A "
                     + "WHERE A.seq NOT IN (SELECT seq FROM DictionarySearchResult) AND A.seq = DictionaryEntry.seq AND A.seq = DictionaryTranslation.seq AND DictionaryTranslation.lang = ? "
@@ -100,11 +120,15 @@ public class QueryTool {
 
     static private final String SQL_QUERY_PARTS_NONPRIO =
             "INSERT INTO DictionarySearchResult SELECT ? AS entryOrder, DictionaryEntry.seq, DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
-                    + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, DictionaryTranslation.lang, "
+                    + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, "
+                    + "DictionaryEntry.pos, DictionaryEntry.xref, DictionaryEntry.ant, "
+                    + "DictionaryEntry.misc, DictionaryEntry.lsource, DictionaryEntry.dial, "
+                    + "DictionaryEntry.s_inf, DictionaryEntry.field, "
+                    + "DictionaryTranslation.lang, "
                     + "DictionaryTranslation.gloss "
-                    + "FROM DictionaryEntry, DictionaryTranslation, "
+                    + "FROM jmdict.DictionaryEntry, jmdict.DictionaryTranslation, "
                     + "("
-                    + "SELECT DictionaryIndex.`rowid` AS seq FROM DictionaryIndex "
+                    + "SELECT DictionaryIndex.`rowid` AS seq FROM jmdict.DictionaryIndex "
                     + "WHERE writingsPrio MATCH 'writingsParts:' || ? || '* OR readingsParts:' || ? || '*'"
                     + ") AS A "
                     + "WHERE A.seq NOT IN (SELECT seq FROM DictionarySearchResult) AND A.seq = DictionaryEntry.seq AND A.seq = DictionaryTranslation.seq AND DictionaryTranslation.lang = ? "
@@ -169,7 +193,7 @@ public class QueryTool {
 
         private final MutableLiveData<Statements> mStatements;
 
-        private final DictionaryDatabase mDB;
+        private final PersistentDatabase mDB;
 
         private final MutableLiveData<Integer> mStatus;
 
@@ -182,7 +206,7 @@ public class QueryTool {
 
         private final LiveData<PagedList<DictionarySearchElement>> mSearchEntries;
 
-        public QueriesList(final DictionaryDatabase aDB) {
+        public QueriesList(final PersistentDatabase aDB) {
             if (BuildConfig.DEBUG_QUERYTOOL) {
                 mLog = LoggerFactory.getLogger(getClass());
 

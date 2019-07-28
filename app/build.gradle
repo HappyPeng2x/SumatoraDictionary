@@ -19,8 +19,14 @@ android {
         applicationId "org.happypeng.sumatora.android.sumatoradictionary"
         minSdkVersion 14
         targetSdkVersion 28
-        versionCode 14
-        versionName "0.3.6.2"
+        versionCode 15
+        versionName "0.3.7"
+
+        javaCompileOptions {
+            annotationProcessorOptions {
+                arguments = ["room.schemaLocation":"$projectDir/schemas".toString()]
+            }
+        }
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         testInstrumentationRunnerArguments disableAnalytics: 'true'
@@ -37,6 +43,8 @@ android {
             buildConfigField("boolean", "DEBUG_QUERYTOOL", "false");
             buildConfigField("boolean", "DEBUG_DICTIONARY_ACTIVITY", "false");
             buildConfigField("boolean", "DEBUG_LAUNCH_ACTIVITY", "false");
+            buildConfigField("boolean", "DEBUG_DB_MIGRATION", "false");
+            buildConfigField("boolean", "DEBUG_UI", "false");
 
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
@@ -47,6 +55,8 @@ android {
             buildConfigField("boolean", "DEBUG_QUERYTOOL", "true");
             buildConfigField("boolean", "DEBUG_DICTIONARY_ACTIVITY", "true");
             buildConfigField("boolean", "DEBUG_LAUNCH_ACTIVITY", "true");
+            buildConfigField("boolean", "DEBUG_DB_MIGRATION", "true");
+            buildConfigField("boolean", "DEBUG_UI", "true");
         }
     }
     buildToolsVersion '28.0.3'
@@ -79,8 +89,6 @@ dependencies {
 
     implementation "androidx.paging:paging-runtime:2.1.0"
     implementation "androidx.paging:paging-common:2.1.0"
-
-    implementation "com.github.daolq3012:AssetSQLiteOpenHelper:V1.0.1"
 
     implementation "org.slf4j:slf4j-api:1.7.25"
     implementation "com.github.tony19:logback-android:2.0.0"
