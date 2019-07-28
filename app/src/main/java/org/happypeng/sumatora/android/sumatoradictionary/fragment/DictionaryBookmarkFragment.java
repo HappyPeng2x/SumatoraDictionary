@@ -56,6 +56,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.BuildConfig;
 import org.happypeng.sumatora.android.sumatoradictionary.DictionaryListAdapter;
 import org.happypeng.sumatora.android.sumatoradictionary.DictionarySearchElementViewHolder;
 import org.happypeng.sumatora.android.sumatoradictionary.R;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryLanguage;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Settings;
@@ -65,6 +66,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.util.LinkedList;
 import java.util.List;
 
 public class DictionaryBookmarkFragment extends Fragment {
@@ -254,7 +256,15 @@ public class DictionaryBookmarkFragment extends Fragment {
                 @Override
                 protected Void doInBackground(Void... voids) {
                     try {
-                        DictionaryBookmarkXML.writeXML(outputFile, m_bookmarks);
+                        List<DictionaryBookmark> bookmarks = new LinkedList<>();
+
+                        for (DictionarySearchElement e : m_bookmarks) {
+                            DictionaryBookmark b = new DictionaryBookmark();
+                            b.seq = e.getSeq();
+                            bookmarks.add(b);
+                        }
+
+                        DictionaryBookmarkXML.writeXML(outputFile, bookmarks);
 
                         fileWritten = true;
                     } catch (Exception e) {

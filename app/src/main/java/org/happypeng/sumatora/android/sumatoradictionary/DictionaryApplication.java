@@ -36,10 +36,13 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.tools.BookmarkTool;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Languages;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Settings;
 
+import org.happypeng.sumatora.android.sumatoradictionary.xml.DictionaryBookmarkXML;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -270,6 +273,78 @@ public class DictionaryApplication extends Application {
             }
         }
 
+        @WorkerThread
+        private List<DictionaryBookmark> readBackupBookmarks(@NonNull DictionaryApplication aApp) {
+            File bookmarksBackup = new File(aApp.getFilesDir(), "bookmarks_backup.xml");
+            List<DictionaryBookmark> resBookmarks = null;
+
+            if (bookmarksBackup.exists()) {
+                if (BuildConfig.DEBUG_DB_MIGRATION) {
+                    m_log.info("Bookmarks backup file found, importing");
+                }
+
+                if (BuildConfig.DEBUG_DB_MIGRATION) {
+                    try {
+                        FileInputStream fis = new FileInputStream(bookmarksBackup);
+
+                        List<Long> bSeqs = DictionaryBookmarkXML.readXML(fis);
+
+                        if (bSeqs != null) {
+                            resBookmarks = new LinkedList<>();
+
+                            for (Long seq : bSeqs) {
+                                DictionaryBookmark b = new DictionaryBookmark();
+                                b.seq = seq;
+                                resBookmarks.add(b);
+                            }
+                        } else {
+                            if (BuildConfig.DEBUG_DB_MIGRATION) {
+                                m_log.info("No bookmarks found in backup file");
+                            }
+                        }
+
+                        fis.close();
+                    } catch (IOException e) {
+                        if (BuildConfig.DEBUG_DB_MIGRATION) {
+                            m_log.info("Exception occured while trying to import bookmarks backup file");
+                        }
+
+                        e.printStackTrace();
+                    }
+                }
+            }
+
+            return resBookmarks;
+        }
+
+        @WorkerThread
+        private void deleteBookmarksBackup(@NonNull final DictionaryApplication aApp) {
+            File bookmarksBackup = new File(aApp.getFilesDir(), "bookmarks_backup.xml");
+
+            bookmarksBackup.delete();
+        }
+
+        @WorkerThread
+        private void saveBookmarksBackup(@NonNull final DictionaryApplication aApp,
+                                         @NonNull final List<DictionaryBookmark> aBookmarks) {
+            File bookmarksBackup = new File(aApp.getFilesDir(), "bookmarks_backup.xml");
+
+            if (BuildConfig.DEBUG_DB_MIGRATION) {
+                m_log.info("Saving bookmarks in file");
+            }
+
+            try {
+                DictionaryBookmarkXML.writeXML(bookmarksBackup, aBookmarks);
+            } catch (IOException e) {
+                if (BuildConfig.DEBUG_DB_MIGRATION) {
+                    m_log.info("Exception occured while saving bookmarks in file");
+                }
+
+                e.printStackTrace();
+            }
+
+        }
+
         protected Void doInBackground(DictionaryApplication... aParams) {
             if (aParams.length == 0) {
                 return null;
@@ -331,6 +406,10 @@ public class DictionaryApplication extends Application {
                 if (sqlDB != null) {
                     bookmarks = extractBookmarks(sqlDB, version);
 
+                    if (bookmarks != null) {
+                        saveBookmarksBackup(aParams[0], bookmarks);
+                    }
+
                     sqlDB.close();
                     sqlDB = null;
                 }
@@ -354,6 +433,10 @@ public class DictionaryApplication extends Application {
                 if (sqlDB != null) {
                     sqlDB.close();
                 }
+            }
+
+            if (bookmarks == null) {
+                bookmarks = readBackupBookmarks(aParams[0]);
             }
 
             if (BuildConfig.DEBUG_DB_MIGRATION) {
@@ -396,6 +479,7 @@ public class DictionaryApplication extends Application {
                 pDb.dictionaryBookmarkDao().insertMany(bookmarks);
             }
 
+            deleteBookmarksBackup(aParams[0]);
 
             try {
                 Cursor cur = pDb.getOpenHelper().getReadableDatabase().query("SELECT name, content FROM jmdict.DictionaryEntity");

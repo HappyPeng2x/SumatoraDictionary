@@ -18,6 +18,7 @@ package org.happypeng.sumatora.android.sumatoradictionary.xml;
 
 import android.util.Xml;
 
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserFactory;
@@ -31,7 +32,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 public class DictionaryBookmarkXML {
-    public static void writeXML(File aOutputFile, List<DictionarySearchElement> aBookmarks) throws IOException {
+    public static void writeXML(File aOutputFile, List<DictionaryBookmark> aBookmarks) throws IOException {
         FileOutputStream fos = new FileOutputStream(aOutputFile);
         XmlSerializer serializer = Xml.newSerializer();
 
@@ -42,9 +43,9 @@ public class DictionaryBookmarkXML {
         serializer.startDocument("utf-8", true);
         serializer.startTag(null, "bookmarks");
 
-        for (DictionarySearchElement ele : aBookmarks) {
+        for (DictionaryBookmark ele : aBookmarks) {
             serializer.startTag(null, "bookmark");
-            serializer.attribute(null, "seq", Long.toString(ele.getSeq()));
+            serializer.attribute(null, "seq", Long.toString(ele.seq));
 
             serializer.endTag(null, "bookmark");
         }
