@@ -37,6 +37,7 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProviders;
+import androidx.paging.PagedList;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -54,6 +55,7 @@ import android.widget.TextView;
 
 import org.happypeng.sumatora.android.sumatoradictionary.BuildConfig;
 import org.happypeng.sumatora.android.sumatoradictionary.DictionaryListAdapter;
+import org.happypeng.sumatora.android.sumatoradictionary.DictionaryPagedListAdapter;
 import org.happypeng.sumatora.android.sumatoradictionary.DictionarySearchElementViewHolder;
 import org.happypeng.sumatora.android.sumatoradictionary.R;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
@@ -77,8 +79,6 @@ public class DictionaryBookmarkFragment extends Fragment {
 
     private ProgressBar m_progressBar;
     private TextView m_statusText;
-
-    private List<DictionarySearchElement> m_bookmarks;
 
     private TextView m_languageText;
 
@@ -157,7 +157,7 @@ public class DictionaryBookmarkFragment extends Fragment {
         m_viewModel = ViewModelProviders.of(getActivity()).get(DictionaryBookmarkFragmentModel.class);
 
         final DictionarySearchElementViewHolder.Status viewHolderStatus = new DictionarySearchElementViewHolder.Status();
-        final DictionaryListAdapter listAdapter = new DictionaryListAdapter(viewHolderStatus);
+        final DictionaryPagedListAdapter listAdapter = new DictionaryPagedListAdapter(viewHolderStatus);
 
         m_recyclerView.setAdapter(listAdapter);
 
@@ -208,14 +208,17 @@ public class DictionaryBookmarkFragment extends Fragment {
                                 viewHolderStatus.lang = status.lang;
                                 listAdapter.notifyDataSetChanged();
                             }
-
-                            if (m_bookmarks != status.displayElements) {
-                                listAdapter.submitList(status.displayElements);
-                                m_bookmarks = status.displayElements;
-                            }
                         } else {
                             setInPreparation();
                         }
+                    }
+                });
+
+        m_viewModel.getElementList().observe(getViewLifecycleOwner(),
+                new Observer<PagedList<DictionarySearchElement>>() {
+                    @Override
+                    public void onChanged(PagedList<DictionarySearchElement> dictionarySearchElements) {
+                        listAdapter.submitList(dictionarySearchElements);
                     }
                 });
 
@@ -241,7 +244,7 @@ public class DictionaryBookmarkFragment extends Fragment {
     }
 
     private void shareBookmarks() {
-        if (m_bookmarks == null) {
+/*        if (m_bookmarks == null) {
             return;
         }
 
@@ -296,7 +299,7 @@ public class DictionaryBookmarkFragment extends Fragment {
             }.execute();
         } catch (Exception e) {
             System.err.println(e.toString());
-        }
+        }*/
     }
 
     private void colorMenu(Menu aMenu) {
@@ -352,6 +355,5 @@ public class DictionaryBookmarkFragment extends Fragment {
         m_statusText = null;
         m_languageText = null;
         m_languagePopupMenu = null;
-        m_bookmarks = null;
     }
 }

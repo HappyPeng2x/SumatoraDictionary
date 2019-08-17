@@ -20,6 +20,7 @@ import android.app.Application;
 import android.os.AsyncTask;
 
 import org.happypeng.sumatora.android.sumatoradictionary.DictionaryApplication;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.BookmarkTool;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.DisplayStatus;
@@ -30,13 +31,18 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MediatorLiveData;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.Transformations;
+import androidx.paging.PagedList;
 
 public class DictionaryBookmarkFragmentModel extends AndroidViewModel {
     private DictionaryApplication mApp;
 
     final private MediatorLiveData<DisplayStatus> m_status;
+
     private BookmarkTool m_bookmarkTool;
 
+    private LiveData<PagedList<DictionarySearchElement>> m_elementList;
+
+    public LiveData<PagedList<DictionarySearchElement>> getElementList() { return m_elementList; }
     public LiveData<DisplayStatus> getStatus() { return m_status; }
 
     public DictionaryBookmarkFragmentModel(Application aApp) {
@@ -56,6 +62,15 @@ public class DictionaryBookmarkFragmentModel extends AndroidViewModel {
                             }
                         });
 
+        m_elementList =
+                Transformations.switchMap(bookmarkTool,
+                        new Function<BookmarkTool, LiveData<PagedList<DictionarySearchElement>>>() {
+                            @Override
+                            public LiveData<PagedList<DictionarySearchElement>> apply(BookmarkTool input) {
+                                return input.getDisplayElements();
+                            }
+                        });
+
         m_status.addSource(bookmarkTool,
                 new Observer<BookmarkTool>() {
                     @Override
@@ -63,7 +78,7 @@ public class DictionaryBookmarkFragmentModel extends AndroidViewModel {
                         m_bookmarkTool = bookmarkTool;
 
                         if (m_bookmarkTool != null) {
-                            bookmarkTool.performBookmarkInsertion();
+                            bookmarkTool.setTerm("");
                         }
                     }
                 });
@@ -82,7 +97,7 @@ public class DictionaryBookmarkFragmentModel extends AndroidViewModel {
                     @Override
                     public void onChanged(Long aLong) {
                         if (m_bookmarkTool != null) {
-                            m_bookmarkTool.performBookmarkInsertion();
+                            m_bookmarkTool.setTerm("");
                         }
                     }
                 });

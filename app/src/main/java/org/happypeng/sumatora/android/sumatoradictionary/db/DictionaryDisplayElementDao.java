@@ -17,6 +17,7 @@
 package org.happypeng.sumatora.android.sumatoradictionary.db;
 
 import androidx.lifecycle.LiveData;
+import androidx.paging.DataSource;
 import androidx.room.Dao;
 import androidx.room.Query;
 
@@ -30,6 +31,13 @@ public interface DictionaryDisplayElementDao {
             + "s_inf, field, 1 as bookmark, "
             + "lang, gloss FROM DictionaryDisplayElement WHERE ref=:ref")
     LiveData<List<DictionarySearchElement>> getAllDetailsLive(int ref);
+
+    @Query("SELECT entryOrder, seq, readingsPrio, readings, writingsPrio, writings, "
+            + "pos, xref, ant, "
+            + "misc, lsource, dial, "
+            + "s_inf, field, 1 as bookmark, "
+            + "lang, gloss FROM DictionaryDisplayElement WHERE ref=:ref")
+    DataSource.Factory<Integer, DictionarySearchElement> getAllDetailsLivePaged(int ref);
 
     @Query("DELETE FROM DictionaryDisplayElement")
     void deleteAll();

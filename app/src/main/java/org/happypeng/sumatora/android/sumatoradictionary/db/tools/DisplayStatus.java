@@ -23,6 +23,7 @@ import androidx.lifecycle.MediatorLiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.Transformations;
+import androidx.paging.PagedList;
 
 import org.happypeng.sumatora.android.sumatoradictionary.DictionaryApplication;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
@@ -35,7 +36,6 @@ public class DisplayStatus {
     public String backupLang;
     public PersistentDatabase database;
     public DisplayTool displayTool;
-    public List<DictionarySearchElement> displayElements;
 
     @MainThread
     public void processChange(final MutableLiveData<DisplayStatus> aLiveData) {
@@ -56,7 +56,7 @@ public class DisplayStatus {
     }
 
     public boolean isInitialized() {
-        return isReady() && displayElements != null;
+        return isReady();
     }
 
     public static MediatorLiveData<DisplayStatus> create(final DictionaryApplication aApp, final int aRef) {
@@ -123,16 +123,6 @@ public class DisplayStatus {
                                 return input.dictionaryDisplayElementDao().getAllDetailsLive(aRef);
                             }
                         });
-
-        liveData.addSource(displayElements,
-                new Observer<List<DictionarySearchElement>>() {
-                    @Override
-                    public void onChanged(List<DictionarySearchElement> dictionarySearchElements) {
-                        status.displayElements = dictionarySearchElements;
-
-                        status.processChange(liveData);
-                    }
-                });
 
         final LiveData<Long> elements =
                 Transformations.switchMap(aApp.getPersistentDatabase(),

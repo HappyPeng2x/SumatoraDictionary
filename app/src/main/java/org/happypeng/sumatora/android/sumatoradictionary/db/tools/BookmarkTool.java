@@ -23,70 +23,319 @@ import androidx.annotation.NonNull;
 import androidx.annotation.WorkerThread;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
+import androidx.paging.LivePagedListBuilder;
+import androidx.paging.PagedList;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 import androidx.sqlite.db.SupportSQLiteStatement;
 
+import org.happypeng.sumatora.android.sumatoradictionary.BuildConfig;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class BookmarkTool {
-    static private final String SQL_QUERY_INSERT_BOOKMARK_ELEMENTS =
-            "INSERT INTO DictionaryElement SELECT ? as ref, 0 AS entryOrder, DictionaryBookmark.seq "
-                    + "FROM DictionaryBookmark";
-    static private final String SQL_QUERY_DELETE_BOOKMARK_ELEMENTS =
+    static private final String SQL_QUERY_DELETE =
             "DELETE FROM DictionaryElement WHERE ref = ?";
+
+    static private final String SQL_QUERY_ALL =
+            "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, 0 AS entryOrder, DictionaryEntry.seq "
+                    + "FROM jmdict.DictionaryEntry "
+                    + "WHERE DictionaryEntry.seq IN (SELECT seq FROM DictionaryBookmark)";
+
+    static private final String SQL_QUERY_EXACT_PRIO =
+            "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryEntry.seq "
+                    + "FROM jmdict.DictionaryEntry, "
+                    + "("
+                    + "SELECT DictionaryIndex.`rowid` AS seq FROM jmdict.DictionaryIndex "
+                    + "WHERE writingsPrio MATCH 'writingsPrio:' || ? || ' OR readingsPrio:' || ? "
+                    + ") AS A "
+                    + "WHERE A.seq IN (SELECT seq FROM DictionaryBookmark) AND A.seq = DictionaryEntry.seq";
+
+    static private final String SQL_QUERY_EXACT_NONPRIO =
+            "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryEntry.seq "
+                    + "FROM jmdict.DictionaryEntry, "
+                    + "("
+                    + "SELECT DictionaryIndex.`rowid` AS seq FROM jmdict.DictionaryIndex "
+                    + "WHERE writingsPrio MATCH 'writings:' || ? || ' OR readings:' || ? "
+                    + ") AS A "
+                    + "WHERE A.seq IN (SELECT seq FROM DictionaryBookmark) AND A.seq = DictionaryEntry.seq";
+
+    static private final String SQL_QUERY_BEGIN_PRIO =
+            "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryEntry.seq "
+                    + "FROM jmdict.DictionaryEntry, "
+                    + "("
+                    + "SELECT DictionaryIndex.`rowid` AS seq FROM jmdict.DictionaryIndex "
+                    + "WHERE writingsPrio MATCH 'writingsPrio:' || ? || '* OR readingsPrio:' || ? || '*'"
+                    + ") AS A "
+                    + "WHERE A.seq IN (SELECT seq FROM DictionaryBookmark) AND A.seq = DictionaryEntry.seq";
+
+    static private final String SQL_QUERY_BEGIN_NONPRIO =
+            "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryEntry.seq "
+                    + "FROM jmdict.DictionaryEntry, "
+                    + "("
+                    + "SELECT DictionaryIndex.`rowid` AS seq FROM jmdict.DictionaryIndex "
+                    + "WHERE writingsPrio MATCH 'writings:' || ? || '* OR readings:' || ? || '*'"
+                    + ") AS A "
+                    + "WHERE A.seq IN (SELECT seq FROM DictionaryBookmark) AND A.seq = DictionaryEntry.seq";
+
+    static private final String SQL_QUERY_PARTS_PRIO =
+            "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryEntry.seq "
+                    + "FROM jmdict.DictionaryEntry, "
+                    + "("
+                    + "SELECT DictionaryIndex.`rowid` AS seq FROM jmdict.DictionaryIndex "
+                    + "WHERE writingsPrio MATCH 'writingsPrioParts:' || ? || '* OR readingsPrioParts:' || ? || '*'"
+                    + ") AS A "
+                    + "WHERE A.seq IN (SELECT seq FROM DictionaryBookmark) AND A.seq = DictionaryEntry.seq";
+
+    static private final String SQL_QUERY_PARTS_NONPRIO =
+            "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryEntry.seq "
+                    + "FROM jmdict.DictionaryEntry, "
+                    + "("
+                    + "SELECT DictionaryIndex.`rowid` AS seq FROM jmdict.DictionaryIndex "
+                    + "WHERE writingsPrio MATCH 'writingsParts:' || ? || '* OR readingsParts:' || ? || '*'"
+                    + ") AS A "
+                    + "WHERE A.seq IN (SELECT seq FROM DictionaryBookmark) AND A.seq = DictionaryEntry.seq";
+
+    public static class QueryStatement {
+        private final int ref;
+        private final int order;
+        private final SupportSQLiteStatement statement;
+
+        private final Logger log;
+
+        private QueryStatement(int aRef, int aOrder, SupportSQLiteStatement aStatement) {
+            ref = aRef;
+            order = aOrder;
+            statement = aStatement;
+
+            if (BuildConfig.DEBUG_QUERYTOOL) {
+                log = LoggerFactory.getLogger(getClass());
+
+                log.info(this.hashCode() + " constructor order " + order);
+            } else {
+                log = null;
+            }
+        }
+
+        @WorkerThread
+        private long execute(String term) {
+            if (BuildConfig.DEBUG_QUERYTOOL) {
+                log.info(this.hashCode() + " execute " + order + " term " + term);
+            }
+
+            statement.bindLong(1, ref);
+            statement.bindLong(2, order);
+            statement.bindString(3, term);
+            statement.bindString(4, term);
+
+            return statement.executeInsert();
+        }
+
+        public int getOrder() { return order; }
+    }
+
+    private static final int PAGE_SIZE = 30;
+    private static final int PREFETCH_DISTANCE = 50;
+
+    public static final int STATUS_PRE_INITIALIZED = 0;
+    public static final int STATUS_INITIALIZED = 1;
+    public static final int STATUS_SEARCHING = 2;
+    public static final int STATUS_RESULTS_FOUND = 3;
+    public static final int STATUS_NO_RESULTS_FOUND_ENDED = 4;
+    public static final int STATUS_RESULTS_FOUND_ENDED = 5;
+
+    private final Logger mLog;
+
+    private QueryStatement[] mQueries;
 
     private final PersistentDatabase mDB;
 
+    private final MutableLiveData<Integer> mStatus;
+
+    private volatile String mTerm;
+    private volatile long mLastInsert;
+    private volatile int mQueriesPosition;
+
     private final int mRef;
 
-    private SupportSQLiteStatement mInsertBookmarkElements;
-    private SupportSQLiteStatement mDeleteBookmarkElements;
+    private SupportSQLiteStatement mInsertAllStatement;
+    private SupportSQLiteStatement mDeleteStatement;
 
     public BookmarkTool(final PersistentDatabase aDB, int aRef) {
+        if (BuildConfig.DEBUG_QUERYTOOL) {
+            mLog = LoggerFactory.getLogger(getClass());
+
+            mLog.info(hashCode() + " constructor");
+        } else {
+            mLog = null;
+        }
+
         mDB = aDB;
         mRef = aRef;
-    }
 
-    public boolean isInitialized() {
-        return mInsertBookmarkElements != null;
+        mStatus = new MutableLiveData<>();
+
+        mQueriesPosition = 0;
+        mLastInsert = -1;
+        mQueries = null;
+
+        mTerm = null;
+
+        mStatus.setValue(STATUS_PRE_INITIALIZED);
     }
 
     @WorkerThread
-    public synchronized void insertBookmarks() {
-        if (!isInitialized()) {
-            return;
+    public void createStatement() {
+        if (BuildConfig.DEBUG_QUERYTOOL) {
+            mLog.info(this.hashCode() + " creating statements");
+        }
+
+        SupportSQLiteDatabase db = mDB.getOpenHelper().getWritableDatabase();
+
+        mInsertAllStatement = db.compileStatement(SQL_QUERY_ALL);
+        mDeleteStatement = db.compileStatement(SQL_QUERY_DELETE);
+
+        final SupportSQLiteStatement queryExactPrio = db.compileStatement(SQL_QUERY_EXACT_PRIO);
+        final SupportSQLiteStatement queryExactNonPrio = db.compileStatement(SQL_QUERY_EXACT_NONPRIO);
+        final SupportSQLiteStatement queryBeginPrio = db.compileStatement(SQL_QUERY_BEGIN_PRIO);
+        final SupportSQLiteStatement queryBeginNonPrio = db.compileStatement(SQL_QUERY_BEGIN_NONPRIO);
+        final SupportSQLiteStatement queryPartsPrio = db.compileStatement(SQL_QUERY_PARTS_PRIO);
+        final SupportSQLiteStatement queryPartsNonPrio = db.compileStatement(SQL_QUERY_PARTS_NONPRIO);
+
+        final QueryStatement[] queriesArray = new QueryStatement[6];
+
+        queriesArray[0] = new QueryStatement(mRef,1, queryExactPrio);
+        queriesArray[1] = new QueryStatement(mRef,2, queryExactNonPrio);
+        queriesArray[2] = new QueryStatement(mRef,3, queryBeginPrio);
+        queriesArray[3] = new QueryStatement(mRef,4, queryBeginNonPrio);
+        queriesArray[4] = new QueryStatement(mRef,5, queryPartsPrio);
+        queriesArray[5] = new QueryStatement(mRef,6, queryPartsNonPrio);
+
+        mQueries = queriesArray;
+
+        if (BuildConfig.DEBUG_QUERYTOOL) {
+            mLog.info(this.hashCode() + " statements creation ended");
+        }
+    }
+
+    public
+    LiveData<PagedList<DictionarySearchElement>> getDisplayElements() {
+        final PagedList.Config pagedListConfig =
+                (new PagedList.Config.Builder()).setEnablePlaceholders(false)
+                        .setPrefetchDistance(PAGE_SIZE)
+                        .setPageSize(PREFETCH_DISTANCE).build();
+
+        return new LivePagedListBuilder<Integer, DictionarySearchElement>(mDB.dictionaryDisplayElementDao().getAllDetailsLivePaged(mRef),
+                pagedListConfig)
+                .setBoundaryCallback(new PagedList.BoundaryCallback<DictionarySearchElement>() {
+                    @Override
+                    public void onItemAtEndLoaded(@NonNull DictionarySearchElement itemAtEnd) {
+                        if (BuildConfig.DEBUG_QUERYTOOL) {
+                            mLog.info(this.hashCode() + " boundary callback called");
+                        }
+
+                        executeNextStatement();
+
+                        super.onItemAtEndLoaded(itemAtEnd);
+                    }
+                }).build();
+    }
+
+    @WorkerThread
+    private synchronized void executNextStatementImplementation(final String aTerm) {
+        if (BuildConfig.DEBUG_QUERYTOOL) {
+            mLog.info(this.hashCode() + " executeNextStatementImplementation begin");
         }
 
         mDB.runInTransaction(new Runnable() {
             @Override
             public void run() {
-                mDeleteBookmarkElements.bindLong(1, mRef);
-                mDeleteBookmarkElements.execute();
+                long lastInsert = -1;
 
-                mInsertBookmarkElements.bindLong(1, mRef);
-                mInsertBookmarkElements.execute();
+                if ("".equals(aTerm)) {
+                    mStatus.postValue(QueryTool.QueriesList.STATUS_INITIALIZED);
+
+                    mDB.runInTransaction(new Runnable() {
+                        @Override
+                        public void run() {
+                            mDeleteStatement.bindLong(1, mRef);
+                            mDeleteStatement.executeUpdateDelete();
+
+                            mInsertAllStatement.bindLong(1, mRef);
+                            mInsertAllStatement.executeInsert();
+                        }
+                    });
+
+                    mTerm = aTerm;
+
+                    mLastInsert = -1;
+                    mQueriesPosition = 0;
+                } else {
+                    while (lastInsert == -1 && mQueriesPosition < mQueries.length) {
+                        lastInsert = mQueries[mQueriesPosition].execute(aTerm);
+
+                        if (BuildConfig.DEBUG_QUERYTOOL) {
+                            mLog.info(this.hashCode() + " position " + mQueriesPosition + " result " + lastInsert);
+                        }
+
+                        mQueriesPosition = mQueriesPosition + 1;
+                    }
+
+                    if (lastInsert >= 0) {
+                        mLastInsert = lastInsert;
+                    }
+
+                    if (mQueriesPosition >= mQueries.length) {
+                        if (mLastInsert >= 0) {
+                            mStatus.postValue(STATUS_RESULTS_FOUND_ENDED);
+                        } else {
+                            mStatus.postValue(STATUS_NO_RESULTS_FOUND_ENDED);
+                        }
+                    } else {
+                        if (mLastInsert >= 0) {
+                            mStatus.postValue(STATUS_RESULTS_FOUND);
+                        }
+                    }
+                }
             }
         });
+
+        if (BuildConfig.DEBUG_QUERYTOOL) {
+            mLog.info(this.hashCode() + " executeNextStatementImplementation ends");
+        }
     }
 
     @MainThread
-    public void performBookmarkInsertion() {
-        new AsyncTask<Void, Void, Void>(){
+    private void executeNextStatement() {
+        if (mStatus.getValue() == null || mStatus.getValue() < STATUS_INITIALIZED) {
+            return;
+        }
+
+        final AsyncTask<Void, Void, Void> task = new AsyncTask<Void, Void, Void>() {
             @Override
             protected Void doInBackground(Void... voids) {
-                insertBookmarks();
+                executNextStatementImplementation(mTerm);
 
                 return null;
             }
         }.execute();
     }
 
-    @WorkerThread
-    public void createStatement() {
-        SupportSQLiteDatabase db = mDB.getOpenHelper().getWritableDatabase();
+    @MainThread
+    public void setTerm(@NonNull final String aTerm) {
+        if (mStatus.getValue() == null || mStatus.getValue() < STATUS_INITIALIZED) {
+            return;
+        }
 
-        mInsertBookmarkElements = db.compileStatement(SQL_QUERY_INSERT_BOOKMARK_ELEMENTS);
-        mDeleteBookmarkElements = db.compileStatement(SQL_QUERY_DELETE_BOOKMARK_ELEMENTS);
+        final AsyncTask<Void, Void, Void> task = new AsyncTask<Void, Void, Void>() {
+            @Override
+            protected Void doInBackground(Void... voids) {
+                executNextStatementImplementation(aTerm);
+
+                return null;
+            }
+        }.execute();
     }
 
     @MainThread
@@ -106,6 +355,7 @@ public class BookmarkTool {
             @Override
             protected void onPostExecute(Void aVoid) {
                 super.onPostExecute(aVoid);
+                tool.mStatus.setValue(STATUS_INITIALIZED);
 
                 liveData.setValue(tool);
             }
