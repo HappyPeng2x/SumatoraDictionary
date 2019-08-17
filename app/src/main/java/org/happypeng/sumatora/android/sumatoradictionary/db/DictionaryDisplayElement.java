@@ -18,8 +18,9 @@ package org.happypeng.sumatora.android.sumatoradictionary.db;
 
 import androidx.room.Entity;
 
-@Entity(primaryKeys = {"seq"})
-public class DictionaryBookmarkElement {
+@Entity(primaryKeys = {"ref", "seq"})
+public class DictionaryDisplayElement {
+    public int ref;
     public int entryOrder;
     public long seq;
     public String readingsPrio;
@@ -36,7 +37,6 @@ public class DictionaryBookmarkElement {
     public String field;
     public String lang;
     public String gloss;
-    public long bookmark;
 
-    public DictionaryBookmarkElement() { super(); }
+    public DictionaryDisplayElement() { super(); }
 }

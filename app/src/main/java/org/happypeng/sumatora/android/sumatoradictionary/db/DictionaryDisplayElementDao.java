@@ -23,14 +23,14 @@ import androidx.room.Query;
 import java.util.List;
 
 @Dao
-public interface DictionaryBookmarkElementDao {
+public interface DictionaryDisplayElementDao {
     @Query("SELECT entryOrder, seq, readingsPrio, readings, writingsPrio, writings, "
             + "pos, xref, ant, "
             + "misc, lsource, dial, "
-            + "s_inf, field, "
-            + "lang, gloss, bookmark FROM DictionaryBookmarkElement")
-    LiveData<List<DictionarySearchElement>> getAllDetailsLive();
+            + "s_inf, field, 1 as bookmark, "
+            + "lang, gloss FROM DictionaryDisplayElement WHERE ref=:ref")
+    LiveData<List<DictionarySearchElement>> getAllDetailsLive(int ref);
 
-    @Query("DELETE FROM DictionaryBookmarkElement")
+    @Query("DELETE FROM DictionaryDisplayElement")
     void deleteAll();
 }

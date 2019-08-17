@@ -32,7 +32,6 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryLanguage;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentSetting;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.BookmarkImportTool;
-import org.happypeng.sumatora.android.sumatoradictionary.db.tools.BookmarkTool;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Languages;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Settings;
 
@@ -71,7 +70,6 @@ public class DictionaryApplication extends Application {
 
     protected MutableLiveData<PersistentDatabase> m_persistentDatabase;
     protected MutableLiveData<List<DictionaryLanguage>> m_dictionaryLanguage;
-    protected MutableLiveData<BookmarkTool> m_bookmarkTool;
     protected MutableLiveData<BookmarkImportTool> m_bookmarkImportTool;
 
     private HashMap<String, String> m_entities;
@@ -80,7 +78,6 @@ public class DictionaryApplication extends Application {
 
     public LiveData<PersistentDatabase> getPersistentDatabase() { return m_persistentDatabase; }
     public LiveData<List<DictionaryLanguage>> getDictionaryLanguage() { return m_dictionaryLanguage; }
-    public LiveData<BookmarkTool> getBookmarkTool() { return m_bookmarkTool; }
     public LiveData<BookmarkImportTool> getBookmarkImportTool() { return m_bookmarkImportTool; }
 
     public Settings getSettings() { return m_settings; }
@@ -513,11 +510,6 @@ public class DictionaryApplication extends Application {
             aParams[0].m_persistentDatabase.postValue(pDb);
             aParams[0].getSettings().postDatabase(pDb);
 
-            final BookmarkTool bookmarkTool = new BookmarkTool(pDb);
-            bookmarkTool.createStatements();
-
-            aParams[0].m_bookmarkTool.postValue(bookmarkTool);
-
             final BookmarkImportTool bookmarkImportTool = new BookmarkImportTool(pDb, aParams[0]);
             bookmarkImportTool.createStatements();
 
@@ -549,7 +541,6 @@ public class DictionaryApplication extends Application {
 
         m_dictionaryLanguage = new MutableLiveData<>();
         m_persistentDatabase = new MutableLiveData<>();
-        m_bookmarkTool = new MutableLiveData<>();
         m_bookmarkImportTool = new MutableLiveData<>();
 
         m_settings = new Settings();

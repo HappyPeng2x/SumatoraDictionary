@@ -19,11 +19,14 @@ package org.happypeng.sumatora.android.sumatoradictionary.db;
 import androidx.room.Database;
 import androidx.room.RoomDatabase;
 
-@Database(entities = {PersistentSetting.class, DictionarySearchResult.class, DictionaryBookmark.class, DictionaryBookmarkImport.class, DictionaryBookmarkElement.class}, version = 2)
+@Database(entities = {PersistentSetting.class, DictionarySearchResult.class,
+        DictionaryBookmark.class, DictionaryBookmarkImport.class,
+        DictionaryDisplayElement.class, DictionaryElement.class}, version = 3)
 abstract public class PersistentDatabase extends RoomDatabase {
     public abstract PersistentSettingsDao persistentSettingsDao();
     public abstract DictionaryBookmarkDao dictionaryBookmarkDao();
-    public abstract DictionaryBookmarkElementDao dictionaryBookmarkElementDao();
     public abstract DictionarySearchResultDao dictionarySearchResultDao();
     public abstract DictionaryBookmarkImportDao dictionaryBookmarkImportDao();
+    public abstract DictionaryDisplayElementDao dictionaryDisplayElementDao();
+    public abstract DictionaryElementDao dictionaryElementDao();
 }

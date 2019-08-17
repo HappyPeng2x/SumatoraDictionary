@@ -59,6 +59,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.R;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryLanguage;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
+import org.happypeng.sumatora.android.sumatoradictionary.db.tools.DisplayStatus;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Settings;
 import org.happypeng.sumatora.android.sumatoradictionary.model.DictionaryBookmarkFragmentModel;
 import org.happypeng.sumatora.android.sumatoradictionary.xml.DictionaryBookmarkXML;
@@ -189,9 +190,9 @@ public class DictionaryBookmarkFragment extends Fragment {
         });
 
         m_viewModel.getStatus().observe(getViewLifecycleOwner(),
-                new Observer<DictionaryBookmarkFragmentModel.Status>() {
+                new Observer<DisplayStatus>() {
                     @Override
-                    public void onChanged(DictionaryBookmarkFragmentModel.Status status) {
+                    public void onChanged(DisplayStatus status) {
                         if (status.isInitialized()) {
                             setReady();
 
@@ -208,9 +209,9 @@ public class DictionaryBookmarkFragment extends Fragment {
                                 listAdapter.notifyDataSetChanged();
                             }
 
-                            if (m_bookmarks != status.bookmarkElements) {
-                                listAdapter.submitList(status.bookmarkElements);
-                                m_bookmarks = status.bookmarkElements;
+                            if (m_bookmarks != status.displayElements) {
+                                listAdapter.submitList(status.displayElements);
+                                m_bookmarks = status.displayElements;
                             }
                         } else {
                             setInPreparation();

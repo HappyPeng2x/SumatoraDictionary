@@ -19,7 +19,9 @@ package org.happypeng.sumatora.android.sumatoradictionary.db.tools;
 import android.os.AsyncTask;
 
 import androidx.annotation.MainThread;
+import androidx.annotation.NonNull;
 import androidx.annotation.WorkerThread;
+import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 import androidx.sqlite.db.SupportSQLiteStatement;
@@ -28,25 +30,21 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 
 public class BookmarkTool {
     static private final String SQL_QUERY_INSERT_BOOKMARK_ELEMENTS =
-            "INSERT INTO DictionaryBookmarkElement SELECT 0 AS entryOrder, DictionaryEntry.seq, DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
-                    + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, "
-                    + "DictionaryEntry.pos, DictionaryEntry.xref, DictionaryEntry.ant, "
-                    + "DictionaryEntry.misc, DictionaryEntry.lsource, DictionaryEntry.dial, "
-                    + "DictionaryEntry.s_inf, DictionaryEntry.field, "
-                    + "DictionaryTranslation.lang, "
-                    + "DictionaryTranslation.gloss, 1 "
-                    + "FROM DictionaryBookmark, jmdict.DictionaryEntry, jmdict.DictionaryTranslation "
-                    + "WHERE DictionaryBookmark.seq NOT IN (SELECT seq FROM DictionaryBookmarkElement) AND DictionaryBookmark.seq = DictionaryEntry.seq AND DictionaryBookmark.seq = DictionaryTranslation.seq AND DictionaryTranslation.lang = ? ";
+            "INSERT INTO DictionaryElement SELECT ? as ref, 0 AS entryOrder, DictionaryBookmark.seq "
+                    + "FROM DictionaryBookmark";
     static private final String SQL_QUERY_DELETE_BOOKMARK_ELEMENTS =
-            "DELETE FROM DictionaryBookmarkElement";
+            "DELETE FROM DictionaryElement WHERE ref = ?";
 
     private final PersistentDatabase mDB;
+
+    private final int mRef;
 
     private SupportSQLiteStatement mInsertBookmarkElements;
     private SupportSQLiteStatement mDeleteBookmarkElements;
 
-    public BookmarkTool(PersistentDatabase aDB) {
+    public BookmarkTool(final PersistentDatabase aDB, int aRef) {
         mDB = aDB;
+        mRef = aRef;
     }
 
     public boolean isInitialized() {
@@ -54,7 +52,7 @@ public class BookmarkTool {
     }
 
     @WorkerThread
-    public synchronized void insertBookmarks(final String aLang, final String aBackupLang) {
+    public synchronized void insertBookmarks() {
         if (!isInitialized()) {
             return;
         }
@@ -62,23 +60,21 @@ public class BookmarkTool {
         mDB.runInTransaction(new Runnable() {
             @Override
             public void run() {
+                mDeleteBookmarkElements.bindLong(1, mRef);
                 mDeleteBookmarkElements.execute();
 
-                mInsertBookmarkElements.bindString(1, aLang);
-                mInsertBookmarkElements.execute();
-
-                mInsertBookmarkElements.bindString(1, aBackupLang);
+                mInsertBookmarkElements.bindLong(1, mRef);
                 mInsertBookmarkElements.execute();
             }
         });
     }
 
     @MainThread
-    public void performBookmarkInsertion(final String aLang, final String aBackupLang) {
+    public void performBookmarkInsertion() {
         new AsyncTask<Void, Void, Void>(){
             @Override
             protected Void doInBackground(Void... voids) {
-                insertBookmarks(aLang, aBackupLang);
+                insertBookmarks();
 
                 return null;
             }
@@ -86,10 +82,35 @@ public class BookmarkTool {
     }
 
     @WorkerThread
-    public void createStatements() {
+    public void createStatement() {
         SupportSQLiteDatabase db = mDB.getOpenHelper().getWritableDatabase();
 
         mInsertBookmarkElements = db.compileStatement(SQL_QUERY_INSERT_BOOKMARK_ELEMENTS);
         mDeleteBookmarkElements = db.compileStatement(SQL_QUERY_DELETE_BOOKMARK_ELEMENTS);
+    }
+
+    @MainThread
+    public static LiveData<BookmarkTool> create(@NonNull final PersistentDatabase aDB, final int aRef)
+    {
+        final BookmarkTool tool = new BookmarkTool(aDB, aRef);
+        final MutableLiveData<BookmarkTool> liveData = new MutableLiveData<>();
+
+        new AsyncTask<Void, Void, Void>() {
+            @Override
+            protected Void doInBackground(Void... voids) {
+                tool.createStatement();
+
+                return null;
+            }
+
+            @Override
+            protected void onPostExecute(Void aVoid) {
+                super.onPostExecute(aVoid);
+
+                liveData.setValue(tool);
+            }
+        }.execute();
+
+        return liveData;
     }
 }

@@ -20,111 +20,51 @@ import android.app.Application;
 import android.os.AsyncTask;
 
 import org.happypeng.sumatora.android.sumatoradictionary.DictionaryApplication;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.BookmarkTool;
-import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Settings;
-
-import java.util.List;
+import org.happypeng.sumatora.android.sumatoradictionary.db.tools.DisplayStatus;
 
 import androidx.arch.core.util.Function;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MediatorLiveData;
-import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.Transformations;
 
 public class DictionaryBookmarkFragmentModel extends AndroidViewModel {
     private DictionaryApplication mApp;
 
-    public static class Status {
-        public String lang;
-        public String backupLang;
-        public PersistentDatabase database;
-        public BookmarkTool bookmarkTool;
-        public List<DictionarySearchElement> bookmarkElements;
+    final private MediatorLiveData<DisplayStatus> m_status;
+    private BookmarkTool m_bookmarkTool;
 
-        void copyFrom(Status aStatus) {
-            lang = aStatus.lang;
-            backupLang = aStatus.backupLang;
-            database = aStatus.database;
-            bookmarkTool = aStatus.bookmarkTool;
-            bookmarkElements = aStatus.bookmarkElements;
-        }
-
-        private void processChange(final MutableLiveData<Status> aLiveData) {
-            if (isInitialized()) {
-                aLiveData.setValue(this);
-            }
-        }
-
-        private void performUpdate() {
-            if (isReady()) {
-                bookmarkTool.performBookmarkInsertion(lang, backupLang);
-            }
-        }
-
-        private boolean isReady() {
-            return lang != null && backupLang != null && database != null && bookmarkTool != null;
-        }
-
-        public boolean isInitialized() {
-            return isReady() && bookmarkElements != null;
-        }
-    }
-
-    final private MediatorLiveData<Status> m_status;
-
-    public LiveData<Status> getStatus() { return m_status; }
+    public LiveData<DisplayStatus> getStatus() { return m_status; }
 
     public DictionaryBookmarkFragmentModel(Application aApp) {
         super(aApp);
 
         mApp = (DictionaryApplication) aApp;
+        m_status = DisplayStatus.create(mApp, 1);
 
-        m_status = new MediatorLiveData<>();
-        final Status status = new Status();
+        m_bookmarkTool = null;
 
-        m_status.addSource(mApp.getBookmarkTool(),
+        final LiveData<BookmarkTool> bookmarkTool =
+                Transformations.switchMap(mApp.getPersistentDatabase(),
+                        new Function<PersistentDatabase, LiveData<BookmarkTool>>() {
+                            @Override
+                            public LiveData<BookmarkTool> apply(PersistentDatabase input) {
+                                return BookmarkTool.create(input, 1);
+                            }
+                        });
+
+        m_status.addSource(bookmarkTool,
                 new Observer<BookmarkTool>() {
                     @Override
                     public void onChanged(BookmarkTool bookmarkTool) {
-                        status.bookmarkTool = bookmarkTool;
+                        m_bookmarkTool = bookmarkTool;
 
-                        status.processChange(m_status);
-                    }
-                });
-
-        m_status.addSource(mApp.getSettings().getValue(Settings.LANG),
-                new Observer<String>() {
-                    @Override
-                    public void onChanged(String s) {
-                        status.lang = s;
-
-                        status.performUpdate();
-                        status.processChange(m_status);
-                    }
-                });
-
-        m_status.addSource(mApp.getSettings().getValue(Settings.BACKUP_LANG),
-                new Observer<String>() {
-                    @Override
-                    public void onChanged(String s) {
-                        status.backupLang = s;
-
-                        status.performUpdate();
-                        status.processChange(m_status);
-                    }
-                });
-
-        m_status.addSource(mApp.getPersistentDatabase(),
-                new Observer<PersistentDatabase>() {
-                    @Override
-                    public void onChanged(PersistentDatabase dictionaryDatabase) {
-                        status.database = dictionaryDatabase;
-
-                        status.processChange(m_status);
+                        if (m_bookmarkTool != null) {
+                            bookmarkTool.performBookmarkInsertion();
+                        }
                     }
                 });
 
@@ -141,36 +81,11 @@ public class DictionaryBookmarkFragmentModel extends AndroidViewModel {
                 new Observer<Long>() {
                     @Override
                     public void onChanged(Long aLong) {
-                        if (status.isInitialized()) {
-                            status.performUpdate();
+                        if (m_bookmarkTool != null) {
+                            m_bookmarkTool.performBookmarkInsertion();
                         }
                     }
                 });
-
-        final LiveData<List<DictionarySearchElement>> bookmarkElements =
-                Transformations.switchMap(mApp.getPersistentDatabase(),
-                        new Function<PersistentDatabase, LiveData<List<DictionarySearchElement>>>() {
-                            @Override
-                            public LiveData<List<DictionarySearchElement>> apply(PersistentDatabase input) {
-                                return input.dictionaryBookmarkElementDao().getAllDetailsLive();
-                            }
-                        });
-
-        m_status.addSource(bookmarkElements,
-                new Observer<List<DictionarySearchElement>>() {
-                    @Override
-                    public void onChanged(List<DictionarySearchElement> dictionarySearchElements) {
-                        status.bookmarkElements = dictionarySearchElements;
-
-                        status.processChange(m_status);
-                    }
-                });
-    }
-
-    public void updateStatus() {
-        if (m_status.getValue() != null && m_status.getValue().isInitialized()) {
-            m_status.setValue(m_status.getValue());
-        }
     }
 
     public void deleteBookmark(final long aSeq) {
