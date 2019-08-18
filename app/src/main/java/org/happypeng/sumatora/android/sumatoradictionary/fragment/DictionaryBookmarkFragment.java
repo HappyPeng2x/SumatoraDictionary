@@ -17,6 +17,7 @@
 package org.happypeng.sumatora.android.sumatoradictionary.fragment;
 
 
+import android.app.SearchManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.TypedArray;
@@ -28,8 +29,10 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.SearchView;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.content.FileProvider;
 import androidx.core.view.MenuItemCompat;
@@ -43,6 +46,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import android.util.TypedValue;
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -61,7 +65,9 @@ import org.happypeng.sumatora.android.sumatoradictionary.R;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryLanguage;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
+import org.happypeng.sumatora.android.sumatoradictionary.db.tools.BookmarkTool;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.DisplayStatus;
+import org.happypeng.sumatora.android.sumatoradictionary.db.tools.QueryTool;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Settings;
 import org.happypeng.sumatora.android.sumatoradictionary.model.DictionaryBookmarkFragmentModel;
 import org.happypeng.sumatora.android.sumatoradictionary.xml.DictionaryBookmarkXML;
@@ -88,6 +94,11 @@ public class DictionaryBookmarkFragment extends Fragment {
 
     private Logger m_log;
 
+    private String m_lang;
+    private String m_backupLang;
+
+    private SearchView m_searchView;
+
     public DictionaryBookmarkFragment() {
         if (BuildConfig.DEBUG_UI) {
             m_log = LoggerFactory.getLogger(this.getClass());
@@ -105,6 +116,10 @@ public class DictionaryBookmarkFragment extends Fragment {
             m_statusText.setText("Loading database...");
 
             m_ready = false;
+
+            if (m_searchView != null) {
+                m_searchView.setActivated(false);
+            }
         }
     }
 
@@ -119,7 +134,41 @@ public class DictionaryBookmarkFragment extends Fragment {
             m_progressBar.setVisibility(View.GONE);
 
             m_ready = true;
+
+            if (m_searchView != null) {
+                m_searchView.setActivated(true);
+            }
         }
+    }
+
+    private void setSearching()
+    {
+        m_statusText.setVisibility(View.VISIBLE);
+        m_progressBar.setVisibility(View.VISIBLE);
+
+        m_progressBar.setIndeterminate(true);
+        m_progressBar.animate();
+
+        if (m_searchView != null) {
+            m_searchView.setActivated(false);
+        }
+
+        m_statusText.setText("Searching...");
+    }
+
+    private void setNoResultsFound()
+    {
+        m_progressBar.setIndeterminate(false);
+        m_progressBar.setMax(0);
+
+        if (m_searchView != null) {
+            m_searchView.setActivated(true);
+        }
+
+        m_statusText.setText("No results found.");
+
+        m_statusText.setVisibility(View.VISIBLE);
+        m_progressBar.setVisibility(View.GONE);
     }
 
     @Override
@@ -134,8 +183,6 @@ public class DictionaryBookmarkFragment extends Fragment {
         activity.setSupportActionBar(tb);
 
         setHasOptionsMenu(true);
-
-        m_languageText = (TextView) view.findViewById(R.id.bookmark_fragment_language_text);
 
         final ActionBar actionBar = activity.getSupportActionBar();
         actionBar.setHomeAsUpIndicator(R.drawable.ic_menu_white_24dp);
@@ -176,40 +223,66 @@ public class DictionaryBookmarkFragment extends Fragment {
                 (this, new Observer<List<DictionaryLanguage>>() {
                     @Override
                     public void onChanged(List<DictionaryLanguage> dictionaryLanguages) {
-                        m_languagePopupMenu = initLanguagePopupMenu(m_languageText, dictionaryLanguages);
-                    }
+                        if (m_languageText != null && m_languagePopupMenu == null) {
+                            m_languagePopupMenu = initLanguagePopupMenu(m_languageText,
+                                    dictionaryLanguages);
+                        }                    }
                 });
-
-        m_languageText.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (m_languagePopupMenu != null) {
-                    m_languagePopupMenu.show();
-                }
-            }
-        });
 
         m_viewModel.getStatus().observe(getViewLifecycleOwner(),
                 new Observer<DisplayStatus>() {
                     @Override
                     public void onChanged(DisplayStatus status) {
-                        if (status.isInitialized()) {
-                            setReady();
+                        if (!status.isInitialized()) {
+                            setInPreparation();
 
-                            viewHolderStatus.entities = m_viewModel.getDictionaryApplication().getEntities();
+                            return;
+                        }
 
-                            if (!m_languageText.getText().toString().equals(status.lang)) {
+                        viewHolderStatus.entities = m_viewModel.getDictionaryApplication().getEntities();
+
+                        if (m_lang == null || !m_lang.equals(status.lang)) {
+                            if (m_languageText != null) {
                                 m_languageText.setText(status.lang);
                             }
 
-                            if (viewHolderStatus.lang == null) {
-                                viewHolderStatus.lang = status.lang;
-                            } else if (!viewHolderStatus.lang.equals(status.lang)) {
-                                viewHolderStatus.lang = status.lang;
-                                listAdapter.notifyDataSetChanged();
+                            m_lang = status.lang;
+
+                            listAdapter.notifyDataSetChanged();
+                        }
+
+                        if ((m_backupLang == null && status.backupLang != null) ||
+                                (m_backupLang != null && !m_backupLang.equals(status.backupLang))) {
+                            m_backupLang = status.backupLang;
+
+                            listAdapter.notifyDataSetChanged();
+                        }
+
+                        if (m_searchView != null) {
+                            String term = m_viewModel.getTerm();
+
+                            if (term == null) {
+                                term = "";
                             }
-                        } else {
+
+                            m_searchView.setQuery(term, false);
+                        }
+
+                        viewHolderStatus.lang = status.lang;
+
+                        Integer bookmarkToolStatus = m_viewModel.getBookmarkToolStatus();
+
+                        if (bookmarkToolStatus == null || bookmarkToolStatus == BookmarkTool.STATUS_PRE_INITIALIZED) {
                             setInPreparation();
+                        } else if (bookmarkToolStatus == BookmarkTool.STATUS_INITIALIZED) {
+                            setReady();
+                        } else if (bookmarkToolStatus == BookmarkTool.STATUS_SEARCHING) {
+                            setSearching();
+                        } else if (bookmarkToolStatus == BookmarkTool.STATUS_RESULTS_FOUND ||
+                                bookmarkToolStatus == BookmarkTool.STATUS_RESULTS_FOUND_ENDED) {
+                            setReady();
+                        } else if (bookmarkToolStatus == QueryTool.QueriesList.STATUS_NO_RESULTS_FOUND_ENDED) {
+                            setNoResultsFound();
                         }
                     }
                 });
@@ -237,6 +310,45 @@ public class DictionaryBookmarkFragment extends Fragment {
                 shareBookmarks();
 
                 return false;
+            }
+        });
+
+        SearchManager searchManager = (SearchManager) getActivity().getSystemService(Context.SEARCH_SERVICE);
+        MenuItem searchViewMenuItem = menu.findItem(R.id.bookmark_fragment_menu_search);
+
+        m_searchView = (SearchView) searchViewMenuItem.getActionView();
+        m_searchView.setSearchableInfo(searchManager.getSearchableInfo(getActivity().getComponentName()));
+        m_searchView.setIconifiedByDefault(true);
+
+        final SearchView.SearchAutoComplete mSearchSrcTextView =
+                m_searchView.findViewById(androidx.appcompat.R.id.search_src_text);
+
+        mSearchSrcTextView.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+            @Override
+            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+                if ("".contentEquals(m_searchView.getQuery())) {
+                    m_viewModel.setTerm("");
+                }
+
+                return true;
+            }
+        });
+
+        MenuItem languageMenuItem = menu.findItem(R.id.bookmark_fragment_menu_language_text);
+        m_languageText = languageMenuItem.getActionView().findViewById(R.id.menuitem_language_text);
+
+        m_languageText.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (m_languagePopupMenu == null &&
+                        m_viewModel.getDictionaryApplication().getDictionaryLanguage().getValue() != null) {
+                    m_languagePopupMenu = initLanguagePopupMenu(m_languageText,
+                            m_viewModel.getDictionaryApplication().getDictionaryLanguage().getValue());
+                }
+
+                if (m_languagePopupMenu != null) {
+                    m_languagePopupMenu.show();
+                }
             }
         });
 
@@ -346,6 +458,10 @@ public class DictionaryBookmarkFragment extends Fragment {
         return popupMenu;
     }
 
+    public void setIntentSearchTerm(@NonNull String aIntentSearchTerm) {
+        m_viewModel.setTerm(aIntentSearchTerm);
+    }
+
     @Override
     public void onDestroyView() {
         super.onDestroyView();
@@ -355,5 +471,6 @@ public class DictionaryBookmarkFragment extends Fragment {
         m_statusText = null;
         m_languageText = null;
         m_languagePopupMenu = null;
+        m_searchView = null;
     }
 }

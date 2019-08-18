@@ -16,16 +16,6 @@
         android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
         app:title="Bookmarks"
         app:popupTheme="@style/ThemeOverlay.AppCompat.Light">
-
-        <TextView
-            android:id="@+id/bookmark_fragment_language_text"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="eng"
-            android:textColor="@android:color/white"
-            android:layout_gravity="end"
-            style="@style/TextAppearance.AppCompat.Widget.ActionBar.Title" />
-
     </androidx.appcompat.widget.Toolbar>
 
     <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"

@@ -25,10 +25,13 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.BookmarkTool;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.DisplayStatus;
 
+import androidx.annotation.MainThread;
+import androidx.annotation.NonNull;
 import androidx.arch.core.util.Function;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MediatorLiveData;
+import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.Transformations;
 import androidx.paging.PagedList;
@@ -40,10 +43,16 @@ public class DictionaryBookmarkFragmentModel extends AndroidViewModel {
 
     private BookmarkTool m_bookmarkTool;
 
-    private LiveData<PagedList<DictionarySearchElement>> m_elementList;
+    final private LiveData<PagedList<DictionarySearchElement>> m_elementList;
+
+    final private MutableLiveData<String> m_term;
 
     public LiveData<PagedList<DictionarySearchElement>> getElementList() { return m_elementList; }
     public LiveData<DisplayStatus> getStatus() { return m_status; }
+
+    private Integer m_bookmarkToolStatus;
+
+    public Integer getBookmarkToolStatus() { return m_bookmarkToolStatus; }
 
     public DictionaryBookmarkFragmentModel(Application aApp) {
         super(aApp);
@@ -51,7 +60,12 @@ public class DictionaryBookmarkFragmentModel extends AndroidViewModel {
         mApp = (DictionaryApplication) aApp;
         m_status = DisplayStatus.create(mApp, 1);
 
+        m_bookmarkToolStatus = null;
+
         m_bookmarkTool = null;
+
+        m_term = new MutableLiveData<>();
+        m_term.setValue("");
 
         final LiveData<BookmarkTool> bookmarkTool =
                 Transformations.switchMap(mApp.getPersistentDatabase(),
@@ -78,8 +92,27 @@ public class DictionaryBookmarkFragmentModel extends AndroidViewModel {
                         m_bookmarkTool = bookmarkTool;
 
                         if (m_bookmarkTool != null) {
-                            bookmarkTool.setTerm("");
+                            bookmarkTool.setTerm(m_term.getValue(), true);
                         }
+                    }
+                });
+
+        final LiveData<Integer> bookmarkToolStatus =
+                Transformations.switchMap(bookmarkTool,
+                        new Function<BookmarkTool, LiveData<Integer>>() {
+                            @Override
+                            public LiveData<Integer> apply(BookmarkTool input) {
+                                return input.getStatus();
+                            }
+                        });
+
+        m_status.addSource(bookmarkToolStatus,
+                new Observer<Integer>() {
+                    @Override
+                    public void onChanged(Integer integer) {
+                        m_bookmarkToolStatus = integer;
+
+                        m_status.setValue(m_status.getValue());
                     }
                 });
 
@@ -97,7 +130,17 @@ public class DictionaryBookmarkFragmentModel extends AndroidViewModel {
                     @Override
                     public void onChanged(Long aLong) {
                         if (m_bookmarkTool != null) {
-                            m_bookmarkTool.setTerm("");
+                            m_bookmarkTool.setTerm(m_term.getValue(), true);
+                        }
+                    }
+                });
+
+        m_status.addSource(m_term,
+                new Observer<String>() {
+                    @Override
+                    public void onChanged(String s) {
+                        if (m_bookmarkTool != null) {
+                            m_bookmarkTool.setTerm(m_term.getValue(), true);
                         }
                     }
                 });
@@ -117,4 +160,9 @@ public class DictionaryBookmarkFragmentModel extends AndroidViewModel {
     }
 
     public DictionaryApplication getDictionaryApplication() { return mApp; }
+
+    @MainThread
+    public void setTerm(@NonNull String aTerm) { m_term.setValue(aTerm); }
+
+    public String getTerm() { return m_term.getValue(); }
 }

@@ -56,6 +56,7 @@ public class Dictionary extends AppCompatActivity implements SettingsFragment.Se
     private boolean m_dictionaryBookmarkFragmentShown;
 
     private DictionarySearchFragment m_dictionarySearchFragment;
+    private boolean m_dictionarySearchFragmentShown;
 
     private DebugFragment m_debugFragment;
     private boolean m_debugFragmentShown;
@@ -111,6 +112,7 @@ public class Dictionary extends AppCompatActivity implements SettingsFragment.Se
         m_debugFragmentShown = false;
         m_dictionaryBookmarkFragmentShown = false;
         m_settingsFragmentShown = false;
+        m_dictionarySearchFragmentShown = true;
 
         if (m_navigationView != null) {
             m_navigationView.setCheckedItem(R.id.navigation_view_item_search);
@@ -127,6 +129,7 @@ public class Dictionary extends AppCompatActivity implements SettingsFragment.Se
         m_debugFragmentShown = false;
         m_settingsFragmentShown = false;
         m_dictionaryBookmarkFragmentShown = true;
+        m_dictionarySearchFragmentShown = false;
 
         if (m_navigationView != null) {
             m_navigationView.setCheckedItem(R.id.navigation_view_item_bookmarks);
@@ -143,6 +146,7 @@ public class Dictionary extends AppCompatActivity implements SettingsFragment.Se
         m_debugFragmentShown = false;
         m_settingsFragmentShown = true;
         m_dictionaryBookmarkFragmentShown = false;
+        m_dictionarySearchFragmentShown = false;
 
         if (m_navigationView != null) {
             m_navigationView.setCheckedItem(R.id.navigation_view_item_settings);
@@ -159,6 +163,7 @@ public class Dictionary extends AppCompatActivity implements SettingsFragment.Se
         m_debugFragmentShown = true;
         m_settingsFragmentShown = true;
         m_dictionaryBookmarkFragmentShown = false;
+        m_dictionarySearchFragmentShown = false;
     }
 
     @Override
@@ -248,7 +253,16 @@ public class Dictionary extends AppCompatActivity implements SettingsFragment.Se
                 m_log.info("setting search term to " + aIntent.getStringExtra("SEARCH_TERM"));
             }
 
-            m_dictionarySearchFragment.setIntentSearchTerm(aIntent.getStringExtra("SEARCH_TERM"));
+            if (Intent.ACTION_SEARCH.equals(aIntent.getAction())) {
+                if (m_dictionaryBookmarkFragmentShown) {
+                    m_dictionaryBookmarkFragment.setIntentSearchTerm(aIntent.getStringExtra("SEARCH_TERM"));
+                } else if (m_dictionarySearchFragmentShown) {
+                    m_dictionarySearchFragment.setIntentSearchTerm(aIntent.getStringExtra("SEARCH_TERM"));
+                }
+            } else {
+                switchToSearchFragment();
+                m_dictionarySearchFragment.setIntentSearchTerm(aIntent.getStringExtra("SEARCH_TERM"));
+            }
 
             aIntent.removeExtra("SEARCH_TERM");
         }
@@ -297,7 +311,6 @@ public class Dictionary extends AppCompatActivity implements SettingsFragment.Se
         Intent intent = getIntent();
 
         if (intent != null && intent.hasExtra("SEARCH_TERM")) {
-            switchToSearchFragment();
             processIntent(intent);
         }
     }

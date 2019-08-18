@@ -44,58 +44,40 @@ public class BookmarkTool {
                     + "WHERE DictionaryEntry.seq IN (SELECT seq FROM DictionaryBookmark)";
 
     static private final String SQL_QUERY_EXACT_PRIO =
-            "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryEntry.seq "
-                    + "FROM jmdict.DictionaryEntry, "
-                    + "("
-                    + "SELECT DictionaryIndex.`rowid` AS seq FROM jmdict.DictionaryIndex "
+            "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
+                    + "FROM jmdict.DictionaryIndex "
                     + "WHERE writingsPrio MATCH 'writingsPrio:' || ? || ' OR readingsPrio:' || ? "
-                    + ") AS A "
-                    + "WHERE A.seq IN (SELECT seq FROM DictionaryBookmark) AND A.seq = DictionaryEntry.seq";
+                    + " AND DictionaryIndex.`rowid` IN (SELECT seq FROM DictionaryBookmark)";
 
     static private final String SQL_QUERY_EXACT_NONPRIO =
-            "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryEntry.seq "
-                    + "FROM jmdict.DictionaryEntry, "
-                    + "("
-                    + "SELECT DictionaryIndex.`rowid` AS seq FROM jmdict.DictionaryIndex "
+            "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
+                    + "FROM jmdict.DictionaryIndex "
                     + "WHERE writingsPrio MATCH 'writings:' || ? || ' OR readings:' || ? "
-                    + ") AS A "
-                    + "WHERE A.seq IN (SELECT seq FROM DictionaryBookmark) AND A.seq = DictionaryEntry.seq";
+                    + " AND DictionaryIndex.`rowid` IN (SELECT seq FROM DictionaryBookmark)";
 
     static private final String SQL_QUERY_BEGIN_PRIO =
-            "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryEntry.seq "
-                    + "FROM jmdict.DictionaryEntry, "
-                    + "("
-                    + "SELECT DictionaryIndex.`rowid` AS seq FROM jmdict.DictionaryIndex "
+            "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
+                    + "FROM jmdict.DictionaryIndex "
                     + "WHERE writingsPrio MATCH 'writingsPrio:' || ? || '* OR readingsPrio:' || ? || '*'"
-                    + ") AS A "
-                    + "WHERE A.seq IN (SELECT seq FROM DictionaryBookmark) AND A.seq = DictionaryEntry.seq";
+                    + " AND DictionaryIndex.`rowid` IN (SELECT seq FROM DictionaryBookmark)";
 
     static private final String SQL_QUERY_BEGIN_NONPRIO =
-            "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryEntry.seq "
-                    + "FROM jmdict.DictionaryEntry, "
-                    + "("
-                    + "SELECT DictionaryIndex.`rowid` AS seq FROM jmdict.DictionaryIndex "
+            "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
+                    + "FROM jmdict.DictionaryIndex "
                     + "WHERE writingsPrio MATCH 'writings:' || ? || '* OR readings:' || ? || '*'"
-                    + ") AS A "
-                    + "WHERE A.seq IN (SELECT seq FROM DictionaryBookmark) AND A.seq = DictionaryEntry.seq";
+                    + " AND DictionaryIndex.`rowid` IN (SELECT seq FROM DictionaryBookmark)";
 
     static private final String SQL_QUERY_PARTS_PRIO =
-            "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryEntry.seq "
-                    + "FROM jmdict.DictionaryEntry, "
-                    + "("
-                    + "SELECT DictionaryIndex.`rowid` AS seq FROM jmdict.DictionaryIndex "
+            "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
+                    + "FROM jmdict.DictionaryIndex "
                     + "WHERE writingsPrio MATCH 'writingsPrioParts:' || ? || '* OR readingsPrioParts:' || ? || '*'"
-                    + ") AS A "
-                    + "WHERE A.seq IN (SELECT seq FROM DictionaryBookmark) AND A.seq = DictionaryEntry.seq";
+                    + " AND DictionaryIndex.`rowid` IN (SELECT seq FROM DictionaryBookmark)";
 
     static private final String SQL_QUERY_PARTS_NONPRIO =
-            "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryEntry.seq "
-                    + "FROM jmdict.DictionaryEntry, "
-                    + "("
-                    + "SELECT DictionaryIndex.`rowid` AS seq FROM jmdict.DictionaryIndex "
+            "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
+                    + "FROM jmdict.DictionaryIndex "
                     + "WHERE writingsPrio MATCH 'writingsParts:' || ? || '* OR readingsParts:' || ? || '*'"
-                    + ") AS A "
-                    + "WHERE A.seq IN (SELECT seq FROM DictionaryBookmark) AND A.seq = DictionaryEntry.seq";
+                    + " AND DictionaryIndex.`rowid` IN (SELECT seq FROM DictionaryBookmark)";
 
     public static class QueryStatement {
         private final int ref;
@@ -185,6 +167,8 @@ public class BookmarkTool {
         mStatus.setValue(STATUS_PRE_INITIALIZED);
     }
 
+    public LiveData<Integer> getStatus() { return mStatus; }
+
     @WorkerThread
     public void createStatement() {
         if (BuildConfig.DEBUG_QUERYTOOL) {
@@ -235,7 +219,9 @@ public class BookmarkTool {
                             mLog.info(this.hashCode() + " boundary callback called");
                         }
 
-                        executeNextStatement();
+                        if (!"".equals(mTerm)) {
+                            executeNextStatement(false);
+                        }
 
                         super.onItemAtEndLoaded(itemAtEnd);
                     }
@@ -243,9 +229,10 @@ public class BookmarkTool {
     }
 
     @WorkerThread
-    private synchronized void executNextStatementImplementation(final String aTerm) {
+    private synchronized void executNextStatementImplementation(final String aTerm, boolean aReset) {
         if (BuildConfig.DEBUG_QUERYTOOL) {
             mLog.info(this.hashCode() + " executeNextStatementImplementation begin");
+            mLog.info(this.hashCode() + " current term " + mTerm + " new term " + aTerm);
         }
 
         mDB.runInTransaction(new Runnable() {
@@ -253,27 +240,36 @@ public class BookmarkTool {
             public void run() {
                 long lastInsert = -1;
 
-                if ("".equals(aTerm)) {
+                if (aTerm == null || "".equals(aTerm)) {
                     mStatus.postValue(QueryTool.QueriesList.STATUS_INITIALIZED);
 
-                    mDB.runInTransaction(new Runnable() {
-                        @Override
-                        public void run() {
-                            mDeleteStatement.bindLong(1, mRef);
-                            mDeleteStatement.executeUpdateDelete();
+                    mDeleteStatement.bindLong(1, mRef);
+                    mDeleteStatement.executeUpdateDelete();
 
-                            mInsertAllStatement.bindLong(1, mRef);
-                            mInsertAllStatement.executeInsert();
-                        }
-                    });
+                    mInsertAllStatement.bindLong(1, mRef);
+                    mInsertAllStatement.executeInsert();
 
-                    mTerm = aTerm;
+                    if (aTerm == null) {
+                        mTerm = "";
+                    } else {
+                        mTerm = aTerm;
+                    }
 
                     mLastInsert = -1;
                     mQueriesPosition = 0;
                 } else {
+                    if (!mTerm.equals(aTerm)) {
+                        mQueriesPosition = 0;
+                        mTerm = aTerm;
+                    }
+
+                    if (mQueriesPosition == 0) {
+                        mDeleteStatement.executeUpdateDelete();
+                        mLastInsert = -1;
+                    }
+
                     while (lastInsert == -1 && mQueriesPosition < mQueries.length) {
-                        lastInsert = mQueries[mQueriesPosition].execute(aTerm);
+                        lastInsert = mQueries[mQueriesPosition].execute(mTerm);
 
                         if (BuildConfig.DEBUG_QUERYTOOL) {
                             mLog.info(this.hashCode() + " position " + mQueriesPosition + " result " + lastInsert);
@@ -307,7 +303,7 @@ public class BookmarkTool {
     }
 
     @MainThread
-    private void executeNextStatement() {
+    private void executeNextStatement(final boolean aReset) {
         if (mStatus.getValue() == null || mStatus.getValue() < STATUS_INITIALIZED) {
             return;
         }
@@ -315,7 +311,7 @@ public class BookmarkTool {
         final AsyncTask<Void, Void, Void> task = new AsyncTask<Void, Void, Void>() {
             @Override
             protected Void doInBackground(Void... voids) {
-                executNextStatementImplementation(mTerm);
+                executNextStatementImplementation(mTerm, aReset);
 
                 return null;
             }
@@ -323,7 +319,7 @@ public class BookmarkTool {
     }
 
     @MainThread
-    public void setTerm(@NonNull final String aTerm) {
+    public void setTerm(final String aTerm, final boolean aReset) {
         if (mStatus.getValue() == null || mStatus.getValue() < STATUS_INITIALIZED) {
             return;
         }
@@ -331,7 +327,7 @@ public class BookmarkTool {
         final AsyncTask<Void, Void, Void> task = new AsyncTask<Void, Void, Void>() {
             @Override
             protected Void doInBackground(Void... voids) {
-                executNextStatementImplementation(aTerm);
+                executNextStatementImplementation(aTerm, aReset);
 
                 return null;
             }
