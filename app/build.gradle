@@ -1,20 +1,8 @@
 apply plugin: 'com.android.application'
 
-def keystorePropertiesFile = rootProject.file("keystore.properties")
-def keystoreProperties = new Properties()
-keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
-
 android {
-    signingConfigs {
-        config {
-            keyAlias keystoreProperties['keyAlias']
-            keyPassword keystoreProperties['keyPassword']
-            storeFile file(keystoreProperties['storeFile'])
-            storePassword keystoreProperties['storePassword']
-        }
-    }
-
     compileSdkVersion 28
+
     defaultConfig {
         applicationId "org.happypeng.sumatora.android.sumatoradictionary"
         minSdkVersion 14
@@ -32,7 +20,6 @@ android {
         testInstrumentationRunnerArguments disableAnalytics: 'true'
 
         setProperty("archivesBaseName", "SumatoraDictionary-$versionName")
-        signingConfig signingConfigs.config
 
         setProperty("archivesBaseName", "SumatoraDictionary-$versionName")
     }
