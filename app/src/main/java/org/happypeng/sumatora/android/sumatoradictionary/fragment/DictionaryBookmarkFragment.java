@@ -56,6 +56,7 @@ import android.view.ViewGroup;
 import android.widget.PopupMenu;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import org.happypeng.sumatora.android.sumatoradictionary.BuildConfig;
 import org.happypeng.sumatora.android.sumatoradictionary.DictionaryListAdapter;
@@ -65,6 +66,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.R;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryLanguage;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
+import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.BookmarkTool;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.DisplayStatus;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.QueryTool;
@@ -344,8 +346,23 @@ public class DictionaryBookmarkFragment extends Fragment {
         colorMenu(menu);
     }
 
+    private void displayInitializationToast() {
+        Toast.makeText(getContext(), "Initialization still in progress...", Toast.LENGTH_LONG).show();
+    }
+
     private void shareBookmarks() {
-/*        if (m_bookmarks == null) {
+        // return immediately if initialization is not finished
+        if (m_viewModel == null) {
+            displayInitializationToast();
+
+            return;
+        }
+
+        final PersistentDatabase db = m_viewModel.getDictionaryApplication().getPersistentDatabase().getValue();
+
+        if (db == null) {
+            displayInitializationToast();
+
             return;
         }
 
@@ -361,13 +378,7 @@ public class DictionaryBookmarkFragment extends Fragment {
                 @Override
                 protected Void doInBackground(Void... voids) {
                     try {
-                        List<DictionaryBookmark> bookmarks = new LinkedList<>();
-
-                        for (DictionarySearchElement e : m_bookmarks) {
-                            DictionaryBookmark b = new DictionaryBookmark();
-                            b.seq = e.getSeq();
-                            bookmarks.add(b);
-                        }
+                        List<DictionaryBookmark> bookmarks = db.dictionaryBookmarkDao().getAll();
 
                         DictionaryBookmarkXML.writeXML(outputFile, bookmarks);
 
@@ -395,12 +406,12 @@ public class DictionaryBookmarkFragment extends Fragment {
                         startActivity(Intent.createChooser(sharingIntent, "Share bookmarks"));
                     }
                 }
-
-
             }.execute();
         } catch (Exception e) {
+            Toast.makeText(getContext(), "Bookmarks sharing failed...", Toast.LENGTH_LONG).show();
+
             System.err.println(e.toString());
-        }*/
+        }
     }
 
     private void colorMenu(Menu aMenu) {
