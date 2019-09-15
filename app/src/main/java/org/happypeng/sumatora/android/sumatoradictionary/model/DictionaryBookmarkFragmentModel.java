@@ -92,7 +92,13 @@ public class DictionaryBookmarkFragmentModel extends AndroidViewModel {
                         m_bookmarkTool = bookmarkTool;
 
                         if (m_bookmarkTool != null) {
-                            bookmarkTool.setTerm(m_term.getValue(), true);
+                            String value = m_term.getValue();
+
+                            if (value == null) {
+                                value = "";
+                            }
+
+                            bookmarkTool.setTerm(value, true);
                         }
                     }
                 });
@@ -130,7 +136,13 @@ public class DictionaryBookmarkFragmentModel extends AndroidViewModel {
                     @Override
                     public void onChanged(Long aLong) {
                         if (m_bookmarkTool != null) {
-                            m_bookmarkTool.setTerm(m_term.getValue(), true);
+                            String value = m_term.getValue();
+
+                            if (value == null) {
+                                value = "";
+                            }
+
+                            m_bookmarkTool.setTerm(value, true);
                         }
                     }
                 });
@@ -140,7 +152,13 @@ public class DictionaryBookmarkFragmentModel extends AndroidViewModel {
                     @Override
                     public void onChanged(String s) {
                         if (m_bookmarkTool != null) {
-                            m_bookmarkTool.setTerm(m_term.getValue(), true);
+                            String value = m_term.getValue();
+
+                            if (value == null) {
+                                value = "";
+                            }
+
+                            m_bookmarkTool.setTerm(value, true);
                         }
                     }
                 });

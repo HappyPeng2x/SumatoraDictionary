@@ -162,7 +162,7 @@ public class BookmarkTool {
         mLastInsert = -1;
         mQueries = null;
 
-        mTerm = null;
+        mTerm = "";
 
         mStatus.setValue(STATUS_PRE_INITIALIZED);
     }
@@ -229,7 +229,7 @@ public class BookmarkTool {
     }
 
     @WorkerThread
-    private synchronized void executNextStatementImplementation(final String aTerm, boolean aReset) {
+    private synchronized void executNextStatementImplementation(@NonNull final String aTerm, final boolean aReset) {
         if (BuildConfig.DEBUG_QUERYTOOL) {
             mLog.info(this.hashCode() + " executeNextStatementImplementation begin");
             mLog.info(this.hashCode() + " current term " + mTerm + " new term " + aTerm);
@@ -240,7 +240,7 @@ public class BookmarkTool {
             public void run() {
                 long lastInsert = -1;
 
-                if (aTerm == null || "".equals(aTerm)) {
+                if ("".equals(aTerm) && (!mTerm.equals(aTerm) || aReset)) {
                     mStatus.postValue(QueryTool.QueriesList.STATUS_INITIALIZED);
 
                     mDeleteStatement.bindLong(1, mRef);
@@ -258,7 +258,7 @@ public class BookmarkTool {
                     mLastInsert = -1;
                     mQueriesPosition = 0;
                 } else {
-                    if (!mTerm.equals(aTerm)) {
+                    if (!mTerm.equals(aTerm) || aReset) {
                         mQueriesPosition = 0;
                         mTerm = aTerm;
                     }
@@ -319,7 +319,7 @@ public class BookmarkTool {
     }
 
     @MainThread
-    public void setTerm(final String aTerm, final boolean aReset) {
+    public void setTerm(@NonNull final String aTerm, final boolean aReset) {
         if (mStatus.getValue() == null || mStatus.getValue() < STATUS_INITIALIZED) {
             return;
         }

@@ -81,8 +81,6 @@ import java.util.List;
 public class DictionaryBookmarkFragment extends Fragment {
     private static final String AUTHORITY = "org.happypeng.sumatora.android.sumatoradictionary.fileprovider";
 
-    private boolean m_ready;
-
     private ProgressBar m_progressBar;
     private TextView m_statusText;
 
@@ -106,38 +104,31 @@ public class DictionaryBookmarkFragment extends Fragment {
     }
 
     private void setInPreparation() {
-        if (m_ready) {
-            m_statusText.setVisibility(View.VISIBLE);
-            m_progressBar.setVisibility(View.VISIBLE);
+        m_statusText.setVisibility(View.VISIBLE);
+        m_progressBar.setVisibility(View.VISIBLE);
 
-            m_progressBar.setIndeterminate(true);
-            m_progressBar.animate();
+        m_progressBar.setIndeterminate(true);
+        m_progressBar.animate();
 
-            m_statusText.setText("Loading database...");
+        m_statusText.setText("Loading database...");
 
-            m_ready = false;
 
-            if (m_searchView != null) {
-                m_searchView.setActivated(false);
-            }
+        if (m_searchView != null) {
+            m_searchView.setActivated(false);
         }
     }
 
     private void setReady() {
-        if (!m_ready) {
-            m_progressBar.setIndeterminate(false);
-            m_progressBar.setMax(0);
+        m_progressBar.setIndeterminate(false);
+        m_progressBar.setMax(0);
 
-            m_statusText.setText("");
+        m_statusText.setText("");
 
-            m_statusText.setVisibility(View.GONE);
-            m_progressBar.setVisibility(View.GONE);
+        m_statusText.setVisibility(View.GONE);
+        m_progressBar.setVisibility(View.GONE);
 
-            m_ready = true;
-
-            if (m_searchView != null) {
-                m_searchView.setActivated(true);
-            }
+        if (m_searchView != null) {
+            m_searchView.setActivated(true);
         }
     }
 
@@ -190,8 +181,6 @@ public class DictionaryBookmarkFragment extends Fragment {
 
         m_progressBar = (ProgressBar) view.findViewById(R.id.dictionary_bookmark_fragment_progressbar);
         m_statusText = (TextView) view.findViewById(R.id.dictionary_bookmark_fragment_statustext);
-
-        m_ready = true;
 
         setInPreparation();
 
