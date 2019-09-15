@@ -19,8 +19,8 @@ android {
         applicationId "org.happypeng.sumatora.android.sumatoradictionary"
         minSdkVersion 14
         targetSdkVersion 28
-        versionCode 15
-        versionName "0.3.7"
+        versionCode 16
+        versionName "0.3.8"
 
         javaCompileOptions {
             annotationProcessorOptions {
@@ -67,7 +67,7 @@ android {
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
 
-    implementation 'androidx.appcompat:appcompat:1.0.2'
+    implementation 'androidx.appcompat:appcompat:1.1.0'
     implementation 'androidx.legacy:legacy-support-v4:1.0.0'
 
     testImplementation 'junit:junit:4.12'
@@ -81,8 +81,8 @@ dependencies {
     implementation 'com.google.android.material:material:1.0.0'
     implementation 'com.github.daniel-stoneuk:material-about-library:2.4.2'
 
-    implementation "androidx.lifecycle:lifecycle-extensions:2.0.0"
-    annotationProcessor "androidx.lifecycle:lifecycle-compiler:2.0.0"
+    implementation "androidx.lifecycle:lifecycle-extensions:2.1.0"
+    annotationProcessor "androidx.lifecycle:lifecycle-compiler:2.1.0"
 
     implementation "androidx.room:room-runtime:2.1.0"
     annotationProcessor "androidx.room:room-compiler:2.1.0"

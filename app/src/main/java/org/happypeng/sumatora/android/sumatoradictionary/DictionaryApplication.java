@@ -86,7 +86,7 @@ public class DictionaryApplication extends Application {
 
     static final Migration MIGRATION_1_2 = new Migration(1, 2) {
         @Override
-        public void migrate(SupportSQLiteDatabase database) {
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
             Logger log;
 
             if (BuildConfig.DEBUG_DB_MIGRATION) {
@@ -99,6 +99,28 @@ public class DictionaryApplication extends Application {
             database.execSQL("CREATE TABLE IF NOT EXISTS DictionaryBookmarkElement (`entryOrder` INTEGER NOT NULL, `seq` INTEGER NOT NULL, `readingsPrio` TEXT, `readings` TEXT, `writingsPrio` TEXT, `writings` TEXT, `pos` TEXT, `xref` TEXT, `ant` TEXT, `misc` TEXT, `lsource` TEXT, `dial` TEXT, `s_inf` TEXT, `field` TEXT, `lang` TEXT, `gloss` TEXT, `bookmark` INTEGER NOT NULL, PRIMARY KEY(`seq`))");
             database.execSQL("CREATE TABLE IF NOT EXISTS DictionaryBookmarkImport (`entryOrder` INTEGER NOT NULL, `seq` INTEGER NOT NULL, `readingsPrio` TEXT, `readings` TEXT, `writingsPrio` TEXT, `writings` TEXT, `pos` TEXT, `xref` TEXT, `ant` TEXT, `misc` TEXT, `lsource` TEXT, `dial` TEXT, `s_inf` TEXT, `field` TEXT, `lang` TEXT, `gloss` TEXT, `bookmark` INTEGER NOT NULL, PRIMARY KEY(`seq`))");
             database.execSQL("CREATE TABLE IF NOT EXISTS DictionaryBookmark (`seq` INTEGER NOT NULL, `bookmark` INTEGER NOT NULL, PRIMARY KEY(`seq`))");
+
+            if (BuildConfig.DEBUG_DB_MIGRATION) {
+                log.info("Database migration ended");
+            }
+        }
+    };
+
+    static final Migration MIGRATION_2_3 = new Migration(2, 3) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            Logger log;
+
+            if (BuildConfig.DEBUG_DB_MIGRATION) {
+                log = LoggerFactory.getLogger(this.getClass());
+
+                log.info("Starting database migration");
+            }
+
+            database.execSQL("DROP TABLE IF EXISTS DictionaryBookmarkElement");
+
+            database.execSQL("CREATE TABLE IF NOT EXISTS DictionaryDisplayElement (`ref` INTEGER NOT NULL, `entryOrder` INTEGER NOT NULL, `seq` INTEGER NOT NULL, `readingsPrio` TEXT, `readings` TEXT, `writingsPrio` TEXT, `writings` TEXT, `pos` TEXT, `xref` TEXT, `ant` TEXT, `misc` TEXT, `lsource` TEXT, `dial` TEXT, `s_inf` TEXT, `field` TEXT, `lang` TEXT, `gloss` TEXT, PRIMARY KEY(`ref`, `seq`))");
+            database.execSQL("CREATE TABLE IF NOT EXISTS DictionaryElement (`ref` INTEGER NOT NULL, `entryOrder` INTEGER NOT NULL, `seq` INTEGER NOT NULL, PRIMARY KEY(`ref`, `seq`))");
 
             if (BuildConfig.DEBUG_DB_MIGRATION) {
                 log.info("Database migration ended");
@@ -442,7 +464,7 @@ public class DictionaryApplication extends Application {
 
             final PersistentDatabase pDb = Room.databaseBuilder(aParams[0],
                     PersistentDatabase.class, PERSISTENT_DATABASE_NAME)
-                    .addMigrations(MIGRATION_1_2)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                     .setJournalMode(RoomDatabase.JournalMode.TRUNCATE)
                     .addCallback(new RoomDatabase.Callback() {
                         @Override
