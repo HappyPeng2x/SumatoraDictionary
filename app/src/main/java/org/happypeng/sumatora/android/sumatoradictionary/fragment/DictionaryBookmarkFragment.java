@@ -321,7 +321,7 @@ public class DictionaryBookmarkFragment extends Fragment {
                     m_viewModel.setTerm("");
                 }
 
-                return true;
+                return false;
             }
         });
 
