@@ -249,16 +249,6 @@ public class DictionaryBookmarkFragment extends Fragment {
                             listAdapter.notifyDataSetChanged();
                         }
 
-                        if (m_searchView != null) {
-                            String term = m_viewModel.getTerm();
-
-                            if (term == null) {
-                                term = "";
-                            }
-
-                            m_searchView.setQuery(term, false);
-                        }
-
                         viewHolderStatus.lang = status.lang;
 
                         Integer bookmarkToolStatus = m_viewModel.getBookmarkToolStatus();
@@ -317,8 +307,8 @@ public class DictionaryBookmarkFragment extends Fragment {
         mSearchSrcTextView.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
-                if ("".contentEquals(m_searchView.getQuery())) {
-                    m_viewModel.setTerm("");
+                if (m_searchView.getQuery() != null) {
+                    m_viewModel.setTerm(m_searchView.getQuery().toString());
                 }
 
                 return false;

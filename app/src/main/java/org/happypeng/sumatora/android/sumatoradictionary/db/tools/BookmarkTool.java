@@ -334,6 +334,10 @@ public class BookmarkTool {
         }.execute();
     }
 
+    public String getTerm() {
+        return mTerm;
+    }
+
     @MainThread
     public static LiveData<BookmarkTool> create(@NonNull final PersistentDatabase aDB, final int aRef)
     {

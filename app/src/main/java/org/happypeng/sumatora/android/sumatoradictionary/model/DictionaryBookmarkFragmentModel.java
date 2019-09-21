@@ -45,8 +45,6 @@ public class DictionaryBookmarkFragmentModel extends AndroidViewModel {
 
     final private LiveData<PagedList<DictionarySearchElement>> m_elementList;
 
-    final private MutableLiveData<String> m_term;
-
     public LiveData<PagedList<DictionarySearchElement>> getElementList() { return m_elementList; }
     public LiveData<DisplayStatus> getStatus() { return m_status; }
 
@@ -63,9 +61,6 @@ public class DictionaryBookmarkFragmentModel extends AndroidViewModel {
         m_bookmarkToolStatus = null;
 
         m_bookmarkTool = null;
-
-        m_term = new MutableLiveData<>();
-        m_term.setValue("");
 
         final LiveData<BookmarkTool> bookmarkTool =
                 Transformations.switchMap(mApp.getPersistentDatabase(),
@@ -92,13 +87,7 @@ public class DictionaryBookmarkFragmentModel extends AndroidViewModel {
                         m_bookmarkTool = bookmarkTool;
 
                         if (m_bookmarkTool != null) {
-                            String value = m_term.getValue();
-
-                            if (value == null) {
-                                value = "";
-                            }
-
-                            bookmarkTool.setTerm(value, true);
+                            bookmarkTool.setTerm(bookmarkTool.getTerm(), true);
                         }
                     }
                 });
@@ -136,18 +125,12 @@ public class DictionaryBookmarkFragmentModel extends AndroidViewModel {
                     @Override
                     public void onChanged(Long aLong) {
                         if (m_bookmarkTool != null) {
-                            String value = m_term.getValue();
-
-                            if (value == null) {
-                                value = "";
-                            }
-
-                            m_bookmarkTool.setTerm(value, true);
+                            m_bookmarkTool.setTerm(m_bookmarkTool.getTerm(), true);
                         }
                     }
                 });
 
-        m_status.addSource(m_term,
+/*        m_status.addSource(m_term,
                 new Observer<String>() {
                     @Override
                     public void onChanged(String s) {
@@ -161,7 +144,7 @@ public class DictionaryBookmarkFragmentModel extends AndroidViewModel {
                             m_bookmarkTool.setTerm(value, true);
                         }
                     }
-                });
+                });*/
     }
 
     public void deleteBookmark(final long aSeq) {
@@ -180,7 +163,17 @@ public class DictionaryBookmarkFragmentModel extends AndroidViewModel {
     public DictionaryApplication getDictionaryApplication() { return mApp; }
 
     @MainThread
-    public void setTerm(@NonNull String aTerm) { m_term.setValue(aTerm); }
+    public void setTerm(@NonNull String aTerm) {
+        if (m_bookmarkTool != null) {
+            m_bookmarkTool.setTerm(aTerm, true);
+        }
+    }
 
-    public String getTerm() { return m_term.getValue(); }
+    public String getTerm() {
+        if (m_bookmarkTool != null) {
+            return m_bookmarkTool.getTerm();
+        }
+
+        return "";
+    }
 }
