@@ -66,7 +66,7 @@ public class DictionarySearchFragment extends Fragment {
 
     private PopupMenu m_languagePopupMenu;
 
-    SearchView m_searchView;
+    private SearchView m_searchView;
 
     private DictionarySearchElementViewHolder.Status m_viewHolderStatus;
 

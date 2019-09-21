@@ -32,7 +32,6 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryLanguage;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentSetting;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.BookmarkImportTool;
-import org.happypeng.sumatora.android.sumatoradictionary.db.tools.BookmarkTool;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Languages;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Settings;
 
@@ -71,7 +70,6 @@ public class DictionaryApplication extends Application {
 
     protected MutableLiveData<PersistentDatabase> m_persistentDatabase;
     protected MutableLiveData<List<DictionaryLanguage>> m_dictionaryLanguage;
-    protected MutableLiveData<BookmarkTool> m_bookmarkTool;
     protected MutableLiveData<BookmarkImportTool> m_bookmarkImportTool;
 
     private HashMap<String, String> m_entities;
@@ -80,7 +78,6 @@ public class DictionaryApplication extends Application {
 
     public LiveData<PersistentDatabase> getPersistentDatabase() { return m_persistentDatabase; }
     public LiveData<List<DictionaryLanguage>> getDictionaryLanguage() { return m_dictionaryLanguage; }
-    public LiveData<BookmarkTool> getBookmarkTool() { return m_bookmarkTool; }
     public LiveData<BookmarkImportTool> getBookmarkImportTool() { return m_bookmarkImportTool; }
 
     public Settings getSettings() { return m_settings; }
@@ -89,7 +86,7 @@ public class DictionaryApplication extends Application {
 
     static final Migration MIGRATION_1_2 = new Migration(1, 2) {
         @Override
-        public void migrate(SupportSQLiteDatabase database) {
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
             Logger log;
 
             if (BuildConfig.DEBUG_DB_MIGRATION) {
@@ -102,6 +99,28 @@ public class DictionaryApplication extends Application {
             database.execSQL("CREATE TABLE IF NOT EXISTS DictionaryBookmarkElement (`entryOrder` INTEGER NOT NULL, `seq` INTEGER NOT NULL, `readingsPrio` TEXT, `readings` TEXT, `writingsPrio` TEXT, `writings` TEXT, `pos` TEXT, `xref` TEXT, `ant` TEXT, `misc` TEXT, `lsource` TEXT, `dial` TEXT, `s_inf` TEXT, `field` TEXT, `lang` TEXT, `gloss` TEXT, `bookmark` INTEGER NOT NULL, PRIMARY KEY(`seq`))");
             database.execSQL("CREATE TABLE IF NOT EXISTS DictionaryBookmarkImport (`entryOrder` INTEGER NOT NULL, `seq` INTEGER NOT NULL, `readingsPrio` TEXT, `readings` TEXT, `writingsPrio` TEXT, `writings` TEXT, `pos` TEXT, `xref` TEXT, `ant` TEXT, `misc` TEXT, `lsource` TEXT, `dial` TEXT, `s_inf` TEXT, `field` TEXT, `lang` TEXT, `gloss` TEXT, `bookmark` INTEGER NOT NULL, PRIMARY KEY(`seq`))");
             database.execSQL("CREATE TABLE IF NOT EXISTS DictionaryBookmark (`seq` INTEGER NOT NULL, `bookmark` INTEGER NOT NULL, PRIMARY KEY(`seq`))");
+
+            if (BuildConfig.DEBUG_DB_MIGRATION) {
+                log.info("Database migration ended");
+            }
+        }
+    };
+
+    static final Migration MIGRATION_2_3 = new Migration(2, 3) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            Logger log;
+
+            if (BuildConfig.DEBUG_DB_MIGRATION) {
+                log = LoggerFactory.getLogger(this.getClass());
+
+                log.info("Starting database migration");
+            }
+
+            database.execSQL("DROP TABLE IF EXISTS DictionaryBookmarkElement");
+
+            database.execSQL("CREATE TABLE IF NOT EXISTS DictionaryDisplayElement (`ref` INTEGER NOT NULL, `entryOrder` INTEGER NOT NULL, `seq` INTEGER NOT NULL, `readingsPrio` TEXT, `readings` TEXT, `writingsPrio` TEXT, `writings` TEXT, `pos` TEXT, `xref` TEXT, `ant` TEXT, `misc` TEXT, `lsource` TEXT, `dial` TEXT, `s_inf` TEXT, `field` TEXT, `lang` TEXT, `gloss` TEXT, PRIMARY KEY(`ref`, `seq`))");
+            database.execSQL("CREATE TABLE IF NOT EXISTS DictionaryElement (`ref` INTEGER NOT NULL, `entryOrder` INTEGER NOT NULL, `seq` INTEGER NOT NULL, PRIMARY KEY(`ref`, `seq`))");
 
             if (BuildConfig.DEBUG_DB_MIGRATION) {
                 log.info("Database migration ended");
@@ -445,7 +464,7 @@ public class DictionaryApplication extends Application {
 
             final PersistentDatabase pDb = Room.databaseBuilder(aParams[0],
                     PersistentDatabase.class, PERSISTENT_DATABASE_NAME)
-                    .addMigrations(MIGRATION_1_2)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                     .setJournalMode(RoomDatabase.JournalMode.TRUNCATE)
                     .addCallback(new RoomDatabase.Callback() {
                         @Override
@@ -513,11 +532,6 @@ public class DictionaryApplication extends Application {
             aParams[0].m_persistentDatabase.postValue(pDb);
             aParams[0].getSettings().postDatabase(pDb);
 
-            final BookmarkTool bookmarkTool = new BookmarkTool(pDb);
-            bookmarkTool.createStatements();
-
-            aParams[0].m_bookmarkTool.postValue(bookmarkTool);
-
             final BookmarkImportTool bookmarkImportTool = new BookmarkImportTool(pDb, aParams[0]);
             bookmarkImportTool.createStatements();
 
@@ -549,7 +563,6 @@ public class DictionaryApplication extends Application {
 
         m_dictionaryLanguage = new MutableLiveData<>();
         m_persistentDatabase = new MutableLiveData<>();
-        m_bookmarkTool = new MutableLiveData<>();
         m_bookmarkImportTool = new MutableLiveData<>();
 
         m_settings = new Settings();

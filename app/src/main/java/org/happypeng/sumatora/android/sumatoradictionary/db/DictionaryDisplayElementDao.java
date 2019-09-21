@@ -16,37 +16,29 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.db;
 
-import java.util.List;
-
 import androidx.lifecycle.LiveData;
 import androidx.paging.DataSource;
 import androidx.room.Dao;
-import androidx.room.Delete;
-import androidx.room.Insert;
-import androidx.room.OnConflictStrategy;
 import androidx.room.Query;
 
+import java.util.List;
+
 @Dao
-public interface DictionaryBookmarkDao {
-    @Query("SELECT * FROM DictionaryBookmark")
-    LiveData<List<DictionaryBookmark>> getAllLive();
+public interface DictionaryDisplayElementDao {
+    @Query("SELECT entryOrder, seq, readingsPrio, readings, writingsPrio, writings, "
+            + "pos, xref, ant, "
+            + "misc, lsource, dial, "
+            + "s_inf, field, 1 as bookmark, "
+            + "lang, gloss FROM DictionaryDisplayElement WHERE ref=:ref")
+    LiveData<List<DictionarySearchElement>> getAllDetailsLive(int ref);
 
-    @Query("SELECT * FROM DictionaryBookmark")
-    List<DictionaryBookmark> getAll();
+    @Query("SELECT entryOrder, seq, readingsPrio, readings, writingsPrio, writings, "
+            + "pos, xref, ant, "
+            + "misc, lsource, dial, "
+            + "s_inf, field, 1 as bookmark, "
+            + "lang, gloss FROM DictionaryDisplayElement WHERE ref=:ref")
+    DataSource.Factory<Integer, DictionarySearchElement> getAllDetailsLivePaged(int ref);
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void insert(DictionaryBookmark aBookmark);
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void insertMany(List<DictionaryBookmark> aBookmark);
-
-    @Delete
-    void delete(DictionaryBookmark aBookmark);
-
-    @Query("DELETE FROM DictionaryBookmark WHERE seq = :seq")
-    void delete(long seq);
-
-    // This query is used to get a LiveData updated when the table is modified
-    @Query("SELECT seq FROM DictionaryBookmark LIMIT 1")
-    LiveData<Long> getFirstLive();
+    @Query("DELETE FROM DictionaryDisplayElement")
+    void deleteAll();
 }

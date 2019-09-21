@@ -16,21 +16,27 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.db;
 
-import androidx.lifecycle.LiveData;
-import androidx.room.Dao;
-import androidx.room.Query;
+import androidx.room.Entity;
 
-import java.util.List;
+@Entity(primaryKeys = {"ref", "seq"})
+public class DictionaryDisplayElement {
+    public int ref;
+    public int entryOrder;
+    public long seq;
+    public String readingsPrio;
+    public String readings;
+    public String writingsPrio;
+    public String writings;
+    public String pos;
+    public String xref;
+    public String ant;
+    public String misc;
+    public String lsource;
+    public String dial;
+    public String s_inf;
+    public String field;
+    public String lang;
+    public String gloss;
 
-@Dao
-public interface DictionaryBookmarkElementDao {
-    @Query("SELECT entryOrder, seq, readingsPrio, readings, writingsPrio, writings, "
-            + "pos, xref, ant, "
-            + "misc, lsource, dial, "
-            + "s_inf, field, "
-            + "lang, gloss, bookmark FROM DictionaryBookmarkElement")
-    LiveData<List<DictionarySearchElement>> getAllDetailsLive();
-
-    @Query("DELETE FROM DictionaryBookmarkElement")
-    void deleteAll();
+    public DictionaryDisplayElement() { super(); }
 }
