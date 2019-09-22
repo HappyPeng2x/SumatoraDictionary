@@ -99,10 +99,35 @@ public class DictionaryBookmarkFragment extends Fragment {
 
     private SearchView m_searchView;
 
+    private int m_key;
+    private String m_searchSet;
+    private boolean m_allowSearchAll;
+    private String m_title;
+    private boolean m_allowExport;
+    private boolean m_openSearchBox;
+
     public DictionaryBookmarkFragment() {
         if (BuildConfig.DEBUG_UI) {
             m_log = LoggerFactory.getLogger(this.getClass());
         }
+
+        m_key = 0;
+        m_searchSet = null;
+        m_allowSearchAll = false;
+        m_title = null;
+        m_allowExport = false;
+        m_openSearchBox = false;
+    }
+
+    public void setParameters(int a_key, String aSearchSet, boolean aAllowSearchAll,
+                              @NonNull String aTitle, boolean aAllowExport,
+                              boolean aOpenSearchBox) {
+        m_key = a_key;
+        m_searchSet = aSearchSet;
+        m_allowSearchAll = aAllowSearchAll;
+        m_title = aTitle;
+        m_allowExport = aAllowExport;
+        m_openSearchBox = aOpenSearchBox;
     }
 
     private void setInPreparation() {
@@ -173,6 +198,11 @@ public class DictionaryBookmarkFragment extends Fragment {
         final View view = inflater.inflate(R.layout.fragment_dictionary_bookmark, container, false);
 
         final Toolbar tb = (Toolbar) view.findViewById(R.id.dictionary_bookmark_fragment_toolbar);
+
+        if (m_title != null) {
+            tb.setTitle(m_title);
+        }
+
         activity.setSupportActionBar(tb);
 
         setHasOptionsMenu(true);
@@ -192,7 +222,9 @@ public class DictionaryBookmarkFragment extends Fragment {
         layoutManager.setOrientation(RecyclerView.VERTICAL);
         m_recyclerView.setLayoutManager(layoutManager);
 
-        m_viewModel = ViewModelProviders.of(getActivity()).get(DictionaryBookmarkFragmentModel.class);
+        m_viewModel = ViewModelProviders.of(getActivity()).get(String.valueOf(m_key),
+                DictionaryBookmarkFragmentModel.class);
+        m_viewModel.initialize(m_key, m_searchSet, m_allowSearchAll);
 
         final DictionarySearchElementViewHolder.Status viewHolderStatus = new DictionarySearchElementViewHolder.Status();
         final DictionaryPagedListAdapter listAdapter = new DictionaryPagedListAdapter(viewHolderStatus);
@@ -280,26 +312,35 @@ public class DictionaryBookmarkFragment extends Fragment {
     }
 
     @Override
-    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+    public void onCreateOptionsMenu(@NonNull Menu menu, @NonNull MenuInflater inflater) {
         super.onCreateOptionsMenu(menu, inflater);
 
         inflater.inflate(R.menu.bookmark_toolbar_menu, menu);
 
-        menu.findItem(R.id.share_bookmarks).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
-            @Override
-            public boolean onMenuItemClick(MenuItem item) {
-                shareBookmarks();
+        if (m_allowExport) {
+            menu.findItem(R.id.share_bookmarks).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
+                @Override
+                public boolean onMenuItemClick(MenuItem item) {
+                    shareBookmarks();
 
-                return false;
-            }
-        });
+                    return false;
+                }
+            });
+        } else {
+            menu.findItem(R.id.share_bookmarks).setVisible(false);
+        }
 
         SearchManager searchManager = (SearchManager) getActivity().getSystemService(Context.SEARCH_SERVICE);
         MenuItem searchViewMenuItem = menu.findItem(R.id.bookmark_fragment_menu_search);
 
         m_searchView = (SearchView) searchViewMenuItem.getActionView();
         m_searchView.setSearchableInfo(searchManager.getSearchableInfo(getActivity().getComponentName()));
-        m_searchView.setIconifiedByDefault(true);
+
+        if (!m_openSearchBox) {
+            m_searchView.setIconifiedByDefault(true);
+        } else {
+            m_searchView.setIconifiedByDefault(false);
+        }
 
         final SearchView.SearchAutoComplete mSearchSrcTextView =
                 m_searchView.findViewById(androidx.appcompat.R.id.search_src_text);

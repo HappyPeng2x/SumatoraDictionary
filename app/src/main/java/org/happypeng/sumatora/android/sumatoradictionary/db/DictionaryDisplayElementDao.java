@@ -29,14 +29,16 @@ public interface DictionaryDisplayElementDao {
             + "pos, xref, ant, "
             + "misc, lsource, dial, "
             + "s_inf, field, 1 as bookmark, "
-            + "lang, gloss FROM DictionaryDisplayElement WHERE ref=:ref")
+            + "lang, gloss FROM DictionaryDisplayElement WHERE ref=:ref "
+            + "ORDER BY entryOrder, seq")
     LiveData<List<DictionarySearchElement>> getAllDetailsLive(int ref);
 
     @Query("SELECT entryOrder, seq, readingsPrio, readings, writingsPrio, writings, "
             + "pos, xref, ant, "
             + "misc, lsource, dial, "
             + "s_inf, field, 1 as bookmark, "
-            + "lang, gloss FROM DictionaryDisplayElement WHERE ref=:ref")
+            + "lang, gloss FROM DictionaryDisplayElement WHERE ref=:ref "
+            + "ORDER BY entryOrder, seq")
     DataSource.Factory<Integer, DictionarySearchElement> getAllDetailsLivePaged(int ref);
 
     @Query("DELETE FROM DictionaryDisplayElement")

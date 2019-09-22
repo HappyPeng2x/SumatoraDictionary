@@ -39,11 +39,11 @@ import androidx.paging.PagedList;
 public class DictionaryBookmarkFragmentModel extends AndroidViewModel {
     private DictionaryApplication mApp;
 
-    final private MediatorLiveData<DisplayStatus> m_status;
+    private MediatorLiveData<DisplayStatus> m_status;
 
     private BookmarkTool m_bookmarkTool;
 
-    final private LiveData<PagedList<DictionarySearchElement>> m_elementList;
+    private LiveData<PagedList<DictionarySearchElement>> m_elementList;
 
     public LiveData<PagedList<DictionarySearchElement>> getElementList() { return m_elementList; }
     public LiveData<DisplayStatus> getStatus() { return m_status; }
@@ -52,22 +52,19 @@ public class DictionaryBookmarkFragmentModel extends AndroidViewModel {
 
     public Integer getBookmarkToolStatus() { return m_bookmarkToolStatus; }
 
-    public DictionaryBookmarkFragmentModel(Application aApp) {
-        super(aApp);
+    public void initialize(final int aKey, final String aSearchSet, final boolean aAllowSearchAll) {
+        if (m_status != null) {
+            return;
+        }
 
-        mApp = (DictionaryApplication) aApp;
-        m_status = DisplayStatus.create(mApp, 1);
-
-        m_bookmarkToolStatus = null;
-
-        m_bookmarkTool = null;
+        m_status = DisplayStatus.create(mApp, aKey);
 
         final LiveData<BookmarkTool> bookmarkTool =
                 Transformations.switchMap(mApp.getPersistentDatabase(),
                         new Function<PersistentDatabase, LiveData<BookmarkTool>>() {
                             @Override
                             public LiveData<BookmarkTool> apply(PersistentDatabase input) {
-                                return BookmarkTool.create(input, 1);
+                                return BookmarkTool.create(input, aKey, aSearchSet, aAllowSearchAll);
                             }
                         });
 
@@ -129,22 +126,15 @@ public class DictionaryBookmarkFragmentModel extends AndroidViewModel {
                         }
                     }
                 });
+    }
 
-/*        m_status.addSource(m_term,
-                new Observer<String>() {
-                    @Override
-                    public void onChanged(String s) {
-                        if (m_bookmarkTool != null) {
-                            String value = m_term.getValue();
+    public DictionaryBookmarkFragmentModel(Application aApp) {
+        super(aApp);
 
-                            if (value == null) {
-                                value = "";
-                            }
+        mApp = (DictionaryApplication) aApp;
 
-                            m_bookmarkTool.setTerm(value, true);
-                        }
-                    }
-                });*/
+        m_bookmarkToolStatus = null;
+        m_bookmarkTool = null;
     }
 
     public void deleteBookmark(final long aSeq) {
