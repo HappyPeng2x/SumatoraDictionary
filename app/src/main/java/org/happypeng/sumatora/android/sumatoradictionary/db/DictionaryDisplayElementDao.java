@@ -25,20 +25,28 @@ import java.util.List;
 
 @Dao
 public interface DictionaryDisplayElementDao {
-    @Query("SELECT entryOrder, seq, readingsPrio, readings, writingsPrio, writings, "
-            + "pos, xref, ant, "
-            + "misc, lsource, dial, "
-            + "s_inf, field, 1 as bookmark, "
-            + "lang, gloss FROM DictionaryDisplayElement WHERE ref=:ref "
-            + "ORDER BY entryOrder, seq")
+    @Query("SELECT DictionaryDisplayElement.entryOrder, DictionaryDisplayElement.seq, "
+            + "DictionaryDisplayElement.readingsPrio, DictionaryDisplayElement.readings, "
+            + "DictionaryDisplayElement.writingsPrio, DictionaryDisplayElement.writings, "
+            + "DictionaryDisplayElement.pos, DictionaryDisplayElement.xref, DictionaryDisplayElement.ant, "
+            + "DictionaryDisplayElement.misc, DictionaryDisplayElement.lsource, DictionaryDisplayElement.dial, "
+            + "DictionaryDisplayElement.s_inf, DictionaryDisplayElement.field, DictionaryBookmark.bookmark, "
+            + "DictionaryDisplayElement.lang, DictionaryDisplayElement.gloss FROM "
+            + "DictionaryDisplayElement LEFT JOIN DictionaryBookmark ON DictionaryDisplayElement.seq = DictionaryBookmark.seq "
+            + "WHERE ref=:ref "
+            + "ORDER BY DictionaryDisplayElement.entryOrder, DictionaryDisplayElement.seq")
     LiveData<List<DictionarySearchElement>> getAllDetailsLive(int ref);
 
-    @Query("SELECT entryOrder, seq, readingsPrio, readings, writingsPrio, writings, "
-            + "pos, xref, ant, "
-            + "misc, lsource, dial, "
-            + "s_inf, field, 1 as bookmark, "
-            + "lang, gloss FROM DictionaryDisplayElement WHERE ref=:ref "
-            + "ORDER BY entryOrder, seq")
+    @Query("SELECT DictionaryDisplayElement.entryOrder, DictionaryDisplayElement.seq, "
+            + "DictionaryDisplayElement.readingsPrio, DictionaryDisplayElement.readings, "
+            + "DictionaryDisplayElement.writingsPrio, DictionaryDisplayElement.writings, "
+            + "DictionaryDisplayElement.pos, DictionaryDisplayElement.xref, DictionaryDisplayElement.ant, "
+            + "DictionaryDisplayElement.misc, DictionaryDisplayElement.lsource, DictionaryDisplayElement.dial, "
+            + "DictionaryDisplayElement.s_inf, DictionaryDisplayElement.field, DictionaryBookmark.bookmark, "
+            + "DictionaryDisplayElement.lang, DictionaryDisplayElement.gloss FROM "
+            + "DictionaryDisplayElement LEFT JOIN DictionaryBookmark ON DictionaryDisplayElement.seq = DictionaryBookmark.seq "
+            + "WHERE ref=:ref "
+            + "ORDER BY DictionaryDisplayElement.entryOrder, DictionaryDisplayElement.seq")
     DataSource.Factory<Integer, DictionarySearchElement> getAllDetailsLivePaged(int ref);
 
     @Query("DELETE FROM DictionaryDisplayElement")

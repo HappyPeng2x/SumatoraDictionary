@@ -106,7 +106,7 @@ public class Dictionary extends AppCompatActivity implements SettingsFragment.Se
 
             m_dictionarySearchFragment = new DictionaryBookmarkFragment();
             m_dictionarySearchFragment.setParameters(1, null, false,
-                    "", false, true);
+                    "", false, true, "");
         }
 
         switchToFragment(m_dictionarySearchFragment, SEARCH_FRAGMENT_TAG);
@@ -125,7 +125,7 @@ public class Dictionary extends AppCompatActivity implements SettingsFragment.Se
         if (m_dictionaryBookmarkFragment == null) {
             m_dictionaryBookmarkFragment = new DictionaryBookmarkFragment();
             m_dictionaryBookmarkFragment.setParameters(2, "SELECT seq FROM DictionaryBookmark", true,
-                    "Bookmarks", true, true);
+                    "Bookmarks", true, true, "DictionaryBookmark");
         }
 
         switchToFragment(m_dictionaryBookmarkFragment, BOOKMARK_FRAGMENT_TAG);

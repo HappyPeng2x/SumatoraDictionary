@@ -322,7 +322,7 @@ public class BookmarkTool {
 
     @MainThread
     private void executeNextStatement(final boolean aReset) {
-        if (mStatus.getValue() == null || mStatus.getValue() < STATUS_INITIALIZED) {
+        if (mStatus.getValue() == null || mStatus.getValue() < STATUS_INITIALIZED || mQueriesPosition >= mQueries.length) {
             return;
         }
 

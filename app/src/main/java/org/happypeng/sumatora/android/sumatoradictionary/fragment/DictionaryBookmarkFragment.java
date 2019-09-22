@@ -105,6 +105,7 @@ public class DictionaryBookmarkFragment extends Fragment {
     private String m_title;
     private boolean m_allowExport;
     private boolean m_openSearchBox;
+    private String m_tableObserve;
 
     public DictionaryBookmarkFragment() {
         if (BuildConfig.DEBUG_UI) {
@@ -117,17 +118,19 @@ public class DictionaryBookmarkFragment extends Fragment {
         m_title = null;
         m_allowExport = false;
         m_openSearchBox = false;
+        m_tableObserve = "";
     }
 
     public void setParameters(int a_key, String aSearchSet, boolean aAllowSearchAll,
                               @NonNull String aTitle, boolean aAllowExport,
-                              boolean aOpenSearchBox) {
+                              boolean aOpenSearchBox, @NonNull String aTableObserve) {
         m_key = a_key;
         m_searchSet = aSearchSet;
         m_allowSearchAll = aAllowSearchAll;
         m_title = aTitle;
         m_allowExport = aAllowExport;
         m_openSearchBox = aOpenSearchBox;
+        m_tableObserve = aTableObserve;
     }
 
     private void setInPreparation() {
@@ -224,7 +227,7 @@ public class DictionaryBookmarkFragment extends Fragment {
 
         m_viewModel = ViewModelProviders.of(getActivity()).get(String.valueOf(m_key),
                 DictionaryBookmarkFragmentModel.class);
-        m_viewModel.initialize(m_key, m_searchSet, m_allowSearchAll);
+        m_viewModel.initialize(m_key, m_searchSet, m_allowSearchAll, m_tableObserve);
 
         final DictionarySearchElementViewHolder.Status viewHolderStatus = new DictionarySearchElementViewHolder.Status();
         final DictionaryPagedListAdapter listAdapter = new DictionaryPagedListAdapter(viewHolderStatus);
@@ -238,7 +241,11 @@ public class DictionaryBookmarkFragment extends Fragment {
         listAdapter.setBookmarkClickListener(new DictionarySearchElementViewHolder.ClickListener() {
             @Override
             public void onClick(View aView, DictionarySearchElement aEntry) {
-                m_viewModel.deleteBookmark(aEntry.getSeq());
+                if (aEntry.getBookmark() == 0) {
+                    m_viewModel.updateBookmark(aEntry.getSeq(), 1);
+                } else {
+                    m_viewModel.updateBookmark(aEntry.getSeq(), 0);
+                }
             }
         });
 
