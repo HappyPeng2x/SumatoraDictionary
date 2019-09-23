@@ -35,7 +35,7 @@ import android.os.Handler;
 import com.google.android.material.navigation.NavigationView;
 
 import org.happypeng.sumatora.android.sumatoradictionary.fragment.DebugFragment;
-import org.happypeng.sumatora.android.sumatoradictionary.fragment.DictionaryBookmarkFragment;
+import org.happypeng.sumatora.android.sumatoradictionary.fragment.DictionaryQueryFragment;
 import org.happypeng.sumatora.android.sumatoradictionary.fragment.SettingsFragment;
 
 import org.slf4j.Logger;
@@ -44,10 +44,10 @@ import org.slf4j.LoggerFactory;
 public class Dictionary extends AppCompatActivity implements SettingsFragment.SettingsFragmentActions {
     private DrawerLayout m_drawer_layout;
 
-    private DictionaryBookmarkFragment m_dictionaryBookmarkFragment;
+    private DictionaryQueryFragment m_dictionaryBookmarkFragment;
     private boolean m_dictionaryBookmarkFragmentShown;
 
-    private DictionaryBookmarkFragment m_dictionarySearchFragment;
+    private DictionaryQueryFragment m_dictionarySearchFragment;
     private boolean m_dictionarySearchFragmentShown;
 
     private DebugFragment m_debugFragment;
@@ -96,7 +96,7 @@ public class Dictionary extends AppCompatActivity implements SettingsFragment.Se
                 m_log.info("search fragment created");
             }
 
-            m_dictionarySearchFragment = new DictionaryBookmarkFragment();
+            m_dictionarySearchFragment = new DictionaryQueryFragment();
             m_dictionarySearchFragment.setParameters(1, null, false,
                     "", false, true, "");
         }
@@ -115,7 +115,7 @@ public class Dictionary extends AppCompatActivity implements SettingsFragment.Se
 
     private void switchToBookmarksFragment() {
         if (m_dictionaryBookmarkFragment == null) {
-            m_dictionaryBookmarkFragment = new DictionaryBookmarkFragment();
+            m_dictionaryBookmarkFragment = new DictionaryQueryFragment();
             m_dictionaryBookmarkFragment.setParameters(2, "SELECT seq FROM DictionaryBookmark", true,
                     "Bookmarks", true, true, "DictionaryBookmark");
         }

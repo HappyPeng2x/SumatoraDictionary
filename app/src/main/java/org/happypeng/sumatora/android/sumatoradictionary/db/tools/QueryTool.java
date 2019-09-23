@@ -34,7 +34,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class BookmarkTool {
+public class QueryTool {
     static private final String SQL_QUERY_DELETE =
             "DELETE FROM DictionaryElement WHERE ref = ?";
 
@@ -141,7 +141,7 @@ public class BookmarkTool {
 
     final private boolean mAllowQueryAll;
 
-    public BookmarkTool(final PersistentDatabase aDB, int aRef, String aSearchSet, boolean aAllowQueryAll) {
+    public QueryTool(final PersistentDatabase aDB, int aRef, String aSearchSet, boolean aAllowQueryAll) {
         if (BuildConfig.DEBUG_QUERYTOOL) {
             mLog = LoggerFactory.getLogger(getClass());
 
@@ -357,11 +357,11 @@ public class BookmarkTool {
     }
 
     @MainThread
-    public static LiveData<BookmarkTool> create(@NonNull final PersistentDatabase aDB, final int aRef,
-                                                String aSearchSet, boolean aAllowQueryAll)
+    public static LiveData<QueryTool> create(@NonNull final PersistentDatabase aDB, final int aRef,
+                                             String aSearchSet, boolean aAllowQueryAll)
     {
-        final BookmarkTool tool = new BookmarkTool(aDB, aRef, aSearchSet, aAllowQueryAll);
-        final MutableLiveData<BookmarkTool> liveData = new MutableLiveData<>();
+        final QueryTool tool = new QueryTool(aDB, aRef, aSearchSet, aAllowQueryAll);
+        final MutableLiveData<QueryTool> liveData = new MutableLiveData<>();
 
         new AsyncTask<Void, Void, Void>() {
             @Override

@@ -23,7 +23,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.DictionaryApplication;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
-import org.happypeng.sumatora.android.sumatoradictionary.db.tools.BookmarkTool;
+import org.happypeng.sumatora.android.sumatoradictionary.db.tools.QueryTool;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.DisplayStatus;
 
 import androidx.annotation.MainThread;
@@ -32,7 +32,6 @@ import androidx.arch.core.util.Function;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MediatorLiveData;
-import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.Transformations;
 import androidx.paging.PagedList;
@@ -40,12 +39,12 @@ import androidx.room.InvalidationTracker;
 
 import java.util.Set;
 
-public class DictionaryBookmarkFragmentModel extends AndroidViewModel {
+public class DictionaryQueryFragmentModel extends AndroidViewModel {
     private DictionaryApplication mApp;
 
     private MediatorLiveData<DisplayStatus> m_status;
 
-    private BookmarkTool m_bookmarkTool;
+    private QueryTool m_queryTool;
 
     private LiveData<PagedList<DictionarySearchElement>> m_elementList;
 
@@ -71,17 +70,17 @@ public class DictionaryBookmarkFragmentModel extends AndroidViewModel {
         final InvalidationTracker.Observer observer = new InvalidationTracker.Observer(aTableObserve) {
             @Override
             public void onInvalidated(@NonNull Set<String> tables) {
-                if (m_bookmarkTool != null) {
-                    m_bookmarkTool.setTerm(m_bookmarkTool.getTerm(), true);
+                if (m_queryTool != null) {
+                    m_queryTool.setTerm(m_queryTool.getTerm(), true);
                 }
             }
         };
 
-        final LiveData<BookmarkTool> bookmarkTool =
+        final LiveData<QueryTool> bookmarkTool =
                 Transformations.switchMap(mApp.getPersistentDatabase(),
-                        new Function<PersistentDatabase, LiveData<BookmarkTool>>() {
+                        new Function<PersistentDatabase, LiveData<QueryTool>>() {
                             @Override
-                            public LiveData<BookmarkTool> apply(PersistentDatabase input) {
+                            public LiveData<QueryTool> apply(PersistentDatabase input) {
                                 if (m_currentDatabase != null) {
                                     m_currentDatabase.getInvalidationTracker().removeObserver(observer);
                                 }
@@ -92,36 +91,36 @@ public class DictionaryBookmarkFragmentModel extends AndroidViewModel {
 
                                 m_currentDatabase = input;
 
-                                return BookmarkTool.create(input, aKey, aSearchSet, aAllowSearchAll);
+                                return QueryTool.create(input, aKey, aSearchSet, aAllowSearchAll);
                             }
                         });
 
         m_elementList =
                 Transformations.switchMap(bookmarkTool,
-                        new Function<BookmarkTool, LiveData<PagedList<DictionarySearchElement>>>() {
+                        new Function<QueryTool, LiveData<PagedList<DictionarySearchElement>>>() {
                             @Override
-                            public LiveData<PagedList<DictionarySearchElement>> apply(BookmarkTool input) {
+                            public LiveData<PagedList<DictionarySearchElement>> apply(QueryTool input) {
                                 return input.getDisplayElements();
                             }
                         });
 
         m_status.addSource(bookmarkTool,
-                new Observer<BookmarkTool>() {
+                new Observer<QueryTool>() {
                     @Override
-                    public void onChanged(BookmarkTool bookmarkTool) {
-                        m_bookmarkTool = bookmarkTool;
+                    public void onChanged(QueryTool queryTool) {
+                        m_queryTool = queryTool;
 
-                        if (m_bookmarkTool != null) {
-                            bookmarkTool.setTerm(bookmarkTool.getTerm(), true);
+                        if (m_queryTool != null) {
+                            queryTool.setTerm(queryTool.getTerm(), true);
                         }
                     }
                 });
 
         final LiveData<Integer> bookmarkToolStatus =
                 Transformations.switchMap(bookmarkTool,
-                        new Function<BookmarkTool, LiveData<Integer>>() {
+                        new Function<QueryTool, LiveData<Integer>>() {
                             @Override
-                            public LiveData<Integer> apply(BookmarkTool input) {
+                            public LiveData<Integer> apply(QueryTool input) {
                                 return input.getStatus();
                             }
                         });
@@ -137,13 +136,13 @@ public class DictionaryBookmarkFragmentModel extends AndroidViewModel {
                 });
     }
 
-    public DictionaryBookmarkFragmentModel(Application aApp) {
+    public DictionaryQueryFragmentModel(Application aApp) {
         super(aApp);
 
         mApp = (DictionaryApplication) aApp;
 
         m_bookmarkToolStatus = null;
-        m_bookmarkTool = null;
+        m_queryTool = null;
     }
 
     public void updateBookmark(final long seq, final long bookmark) {
@@ -167,14 +166,14 @@ public class DictionaryBookmarkFragmentModel extends AndroidViewModel {
 
     @MainThread
     public void setTerm(@NonNull String aTerm) {
-        if (m_bookmarkTool != null) {
-            m_bookmarkTool.setTerm(aTerm, true);
+        if (m_queryTool != null) {
+            m_queryTool.setTerm(aTerm, true);
         }
     }
 
     public String getTerm() {
-        if (m_bookmarkTool != null) {
-            return m_bookmarkTool.getTerm();
+        if (m_queryTool != null) {
+            return m_queryTool.getTerm();
         }
 
         return "";

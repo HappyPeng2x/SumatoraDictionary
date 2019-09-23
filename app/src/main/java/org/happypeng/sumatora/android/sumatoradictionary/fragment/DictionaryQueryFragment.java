@@ -63,10 +63,10 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryLanguage;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
-import org.happypeng.sumatora.android.sumatoradictionary.db.tools.BookmarkTool;
+import org.happypeng.sumatora.android.sumatoradictionary.db.tools.QueryTool;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.DisplayStatus;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Settings;
-import org.happypeng.sumatora.android.sumatoradictionary.model.DictionaryBookmarkFragmentModel;
+import org.happypeng.sumatora.android.sumatoradictionary.model.DictionaryQueryFragmentModel;
 import org.happypeng.sumatora.android.sumatoradictionary.xml.DictionaryBookmarkXML;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,7 +74,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.util.List;
 
-public class DictionaryBookmarkFragment extends Fragment {
+public class DictionaryQueryFragment extends Fragment {
     private static final String AUTHORITY = "org.happypeng.sumatora.android.sumatoradictionary.fileprovider";
 
     private ProgressBar m_progressBar;
@@ -82,7 +82,7 @@ public class DictionaryBookmarkFragment extends Fragment {
 
     private TextView m_languageText;
 
-    private DictionaryBookmarkFragmentModel m_viewModel;
+    private DictionaryQueryFragmentModel m_viewModel;
 
     private PopupMenu m_languagePopupMenu;
 
@@ -101,7 +101,7 @@ public class DictionaryBookmarkFragment extends Fragment {
     private boolean m_openSearchBox;
     private String m_tableObserve;
 
-    public DictionaryBookmarkFragment() {
+    public DictionaryQueryFragment() {
         if (BuildConfig.DEBUG_UI) {
             m_log = LoggerFactory.getLogger(this.getClass());
         }
@@ -192,7 +192,7 @@ public class DictionaryBookmarkFragment extends Fragment {
         m_languagePopupMenu = null;
 
         final AppCompatActivity activity = (AppCompatActivity) getActivity();
-        final View view = inflater.inflate(R.layout.fragment_dictionary_bookmark, container, false);
+        final View view = inflater.inflate(R.layout.fragment_dictionary_query, container, false);
 
         final Toolbar tb = (Toolbar) view.findViewById(R.id.dictionary_bookmark_fragment_toolbar);
 
@@ -220,7 +220,7 @@ public class DictionaryBookmarkFragment extends Fragment {
         m_recyclerView.setLayoutManager(layoutManager);
 
         m_viewModel = ViewModelProviders.of(getActivity()).get(String.valueOf(m_key),
-                DictionaryBookmarkFragmentModel.class);
+                DictionaryQueryFragmentModel.class);
         m_viewModel.initialize(m_key, m_searchSet, m_allowSearchAll, m_tableObserve);
 
         final DictionarySearchElementViewHolder.Status viewHolderStatus = new DictionarySearchElementViewHolder.Status();
@@ -286,16 +286,16 @@ public class DictionaryBookmarkFragment extends Fragment {
 
                         Integer bookmarkToolStatus = m_viewModel.getBookmarkToolStatus();
 
-                        if (bookmarkToolStatus == null || bookmarkToolStatus == BookmarkTool.STATUS_PRE_INITIALIZED) {
+                        if (bookmarkToolStatus == null || bookmarkToolStatus == QueryTool.STATUS_PRE_INITIALIZED) {
                             setInPreparation();
-                        } else if (bookmarkToolStatus == BookmarkTool.STATUS_INITIALIZED) {
+                        } else if (bookmarkToolStatus == QueryTool.STATUS_INITIALIZED) {
                             setReady();
-                        } else if (bookmarkToolStatus == BookmarkTool.STATUS_SEARCHING) {
+                        } else if (bookmarkToolStatus == QueryTool.STATUS_SEARCHING) {
                             setSearching();
-                        } else if (bookmarkToolStatus == BookmarkTool.STATUS_RESULTS_FOUND ||
-                                bookmarkToolStatus == BookmarkTool.STATUS_RESULTS_FOUND_ENDED) {
+                        } else if (bookmarkToolStatus == QueryTool.STATUS_RESULTS_FOUND ||
+                                bookmarkToolStatus == QueryTool.STATUS_RESULTS_FOUND_ENDED) {
                             setReady();
-                        } else if (bookmarkToolStatus == BookmarkTool.STATUS_NO_RESULTS_FOUND_ENDED) {
+                        } else if (bookmarkToolStatus == QueryTool.STATUS_NO_RESULTS_FOUND_ENDED) {
                             setNoResultsFound();
                         }
                     }
@@ -316,7 +316,7 @@ public class DictionaryBookmarkFragment extends Fragment {
     public void onCreateOptionsMenu(@NonNull Menu menu, @NonNull MenuInflater inflater) {
         super.onCreateOptionsMenu(menu, inflater);
 
-        inflater.inflate(R.menu.bookmark_toolbar_menu, menu);
+        inflater.inflate(R.menu.bookmark_query_menu, menu);
 
         if (m_allowExport) {
             menu.findItem(R.id.share_bookmarks).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
