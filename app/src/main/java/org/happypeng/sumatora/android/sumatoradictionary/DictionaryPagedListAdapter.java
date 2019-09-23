@@ -25,8 +25,6 @@ import android.view.ViewGroup;
 
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElementDiffUtil;
-import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Settings;
-import org.happypeng.sumatora.android.sumatoradictionary.model.DictionarySearchFragmentModel;
 
 import java.util.HashMap;
 

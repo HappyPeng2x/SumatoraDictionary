@@ -29,17 +29,13 @@ import android.widget.ImageButton;
 import android.widget.TextView;
 
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
-import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Settings;
-import org.happypeng.sumatora.android.sumatoradictionary.model.DictionarySearchFragmentModel;
 import org.json.JSONArray;
 import org.json.JSONException;
 
 import androidx.annotation.NonNull;
-import androidx.cardview.widget.CardView;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.HashMap;
-import java.util.Set;
 
 public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
     public static class Status {

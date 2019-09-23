@@ -260,7 +260,7 @@ public class BookmarkTool {
                 long lastInsert = -1;
 
                 if ("".equals(aTerm) && (!mTerm.equals(aTerm) || aReset)) {
-                    mStatus.postValue(QueryTool.QueriesList.STATUS_INITIALIZED);
+                    mStatus.postValue(STATUS_INITIALIZED);
 
                     mDeleteStatement.bindLong(1, mRef);
                     mDeleteStatement.executeUpdateDelete();

@@ -27,24 +27,16 @@ import androidx.fragment.app.FragmentTransaction;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.drawerlayout.widget.DrawerLayout;
 
-import android.net.Uri;
-import android.os.Build;
-import android.os.ParcelFileDescriptor;
 import android.view.MenuItem;
 
 import android.os.Bundle;
 import android.os.Handler;
 
-import android.os.StrictMode;
-
 import com.google.android.material.navigation.NavigationView;
 
 import org.happypeng.sumatora.android.sumatoradictionary.fragment.DebugFragment;
 import org.happypeng.sumatora.android.sumatoradictionary.fragment.DictionaryBookmarkFragment;
-import org.happypeng.sumatora.android.sumatoradictionary.fragment.DictionarySearchFragment;
 import org.happypeng.sumatora.android.sumatoradictionary.fragment.SettingsFragment;
-
-import java.io.FileDescriptor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

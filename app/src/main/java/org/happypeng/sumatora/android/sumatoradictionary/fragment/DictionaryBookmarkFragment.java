@@ -21,7 +21,6 @@ import android.app.SearchManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.TypedArray;
-import android.graphics.Color;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
 import android.graphics.drawable.Drawable;
@@ -35,9 +34,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.SearchView;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.content.FileProvider;
-import androidx.core.view.MenuItemCompat;
 import androidx.fragment.app.Fragment;
-import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProviders;
 import androidx.paging.PagedList;
@@ -59,7 +56,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import org.happypeng.sumatora.android.sumatoradictionary.BuildConfig;
-import org.happypeng.sumatora.android.sumatoradictionary.DictionaryListAdapter;
 import org.happypeng.sumatora.android.sumatoradictionary.DictionaryPagedListAdapter;
 import org.happypeng.sumatora.android.sumatoradictionary.DictionarySearchElementViewHolder;
 import org.happypeng.sumatora.android.sumatoradictionary.R;
@@ -69,7 +65,6 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElem
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.BookmarkTool;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.DisplayStatus;
-import org.happypeng.sumatora.android.sumatoradictionary.db.tools.QueryTool;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Settings;
 import org.happypeng.sumatora.android.sumatoradictionary.model.DictionaryBookmarkFragmentModel;
 import org.happypeng.sumatora.android.sumatoradictionary.xml.DictionaryBookmarkXML;
@@ -77,7 +72,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.util.LinkedList;
 import java.util.List;
 
 public class DictionaryBookmarkFragment extends Fragment {
@@ -301,7 +295,7 @@ public class DictionaryBookmarkFragment extends Fragment {
                         } else if (bookmarkToolStatus == BookmarkTool.STATUS_RESULTS_FOUND ||
                                 bookmarkToolStatus == BookmarkTool.STATUS_RESULTS_FOUND_ENDED) {
                             setReady();
-                        } else if (bookmarkToolStatus == QueryTool.QueriesList.STATUS_NO_RESULTS_FOUND_ENDED) {
+                        } else if (bookmarkToolStatus == BookmarkTool.STATUS_NO_RESULTS_FOUND_ENDED) {
                             setNoResultsFound();
                         }
                     }
