@@ -35,6 +35,13 @@
             android:layout_alignParentLeft="true"
             android:orientation="vertical">
 
+            <TextView
+                android:id="@+id/dictionary_bookmark_fragment_search_status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="No results"
+                android:ems="10" />
+
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/dictionary_bookmark_fragment_recyclerview"
                 android:layout_width="match_parent"

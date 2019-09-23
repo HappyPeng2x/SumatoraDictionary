@@ -79,6 +79,7 @@ public class DictionaryQueryFragment extends Fragment {
 
     private ProgressBar m_progressBar;
     private TextView m_statusText;
+    private TextView m_searchStatusText;
 
     private TextView m_languageText;
 
@@ -101,6 +102,8 @@ public class DictionaryQueryFragment extends Fragment {
     private boolean m_openSearchBox;
     private String m_tableObserve;
 
+    private String m_term;
+
     public DictionaryQueryFragment() {
         if (BuildConfig.DEBUG_UI) {
             m_log = LoggerFactory.getLogger(this.getClass());
@@ -113,6 +116,8 @@ public class DictionaryQueryFragment extends Fragment {
         m_allowExport = false;
         m_openSearchBox = false;
         m_tableObserve = "";
+
+        m_term = "";
     }
 
     public void setParameters(int a_key, String aSearchSet, boolean aAllowSearchAll,
@@ -135,6 +140,7 @@ public class DictionaryQueryFragment extends Fragment {
         m_progressBar.animate();
 
         m_statusText.setText("Loading database...");
+        m_searchStatusText.setVisibility(View.GONE);
 
 
         if (m_searchView != null) {
@@ -150,6 +156,7 @@ public class DictionaryQueryFragment extends Fragment {
 
         m_statusText.setVisibility(View.GONE);
         m_progressBar.setVisibility(View.GONE);
+        m_searchStatusText.setVisibility(View.GONE);
 
         if (m_searchView != null) {
             m_searchView.setActivated(true);
@@ -160,6 +167,7 @@ public class DictionaryQueryFragment extends Fragment {
     {
         m_statusText.setVisibility(View.VISIBLE);
         m_progressBar.setVisibility(View.VISIBLE);
+        m_searchStatusText.setVisibility(View.GONE);
 
         m_progressBar.setIndeterminate(true);
         m_progressBar.animate();
@@ -180,9 +188,26 @@ public class DictionaryQueryFragment extends Fragment {
             m_searchView.setActivated(true);
         }
 
-        m_statusText.setText("No results found.");
+        m_searchStatusText.setVisibility(View.VISIBLE);
+        m_searchStatusText.setText("No results found for term '" + m_term + "'.");
 
-        m_statusText.setVisibility(View.VISIBLE);
+        m_statusText.setVisibility(View.GONE);
+        m_progressBar.setVisibility(View.GONE);
+    }
+
+    private void setResultsFound()
+    {
+        m_progressBar.setIndeterminate(false);
+        m_progressBar.setMax(0);
+
+        if (m_searchView != null) {
+            m_searchView.setActivated(true);
+        }
+
+        m_searchStatusText.setVisibility(View.VISIBLE);
+        m_searchStatusText.setText("Results for term '" + m_term + "':");
+
+        m_statusText.setVisibility(View.GONE);
         m_progressBar.setVisibility(View.GONE);
     }
 
@@ -210,6 +235,7 @@ public class DictionaryQueryFragment extends Fragment {
 
         m_progressBar = (ProgressBar) view.findViewById(R.id.dictionary_bookmark_fragment_progressbar);
         m_statusText = (TextView) view.findViewById(R.id.dictionary_bookmark_fragment_statustext);
+        m_searchStatusText = (TextView) view.findViewById(R.id.dictionary_bookmark_fragment_search_status);
 
         setInPreparation();
 
@@ -294,7 +320,7 @@ public class DictionaryQueryFragment extends Fragment {
                             setSearching();
                         } else if (bookmarkToolStatus == QueryTool.STATUS_RESULTS_FOUND ||
                                 bookmarkToolStatus == QueryTool.STATUS_RESULTS_FOUND_ENDED) {
-                            setReady();
+                            setResultsFound();
                         } else if (bookmarkToolStatus == QueryTool.STATUS_NO_RESULTS_FOUND_ENDED) {
                             setNoResultsFound();
                         }
@@ -350,7 +376,8 @@ public class DictionaryQueryFragment extends Fragment {
             @Override
             public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
                 if (m_searchView.getQuery() != null) {
-                    m_viewModel.setTerm(m_searchView.getQuery().toString());
+                    m_term = m_searchView.getQuery().toString();
+                    m_viewModel.setTerm(m_term);
                 }
 
                 return false;
@@ -491,7 +518,8 @@ public class DictionaryQueryFragment extends Fragment {
     }
 
     public void setIntentSearchTerm(@NonNull String aIntentSearchTerm) {
-        m_viewModel.setTerm(aIntentSearchTerm);
+        m_term = aIntentSearchTerm;
+        m_viewModel.setTerm(m_term);
     }
 
     @Override
@@ -501,6 +529,7 @@ public class DictionaryQueryFragment extends Fragment {
         // Avoid using old pointers when view has been destroyed
         m_progressBar = null;
         m_statusText = null;
+        m_searchStatusText = null;
         m_languageText = null;
         m_languagePopupMenu = null;
         m_searchView = null;

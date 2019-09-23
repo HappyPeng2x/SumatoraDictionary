@@ -62,9 +62,6 @@ import androidx.room.migration.Migration;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 
 public class DictionaryApplication extends Application {
-    static public final String SQL_QUERY_DELETE_RESULTS =
-            "DELETE FROM DictionaryDisplayElement";
-
     static final String DATABASE_NAME = "JMdict.db";
     static final String PERSISTENT_DATABASE_NAME = "PersistentDatabase.db";
 
@@ -501,13 +498,6 @@ public class DictionaryApplication extends Application {
                     Settings.LANG_DEFAULT));
             pDb.persistentSettingsDao().insertDefault(new PersistentSetting(Settings.BACKUP_LANG,
                     Settings.BACKUP_LANG_DEFAULT));
-
-            pDb.runInTransaction(new Runnable() {
-                @Override
-                public void run() {
-                    pDb.getOpenHelper().getWritableDatabase().execSQL(SQL_QUERY_DELETE_RESULTS);
-                }
-            });
 
             if (bookmarks != null) {
                 if (BuildConfig.DEBUG_DB_MIGRATION) {

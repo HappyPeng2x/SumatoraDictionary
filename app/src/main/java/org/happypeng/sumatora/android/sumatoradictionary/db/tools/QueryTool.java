@@ -282,6 +282,7 @@ public class QueryTool {
                     }
 
                     if (mQueriesPosition == 0) {
+                        mDeleteStatement.bindLong(1, mRef);
                         mDeleteStatement.executeUpdateDelete();
                         mLastInsert = -1;
                     }
@@ -367,6 +368,14 @@ public class QueryTool {
             @Override
             protected Void doInBackground(Void... voids) {
                 tool.createStatement();
+
+                tool.mDB.runInTransaction(new Runnable() {
+                    @Override
+                    public void run() {
+                        tool.mDeleteStatement.bindLong(1, aRef);
+                        tool.mDeleteStatement.executeUpdateDelete();
+                    }
+                });
 
                 return null;
             }
