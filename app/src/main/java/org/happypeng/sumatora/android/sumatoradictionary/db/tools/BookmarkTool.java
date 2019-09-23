@@ -40,44 +40,37 @@ public class BookmarkTool {
 
     static private final String SQL_QUERY_ALL =
             "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, 0 AS entryOrder, DictionaryEntry.seq "
-                    + "FROM jmdict.DictionaryEntry "
-                    + "WHERE DictionaryEntry.seq IN (SELECT seq FROM DictionaryBookmark)";
+                    + "FROM jmdict.DictionaryEntry";
 
     static private final String SQL_QUERY_EXACT_PRIO =
             "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
                     + "FROM jmdict.DictionaryIndex "
-                    + "WHERE writingsPrio MATCH 'writingsPrio:' || ? || ' OR readingsPrio:' || ? "
-                    + " AND DictionaryIndex.`rowid` IN (SELECT seq FROM DictionaryBookmark)";
+                    + "WHERE writingsPrio MATCH 'writingsPrio:' || ? || ' OR readingsPrio:' || ?";
 
     static private final String SQL_QUERY_EXACT_NONPRIO =
             "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
                     + "FROM jmdict.DictionaryIndex "
-                    + "WHERE writingsPrio MATCH 'writings:' || ? || ' OR readings:' || ? "
-                    + " AND DictionaryIndex.`rowid` IN (SELECT seq FROM DictionaryBookmark)";
+                    + "WHERE writingsPrio MATCH 'writings:' || ? || ' OR readings:' || ?";
 
     static private final String SQL_QUERY_BEGIN_PRIO =
             "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
                     + "FROM jmdict.DictionaryIndex "
-                    + "WHERE writingsPrio MATCH 'writingsPrio:' || ? || '* OR readingsPrio:' || ? || '*'"
-                    + " AND DictionaryIndex.`rowid` IN (SELECT seq FROM DictionaryBookmark)";
+                    + "WHERE writingsPrio MATCH 'writingsPrio:' || ? || '* OR readingsPrio:' || ? || '*'";
 
     static private final String SQL_QUERY_BEGIN_NONPRIO =
             "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
                     + "FROM jmdict.DictionaryIndex "
-                    + "WHERE writingsPrio MATCH 'writings:' || ? || '* OR readings:' || ? || '*'"
-                    + " AND DictionaryIndex.`rowid` IN (SELECT seq FROM DictionaryBookmark)";
+                    + "WHERE writingsPrio MATCH 'writings:' || ? || '* OR readings:' || ? || '*'";
 
     static private final String SQL_QUERY_PARTS_PRIO =
             "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
                     + "FROM jmdict.DictionaryIndex "
-                    + "WHERE writingsPrio MATCH 'writingsPrioParts:' || ? || '* OR readingsPrioParts:' || ? || '*'"
-                    + " AND DictionaryIndex.`rowid` IN (SELECT seq FROM DictionaryBookmark)";
+                    + "WHERE writingsPrio MATCH 'writingsPrioParts:' || ? || '* OR readingsPrioParts:' || ? || '*'";
 
     static private final String SQL_QUERY_PARTS_NONPRIO =
             "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
                     + "FROM jmdict.DictionaryIndex "
-                    + "WHERE writingsPrio MATCH 'writingsParts:' || ? || '* OR readingsParts:' || ? || '*'"
-                    + " AND DictionaryIndex.`rowid` IN (SELECT seq FROM DictionaryBookmark)";
+                    + "WHERE writingsPrio MATCH 'writingsParts:' || ? || '* OR readingsParts:' || ? || '*'";
 
     public static class QueryStatement {
         private final int ref;
@@ -144,7 +137,11 @@ public class BookmarkTool {
     private SupportSQLiteStatement mInsertAllStatement;
     private SupportSQLiteStatement mDeleteStatement;
 
-    public BookmarkTool(final PersistentDatabase aDB, int aRef) {
+    final private String mSearchSet;
+
+    final private boolean mAllowQueryAll;
+
+    public BookmarkTool(final PersistentDatabase aDB, int aRef, String aSearchSet, boolean aAllowQueryAll) {
         if (BuildConfig.DEBUG_QUERYTOOL) {
             mLog = LoggerFactory.getLogger(getClass());
 
@@ -165,6 +162,10 @@ public class BookmarkTool {
         mTerm = "";
 
         mStatus.setValue(STATUS_PRE_INITIALIZED);
+
+        mSearchSet = aSearchSet;
+
+        mAllowQueryAll = aAllowQueryAll;
     }
 
     public LiveData<Integer> getStatus() { return mStatus; }
@@ -177,15 +178,33 @@ public class BookmarkTool {
 
         SupportSQLiteDatabase db = mDB.getOpenHelper().getWritableDatabase();
 
-        mInsertAllStatement = db.compileStatement(SQL_QUERY_ALL);
+        if (mAllowQueryAll) {
+            mInsertAllStatement = db.compileStatement(mSearchSet == null ? SQL_QUERY_ALL :
+                    SQL_QUERY_ALL + " WHERE DictionaryEntry.seq IN (" + mSearchSet + ")");
+        }
+
         mDeleteStatement = db.compileStatement(SQL_QUERY_DELETE);
 
-        final SupportSQLiteStatement queryExactPrio = db.compileStatement(SQL_QUERY_EXACT_PRIO);
-        final SupportSQLiteStatement queryExactNonPrio = db.compileStatement(SQL_QUERY_EXACT_NONPRIO);
-        final SupportSQLiteStatement queryBeginPrio = db.compileStatement(SQL_QUERY_BEGIN_PRIO);
-        final SupportSQLiteStatement queryBeginNonPrio = db.compileStatement(SQL_QUERY_BEGIN_NONPRIO);
-        final SupportSQLiteStatement queryPartsPrio = db.compileStatement(SQL_QUERY_PARTS_PRIO);
-        final SupportSQLiteStatement queryPartsNonPrio = db.compileStatement(SQL_QUERY_PARTS_NONPRIO);
+        // (SELECT seq FROM DictionaryBookmark)
+
+        final SupportSQLiteStatement queryExactPrio =
+                db.compileStatement(mSearchSet == null ? SQL_QUERY_EXACT_PRIO :
+                        SQL_QUERY_EXACT_PRIO + " AND DictionaryIndex.`rowid` IN (" + mSearchSet + ")");
+        final SupportSQLiteStatement queryExactNonPrio =
+                db.compileStatement(mSearchSet == null ? SQL_QUERY_EXACT_NONPRIO :
+                        SQL_QUERY_EXACT_NONPRIO + " AND DictionaryIndex.`rowid` IN (" + mSearchSet + ")");
+        final SupportSQLiteStatement queryBeginPrio =
+                db.compileStatement(mSearchSet == null ? SQL_QUERY_BEGIN_PRIO :
+                        SQL_QUERY_BEGIN_PRIO + " AND DictionaryIndex.`rowid` IN (" + mSearchSet + ")");
+        final SupportSQLiteStatement queryBeginNonPrio =
+                db.compileStatement(mSearchSet == null ? SQL_QUERY_BEGIN_NONPRIO :
+                        SQL_QUERY_BEGIN_NONPRIO + " AND DictionaryIndex.`rowid` IN (" + mSearchSet + ")");
+        final SupportSQLiteStatement queryPartsPrio =
+                db.compileStatement(mSearchSet == null ? SQL_QUERY_PARTS_PRIO :
+                        SQL_QUERY_PARTS_PRIO + " AND DictionaryIndex.`rowid` IN (" + mSearchSet + ")");
+        final SupportSQLiteStatement queryPartsNonPrio =
+                db.compileStatement(mSearchSet == null ? SQL_QUERY_PARTS_NONPRIO :
+                        SQL_QUERY_PARTS_NONPRIO + " AND DictionaryIndex.`rowid` IN (" + mSearchSet + ")");
 
         final QueryStatement[] queriesArray = new QueryStatement[6];
 
@@ -210,8 +229,8 @@ public class BookmarkTool {
                         .setPrefetchDistance(PAGE_SIZE)
                         .setPageSize(PREFETCH_DISTANCE).build();
 
-        return new LivePagedListBuilder<Integer, DictionarySearchElement>(mDB.dictionaryDisplayElementDao().getAllDetailsLivePaged(mRef),
-                pagedListConfig)
+        return new LivePagedListBuilder<>
+                (new RoomFactoryWrapper<>(mDB.dictionaryDisplayElementDao().getAllDetailsLivePaged(mRef)), pagedListConfig)
                 .setBoundaryCallback(new PagedList.BoundaryCallback<DictionarySearchElement>() {
                     @Override
                     public void onItemAtEndLoaded(@NonNull DictionarySearchElement itemAtEnd) {
@@ -246,14 +265,13 @@ public class BookmarkTool {
                     mDeleteStatement.bindLong(1, mRef);
                     mDeleteStatement.executeUpdateDelete();
 
-                    mInsertAllStatement.bindLong(1, mRef);
-                    mInsertAllStatement.executeInsert();
+                    if (mAllowQueryAll) {
 
-                    if (aTerm == null) {
-                        mTerm = "";
-                    } else {
-                        mTerm = aTerm;
+                        mInsertAllStatement.bindLong(1, mRef);
+                        mInsertAllStatement.executeInsert();
                     }
+
+                    mTerm = aTerm;
 
                     mLastInsert = -1;
                     mQueriesPosition = 0;
@@ -304,7 +322,7 @@ public class BookmarkTool {
 
     @MainThread
     private void executeNextStatement(final boolean aReset) {
-        if (mStatus.getValue() == null || mStatus.getValue() < STATUS_INITIALIZED) {
+        if (mStatus.getValue() == null || mStatus.getValue() < STATUS_INITIALIZED || mQueriesPosition >= mQueries.length) {
             return;
         }
 
@@ -339,9 +357,10 @@ public class BookmarkTool {
     }
 
     @MainThread
-    public static LiveData<BookmarkTool> create(@NonNull final PersistentDatabase aDB, final int aRef)
+    public static LiveData<BookmarkTool> create(@NonNull final PersistentDatabase aDB, final int aRef,
+                                                String aSearchSet, boolean aAllowQueryAll)
     {
-        final BookmarkTool tool = new BookmarkTool(aDB, aRef);
+        final BookmarkTool tool = new BookmarkTool(aDB, aRef, aSearchSet, aAllowQueryAll);
         final MutableLiveData<BookmarkTool> liveData = new MutableLiveData<>();
 
         new AsyncTask<Void, Void, Void>() {

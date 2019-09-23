@@ -20,6 +20,7 @@ import android.app.Application;
 import android.os.AsyncTask;
 
 import org.happypeng.sumatora.android.sumatoradictionary.DictionaryApplication;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.BookmarkTool;
@@ -35,39 +36,63 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.Transformations;
 import androidx.paging.PagedList;
+import androidx.room.InvalidationTracker;
+
+import java.util.Set;
 
 public class DictionaryBookmarkFragmentModel extends AndroidViewModel {
     private DictionaryApplication mApp;
 
-    final private MediatorLiveData<DisplayStatus> m_status;
+    private MediatorLiveData<DisplayStatus> m_status;
 
     private BookmarkTool m_bookmarkTool;
 
-    final private LiveData<PagedList<DictionarySearchElement>> m_elementList;
+    private LiveData<PagedList<DictionarySearchElement>> m_elementList;
 
     public LiveData<PagedList<DictionarySearchElement>> getElementList() { return m_elementList; }
     public LiveData<DisplayStatus> getStatus() { return m_status; }
 
     private Integer m_bookmarkToolStatus;
 
+    private PersistentDatabase m_currentDatabase;
+
     public Integer getBookmarkToolStatus() { return m_bookmarkToolStatus; }
 
-    public DictionaryBookmarkFragmentModel(Application aApp) {
-        super(aApp);
+    public void initialize(final int aKey, final String aSearchSet, final boolean aAllowSearchAll,
+                           final @NonNull String aTableObserve) {
+        if (m_status != null) {
+            return;
+        }
 
-        mApp = (DictionaryApplication) aApp;
-        m_status = DisplayStatus.create(mApp, 1);
+        m_status = DisplayStatus.create(mApp, aKey);
 
-        m_bookmarkToolStatus = null;
+        m_currentDatabase = null;
 
-        m_bookmarkTool = null;
+        final InvalidationTracker.Observer observer = new InvalidationTracker.Observer(aTableObserve) {
+            @Override
+            public void onInvalidated(@NonNull Set<String> tables) {
+                if (m_bookmarkTool != null) {
+                    m_bookmarkTool.setTerm(m_bookmarkTool.getTerm(), true);
+                }
+            }
+        };
 
         final LiveData<BookmarkTool> bookmarkTool =
                 Transformations.switchMap(mApp.getPersistentDatabase(),
                         new Function<PersistentDatabase, LiveData<BookmarkTool>>() {
                             @Override
                             public LiveData<BookmarkTool> apply(PersistentDatabase input) {
-                                return BookmarkTool.create(input, 1);
+                                if (m_currentDatabase != null) {
+                                    m_currentDatabase.getInvalidationTracker().removeObserver(observer);
+                                }
+
+                                if (!"".equals(aTableObserve)) {
+                                    input.getInvalidationTracker().addObserver(observer);
+                                }
+
+                                m_currentDatabase = input;
+
+                                return BookmarkTool.create(input, aKey, aSearchSet, aAllowSearchAll);
                             }
                         });
 
@@ -110,49 +135,27 @@ public class DictionaryBookmarkFragmentModel extends AndroidViewModel {
                         m_status.setValue(m_status.getValue());
                     }
                 });
-
-        final LiveData<Long> firstBookmark =
-                Transformations.switchMap(mApp.getPersistentDatabase(),
-                        new Function<PersistentDatabase, LiveData<Long>>() {
-                            @Override
-                            public LiveData<Long> apply(PersistentDatabase input) {
-                                return input.dictionaryBookmarkDao().getFirstLive();
-                            }
-                        });
-
-        m_status.addSource(firstBookmark,
-                new Observer<Long>() {
-                    @Override
-                    public void onChanged(Long aLong) {
-                        if (m_bookmarkTool != null) {
-                            m_bookmarkTool.setTerm(m_bookmarkTool.getTerm(), true);
-                        }
-                    }
-                });
-
-/*        m_status.addSource(m_term,
-                new Observer<String>() {
-                    @Override
-                    public void onChanged(String s) {
-                        if (m_bookmarkTool != null) {
-                            String value = m_term.getValue();
-
-                            if (value == null) {
-                                value = "";
-                            }
-
-                            m_bookmarkTool.setTerm(value, true);
-                        }
-                    }
-                });*/
     }
 
-    public void deleteBookmark(final long aSeq) {
+    public DictionaryBookmarkFragmentModel(Application aApp) {
+        super(aApp);
+
+        mApp = (DictionaryApplication) aApp;
+
+        m_bookmarkToolStatus = null;
+        m_bookmarkTool = null;
+    }
+
+    public void updateBookmark(final long seq, final long bookmark) {
         new AsyncTask<Void, Void, Void>() {
             @Override
-            protected Void doInBackground(Void... voids) {
+            protected Void doInBackground(Void... aParams) {
                 if (mApp.getPersistentDatabase().getValue() != null) {
-                    mApp.getPersistentDatabase().getValue().dictionaryBookmarkDao().delete(aSeq);
+                    if (bookmark != 0) {
+                        mApp.getPersistentDatabase().getValue().dictionaryBookmarkDao().insert(new DictionaryBookmark(seq, bookmark));
+                    } else {
+                        mApp.getPersistentDatabase().getValue().dictionaryBookmarkDao().delete(seq);
+                    }
                 }
 
                 return null;

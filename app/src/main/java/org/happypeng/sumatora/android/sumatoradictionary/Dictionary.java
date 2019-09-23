@@ -55,7 +55,7 @@ public class Dictionary extends AppCompatActivity implements SettingsFragment.Se
     private DictionaryBookmarkFragment m_dictionaryBookmarkFragment;
     private boolean m_dictionaryBookmarkFragmentShown;
 
-    private DictionarySearchFragment m_dictionarySearchFragment;
+    private DictionaryBookmarkFragment m_dictionarySearchFragment;
     private boolean m_dictionarySearchFragmentShown;
 
     private DebugFragment m_debugFragment;
@@ -104,7 +104,9 @@ public class Dictionary extends AppCompatActivity implements SettingsFragment.Se
                 m_log.info("search fragment created");
             }
 
-            m_dictionarySearchFragment = new DictionarySearchFragment();
+            m_dictionarySearchFragment = new DictionaryBookmarkFragment();
+            m_dictionarySearchFragment.setParameters(1, null, false,
+                    "", false, true, "");
         }
 
         switchToFragment(m_dictionarySearchFragment, SEARCH_FRAGMENT_TAG);
@@ -122,6 +124,8 @@ public class Dictionary extends AppCompatActivity implements SettingsFragment.Se
     private void switchToBookmarksFragment() {
         if (m_dictionaryBookmarkFragment == null) {
             m_dictionaryBookmarkFragment = new DictionaryBookmarkFragment();
+            m_dictionaryBookmarkFragment.setParameters(2, "SELECT seq FROM DictionaryBookmark", true,
+                    "Bookmarks", true, true, "DictionaryBookmark");
         }
 
         switchToFragment(m_dictionaryBookmarkFragment, BOOKMARK_FRAGMENT_TAG);
@@ -287,6 +291,8 @@ public class Dictionary extends AppCompatActivity implements SettingsFragment.Se
 
     @Override
     protected void onNewIntent(Intent aIntent) {
+        super.onNewIntent(aIntent);
+
         transformSearchIntent(aIntent);
         setIntent(aIntent);
     }
