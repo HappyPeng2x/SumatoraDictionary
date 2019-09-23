@@ -229,8 +229,8 @@ public class BookmarkTool {
                         .setPrefetchDistance(PAGE_SIZE)
                         .setPageSize(PREFETCH_DISTANCE).build();
 
-        return new LivePagedListBuilder<Integer, DictionarySearchElement>(mDB.dictionaryDisplayElementDao().getAllDetailsLivePaged(mRef),
-                pagedListConfig)
+        return new LivePagedListBuilder<>
+                (new RoomFactoryWrapper<>(mDB.dictionaryDisplayElementDao().getAllDetailsLivePaged(mRef)), pagedListConfig)
                 .setBoundaryCallback(new PagedList.BoundaryCallback<DictionarySearchElement>() {
                     @Override
                     public void onItemAtEndLoaded(@NonNull DictionarySearchElement itemAtEnd) {
