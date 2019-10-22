@@ -17,31 +17,35 @@
 package org.happypeng.sumatora.android.sumatoradictionary;
 
 import android.app.Application;
-
 import android.content.res.AssetManager;
 import android.database.Cursor;
 import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.AsyncTask;
-import android.os.Build;
 import android.os.StrictMode;
 import android.util.Log;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.WorkerThread;
+import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MutableLiveData;
+import androidx.room.Room;
+import androidx.room.RoomDatabase;
+import androidx.room.migration.Migration;
+import androidx.sqlite.db.SupportSQLiteDatabase;
 
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryLanguage;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentSetting;
-import org.happypeng.sumatora.android.sumatoradictionary.db.tools.BookmarkImportTool;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Languages;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Settings;
-
 import org.happypeng.sumatora.android.sumatoradictionary.xml.DictionaryBookmarkXML;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -49,17 +53,6 @@ import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Set;
-
-import androidx.annotation.NonNull;
-import androidx.annotation.WorkerThread;
-import androidx.lifecycle.LiveData;
-import androidx.lifecycle.MutableLiveData;
-import androidx.room.InvalidationTracker;
-import androidx.room.Room;
-import androidx.room.RoomDatabase;
-import androidx.room.migration.Migration;
-import androidx.sqlite.db.SupportSQLiteDatabase;
 
 public class DictionaryApplication extends Application {
     static final String DATABASE_NAME = "JMdict.db";
@@ -67,7 +60,6 @@ public class DictionaryApplication extends Application {
 
     protected MutableLiveData<PersistentDatabase> m_persistentDatabase;
     protected MutableLiveData<List<DictionaryLanguage>> m_dictionaryLanguage;
-    protected MutableLiveData<BookmarkImportTool> m_bookmarkImportTool;
 
     private HashMap<String, String> m_entities;
 
@@ -75,7 +67,6 @@ public class DictionaryApplication extends Application {
 
     public LiveData<PersistentDatabase> getPersistentDatabase() { return m_persistentDatabase; }
     public LiveData<List<DictionaryLanguage>> getDictionaryLanguage() { return m_dictionaryLanguage; }
-    public LiveData<BookmarkImportTool> getBookmarkImportTool() { return m_bookmarkImportTool; }
 
     public Settings getSettings() { return m_settings; }
 
@@ -137,6 +128,26 @@ public class DictionaryApplication extends Application {
             }
 
             database.execSQL("DROP TABLE IF EXISTS DictionarySearchResult");
+
+            if (BuildConfig.DEBUG_DB_MIGRATION) {
+                log.info("Database migration ended");
+            }
+        }
+    };
+
+    static final Migration MIGRATION_4_5 = new Migration(4, 5) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            Logger log;
+
+            if (BuildConfig.DEBUG_DB_MIGRATION) {
+                log = LoggerFactory.getLogger(this.getClass());
+
+                log.info("Starting database migration");
+            }
+
+            database.execSQL("DROP TABLE IF EXISTS DictionaryBookmarkImport");
+            database.execSQL("CREATE TABLE IF NOT EXISTS DictionaryBookmarkImport (`ref` INTEGER NOT NULL, `seq` INTEGER NOT NULL, PRIMARY KEY(`ref`, `seq`))");
 
             if (BuildConfig.DEBUG_DB_MIGRATION) {
                 log.info("Database migration ended");
@@ -480,7 +491,7 @@ public class DictionaryApplication extends Application {
 
             final PersistentDatabase pDb = Room.databaseBuilder(aParams[0],
                     PersistentDatabase.class, PERSISTENT_DATABASE_NAME)
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                     .setJournalMode(RoomDatabase.JournalMode.TRUNCATE)
                     .addCallback(new RoomDatabase.Callback() {
                         @Override
@@ -541,11 +552,6 @@ public class DictionaryApplication extends Application {
             aParams[0].m_persistentDatabase.postValue(pDb);
             aParams[0].getSettings().postDatabase(pDb);
 
-            final BookmarkImportTool bookmarkImportTool = new BookmarkImportTool(pDb, aParams[0]);
-            bookmarkImportTool.createStatements();
-
-            aParams[0].m_bookmarkImportTool.postValue(bookmarkImportTool);
-
             if (BuildConfig.DEBUG_DB_MIGRATION) {
                 m_log.info("Background task ends");
             }
@@ -572,7 +578,6 @@ public class DictionaryApplication extends Application {
 
         m_dictionaryLanguage = new MutableLiveData<>();
         m_persistentDatabase = new MutableLiveData<>();
-        m_bookmarkImportTool = new MutableLiveData<>();
 
         m_settings = new Settings();
 

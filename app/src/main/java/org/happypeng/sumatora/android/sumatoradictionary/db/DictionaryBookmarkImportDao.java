@@ -30,13 +30,6 @@ public interface DictionaryBookmarkImportDao {
     @Query("DELETE FROM DictionaryBookmarkImport")
     void deleteAll();
 
-    @Query("SELECT entryOrder, seq, readingsPrio, readings, writingsPrio, writings, "
-            + "pos, xref, ant, "
-            + "misc, lsource, dial, "
-            + "s_inf, field, "
-            + "lang, gloss, bookmark FROM DictionaryBookmarkImport")
-    LiveData<List<DictionarySearchElement>> getAllDetailsLive();
-
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void insertMany(List<DictionaryBookmarkImport> aBookmarkList);
+    void insert(DictionaryBookmarkImport aBookmark);
 }

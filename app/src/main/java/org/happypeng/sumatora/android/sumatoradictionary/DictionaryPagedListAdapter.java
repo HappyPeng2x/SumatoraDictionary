@@ -31,15 +31,18 @@ import java.util.HashMap;
 public class DictionaryPagedListAdapter extends PagedListAdapter<DictionarySearchElement, DictionarySearchElementViewHolder> {
     private HashMap<Long, Long> m_bookmarks;
     private final DictionarySearchElementViewHolder.Status m_status;
+    private boolean m_disableBookmarkButton;
 
     private DictionarySearchElementViewHolder.ClickListener m_bookmarkClickListener;
 
-    public DictionaryPagedListAdapter(@NonNull final DictionarySearchElementViewHolder.Status aStatus) {
+    public DictionaryPagedListAdapter(@NonNull final DictionarySearchElementViewHolder.Status aStatus,
+                                      boolean aDisableBookmarkButton) {
         super(DictionarySearchElementDiffUtil.getDiffUtil());
 
         setHasStableIds(true);
 
         m_status = aStatus;
+        m_disableBookmarkButton = aDisableBookmarkButton;
     }
 
     // No placeholders = no null values
@@ -64,6 +67,11 @@ public class DictionaryPagedListAdapter extends PagedListAdapter<DictionarySearc
         LayoutInflater layoutInflater = LayoutInflater.from(parent.getContext());
         View view = layoutInflater.inflate(R.layout.word_card, parent, false);
         DictionarySearchElementViewHolder holder = new DictionarySearchElementViewHolder(view, m_status);
+
+        if (m_disableBookmarkButton) {
+            holder.disableBookmarkButton();
+        }
+
         holder.setBookmarkClickListener(m_bookmarkClickListener);
         return holder;
     }

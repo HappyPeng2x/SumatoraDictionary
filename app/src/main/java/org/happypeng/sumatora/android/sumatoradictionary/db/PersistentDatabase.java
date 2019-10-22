@@ -21,7 +21,7 @@ import androidx.room.RoomDatabase;
 
 @Database(entities = {PersistentSetting.class,
         DictionaryBookmark.class, DictionaryBookmarkImport.class,
-        DictionaryDisplayElement.class, DictionaryElement.class}, version = 4)
+        DictionaryDisplayElement.class, DictionaryElement.class}, version = 5)
 abstract public class PersistentDatabase extends RoomDatabase {
     public abstract PersistentSettingsDao persistentSettingsDao();
     public abstract DictionaryBookmarkDao dictionaryBookmarkDao();

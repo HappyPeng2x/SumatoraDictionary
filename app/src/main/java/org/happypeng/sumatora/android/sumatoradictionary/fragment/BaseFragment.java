@@ -16,37 +16,15 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.fragment;
 
-
-import android.app.SearchManager;
 import android.content.Context;
-import android.content.Intent;
 import android.content.res.TypedArray;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
 import android.graphics.drawable.Drawable;
-import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Bundle;
-
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.ActionBar;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.SearchView;
-import androidx.appcompat.widget.Toolbar;
-import androidx.core.content.FileProvider;
-import androidx.fragment.app.Fragment;
-import androidx.lifecycle.Observer;
-import androidx.lifecycle.ViewModelProviders;
-import androidx.paging.PagedList;
-import androidx.recyclerview.widget.DividerItemDecoration;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-
 import android.util.TypedValue;
-import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.Menu;
-import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
@@ -55,56 +33,66 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.ActionBar;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.SearchView;
+import androidx.appcompat.widget.Toolbar;
+import androidx.fragment.app.Fragment;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModelProviders;
+import androidx.paging.PagedList;
+import androidx.recyclerview.widget.DividerItemDecoration;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
 import org.happypeng.sumatora.android.sumatoradictionary.BuildConfig;
 import org.happypeng.sumatora.android.sumatoradictionary.DictionaryPagedListAdapter;
 import org.happypeng.sumatora.android.sumatoradictionary.DictionarySearchElementViewHolder;
 import org.happypeng.sumatora.android.sumatoradictionary.R;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryLanguage;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
-import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
-import org.happypeng.sumatora.android.sumatoradictionary.db.tools.QueryTool;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.DisplayStatus;
+import org.happypeng.sumatora.android.sumatoradictionary.db.tools.QueryTool;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Settings;
-import org.happypeng.sumatora.android.sumatoradictionary.model.DictionaryQueryFragmentModel;
-import org.happypeng.sumatora.android.sumatoradictionary.xml.DictionaryBookmarkXML;
+import org.happypeng.sumatora.android.sumatoradictionary.model.BaseFragmentModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.util.List;
 
-public class DictionaryQueryFragment extends Fragment {
-    private static final String AUTHORITY = "org.happypeng.sumatora.android.sumatoradictionary.fileprovider";
+public class BaseFragment<M extends BaseFragmentModel> extends Fragment {
+    static final String AUTHORITY = "org.happypeng.sumatora.android.sumatoradictionary.fileprovider";
 
     private ProgressBar m_progressBar;
     private TextView m_statusText;
     private TextView m_searchStatusText;
 
-    private TextView m_languageText;
+    TextView m_languageText;
 
-    private DictionaryQueryFragmentModel m_viewModel;
+    Class<M> m_viewModelClass;
+    M m_viewModel;
 
-    private PopupMenu m_languagePopupMenu;
+    PopupMenu m_languagePopupMenu;
 
     private Logger m_log;
 
     private String m_lang;
     private String m_backupLang;
 
-    private SearchView m_searchView;
+    SearchView m_searchView;
 
     private int m_key;
     private String m_searchSet;
     private boolean m_allowSearchAll;
     private String m_title;
-    private boolean m_allowExport;
-    private boolean m_openSearchBox;
     private String m_tableObserve;
+    private boolean m_hasHomeButton;
+    private boolean m_disableBookmarkButton;
 
-    private String m_term;
+    String m_term;
 
-    public DictionaryQueryFragment() {
+    public BaseFragment() {
         if (BuildConfig.DEBUG_UI) {
             m_log = LoggerFactory.getLogger(this.getClass());
         }
@@ -113,23 +101,23 @@ public class DictionaryQueryFragment extends Fragment {
         m_searchSet = null;
         m_allowSearchAll = false;
         m_title = null;
-        m_allowExport = false;
-        m_openSearchBox = false;
         m_tableObserve = "";
 
         m_term = "";
     }
 
-    public void setParameters(int a_key, String aSearchSet, boolean aAllowSearchAll,
-                              @NonNull String aTitle, boolean aAllowExport,
-                              boolean aOpenSearchBox, @NonNull String aTableObserve) {
+    public void setParameters(Class<M> a_viewModelClass,
+                              int a_key, String aSearchSet, boolean aAllowSearchAll,
+                              @NonNull String aTitle, @NonNull String aTableObserve,
+                              boolean aHasHomeButton, boolean aDisableBookmarkButton) {
+        m_viewModelClass = a_viewModelClass;
         m_key = a_key;
         m_searchSet = aSearchSet;
         m_allowSearchAll = aAllowSearchAll;
         m_title = aTitle;
-        m_allowExport = aAllowExport;
-        m_openSearchBox = aOpenSearchBox;
         m_tableObserve = aTableObserve;
+        m_hasHomeButton = aHasHomeButton;
+        m_disableBookmarkButton = aDisableBookmarkButton;
     }
 
     private void setInPreparation() {
@@ -231,7 +219,7 @@ public class DictionaryQueryFragment extends Fragment {
 
         final ActionBar actionBar = activity.getSupportActionBar();
         actionBar.setHomeAsUpIndicator(R.drawable.ic_menu_white_24dp);
-        actionBar.setDisplayHomeAsUpEnabled(true);
+        actionBar.setDisplayHomeAsUpEnabled(m_hasHomeButton);
 
         m_progressBar = (ProgressBar) view.findViewById(R.id.dictionary_bookmark_fragment_progressbar);
         m_statusText = (TextView) view.findViewById(R.id.dictionary_bookmark_fragment_statustext);
@@ -246,11 +234,11 @@ public class DictionaryQueryFragment extends Fragment {
         m_recyclerView.setLayoutManager(layoutManager);
 
         m_viewModel = ViewModelProviders.of(getActivity()).get(String.valueOf(m_key),
-                DictionaryQueryFragmentModel.class);
+                m_viewModelClass);
         m_viewModel.initialize(m_key, m_searchSet, m_allowSearchAll, m_tableObserve);
 
         final DictionarySearchElementViewHolder.Status viewHolderStatus = new DictionarySearchElementViewHolder.Status();
-        final DictionaryPagedListAdapter listAdapter = new DictionaryPagedListAdapter(viewHolderStatus);
+        final DictionaryPagedListAdapter listAdapter = new DictionaryPagedListAdapter(viewHolderStatus, m_disableBookmarkButton);
 
         m_recyclerView.setAdapter(listAdapter);
 
@@ -338,142 +326,11 @@ public class DictionaryQueryFragment extends Fragment {
         return view;
     }
 
-    @Override
-    public void onCreateOptionsMenu(@NonNull Menu menu, @NonNull MenuInflater inflater) {
-        super.onCreateOptionsMenu(menu, inflater);
-
-        inflater.inflate(R.menu.bookmark_query_menu, menu);
-
-        if (m_allowExport) {
-            menu.findItem(R.id.share_bookmarks).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
-                @Override
-                public boolean onMenuItemClick(MenuItem item) {
-                    shareBookmarks();
-
-                    return false;
-                }
-            });
-        } else {
-            menu.findItem(R.id.share_bookmarks).setVisible(false);
-        }
-
-        SearchManager searchManager = (SearchManager) getActivity().getSystemService(Context.SEARCH_SERVICE);
-        MenuItem searchViewMenuItem = menu.findItem(R.id.bookmark_fragment_menu_search);
-
-        m_searchView = (SearchView) searchViewMenuItem.getActionView();
-        m_searchView.setSearchableInfo(searchManager.getSearchableInfo(getActivity().getComponentName()));
-
-        if (!m_openSearchBox) {
-            m_searchView.setIconifiedByDefault(true);
-        } else {
-            m_searchView.setIconifiedByDefault(false);
-        }
-
-        final SearchView.SearchAutoComplete mSearchSrcTextView =
-                m_searchView.findViewById(androidx.appcompat.R.id.search_src_text);
-
-        mSearchSrcTextView.setOnEditorActionListener(new TextView.OnEditorActionListener() {
-            @Override
-            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
-                if (m_searchView.getQuery() != null) {
-                    m_term = m_searchView.getQuery().toString();
-                    m_viewModel.setTerm(m_term);
-                }
-
-                return false;
-            }
-        });
-
-        MenuItem languageMenuItem = menu.findItem(R.id.bookmark_fragment_menu_language_text);
-        m_languageText = languageMenuItem.getActionView().findViewById(R.id.menuitem_language_text);
-
-        m_languageText.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (m_languagePopupMenu == null &&
-                        m_viewModel.getDictionaryApplication().getDictionaryLanguage().getValue() != null) {
-                    m_languagePopupMenu = initLanguagePopupMenu(m_languageText,
-                            m_viewModel.getDictionaryApplication().getDictionaryLanguage().getValue());
-                }
-
-                if (m_languagePopupMenu != null) {
-                    m_languagePopupMenu.show();
-                }
-            }
-        });
-
-        colorMenu(menu);
-    }
-
     private void displayInitializationToast() {
         Toast.makeText(getContext(), "Initialization still in progress...", Toast.LENGTH_LONG).show();
     }
 
-    private void shareBookmarks() {
-        // return immediately if initialization is not finished
-        if (m_viewModel == null) {
-            displayInitializationToast();
-
-            return;
-        }
-
-        final PersistentDatabase db = m_viewModel.getDictionaryApplication().getPersistentDatabase().getValue();
-
-        if (db == null) {
-            displayInitializationToast();
-
-            return;
-        }
-
-        try {
-            File parentDir = new File(getContext().getFilesDir(), "bookmarks");
-            final File outputFile = new File(parentDir, "bookmarks.xml");
-
-            parentDir.mkdirs();
-
-            new AsyncTask<Void, Void, Void>() {
-                private boolean fileWritten = false;
-
-                @Override
-                protected Void doInBackground(Void... voids) {
-                    try {
-                        List<DictionaryBookmark> bookmarks = db.dictionaryBookmarkDao().getAll();
-
-                        DictionaryBookmarkXML.writeXML(outputFile, bookmarks);
-
-                        fileWritten = true;
-                    } catch (Exception e) {
-                        System.err.print(e.toString());
-                    }
-
-                    return null;
-                }
-
-                @Override
-                protected void onPostExecute(Void aVoid) {
-                    super.onPostExecute(aVoid);
-
-                    if (fileWritten) {
-                        Uri contentUri = FileProvider.getUriForFile
-                                (getActivity().getApplicationContext(),
-                                        AUTHORITY, outputFile);
-
-                        Intent sharingIntent = new Intent(Intent.ACTION_SEND);
-
-                        sharingIntent.setType("text/*");
-                        sharingIntent.putExtra(Intent.EXTRA_STREAM, contentUri);
-                        startActivity(Intent.createChooser(sharingIntent, "Share bookmarks"));
-                    }
-                }
-            }.execute();
-        } catch (Exception e) {
-            Toast.makeText(getContext(), "Bookmarks sharing failed...", Toast.LENGTH_LONG).show();
-
-            System.err.println(e.toString());
-        }
-    }
-
-    private void colorMenu(Menu aMenu) {
+    void colorMenu(Menu aMenu) {
         Context ctx = getContext();
 
         if (ctx == null)
@@ -495,7 +352,7 @@ public class DictionaryQueryFragment extends Fragment {
         }
     }
 
-    private PopupMenu initLanguagePopupMenu(final View aAnchor, final List<DictionaryLanguage> aLanguage) {
+    PopupMenu initLanguagePopupMenu(final View aAnchor, final List<DictionaryLanguage> aLanguage) {
         PopupMenu popupMenu = null;
 
         if (aLanguage != null) {

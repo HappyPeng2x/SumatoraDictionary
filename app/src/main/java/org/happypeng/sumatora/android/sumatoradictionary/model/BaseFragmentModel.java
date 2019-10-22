@@ -39,8 +39,9 @@ import androidx.room.InvalidationTracker;
 
 import java.util.Set;
 
-public class DictionaryQueryFragmentModel extends AndroidViewModel {
-    private DictionaryApplication mApp;
+public class BaseFragmentModel extends AndroidViewModel {
+    DictionaryApplication mApp;
+    int mKey;
 
     private MediatorLiveData<DisplayStatus> m_status;
 
@@ -53,7 +54,7 @@ public class DictionaryQueryFragmentModel extends AndroidViewModel {
 
     private Integer m_bookmarkToolStatus;
 
-    private PersistentDatabase m_currentDatabase;
+    PersistentDatabase m_currentDatabase;
 
     public Integer getBookmarkToolStatus() { return m_bookmarkToolStatus; }
 
@@ -63,6 +64,7 @@ public class DictionaryQueryFragmentModel extends AndroidViewModel {
             return;
         }
 
+        mKey = aKey;
         m_status = DisplayStatus.create(mApp, aKey);
 
         m_currentDatabase = null;
@@ -136,7 +138,7 @@ public class DictionaryQueryFragmentModel extends AndroidViewModel {
                 });
     }
 
-    public DictionaryQueryFragmentModel(Application aApp) {
+    public BaseFragmentModel(Application aApp) {
         super(aApp);
 
         mApp = (DictionaryApplication) aApp;
