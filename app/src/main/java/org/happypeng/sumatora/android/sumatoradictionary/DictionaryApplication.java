@@ -17,6 +17,7 @@
 package org.happypeng.sumatora.android.sumatoradictionary;
 
 import android.app.Application;
+
 import android.content.res.AssetManager;
 import android.database.Cursor;
 import android.database.SQLException;
@@ -24,6 +25,24 @@ import android.database.sqlite.SQLiteDatabase;
 import android.os.AsyncTask;
 import android.os.StrictMode;
 import android.util.Log;
+
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
+import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary;
+import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
+import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentSetting;
+import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Settings;
+
+import org.happypeng.sumatora.android.sumatoradictionary.xml.DictionaryBookmarkXML;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.WorkerThread;
@@ -34,39 +53,19 @@ import androidx.room.RoomDatabase;
 import androidx.room.migration.Migration;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryLanguage;
-import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
-import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentSetting;
-import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Languages;
-import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Settings;
-import org.happypeng.sumatora.android.sumatoradictionary.xml.DictionaryBookmarkXML;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-
 public class DictionaryApplication extends Application {
     static final String DATABASE_NAME = "JMdict.db";
     static final String PERSISTENT_DATABASE_NAME = "PersistentDatabase.db";
 
     protected MutableLiveData<PersistentDatabase> m_persistentDatabase;
-    protected MutableLiveData<List<DictionaryLanguage>> m_dictionaryLanguage;
+    // protected MutableLiveData<List<DictionaryLanguage>> m_dictionaryLanguage;
 
     private HashMap<String, String> m_entities;
 
     private Settings m_settings;
 
     public LiveData<PersistentDatabase> getPersistentDatabase() { return m_persistentDatabase; }
-    public LiveData<List<DictionaryLanguage>> getDictionaryLanguage() { return m_dictionaryLanguage; }
+    // public LiveData<List<DictionaryLanguage>> getDictionaryLanguage() { return m_dictionaryLanguage; }
 
     public Settings getSettings() { return m_settings; }
 
@@ -148,6 +147,8 @@ public class DictionaryApplication extends Application {
 
             database.execSQL("DROP TABLE IF EXISTS DictionaryBookmarkImport");
             database.execSQL("CREATE TABLE IF NOT EXISTS DictionaryBookmarkImport (`ref` INTEGER NOT NULL, `seq` INTEGER NOT NULL, PRIMARY KEY(`ref`, `seq`))");
+
+            database.execSQL("CREATE TABLE IF NOT EXISTS InstalledDictionary (`file` TEXT, `description` TEXT, `type` TEXT NOT NULL, `lang` TEXT NOT NULL, `version` INTEGER NOT NULL, `date` INTEGER NOT NULL, PRIMARY KEY(`type`, `lang`))");
 
             if (BuildConfig.DEBUG_DB_MIGRATION) {
                 log.info("Database migration ended");
@@ -231,7 +232,7 @@ public class DictionaryApplication extends Application {
             return list;
         }
 
-        private long checkDatabaseVersion(SQLiteDatabase aDb) {
+        private long checkLegacyDatabaseVersion(SQLiteDatabase aDb) {
             if (aDb == null) {
                 return 0;
             }
@@ -265,57 +266,52 @@ public class DictionaryApplication extends Application {
             return version;
         }
 
-        private long checkDatabaseDate(SQLiteDatabase aDb) {
-            if (aDb == null) {
-                return 0;
-            }
-
-            Cursor cur = null;
-
-            try {
-                cur = aDb.rawQuery("SELECT value FROM DictionaryControl WHERE control='date'", null);
-            } catch (SQLException e) {
-                // We got an exception
-            }
-
-            long date = 0;
-
-            if (cur == null || cur.getCount() == 0) {
-                return 0;
-            }
-
-            while (cur.moveToNext()) {
-                date = cur.getLong(0);
-            };
-
-            cur.close();
-
-            return date;
-        }
-
-        private void copyAsset(final DictionaryApplication aApp, String aName,
-                               File aOutput) {
+        private static void updateDictionaries(final DictionaryApplication aApp,
+                                               final PersistentDatabase aDB) {
             AssetManager assetManager = aApp.getAssets();
 
             try {
-                InputStream in = assetManager.open(aName);
-                OutputStream out = new FileOutputStream(aOutput);
-                copyFile(in, out);
-                in.close();
-                in = null;
-                out.flush();
-                out.close();
-                out = null;
-            } catch(IOException e) {
-                Log.e("tag", "Failed to copy asset file: " + aName, e);
-            }
-        }
+                List<InstalledDictionary> dictionaries = aDB.installedDictionaryDao().getAll();
 
-        private void copyFile(InputStream in, OutputStream out) throws IOException {
-            byte[] buffer = new byte[1024];
-            int read;
-            while((read = in.read(buffer)) != -1){
-                out.write(buffer, 0, read);
+                InputStream in = assetManager.open("dictionaries.xml");
+                List<InstalledDictionary> dl = InstalledDictionary.fromXML(in);
+                in.close();
+
+                boolean has_jmdict = false;
+                boolean has_jmdict_eng = false;
+
+                for (InstalledDictionary d : dictionaries) {
+                    if (d.type != null && (d.type.equals("jmdict"))) {
+                        has_jmdict = true;
+                    } else if (d.type != null && d.type.equals("jmdict_translation") && d.lang != null &&
+                                    d.lang.equals("eng")) {
+                        has_jmdict_eng = true;
+                    }
+                }
+
+                if (!has_jmdict) {
+                    dictionaries.add(new InstalledDictionary(null, null, "jmdict","", 0, 0));
+                }
+
+                if (!has_jmdict_eng) {
+                    dictionaries.add(new InstalledDictionary(null, null, "jmdict_translation","eng", 0, 0));
+                }
+
+                List<InstalledDictionary> updateList = InstalledDictionary.calculateUpdateList(dictionaries, dl);
+
+                File databaseRoot = aApp.getDatabasePath(DATABASE_NAME).getParentFile();
+                File databaseInstallDir = new File(databaseRoot, "dictionaries");
+
+                if (databaseInstallDir.exists() || databaseInstallDir.mkdirs()) {
+                    for (InstalledDictionary d : updateList) {
+                        d.install(assetManager, databaseInstallDir.getAbsolutePath(), aDB.installedDictionaryDao());
+                    }
+                } else {
+                    Log.e("tag", "Could not create dictionaries directory.");
+                }
+            } catch(IOException e) {
+                Log.e("tag", "IOException: ", e);
+                Log.e("tag", "Could not update dictionaries.");
             }
         }
 
@@ -400,56 +396,23 @@ public class DictionaryApplication extends Application {
                 m_log.info("Background task started");
             }
 
-            int currentDate = aParams[0].getResources().getInteger(R.integer.database_date);
-            int currentVersion = aParams[0].getResources().getInteger(R.integer.database_version);
             int databaseReset = aParams[0].getResources().getInteger(R.integer.database_reset);
-
-            if (BuildConfig.DEBUG_DB_MIGRATION) {
-                m_log.info("Current dictionary version is " + currentVersion + ", current date is " + currentDate);
-                m_log.info("Requested dictionary reset status is " + databaseReset);
-            }
 
             // Remove older versions database
             File f = new File(aParams[0].getApplicationInfo().dataDir + "/JMdict.db");
             f.delete();
 
             long version = 0;
-            long date = 0;
 
             SQLiteDatabase sqlDB = null;
+            List<DictionaryBookmark> bookmarks = null;
 
             if (hasExistingDatabase(aParams[0])) {
                 sqlDB = openExistingDatabaseSQL(aParams[0]);
 
-                if (BuildConfig.DEBUG_DB_MIGRATION) {
-                    m_log.info("Have an existing dictionary, open status is " + (sqlDB != null));
-                }
-
                 if (sqlDB != null) {
-                    version = checkDatabaseVersion(sqlDB);
-                    date = checkDatabaseDate(sqlDB);
-                }
 
-                if (BuildConfig.DEBUG_DB_MIGRATION) {
-                    m_log.info("Dictionary version is " + version + ", date is " + date);
-                }
-            } else {
-                if (BuildConfig.DEBUG_DB_MIGRATION) {
-                    m_log.info("Do not have any existing dictionary");
-                }
-            }
-
-            List<DictionaryBookmark> bookmarks = null;
-
-            final File jmdictDbFile = aParams[0].getDatabasePath(DATABASE_NAME);
-
-            if (version < currentVersion || date < currentDate || databaseReset != 0) {
-                if (BuildConfig.DEBUG_DB_MIGRATION) {
-                    m_log.info("Dictionary will be re-imported from assets");
-                    m_log.info("Extracting bookmarks from existing dictionary");
-                }
-
-                if (sqlDB != null) {
+                    version = checkLegacyDatabaseVersion(sqlDB);
                     bookmarks = extractBookmarks(sqlDB, version);
 
                     if (bookmarks != null) {
@@ -459,31 +422,9 @@ public class DictionaryApplication extends Application {
                     sqlDB.close();
                     sqlDB = null;
                 }
-
-                if (BuildConfig.DEBUG_DB_MIGRATION) {
-                    m_log.info("Deleting previous dictionary");
-                }
-
-                aParams[0].deleteDatabase(DictionaryApplication.DATABASE_NAME);
-
-                if (BuildConfig.DEBUG_DB_MIGRATION) {
-                    m_log.info("Copying dictionary from assets");
-                }
-
-                copyAsset(aParams[0], "databases/JMdict.db", jmdictDbFile);
-            } else {
-                if (BuildConfig.DEBUG_DB_MIGRATION) {
-                    m_log.info("Dictionary will be used as it is");
-                }
-
-                if (sqlDB != null) {
-                    sqlDB.close();
-                }
             }
 
-            if (bookmarks == null) {
-                bookmarks = readBackupBookmarks(aParams[0]);
-            }
+            aParams[0].deleteDatabase(DictionaryApplication.DATABASE_NAME);
 
             if (BuildConfig.DEBUG_DB_MIGRATION) {
                 m_log.info("Initializing database");
@@ -493,13 +434,15 @@ public class DictionaryApplication extends Application {
                     PersistentDatabase.class, PERSISTENT_DATABASE_NAME)
                     .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                     .setJournalMode(RoomDatabase.JournalMode.TRUNCATE)
-                    .addCallback(new RoomDatabase.Callback() {
-                        @Override
-                        public void onOpen(@NonNull SupportSQLiteDatabase db) {
-                            db.execSQL("ATTACH '" + jmdictDbFile.toString() + "' AS jmdict");
-                        }
-                    })
                     .build();
+
+            updateDictionaries(aParams[0], pDb);
+
+            List<InstalledDictionary> dictionaries = pDb.installedDictionaryDao().getAll();
+
+            for (InstalledDictionary d : dictionaries) {
+                d.attach(pDb);
+            }
 
             if (BuildConfig.DEBUG_DB_MIGRATION) {
                 m_log.info("Setting default settings");
@@ -509,6 +452,10 @@ public class DictionaryApplication extends Application {
                     Settings.LANG_DEFAULT));
             pDb.persistentSettingsDao().insertDefault(new PersistentSetting(Settings.BACKUP_LANG,
                     Settings.BACKUP_LANG_DEFAULT));
+
+            if (bookmarks == null) {
+                bookmarks = readBackupBookmarks(aParams[0]);
+            }
 
             if (bookmarks != null) {
                 if (BuildConfig.DEBUG_DB_MIGRATION) {
@@ -576,12 +523,12 @@ public class DictionaryApplication extends Application {
                     .build());
         }
 
-        m_dictionaryLanguage = new MutableLiveData<>();
+        // m_dictionaryLanguage = new MutableLiveData<>();
         m_persistentDatabase = new MutableLiveData<>();
 
         m_settings = new Settings();
 
-        m_dictionaryLanguage.setValue(Languages.getLanguages());
+        // m_dictionaryLanguage.setValue(Languages.getLanguages());
 
         m_entities = null;
 

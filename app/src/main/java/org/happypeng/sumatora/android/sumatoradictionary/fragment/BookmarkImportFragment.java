@@ -81,12 +81,6 @@ public class BookmarkImportFragment extends BaseFragment<BookmarkImportModel> {
         m_languageText.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (m_languagePopupMenu == null &&
-                        m_viewModel.getDictionaryApplication().getDictionaryLanguage().getValue() != null) {
-                    m_languagePopupMenu = initLanguagePopupMenu(m_languageText,
-                            m_viewModel.getDictionaryApplication().getDictionaryLanguage().getValue());
-                }
-
                 if (m_languagePopupMenu != null) {
                     m_languagePopupMenu.show();
                 }

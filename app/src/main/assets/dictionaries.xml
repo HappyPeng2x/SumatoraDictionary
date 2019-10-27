@@ -1,0 +1,23 @@
+<repository>
+  <dictionary uri="file:///android_asset/dictionaries/jmdict.db"
+	      type="jmdict" description="Index" version="4" date="20191013" lang=""/>
+  <dictionary uri="file:///android_asset/dictionaries/eng.db"
+	      type="jmdict_translation" description="English" version="4" date="20191013" lang="eng"/>
+  <dictionary uri="file:///android_asset/dictionaries/ger.db"
+	      type="jmdict_translation" description="Deutsch" version="4" date="20191013" lang="ger"/>
+  <dictionary uri="file:///android_asset/dictionaries/rus.db"
+	      type="jmdict_translation" description="русский язык" version="4" date="20191013" lang="rus"/>
+  <dictionary uri="file:///android_asset/dictionaries/spa.db"
+	      type="jmdict_translation" description="Español" version="4" date="20191013" lang="spa"/>
+  <dictionary uri="file:///android_asset/dictionaries/dut.db"
+	      type="jmdict_translation" description="Nederlands" version="4" date="20191013" lang="dut"/>
+  <dictionary uri="file:///android_asset/dictionaries/hun.db"
+	      type="jmdict_translation" description="Magyar nyelv" version="4" date="20191013" lang="hun"/>
+  <dictionary uri="file:///android_asset/dictionaries/swe.db"
+	      type="jmdict_translation" description="Svenska" version="4" date="20191013" lang="swe"/>
+  <dictionary uri="file:///android_asset/dictionaries/fre.db"
+	      type="jmdict_translation" description="Français" version="4" date="20191013" lang="fre"/>
+  <dictionary uri="file:///android_asset/dictionaries/slv.db"
+	      type="jmdict_translation" description="Slovenski jezik" version="4" date="20191013"
+	      lang="slv"/>
+</repository>

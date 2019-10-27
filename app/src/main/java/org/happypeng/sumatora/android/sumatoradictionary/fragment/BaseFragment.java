@@ -50,8 +50,8 @@ import org.happypeng.sumatora.android.sumatoradictionary.BuildConfig;
 import org.happypeng.sumatora.android.sumatoradictionary.DictionaryPagedListAdapter;
 import org.happypeng.sumatora.android.sumatoradictionary.DictionarySearchElementViewHolder;
 import org.happypeng.sumatora.android.sumatoradictionary.R;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryLanguage;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
+import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.DisplayStatus;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.QueryTool;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Settings;
@@ -257,21 +257,11 @@ public class BaseFragment<M extends BaseFragmentModel> extends Fragment {
             }
         });
 
-        m_viewModel.getDictionaryApplication().getDictionaryLanguage().observe
-                (this, new Observer<List<DictionaryLanguage>>() {
-                    @Override
-                    public void onChanged(List<DictionaryLanguage> dictionaryLanguages) {
-                        if (m_languageText != null && m_languagePopupMenu == null) {
-                            m_languagePopupMenu = initLanguagePopupMenu(m_languageText,
-                                    dictionaryLanguages);
-                        }                    }
-                });
-
         m_viewModel.getStatus().observe(getViewLifecycleOwner(),
                 new Observer<DisplayStatus>() {
                     @Override
                     public void onChanged(DisplayStatus status) {
-                        if (!status.isInitialized()) {
+                        if (status == null || !status.isInitialized()) {
                             setInPreparation();
 
                             return;
@@ -311,6 +301,13 @@ public class BaseFragment<M extends BaseFragmentModel> extends Fragment {
                             setResultsFound();
                         } else if (bookmarkToolStatus == QueryTool.STATUS_NO_RESULTS_FOUND_ENDED) {
                             setNoResultsFound();
+                        }
+
+                        if (status.installedDictionaries != null) {
+                            if (m_languageText != null && m_languagePopupMenu == null) {
+                                m_languagePopupMenu = initLanguagePopupMenu(m_languageText,
+                                        status.installedDictionaries);
+                            }
                         }
                     }
                 });
@@ -352,22 +349,24 @@ public class BaseFragment<M extends BaseFragmentModel> extends Fragment {
         }
     }
 
-    PopupMenu initLanguagePopupMenu(final View aAnchor, final List<DictionaryLanguage> aLanguage) {
+    PopupMenu initLanguagePopupMenu(final View aAnchor, final List<InstalledDictionary> aLanguage) {
         PopupMenu popupMenu = null;
 
         if (aLanguage != null) {
             popupMenu = new PopupMenu(getContext(), aAnchor);
             Menu menu = popupMenu.getMenu();
 
-            for (final DictionaryLanguage l : aLanguage) {
-                menu.add(l.description).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
-                    @Override
-                    public boolean onMenuItemClick(MenuItem item) {
-                        m_viewModel.getDictionaryApplication().getSettings().setValue(Settings.LANG, l.lang);
+            for (final InstalledDictionary l : aLanguage) {
+                if ("jmdict_translation".equals(l.type)) {
+                    menu.add(l.description).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
+                        @Override
+                        public boolean onMenuItemClick(MenuItem item) {
+                            m_viewModel.getDictionaryApplication().getSettings().setValue(Settings.LANG, l.lang);
 
-                        return false;
-                    }
-                });
+                            return false;
+                        }
+                    });
+                }
             }
         }
 
