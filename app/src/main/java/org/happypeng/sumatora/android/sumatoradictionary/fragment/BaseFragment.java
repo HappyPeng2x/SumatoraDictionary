@@ -47,8 +47,8 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import org.happypeng.sumatora.android.sumatoradictionary.BuildConfig;
-import org.happypeng.sumatora.android.sumatoradictionary.DictionaryPagedListAdapter;
-import org.happypeng.sumatora.android.sumatoradictionary.DictionarySearchElementViewHolder;
+import org.happypeng.sumatora.android.sumatoradictionary.adapter.DictionaryPagedListAdapter;
+import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionarySearchElementViewHolder;
 import org.happypeng.sumatora.android.sumatoradictionary.R;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
 import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary;
@@ -349,7 +349,7 @@ public class BaseFragment<M extends BaseFragmentModel> extends Fragment {
         }
     }
 
-    PopupMenu initLanguagePopupMenu(final View aAnchor, final List<InstalledDictionary> aLanguage) {
+    private PopupMenu initLanguagePopupMenu(final View aAnchor, final List<InstalledDictionary> aLanguage) {
         PopupMenu popupMenu = null;
 
         if (aLanguage != null) {

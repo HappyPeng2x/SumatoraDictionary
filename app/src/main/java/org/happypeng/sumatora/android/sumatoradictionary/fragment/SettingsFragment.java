@@ -16,7 +16,6 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.fragment;
 
-import android.app.Activity;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
@@ -34,12 +33,12 @@ import org.happypeng.sumatora.android.sumatoradictionary.R;
 public class SettingsFragment extends Fragment {
     public interface SettingsFragmentActions {
         void displayLog();
+        void manageDictionaries();
     }
 
     private SettingsFragmentActions mActions;
 
     public SettingsFragment() {
-        // Required empty public constructor
     }
 
     public void setFragmentActions(SettingsFragmentActions aActions) {
@@ -67,6 +66,17 @@ public class SettingsFragment extends Fragment {
                 }
             }
         });
+
+        view.findViewById(R.id.settings_manage_dictionaries).setOnClickListener(
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        if (mActions != null) {
+                            mActions.manageDictionaries();
+                        }
+                    }
+                }
+        );
 
         return view;
     }

@@ -5,6 +5,7 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.WorkerThread;
+import androidx.recyclerview.widget.DiffUtil;
 import androidx.room.Entity;
 import androidx.room.Ignore;
 import androidx.room.RoomDatabase;
@@ -218,5 +219,39 @@ public class InstalledDictionary {
         }
 
         return result;
+    }
+
+    public static boolean areItemsTheSame(@NonNull InstalledDictionary aOldItem,
+                                          @NonNull InstalledDictionary aNewItem) {
+        return (aOldItem.file == null && aNewItem.file == null) ||
+                (aOldItem.file != null && aOldItem.file.equals(aNewItem.file));
+    }
+
+    public static boolean areContentsTheSame(@NonNull InstalledDictionary aOldItem,
+                                             @NonNull InstalledDictionary aNewItem) {
+        return aOldItem.type.equals(aNewItem.type) &&
+                aOldItem.lang.equals(aNewItem.lang) &&
+                aOldItem.version == aNewItem.version &&
+                aOldItem.date == aNewItem.date &&
+                ((aOldItem.description == null && aNewItem.description == null) ||
+                        (aOldItem.description != null && aOldItem.description.equals(aNewItem.description)));
+
+    }
+
+    private final static DiffUtil.ItemCallback<InstalledDictionary> DIFF_UTIL =
+            new DiffUtil.ItemCallback<InstalledDictionary>() {
+                @Override
+                public boolean areItemsTheSame(@NonNull InstalledDictionary oldItem, @NonNull InstalledDictionary newItem) {
+                    return InstalledDictionary.areItemsTheSame(oldItem, newItem);
+                }
+
+                @Override
+                public boolean areContentsTheSame(@NonNull InstalledDictionary oldItem, @NonNull InstalledDictionary newItem) {
+                    return InstalledDictionary.areContentsTheSame(oldItem, newItem);
+                }
+            };
+
+    public static DiffUtil.ItemCallback<InstalledDictionary> getDiffUtil() {
+        return DIFF_UTIL;
     }
 }
