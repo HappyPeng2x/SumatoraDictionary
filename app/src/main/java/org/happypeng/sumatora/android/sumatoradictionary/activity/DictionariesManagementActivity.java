@@ -21,8 +21,6 @@ import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.view.View;
-import android.widget.Button;
-import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
@@ -42,8 +40,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import org.happypeng.sumatora.android.sumatoradictionary.R;
 import org.happypeng.sumatora.android.sumatoradictionary.adapter.DictionaryActionListAdapter;
-import org.happypeng.sumatora.android.sumatoradictionary.db.tools.DictionaryAction;
-import org.happypeng.sumatora.android.sumatoradictionary.db.tools.DictionaryActionLists;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryAction;
 import org.happypeng.sumatora.android.sumatoradictionary.model.DictionariesManagementActivityModel;
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionaryActionViewHolder;
 
@@ -53,6 +50,7 @@ public class DictionariesManagementActivity extends AppCompatActivity implements
     public static int AUTH_REQUEST_GET_DICTIONARIES_LIST = 1;
 
     private DictionariesManagementActivityModel mViewModel;
+    // private DownloadEventReceiver mReceiver;
 
     public DictionariesManagementActivity() {
     }
@@ -60,6 +58,9 @@ public class DictionariesManagementActivity extends AppCompatActivity implements
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // mReceiver = new DownloadEventReceiver();
+        // registerReceiver(mReceiver, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
 
         setContentView(R.layout.activity_dictionaries_management);
 
@@ -174,7 +175,10 @@ public class DictionariesManagementActivity extends AppCompatActivity implements
         final DictionaryActionListAdapter installAdapter = new DictionaryActionListAdapter(true,
                 false, new DictionaryActionViewHolder.OnClickListener() {
             @Override
-            public void onClick(DictionaryAction aEntry) {
+            public void onClick(final DictionaryAction aEntry) {
+
+                mViewModel.startDownload(aEntry);
+
                 System.out.println(aEntry.getDownloadDictionary().description);
             }
         }, null);
@@ -196,31 +200,10 @@ public class DictionariesManagementActivity extends AppCompatActivity implements
                 true, null, null);
         removeRv.setAdapter(removeAdapter);
 
-        mViewModel.getActions().observe(this,
-                new Observer<DictionaryActionLists>() {
+        mViewModel.getDownloadActions().observe(this,
+                new Observer<List<DictionaryAction>>() {
                     @Override
-                    public void onChanged(DictionaryActionLists actionLists) {
-                        List<DictionaryAction> updateAction = null;
-                        List<DictionaryAction> installAction = null;
-                        List<DictionaryAction> deleteAction = null;
-
-                        if (actionLists != null) {
-                            updateAction =
-                                    actionLists.getUpdateActions();
-                            installAction =
-                                    actionLists.getDownloadActions();
-                            deleteAction =
-                                    actionLists.getDeleteActions();
-                        }
-
-                        if (updateAction != null && updateAction.size() > 0) {
-                            updatePanel.setVisibility(View.VISIBLE);
-                            updateAdapter.submitList(updateAction);
-                        } else {
-                            updatePanel.setVisibility(View.GONE);
-                            updateAdapter.submitList(null);
-                        }
-
+                    public void onChanged(List<DictionaryAction> installAction) {
                         if (installAction != null && installAction.size() > 0) {
                             installPanel.setVisibility(View.VISIBLE);
                             installAdapter.submitList(installAction);
@@ -228,7 +211,13 @@ public class DictionariesManagementActivity extends AppCompatActivity implements
                             installPanel.setVisibility(View.GONE);
                             installAdapter.submitList(null);
                         }
+                    }
+                });
 
+        mViewModel.getDeleteActions().observe(this,
+                new Observer<List<DictionaryAction>>() {
+                    @Override
+                    public void onChanged(List<DictionaryAction> deleteAction) {
                         if (deleteAction != null && deleteAction.size() > 0) {
                             removePanel.setVisibility(View.VISIBLE);
                             removeAdapter.submitList(deleteAction);
@@ -239,6 +228,19 @@ public class DictionariesManagementActivity extends AppCompatActivity implements
                     }
                 });
 
+        mViewModel.getUpdateActions().observe(this,
+                new Observer<List<DictionaryAction>>() {
+                    @Override
+                    public void onChanged(List<DictionaryAction> updateAction) {
+                        if (updateAction != null && updateAction.size() > 0) {
+                            updatePanel.setVisibility(View.VISIBLE);
+                            updateAdapter.submitList(updateAction);
+                        } else {
+                            updatePanel.setVisibility(View.GONE);
+                            updateAdapter.submitList(null);
+                        }
+                    }
+                });
     }
 
     @MainThread

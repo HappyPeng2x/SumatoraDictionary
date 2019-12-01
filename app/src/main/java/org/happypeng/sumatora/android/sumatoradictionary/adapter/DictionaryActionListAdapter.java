@@ -24,11 +24,9 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.ListAdapter;
 
 import org.happypeng.sumatora.android.sumatoradictionary.R;
-import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary;
-import org.happypeng.sumatora.android.sumatoradictionary.db.tools.DictionaryAction;
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionaryActionViewHolder;
 
-public class DictionaryActionListAdapter extends ListAdapter<DictionaryAction, DictionaryActionViewHolder> {
+public class DictionaryActionListAdapter extends ListAdapter<org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryAction, DictionaryActionViewHolder> {
     private boolean mInstallButton;
     private boolean mDeleteButton;
 
@@ -39,7 +37,7 @@ public class DictionaryActionListAdapter extends ListAdapter<DictionaryAction, D
                                        boolean aDeleteButton,
                                        final DictionaryActionViewHolder.OnClickListener aInstallListener,
                                        final DictionaryActionViewHolder.OnClickListener aDeleteListener) {
-        super(DictionaryAction.getDiffUtil());
+        super(org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryAction.getDiffUtil());
 
         mInstallButton = aInstallButton;
         mDeleteButton = aDeleteButton;

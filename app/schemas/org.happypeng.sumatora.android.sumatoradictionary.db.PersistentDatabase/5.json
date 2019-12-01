@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 5,
-    "identityHash": "a0a11927c5ff8827ba9d0f8b25655dac",
+    "identityHash": "e14258d568714c0358ead43171c0fb82",
     "entities": [
       {
         "tableName": "PersistentSetting",
@@ -283,12 +283,129 @@
         },
         "indices": [],
         "foreignKeys": []
+      },
+      {
+        "tableName": "DictionaryAction",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`type` TEXT NOT NULL, `lang` TEXT NOT NULL, `action` INTEGER NOT NULL, `downloadId` INTEGER NOT NULL, `appVersion` INTEGER NOT NULL, `installedfile` TEXT, `installeddescription` TEXT, `installedtype` TEXT, `installedlang` TEXT, `installedversion` INTEGER, `installeddate` INTEGER, `downloadfile` TEXT, `downloaddescription` TEXT, `downloadtype` TEXT, `downloadlang` TEXT, `downloadversion` INTEGER, `downloaddate` INTEGER, PRIMARY KEY(`type`, `lang`))",
+        "fields": [
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lang",
+            "columnName": "lang",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "action",
+            "columnName": "action",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "downloadId",
+            "columnName": "downloadId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "appVersion",
+            "columnName": "appVersion",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "installedDictionary.file",
+            "columnName": "installedfile",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "installedDictionary.description",
+            "columnName": "installeddescription",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "installedDictionary.type",
+            "columnName": "installedtype",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "installedDictionary.lang",
+            "columnName": "installedlang",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "installedDictionary.version",
+            "columnName": "installedversion",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "installedDictionary.date",
+            "columnName": "installeddate",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "downloadDictionary.file",
+            "columnName": "downloadfile",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "downloadDictionary.description",
+            "columnName": "downloaddescription",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "downloadDictionary.type",
+            "columnName": "downloadtype",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "downloadDictionary.lang",
+            "columnName": "downloadlang",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "downloadDictionary.version",
+            "columnName": "downloadversion",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "downloadDictionary.date",
+            "columnName": "downloaddate",
+            "affinity": "INTEGER",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "columnNames": [
+            "type",
+            "lang"
+          ],
+          "autoGenerate": false
+        },
+        "indices": [],
+        "foreignKeys": []
       }
     ],
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'a0a11927c5ff8827ba9d0f8b25655dac')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'e14258d568714c0358ead43171c0fb82')"
     ]
   }
 }

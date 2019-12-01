@@ -18,6 +18,9 @@ package org.happypeng.sumatora.android.sumatoradictionary;
 
 import android.app.Application;
 
+import android.app.DownloadManager;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.res.AssetManager;
 import android.database.Cursor;
 import android.database.SQLException;
@@ -26,12 +29,14 @@ import android.os.AsyncTask;
 import android.os.StrictMode;
 import android.util.Log;
 
+import org.happypeng.sumatora.android.sumatoradictionary.broadcastreceiver.DownloadEventReceiver;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
 import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentSetting;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Settings;
 
+import org.happypeng.sumatora.android.sumatoradictionary.service.DictionaryDownloadService;
 import org.happypeng.sumatora.android.sumatoradictionary.xml.DictionaryBookmarkXML;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,11 +48,17 @@ import java.io.InputStream;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.WorkerThread;
+import androidx.arch.core.util.Function;
+import androidx.core.content.ContextCompat;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.Transformations;
 import androidx.room.Room;
 import androidx.room.RoomDatabase;
 import androidx.room.migration.Migration;
@@ -64,8 +75,9 @@ public class DictionaryApplication extends Application {
 
     private Settings m_settings;
 
+    private DownloadEventReceiver m_downloadEventReceiver;
+
     public LiveData<PersistentDatabase> getPersistentDatabase() { return m_persistentDatabase; }
-    // public LiveData<List<DictionaryLanguage>> getDictionaryLanguage() { return m_dictionaryLanguage; }
 
     public Settings getSettings() { return m_settings; }
 
@@ -523,15 +535,59 @@ public class DictionaryApplication extends Application {
                     .build());
         }
 
-        // m_dictionaryLanguage = new MutableLiveData<>();
         m_persistentDatabase = new MutableLiveData<>();
 
-        m_settings = new Settings();
+        setupDownloadService();
 
-        // m_dictionaryLanguage.setValue(Languages.getLanguages());
+        m_settings = new Settings();
 
         m_entities = null;
 
         new InitializeDBTask().execute(this);
+    }
+
+    // Registers a broadcast receiver for download completions
+    // Starts a foreground service to keep the application alive during downloads
+    private void setupDownloadService() {
+        m_persistentDatabase.observeForever(new Observer<PersistentDatabase>() {
+            @Override
+            public void onChanged(PersistentDatabase persistentDatabase) {
+                if (m_downloadEventReceiver != null) {
+                    unregisterReceiver(m_downloadEventReceiver);
+
+                    m_downloadEventReceiver = null;
+                }
+
+                m_downloadEventReceiver = new DownloadEventReceiver(persistentDatabase);
+
+                registerReceiver(m_downloadEventReceiver,
+                        new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
+            }
+        });
+
+        LiveData<Integer> downloadCount =
+                Transformations.switchMap(m_persistentDatabase,
+                        new Function<PersistentDatabase, LiveData<Integer>>() {
+                            @Override
+                            public LiveData<Integer> apply(PersistentDatabase input) {
+                                return input.dictionaryActionDao().getDownloadCountLive();
+                            }
+                        });
+
+        downloadCount.observeForever(new Observer<Integer>() {
+            @Override
+            public void onChanged(Integer integer) {
+                if (integer > 0) {
+                    Intent serviceIntent = new Intent(DictionaryApplication.this,
+                            DictionaryDownloadService.class);
+                    ContextCompat.startForegroundService(DictionaryApplication.this,
+                            serviceIntent);
+                } else {
+                    Intent serviceIntent = new Intent(DictionaryApplication.this,
+                            DictionaryDownloadService.class);
+                    stopService(serviceIntent);
+                }
+            }
+        });
     }
 }

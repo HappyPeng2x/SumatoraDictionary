@@ -17,7 +17,9 @@
 package org.happypeng.sumatora.android.sumatoradictionary.model;
 
 import android.app.Application;
+import android.app.DownloadManager;
 import android.net.TrafficStats;
+import android.net.Uri;
 import android.os.AsyncTask;
 
 import androidx.annotation.MainThread;
@@ -33,16 +35,19 @@ import androidx.lifecycle.Transformations;
 
 import org.happypeng.sumatora.android.sumatoradictionary.DictionaryApplication;
 import org.happypeng.sumatora.android.sumatoradictionary.R;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryAction;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryActionDao;
 import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
-import org.happypeng.sumatora.android.sumatoradictionary.db.tools.DictionaryAction;
-import org.happypeng.sumatora.android.sumatoradictionary.db.tools.DictionaryActionLists;
 
+import java.io.File;
 import java.io.InputStream;
 import java.net.URL;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
+
+import static android.content.Context.DOWNLOAD_SERVICE;
 
 public class DictionariesManagementActivityModel extends AndroidViewModel {
     public static int STATUS_INITIALIZING = 0;
@@ -53,17 +58,37 @@ public class DictionariesManagementActivityModel extends AndroidViewModel {
     private final @NonNull DictionaryApplication mApp;
 
     private final MutableLiveData<List<InstalledDictionary>> mDownloadDictionariesLive;
-    private final MutableLiveData<Integer> mStatus;
-    private final MediatorLiveData<DictionaryActionLists> mActions;
+
+    private final MediatorLiveData<Integer> mStatus;
+
+    private final LiveData<List<DictionaryAction>> mUpdateActions;
+    private final LiveData<List<DictionaryAction>> mDownloadActions;
+    private final LiveData<List<DictionaryAction>> mDeleteActions;
+    private final LiveData<List<DictionaryAction>> mVersionActions;
+
+    public LiveData<List<DictionaryAction>> getUpdateActions() {
+        return mUpdateActions;
+    }
+
+    public LiveData<List<DictionaryAction>> getDownloadActions() {
+        return mDownloadActions;
+    }
+
+    public LiveData<List<DictionaryAction>> getDeleteActions() {
+        return mDeleteActions;
+    }
+
+    public LiveData<List<DictionaryAction>> getVersionActions() {
+        return mVersionActions;
+    }
+
+    private PersistentDatabase mDb;
 
     private String mDownloadError;
     
     private List<InstalledDictionary> mDownloadDictionaries;
     private List<InstalledDictionary> mInstalledDictionaries;
 
-    public LiveData<DictionaryActionLists> getActions() {
-        return mActions;
-    }
     public LiveData<Integer> getStatus() { return mStatus; }
     public String getDownloadError() { return mDownloadError; }
 
@@ -75,9 +100,11 @@ public class DictionariesManagementActivityModel extends AndroidViewModel {
 
         mApp = (DictionaryApplication) application;
         mDownloadDictionariesLive = new MutableLiveData<>();
-        mStatus = new MutableLiveData<>();
+        mStatus = new MediatorLiveData<>();
 
         mStatus.setValue(STATUS_INITIALIZING);
+
+        mDb = null;
 
         final LiveData<List<InstalledDictionary>> installedDictionariesLive = Transformations.switchMap(mApp.getPersistentDatabase(),
                 new Function<PersistentDatabase, LiveData<List<InstalledDictionary>>>() {
@@ -87,9 +114,7 @@ public class DictionariesManagementActivityModel extends AndroidViewModel {
                     }
                 });
 
-        mActions = new MediatorLiveData<>();
-
-        mActions.addSource(installedDictionariesLive,
+        mStatus.addSource(installedDictionariesLive,
                 new Observer<List<InstalledDictionary>>() {
                     @Override
                     public void onChanged(List<InstalledDictionary> installedDictionaries) {
@@ -99,7 +124,7 @@ public class DictionariesManagementActivityModel extends AndroidViewModel {
                     }
                 });
 
-        mActions.addSource(mDownloadDictionariesLive,
+        mStatus.addSource(mDownloadDictionariesLive,
                 new Observer<List<InstalledDictionary>>() {
                     @Override
                     public void onChanged(List<InstalledDictionary> downloadDictionaries) {
@@ -108,69 +133,137 @@ public class DictionariesManagementActivityModel extends AndroidViewModel {
                         processDictionaries();
                     }
                 });
+
+        mStatus.addSource(mApp.getPersistentDatabase(),
+                new Observer<PersistentDatabase>() {
+                    @Override
+                    public void onChanged(PersistentDatabase persistentDatabase) {
+                        mDb = persistentDatabase;
+
+                        processDictionaries();
+                    }
+                });
+
+        mUpdateActions = Transformations.switchMap(mApp.getPersistentDatabase(),
+                new Function<PersistentDatabase, LiveData<List<DictionaryAction>>>() {
+                    @Override
+                    public LiveData<List<DictionaryAction>> apply(PersistentDatabase input) {
+                        return input.dictionaryActionDao().getUpdateActions();
+                    }
+                });
+
+        mDownloadActions = Transformations.switchMap(mApp.getPersistentDatabase(),
+                new Function<PersistentDatabase, LiveData<List<DictionaryAction>>>() {
+                    @Override
+                    public LiveData<List<DictionaryAction>> apply(PersistentDatabase input) {
+                        return input.dictionaryActionDao().getDownloadActions();
+                    }
+                });
+
+        mDeleteActions = Transformations.switchMap(mApp.getPersistentDatabase(),
+                new Function<PersistentDatabase, LiveData<List<DictionaryAction>>>() {
+                    @Override
+                    public LiveData<List<DictionaryAction>> apply(PersistentDatabase input) {
+                        return input.dictionaryActionDao().getDeleteActions();
+                    }
+                });
+
+        mVersionActions = Transformations.switchMap(mApp.getPersistentDatabase(),
+                new Function<PersistentDatabase, LiveData<List<DictionaryAction>>>() {
+                    @Override
+                    public LiveData<List<DictionaryAction>> apply(PersistentDatabase input) {
+                        return input.dictionaryActionDao().getVersionActions();
+                    }
+                });
     }
 
     @MainThread
     private void processDictionaries() {
-        if (mInstalledDictionaries == null ||
-                mDownloadDictionaries == null || mActions == null) {
+        if (mDb == null ||
+                mInstalledDictionaries == null ||
+                mDownloadDictionaries == null) {
             return;
         }
 
-        boolean versionMismatch = false;
-        int dbVersion = mApp.getResources().getInteger(R.integer.database_version);
+        new AsyncTask<Void, Void, Void>() {
+            @Override
+            protected Void doInBackground(Void... voids) {
+                boolean versionMismatch = false;
+                int dbVersion = mApp.getResources().getInteger(R.integer.database_version);
 
-        LinkedHashMap<String, DictionaryAction> installedActions =
-                new LinkedHashMap<>();
+                LinkedHashMap<String, DictionaryAction> installedActions =
+                        new LinkedHashMap<>();
 
-        LinkedList<DictionaryAction> deleteActions = new LinkedList<>();
-        LinkedList<DictionaryAction> updateActions = new LinkedList<>();
-        LinkedList<DictionaryAction> downloadActions = new LinkedList<>();
-        LinkedList<DictionaryAction> versionActions = new LinkedList<>();
+                final LinkedList<DictionaryAction> deleteActions = new LinkedList<>();
+                final LinkedList<DictionaryAction> updateActions = new LinkedList<>();
+                final LinkedList<DictionaryAction> downloadActions = new LinkedList<>();
+                final LinkedList<DictionaryAction> versionActions = new LinkedList<>();
 
-        for (InstalledDictionary d : mInstalledDictionaries) {
-            installedActions.put(d.type + ":" + d.lang,
-                    new DictionaryAction(d, null, d.type, d.lang,
-                            dbVersion));
-        }
+                for (InstalledDictionary d : mInstalledDictionaries) {
+                    installedActions.put(d.type + ":" + d.lang,
+                            new DictionaryAction(d, null, d.type, d.lang,
+                                    dbVersion));
+                }
 
-        for (InstalledDictionary d : mDownloadDictionaries) {
-            DictionaryAction a = installedActions.get(d.type + ":" + d.lang);
+                for (InstalledDictionary d : mDownloadDictionaries) {
+                    DictionaryAction a = installedActions.get(d.type + ":" + d.lang);
 
-            if (a != null) {
-                a.setDownloadDictionary(d);
-            } else {
-                installedActions.put(d.type + ":" + d.lang,
-                        new DictionaryAction(null, d, d.type, d.lang,
-                                dbVersion));
+                    if (a != null) {
+                        a.setDownloadDictionary(d);
+                    } else {
+                        installedActions.put(d.type + ":" + d.lang,
+                                new DictionaryAction(null, d, d.type, d.lang,
+                                        dbVersion));
+                    }
+                }
+
+                for (DictionaryAction a : installedActions.values()) {
+                    a.calculateAction();
+
+                    switch (a.getAction()) {
+                        case DictionaryAction.DICTIONARY_ACTION_MISMATCH:
+                            System.out.println("Dictionary action mismatch found...");
+                            break;
+                        case DictionaryAction.DICTIONARY_ACTION_VERSION:
+                            versionMismatch = true;
+                            versionActions.add(a);
+                            break;
+                        case DictionaryAction.DICTIONARY_ACTION_UPDATE:
+                            updateActions.add(a);
+                            break;
+                        case DictionaryAction.DICTIONARY_ACTION_DELETE:
+                            deleteActions.add(a);
+                            break;
+                        case DictionaryAction.DICTIONARY_ACTION_DOWNLOAD:
+                            downloadActions.add(a);
+                            break;
+                    }
+                }
+
+                mDb.runInTransaction(new Runnable() {
+                    @Override
+                    public void run() {
+                        DictionaryActionDao dao = mDb.dictionaryActionDao();
+
+                        dao.deleteMany(dao.getAll());
+
+                        dao.insertMany(versionActions);
+                        dao.insertMany(updateActions);
+                        dao.insertMany(deleteActions);
+                        dao.insertMany(downloadActions);
+                    }
+                });
+
+                return null;
             }
-        }
 
-        for (DictionaryAction a : installedActions.values()) {
-            switch (a.getAction()) {
-                case DictionaryAction.DICTIONARY_ACTION_MISMATCH:
-                    System.out.println("Dictionary action mismatch found...");
-                    break;
-                case DictionaryAction.DICTIONARY_ACTION_VERSION:
-                    versionMismatch = true;
-                    versionActions.add(a);
-                    break;
-                case DictionaryAction.DICTIONARY_ACTION_UPDATE:
-                    updateActions.add(a);
-                    break;
-                case DictionaryAction.DICTIONARY_ACTION_DELETE:
-                    deleteActions.add(a);
-                    break;
-                case DictionaryAction.DICTIONARY_ACTION_DOWNLOAD:
-                    downloadActions.add(a);
-                    break;
+            @Override
+            protected void onPostExecute(Void aVoid) {
+                super.onPostExecute(aVoid);
+
+                mStatus.setValue(STATUS_READY);
             }
-        }
-
-        mActions.setValue(new DictionaryActionLists(deleteActions, updateActions,
-                downloadActions, versionActions));
-
-        mStatus.setValue(STATUS_READY);
+        }.execute();
     }
 
     @MainThread
@@ -204,6 +297,39 @@ public class DictionariesManagementActivityModel extends AndroidViewModel {
                 if (installedDictionaries == null) {
                     mStatus.setValue(STATUS_DOWNLOAD_ERROR);
                 }
+            }
+        }.execute();
+    }
+
+    public void startDownload(final DictionaryAction aEntry) {
+        if (mDb == null) {
+            return;
+        }
+
+        new AsyncTask<Void, Void, Void>() {
+            @Override
+            protected Void doInBackground(Void... voids) {
+                mDb.runInTransaction(new Runnable() {
+                    @Override
+                    public void run() {
+                        File localFile = new File(mApp.getExternalFilesDir(null),
+                                aEntry.getType() + "-" + aEntry.getLang());
+
+                        DownloadManager.Request request=new DownloadManager.Request(Uri.parse(aEntry.getDownloadDictionary().file))
+                                .setTitle(aEntry.getDownloadDictionary().description)// Title of the Download Notification
+                                .setDescription("Downloading")// Description of the Download Notification
+                                .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)// Visibility of the download Notification
+                                .setDestinationUri(Uri.fromFile(localFile))// Uri of the destination file
+                                .setAllowedOverRoaming(false);
+
+                        DownloadManager downloadManager= (DownloadManager) mApp.getSystemService(DOWNLOAD_SERVICE);
+
+                        aEntry.setDownloadId(downloadManager.enqueue(request));
+                        mDb.dictionaryActionDao().update(aEntry);
+                    }
+                });
+
+                return null;
             }
         }.execute();
     }
