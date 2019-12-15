@@ -201,6 +201,15 @@ public class DictionariesManagementActivityModel extends AndroidViewModel {
 
                 return null;
             }
+
+            @Override
+            protected void onPostExecute(Void aVoid) {
+                super.onPostExecute(aVoid);
+
+                if (mApp != null) {
+                    mApp.updateDownloadService();
+                }
+            }
         }.execute();
     }
 }

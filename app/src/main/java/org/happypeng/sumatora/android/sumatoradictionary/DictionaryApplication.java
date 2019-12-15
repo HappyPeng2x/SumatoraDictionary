@@ -28,6 +28,7 @@ import android.os.AsyncTask;
 import android.os.StrictMode;
 import android.util.Log;
 
+import androidx.annotation.MainThread;
 import androidx.annotation.NonNull;
 import androidx.annotation.WorkerThread;
 import androidx.arch.core.util.Function;
@@ -576,19 +577,39 @@ public class DictionaryApplication extends Application {
             }
         });
 
-        LiveData<Integer> downloadCount =
+        LiveData<List<LocalDictionaryObject>> localDictionaryObjectInstall =
                 Transformations.switchMap(m_persistentDatabase,
-                        new Function<PersistentDatabase, LiveData<Integer>>() {
+                        new Function<PersistentDatabase, LiveData<List<LocalDictionaryObject>>>() {
                             @Override
-                            public LiveData<Integer> apply(PersistentDatabase input) {
-                                return input.remoteDictionaryObjectDao().getDownloadCountLive();
+                            public LiveData<List<LocalDictionaryObject>> apply(PersistentDatabase input) {
+                                return input.localDictionaryObjectDao().getInstallObjects();
                             }
                         });
+    }
 
-        downloadCount.observeForever(new Observer<Integer>() {
+    @MainThread
+    public void updateDownloadService() {
+        new AsyncTask<Void, Void, Boolean>() {
             @Override
-            public void onChanged(Integer integer) {
-                if (integer > 0) {
+            protected Boolean doInBackground(Void... voids) {
+                PersistentDatabase db = m_persistentDatabase.getValue();
+
+                if (db == null) {
+                    return false;
+                }
+
+                if (db.remoteDictionaryObjectDao().getDownloadCount() > 0) {
+                    return true;
+                }
+
+                return false;
+            }
+
+            @Override
+            protected void onPostExecute(Boolean aBoolean) {
+                super.onPostExecute(aBoolean);
+
+                if (aBoolean) {
                     Intent serviceIntent = new Intent(DictionaryApplication.this,
                             DictionaryDownloadService.class);
                     ContextCompat.startForegroundService(DictionaryApplication.this,
@@ -599,15 +620,6 @@ public class DictionaryApplication extends Application {
                     stopService(serviceIntent);
                 }
             }
-        });
-
-        LiveData<List<LocalDictionaryObject>> localDictionaryObjectInstall =
-                Transformations.switchMap(m_persistentDatabase,
-                        new Function<PersistentDatabase, LiveData<List<LocalDictionaryObject>>>() {
-                            @Override
-                            public LiveData<List<LocalDictionaryObject>> apply(PersistentDatabase input) {
-                                return input.localDictionaryObjectDao().getInstallObjects();
-                            }
-                        });
+        }.execute();
     }
 }

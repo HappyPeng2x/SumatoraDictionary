@@ -28,8 +28,12 @@ import java.util.List;
 
 @Dao
 public interface RemoteDictionaryObjectDao {
-    @Query("SELECT COUNT(*) FROM RemoteDictionaryObject WHERE RemoteDictionaryObject.downloadId != 0")
+    @Query("SELECT COUNT(downloadId) FROM RemoteDictionaryObject WHERE RemoteDictionaryObject.downloadId > -1")
     LiveData<Integer> getDownloadCountLive();
+
+    @Query("SELECT COUNT(downloadId) FROM RemoteDictionaryObject WHERE RemoteDictionaryObject.downloadId > -1")
+    int getDownloadCount();
+
 
     @Query("SELECT * FROM RemoteDictionaryObject WHERE RemoteDictionaryObject.downloadId=:id")
     List<RemoteDictionaryObject> getAllForDownloadId(long id);

@@ -76,12 +76,19 @@ public class DownloadEventReceiver extends BroadcastReceiver {
                         installRemoteDictionaryObject(d);
                     }
 
-                    d.setDownloadId(0);
+                    d.setDownloadId(-1);
                     d.setLocalFile("");
                     mDB.remoteDictionaryObjectDao().update(d);
                 }
 
                 return null;
+            }
+
+            @Override
+            protected void onPostExecute(Void aVoid) {
+                super.onPostExecute(aVoid);
+
+                mApp.updateDownloadService();
             }
         }.execute();
     }

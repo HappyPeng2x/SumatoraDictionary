@@ -37,7 +37,7 @@ public class RemoteDictionaryObject extends BaseDictionaryObject {
         super();
 
         localFile = "";
-        downloadId = 0;
+        downloadId = -1;
     }
 
     public void setLocalFile(@NonNull String aLocalFile) {
@@ -54,6 +54,8 @@ public class RemoteDictionaryObject extends BaseDictionaryObject {
                                   final @NonNull String aLang,
                                   int aVersion,
                                   int aDate) {
+        this();
+
         file = aUrl;
         description = aDescription;
         type = aType;
