@@ -17,7 +17,6 @@
 package org.happypeng.sumatora.android.sumatoradictionary;
 
 import android.app.Application;
-
 import android.app.DownloadManager;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -28,28 +27,6 @@ import android.database.sqlite.SQLiteDatabase;
 import android.os.AsyncTask;
 import android.os.StrictMode;
 import android.util.Log;
-
-import org.happypeng.sumatora.android.sumatoradictionary.broadcastreceiver.DownloadEventReceiver;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
-import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary;
-import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
-import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentSetting;
-import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Settings;
-
-import org.happypeng.sumatora.android.sumatoradictionary.service.DictionaryDownloadService;
-import org.happypeng.sumatora.android.sumatoradictionary.xml.DictionaryBookmarkXML;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.WorkerThread;
@@ -64,12 +41,33 @@ import androidx.room.RoomDatabase;
 import androidx.room.migration.Migration;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 
+import org.happypeng.sumatora.android.sumatoradictionary.broadcastreceiver.DownloadEventReceiver;
+import org.happypeng.sumatora.android.sumatoradictionary.db.AssetDictionaryObject;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
+import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary;
+import org.happypeng.sumatora.android.sumatoradictionary.db.LocalDictionaryObject;
+import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
+import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentSetting;
+import org.happypeng.sumatora.android.sumatoradictionary.db.tools.BaseDictionaryObject;
+import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Settings;
+import org.happypeng.sumatora.android.sumatoradictionary.service.DictionaryDownloadService;
+import org.happypeng.sumatora.android.sumatoradictionary.xml.DictionaryBookmarkXML;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+
 public class DictionaryApplication extends Application {
-    static final String DATABASE_NAME = "JMdict.db";
+    public static final String DATABASE_NAME = "JMdict.db";
     static final String PERSISTENT_DATABASE_NAME = "PersistentDatabase.db";
 
     protected MutableLiveData<PersistentDatabase> m_persistentDatabase;
-    // protected MutableLiveData<List<DictionaryLanguage>> m_dictionaryLanguage;
 
     private HashMap<String, String> m_entities;
 
@@ -278,49 +276,61 @@ public class DictionaryApplication extends Application {
             return version;
         }
 
+        @WorkerThread
         private static void updateDictionaries(final DictionaryApplication aApp,
                                                final PersistentDatabase aDB) {
             AssetManager assetManager = aApp.getAssets();
 
             try {
-                List<InstalledDictionary> dictionaries = aDB.installedDictionaryDao().getAll();
-
                 InputStream in = assetManager.open("dictionaries.xml");
-                List<InstalledDictionary> dl = InstalledDictionary.fromXML(in);
+
+                List<AssetDictionaryObject> dl = InstalledDictionary.fromXML(in,
+                        new BaseDictionaryObject.Constructor<AssetDictionaryObject>() {
+                            @Override
+                            public AssetDictionaryObject create(@NonNull String aFile, String aDescription, @NonNull String aType, @NonNull String aLang, int aVersion, int aDate) {
+                                return new AssetDictionaryObject(aFile, aDescription, aType, aLang, aVersion, aDate);
+                            }
+                        });
+
                 in.close();
 
-                boolean has_jmdict = false;
-                boolean has_jmdict_eng = false;
+                aDB.assetDictionaryObjectDao().deleteMany(aDB.assetDictionaryObjectDao().getAll());
+                aDB.assetDictionaryObjectDao().insertMany(dl);
 
-                for (InstalledDictionary d : dictionaries) {
-                    if (d.type != null && (d.type.equals("jmdict"))) {
-                        has_jmdict = true;
-                    } else if (d.type != null && d.type.equals("jmdict_translation") && d.lang != null &&
-                                    d.lang.equals("eng")) {
-                        has_jmdict_eng = true;
-                    }
-                }
-
-                if (!has_jmdict) {
-                    dictionaries.add(new InstalledDictionary(null, null, "jmdict","", 0, 0));
-                }
-
-                if (!has_jmdict_eng) {
-                    dictionaries.add(new InstalledDictionary(null, null, "jmdict_translation","eng", 0, 0));
-                }
-
-                List<InstalledDictionary> updateList = InstalledDictionary.calculateUpdateList(dictionaries, dl);
+                List<AssetDictionaryObject> up = aDB.assetDictionaryObjectDao().getInstallObjects();
 
                 File databaseRoot = aApp.getDatabasePath(DATABASE_NAME).getParentFile();
                 File databaseInstallDir = new File(databaseRoot, "dictionaries");
 
-                if (databaseInstallDir.exists() || databaseInstallDir.mkdirs()) {
-                    for (InstalledDictionary d : updateList) {
-                        d.install(assetManager, databaseInstallDir.getAbsolutePath(), aDB.installedDictionaryDao());
-                    }
-                } else {
-                    Log.e("tag", "Could not create dictionaries directory.");
+                if (!databaseInstallDir.exists()) {
+                    databaseInstallDir.mkdirs();
                 }
+
+                if (up != null) {
+                    for (AssetDictionaryObject a : up) {
+                        a.install(assetManager, databaseInstallDir.getAbsolutePath(), aDB.installedDictionaryDao());
+                    }
+                }
+
+                InstalledDictionary jmdict = aDB.installedDictionaryDao().getForTypeLang("jmdict", "");
+                InstalledDictionary jmdict_eng = aDB.installedDictionaryDao().getForTypeLang("jmdict_translation", "eng");
+
+                if (jmdict == null) {
+                    AssetDictionaryObject asset_jmdict = aDB.assetDictionaryObjectDao().getForTypeLang("jmdict", "");
+
+                    if (asset_jmdict != null) {
+                        asset_jmdict.install(assetManager, databaseInstallDir.getAbsolutePath(), aDB.installedDictionaryDao());
+                    }
+                }
+
+                if (jmdict_eng == null) {
+                    AssetDictionaryObject asset_jmdict_eng = aDB.assetDictionaryObjectDao().getForTypeLang("jmdict_translation", "eng");
+
+                    if (asset_jmdict_eng != null) {
+                        asset_jmdict_eng.install(assetManager, databaseInstallDir.getAbsolutePath(), aDB.installedDictionaryDao());
+                    }
+                }
+
             } catch(IOException e) {
                 Log.e("tag", "IOException: ", e);
                 Log.e("tag", "Could not update dictionaries.");
@@ -558,7 +568,8 @@ public class DictionaryApplication extends Application {
                     m_downloadEventReceiver = null;
                 }
 
-                m_downloadEventReceiver = new DownloadEventReceiver(persistentDatabase);
+                m_downloadEventReceiver = new DownloadEventReceiver(DictionaryApplication.this,
+                        persistentDatabase);
 
                 registerReceiver(m_downloadEventReceiver,
                         new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
@@ -570,7 +581,7 @@ public class DictionaryApplication extends Application {
                         new Function<PersistentDatabase, LiveData<Integer>>() {
                             @Override
                             public LiveData<Integer> apply(PersistentDatabase input) {
-                                return input.dictionaryActionDao().getDownloadCountLive();
+                                return input.remoteDictionaryObjectDao().getDownloadCountLive();
                             }
                         });
 
@@ -589,5 +600,14 @@ public class DictionaryApplication extends Application {
                 }
             }
         });
+
+        LiveData<List<LocalDictionaryObject>> localDictionaryObjectInstall =
+                Transformations.switchMap(m_persistentDatabase,
+                        new Function<PersistentDatabase, LiveData<List<LocalDictionaryObject>>>() {
+                            @Override
+                            public LiveData<List<LocalDictionaryObject>> apply(PersistentDatabase input) {
+                                return input.localDictionaryObjectDao().getInstallObjects();
+                            }
+                        });
     }
 }

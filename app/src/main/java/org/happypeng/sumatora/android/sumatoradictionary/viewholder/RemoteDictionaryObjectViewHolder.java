@@ -1,7 +1,6 @@
 package org.happypeng.sumatora.android.sumatoradictionary.viewholder;
 
 import android.view.View;
-import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.TextView;
 
@@ -9,12 +8,11 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import org.happypeng.sumatora.android.sumatoradictionary.R;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryAction;
-import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary;
+import org.happypeng.sumatora.android.sumatoradictionary.db.RemoteDictionaryObject;
 
-public class DictionaryActionViewHolder extends RecyclerView.ViewHolder {
+public class RemoteDictionaryObjectViewHolder extends RecyclerView.ViewHolder {
     public interface OnClickListener {
-        void onClick(DictionaryAction aEntry);
+        void onClick(RemoteDictionaryObject aEntry);
     }
 
     private final TextView mDescription;
@@ -25,11 +23,11 @@ public class DictionaryActionViewHolder extends RecyclerView.ViewHolder {
     private final OnClickListener mInstallListener;
     private final OnClickListener mDeleteListener;
 
-    public DictionaryActionViewHolder(@NonNull View itemView,
-                                      boolean aInstallButton,
-                                      boolean aDeleteButton,
-                                      OnClickListener aInstallListener,
-                                      OnClickListener aDeleteListener) {
+    public RemoteDictionaryObjectViewHolder(@NonNull View itemView,
+                                            boolean aInstallButton,
+                                            boolean aDeleteButton,
+                                            OnClickListener aInstallListener,
+                                            OnClickListener aDeleteListener) {
         super(itemView);
 
         mDescription = (TextView) itemView.findViewById(R.id.dictionary_card_description);
@@ -51,17 +49,10 @@ public class DictionaryActionViewHolder extends RecyclerView.ViewHolder {
         mDeleteListener = aDeleteListener;
     }
 
-    public void bindTo(final DictionaryAction aEntry) {
+    public void bindTo(final RemoteDictionaryObject aEntry) {
         if (aEntry == null) { return; }
 
-        InstalledDictionary downloadDictionary = aEntry.getDownloadDictionary();
-        InstalledDictionary installedDictionary = aEntry.getInstalledDictionary();
-
-        if (downloadDictionary != null) {
-            mDescription.setText(downloadDictionary.description);
-        } else if (installedDictionary != null){
-            mDescription.setText(installedDictionary.description);
-        }
+        mDescription.setText(aEntry.description);
 
         if (mInstallListener != null) {
             mInstallButton.setOnClickListener(new View.OnClickListener() {

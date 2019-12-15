@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 5,
-    "identityHash": "e14258d568714c0358ead43171c0fb82",
+    "identityHash": "f0d6cb6e086a4294e67a665ddec0e342",
     "entities": [
       {
         "tableName": "PersistentSetting",
@@ -235,14 +235,8 @@
       },
       {
         "tableName": "InstalledDictionary",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`file` TEXT, `description` TEXT, `type` TEXT NOT NULL, `lang` TEXT NOT NULL, `version` INTEGER NOT NULL, `date` INTEGER NOT NULL, PRIMARY KEY(`type`, `lang`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`description` TEXT, `type` TEXT NOT NULL, `lang` TEXT NOT NULL, `version` INTEGER NOT NULL, `date` INTEGER NOT NULL, `file` TEXT NOT NULL, PRIMARY KEY(`type`, `lang`))",
         "fields": [
-          {
-            "fieldPath": "file",
-            "columnName": "file",
-            "affinity": "TEXT",
-            "notNull": false
-          },
           {
             "fieldPath": "description",
             "columnName": "description",
@@ -272,6 +266,12 @@
             "columnName": "date",
             "affinity": "INTEGER",
             "notNull": true
+          },
+          {
+            "fieldPath": "file",
+            "columnName": "file",
+            "affinity": "TEXT",
+            "notNull": true
           }
         ],
         "primaryKey": {
@@ -285,9 +285,15 @@
         "foreignKeys": []
       },
       {
-        "tableName": "DictionaryAction",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`type` TEXT NOT NULL, `lang` TEXT NOT NULL, `action` INTEGER NOT NULL, `downloadId` INTEGER NOT NULL, `appVersion` INTEGER NOT NULL, `installedfile` TEXT, `installeddescription` TEXT, `installedtype` TEXT, `installedlang` TEXT, `installedversion` INTEGER, `installeddate` INTEGER, `downloadfile` TEXT, `downloaddescription` TEXT, `downloadtype` TEXT, `downloadlang` TEXT, `downloadversion` INTEGER, `downloaddate` INTEGER, PRIMARY KEY(`type`, `lang`))",
+        "tableName": "RemoteDictionaryObject",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`description` TEXT, `type` TEXT NOT NULL, `lang` TEXT NOT NULL, `version` INTEGER NOT NULL, `date` INTEGER NOT NULL, `file` TEXT NOT NULL, `localFile` TEXT NOT NULL, `downloadId` INTEGER NOT NULL, PRIMARY KEY(`type`, `lang`))",
         "fields": [
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT",
+            "notNull": false
+          },
           {
             "fieldPath": "type",
             "columnName": "type",
@@ -301,9 +307,27 @@
             "notNull": true
           },
           {
-            "fieldPath": "action",
-            "columnName": "action",
+            "fieldPath": "version",
+            "columnName": "version",
             "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "date",
+            "columnName": "date",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "file",
+            "columnName": "file",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "localFile",
+            "columnName": "localFile",
+            "affinity": "TEXT",
             "notNull": true
           },
           {
@@ -311,84 +335,108 @@
             "columnName": "downloadId",
             "affinity": "INTEGER",
             "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "columnNames": [
+            "type",
+            "lang"
+          ],
+          "autoGenerate": false
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "LocalDictionaryObject",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`description` TEXT, `type` TEXT NOT NULL, `lang` TEXT NOT NULL, `version` INTEGER NOT NULL, `date` INTEGER NOT NULL, `file` TEXT NOT NULL, PRIMARY KEY(`type`, `lang`))",
+        "fields": [
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT",
+            "notNull": false
           },
           {
-            "fieldPath": "appVersion",
-            "columnName": "appVersion",
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lang",
+            "columnName": "lang",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "version",
+            "columnName": "version",
             "affinity": "INTEGER",
             "notNull": true
           },
           {
-            "fieldPath": "installedDictionary.file",
-            "columnName": "installedfile",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "installedDictionary.description",
-            "columnName": "installeddescription",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "installedDictionary.type",
-            "columnName": "installedtype",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "installedDictionary.lang",
-            "columnName": "installedlang",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "installedDictionary.version",
-            "columnName": "installedversion",
+            "fieldPath": "date",
+            "columnName": "date",
             "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "file",
+            "columnName": "file",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "columnNames": [
+            "type",
+            "lang"
+          ],
+          "autoGenerate": false
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "AssetDictionaryObject",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`description` TEXT, `type` TEXT NOT NULL, `lang` TEXT NOT NULL, `version` INTEGER NOT NULL, `date` INTEGER NOT NULL, `file` TEXT NOT NULL, PRIMARY KEY(`type`, `lang`))",
+        "fields": [
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT",
             "notNull": false
           },
           {
-            "fieldPath": "installedDictionary.date",
-            "columnName": "installeddate",
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lang",
+            "columnName": "lang",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "version",
+            "columnName": "version",
             "affinity": "INTEGER",
-            "notNull": false
+            "notNull": true
           },
           {
-            "fieldPath": "downloadDictionary.file",
-            "columnName": "downloadfile",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "downloadDictionary.description",
-            "columnName": "downloaddescription",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "downloadDictionary.type",
-            "columnName": "downloadtype",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "downloadDictionary.lang",
-            "columnName": "downloadlang",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "downloadDictionary.version",
-            "columnName": "downloadversion",
+            "fieldPath": "date",
+            "columnName": "date",
             "affinity": "INTEGER",
-            "notNull": false
+            "notNull": true
           },
           {
-            "fieldPath": "downloadDictionary.date",
-            "columnName": "downloaddate",
-            "affinity": "INTEGER",
-            "notNull": false
+            "fieldPath": "file",
+            "columnName": "file",
+            "affinity": "TEXT",
+            "notNull": true
           }
         ],
         "primaryKey": {
@@ -405,7 +453,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'e14258d568714c0358ead43171c0fb82')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'f0d6cb6e086a4294e67a665ddec0e342')"
     ]
   }
 }

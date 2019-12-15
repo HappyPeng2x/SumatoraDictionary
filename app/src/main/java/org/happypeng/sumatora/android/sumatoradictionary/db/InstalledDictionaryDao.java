@@ -18,4 +18,7 @@ public interface InstalledDictionaryDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void insert(InstalledDictionary aSetting);
+
+    @Query("SELECT * FROM InstalledDictionary WHERE InstalledDictionary.type == :aType AND InstalledDictionary.lang == :aLang LIMIT 1")
+    InstalledDictionary getForTypeLang(String aType, String aLang);
 }

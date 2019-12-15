@@ -1,3 +1,19 @@
+/* Sumatora Dictionary
+        Copyright (C) 2019 Nicolas Centa
+
+        This program is free software: you can redistribute it and/or modify
+        it under the terms of the GNU General Public License as published by
+        the Free Software Foundation, either version 3 of the License, or
+        (at your option) any later version.
+
+        This program is distributed in the hope that it will be useful,
+        but WITHOUT ANY WARRANTY; without even the implied warranty of
+        MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+        GNU General Public License for more details.
+
+        You should have received a copy of the GNU General Public License
+        along with this program.  If not, see <http://www.gnu.org/licenses/>.*/
+
 package org.happypeng.sumatora.android.sumatoradictionary.db;
 
 import android.content.res.AssetManager;
@@ -12,29 +28,26 @@ import androidx.room.RoomDatabase;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 
 import org.happypeng.sumatora.android.sumatoradictionary.BuildConfig;
+import org.happypeng.sumatora.android.sumatoradictionary.db.tools.BaseDictionaryObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserFactory;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.zip.GZIPInputStream;
 
 @Entity(primaryKeys = {"type", "lang"})
-public class InstalledDictionary {
+public class InstalledDictionary extends BaseDictionaryObject {
     private static String ASSET_PREFIX = "file:///android_asset/";
-
-    public String file;
-    public String description;
-    @NonNull public String type;
-    @NonNull public String lang;
-    public int version;
-    public int date;
 
     @Ignore private Logger m_log;
 
@@ -86,6 +99,7 @@ public class InstalledDictionary {
         db.execSQL("ATTACH '" + file + "' AS " + alias);
     }
 
+    /*
     public static List<InstalledDictionary> calculateUpdateList(final List<InstalledDictionary> aInstalledList,
                                                                 final List<InstalledDictionary> aAvailableList) {
         LinkedList<InstalledDictionary> updateList = new LinkedList<>();
@@ -103,124 +117,13 @@ public class InstalledDictionary {
         // In the future we should manage the case where several dictionaries are available for an installed dictionary
 
         return updateList;
-    }
+    } */
 
-    private static void copyFile(InputStream in, OutputStream out) throws IOException {
-        byte[] buffer = new byte[1024];
-        int read;
-        while((read = in.read(buffer)) != -1){
-            out.write(buffer, 0, read);
-        }
-    }
 
-    private static boolean copyAsset(@NonNull final AssetManager aAssetManager, String aName,
-                                  File aOutput) {
-        try {
-            InputStream in = aAssetManager.open(aName);
-            OutputStream out = new FileOutputStream(aOutput);
-            copyFile(in, out);
-            in.close();
-            in = null;
-            out.flush();
-            out.close();
-            out = null;
 
-            return true;
-        } catch(IOException e) {
-            Log.e("tag", "Failed to copy asset file: " + aName, e);
-        }
 
-        return false;
-    }
 
-    public boolean install(final AssetManager aAssetManager,
-                           final String aDatabaseDir,
-                           final InstalledDictionaryDao aDao) {
-        if (file == null) {
-            return false;
-        }
-
-        if (file.startsWith(ASSET_PREFIX)) {
-            if (aAssetManager == null) {
-                return false;
-            }
-
-            File sourceFile = new File(file.substring(ASSET_PREFIX.length()));
-            String fileName = sourceFile.getName();
-
-            File destFile = new File(aDatabaseDir, fileName);
-
-            if (copyAsset(aAssetManager,
-                    sourceFile.toString(),
-                    destFile)) {
-                InstalledDictionary insertDir = new InstalledDictionary(destFile.toString(),
-                        description, type, lang, version, date);
-
-                aDao.insert(insertDir);
-
-                if (BuildConfig.DEBUG_DB_MIGRATION) {
-                    m_log.info("Successfully installed dictionary " +
-                            destFile);
-                }
-
-                return true;
-            }
-        }
-
-        if (BuildConfig.DEBUG_DB_MIGRATION) {
-            m_log.info("Failed to install dictionary " + file);
-        }
-
-        // Other features not supported at the moment
-
-        return false;
-    }
-
-    public static List<InstalledDictionary> fromXML(final InputStream aStream) {
-        List<InstalledDictionary> result = new LinkedList<>();
-
-        try {
-            XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
-            XmlPullParser xpp = factory.newPullParser();
-
-            xpp.setInput(aStream, null);
-
-            int eventType = xpp.getEventType();
-            int level = 0;
-            String parent = null;
-
-            while (eventType != XmlPullParser.END_DOCUMENT) {
-                if(eventType == XmlPullParser.START_TAG) {
-                    level++;
-
-                    if (xpp.getName().equals("repository")) {
-                        parent = "repository";
-                    }
-
-                    if (level == 2 && parent != null && parent.equals("repository") &&
-                            xpp.getName().equals("dictionary")) {
-                        result.add(new InstalledDictionary(xpp.getAttributeValue(null, "uri"),
-                                xpp.getAttributeValue(null, "description"),
-                                xpp.getAttributeValue(null, "type"),
-                                xpp.getAttributeValue(null, "lang"),
-                                Integer.valueOf(xpp.getAttributeValue(null, "version")),
-                                Integer.valueOf(xpp.getAttributeValue(null, "date"))));
-                    }
-                } else if(eventType == XmlPullParser.END_TAG) {
-                    level--;
-                }
-
-                eventType = xpp.next();
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-
-            return null;
-        }
-
-        return result;
-    }
-
+    /*
     public static boolean areItemsTheSame(@NonNull InstalledDictionary aOldItem,
                                           @NonNull InstalledDictionary aNewItem) {
         return (aOldItem.file == null && aNewItem.file == null) ||
@@ -254,4 +157,6 @@ public class InstalledDictionary {
     public static DiffUtil.ItemCallback<InstalledDictionary> getDiffUtil() {
         return DIFF_UTIL;
     }
+
+     */
 }
