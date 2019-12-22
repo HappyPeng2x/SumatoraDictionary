@@ -91,7 +91,7 @@ public class DictionariesManagementActivityModel extends AndroidViewModel {
                 new Function<PersistentDatabase, LiveData<List<InstalledDictionary>>>() {
                     @Override
                     public LiveData<List<InstalledDictionary>> apply(PersistentDatabase input) {
-                        return input.installedDictionaryDao().getAllLive();
+                        return input.installedDictionaryDao().getRemovableLive();
                     }
                 });
 
@@ -99,7 +99,7 @@ public class DictionariesManagementActivityModel extends AndroidViewModel {
                 new Function<PersistentDatabase, LiveData<List<RemoteDictionaryObject>>>() {
                     @Override
                     public LiveData<List<RemoteDictionaryObject>> apply(PersistentDatabase input) {
-                        return input.remoteDictionaryObjectDao().getAllLive();
+                        return input.remoteDictionaryObjectDao().getInstallableLive();
                     }
                 });
 
@@ -176,6 +176,28 @@ public class DictionariesManagementActivityModel extends AndroidViewModel {
                 if (mDb != null) {
                     processDictionaryList();
                 }
+            }
+        }.execute();
+    }
+
+    @MainThread
+    public void uninstall(final InstalledDictionary aDictionary) {
+        if (mDb == null) {
+            return;
+        }
+
+        new AsyncTask<Void, Void, Void>() {
+            @Override
+            protected Void doInBackground(Void... voids) {
+                mDb.installedDictionaryDao().delete(aDictionary);
+
+                aDictionary.detach(mDb);
+
+                if (!aDictionary.delete()) {
+                    System.out.println("Failed to remove dictionary");
+                }
+
+                return null;
             }
         }.execute();
     }

@@ -99,64 +99,21 @@ public class InstalledDictionary extends BaseDictionaryObject {
         db.execSQL("ATTACH '" + file + "' AS " + alias);
     }
 
-    /*
-    public static List<InstalledDictionary> calculateUpdateList(final List<InstalledDictionary> aInstalledList,
-                                                                final List<InstalledDictionary> aAvailableList) {
-        LinkedList<InstalledDictionary> updateList = new LinkedList<>();
+    public boolean delete() {
+        File f = new File(file);
 
-        for (InstalledDictionary i : aInstalledList) {
-            for (InstalledDictionary a : aAvailableList) {
-                if (i.isSame(a)) {
-                    if (a.isSuperiorVersion(i)) {
-                        updateList.add(a);
-                    }
-                }
-            }
+        return f.delete();
+    }
+
+    public void detach(RoomDatabase aDB) {
+        SupportSQLiteDatabase db = aDB.getOpenHelper().getWritableDatabase();
+
+        String alias = type;
+
+        if (type.equals("jmdict_translation")) {
+            alias = lang;
         }
 
-        // In the future we should manage the case where several dictionaries are available for an installed dictionary
-
-        return updateList;
-    } */
-
-
-
-
-
-    /*
-    public static boolean areItemsTheSame(@NonNull InstalledDictionary aOldItem,
-                                          @NonNull InstalledDictionary aNewItem) {
-        return (aOldItem.file == null && aNewItem.file == null) ||
-                (aOldItem.file != null && aOldItem.file.equals(aNewItem.file));
+        db.execSQL("DETACH " + alias);
     }
-
-    public static boolean areContentsTheSame(@NonNull InstalledDictionary aOldItem,
-                                             @NonNull InstalledDictionary aNewItem) {
-        return aOldItem.type.equals(aNewItem.type) &&
-                aOldItem.lang.equals(aNewItem.lang) &&
-                aOldItem.version == aNewItem.version &&
-                aOldItem.date == aNewItem.date &&
-                ((aOldItem.description == null && aNewItem.description == null) ||
-                        (aOldItem.description != null && aOldItem.description.equals(aNewItem.description)));
-
-    }
-
-    private final static DiffUtil.ItemCallback<InstalledDictionary> DIFF_UTIL =
-            new DiffUtil.ItemCallback<InstalledDictionary>() {
-                @Override
-                public boolean areItemsTheSame(@NonNull InstalledDictionary oldItem, @NonNull InstalledDictionary newItem) {
-                    return InstalledDictionary.areItemsTheSame(oldItem, newItem);
-                }
-
-                @Override
-                public boolean areContentsTheSame(@NonNull InstalledDictionary oldItem, @NonNull InstalledDictionary newItem) {
-                    return InstalledDictionary.areContentsTheSame(oldItem, newItem);
-                }
-            };
-
-    public static DiffUtil.ItemCallback<InstalledDictionary> getDiffUtil() {
-        return DIFF_UTIL;
-    }
-
-     */
 }

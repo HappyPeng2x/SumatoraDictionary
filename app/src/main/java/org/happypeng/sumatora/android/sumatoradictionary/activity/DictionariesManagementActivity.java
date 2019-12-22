@@ -39,10 +39,11 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import org.happypeng.sumatora.android.sumatoradictionary.R;
-import org.happypeng.sumatora.android.sumatoradictionary.adapter.RemoteDictionaryObjectAdapter;
+import org.happypeng.sumatora.android.sumatoradictionary.adapter.DictionaryObjectAdapter;
+import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary;
 import org.happypeng.sumatora.android.sumatoradictionary.db.RemoteDictionaryObject;
 import org.happypeng.sumatora.android.sumatoradictionary.model.DictionariesManagementActivityModel;
-import org.happypeng.sumatora.android.sumatoradictionary.viewholder.RemoteDictionaryObjectViewHolder;
+import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionaryObjectViewHolder;
 
 import java.util.List;
 
@@ -143,7 +144,7 @@ public class DictionariesManagementActivity extends AppCompatActivity implements
 
         final View updatePanel =
                 findViewById(R.id.activity_dictionaries_management_update_panel);
-        updatePanel.setVisibility(View.INVISIBLE);
+        updatePanel.setVisibility(View.GONE);
 
         final RecyclerView updateRv =
                 (RecyclerView) findViewById(R.id.activity_dictionaries_management_update_rv);
@@ -153,13 +154,13 @@ public class DictionariesManagementActivity extends AppCompatActivity implements
 
         updateRv.setLayoutManager(updateLl);
 
-        final RemoteDictionaryObjectAdapter updateAdapter = new RemoteDictionaryObjectAdapter(false,
+        final DictionaryObjectAdapter updateAdapter = new DictionaryObjectAdapter(false,
                 false, null, null);
         updateRv.setAdapter(updateAdapter);
 
         final View installPanel =
                 findViewById(R.id.activity_dictionaries_management_install_panel);
-        installPanel.setVisibility(View.INVISIBLE);
+        installPanel.setVisibility(View.GONE);
 
         final RecyclerView installRv =
                 (RecyclerView) findViewById(R.id.activity_dictionaries_management_install_rv);
@@ -169,21 +170,21 @@ public class DictionariesManagementActivity extends AppCompatActivity implements
 
         installRv.setLayoutManager(installLl);
 
-        final RemoteDictionaryObjectAdapter installAdapter = new RemoteDictionaryObjectAdapter(true,
-                false, new RemoteDictionaryObjectViewHolder.OnClickListener() {
+        final DictionaryObjectAdapter<RemoteDictionaryObject> installAdapter = new DictionaryObjectAdapter<>(true,
+                false, new DictionaryObjectViewHolder.OnClickListener<RemoteDictionaryObject>() {
             @Override
             public void onClick(final RemoteDictionaryObject aEntry) {
 
                 mViewModel.startDownload(aEntry);
 
-                System.out.println(aEntry.description);
+                System.out.println("Install: " + aEntry.description);
             }
         }, null);
         installRv.setAdapter(installAdapter);
 
         final View removePanel =
                 findViewById(R.id.activity_dictionaries_management_remove_panel);
-        removePanel.setVisibility(View.INVISIBLE);
+        removePanel.setVisibility(View.GONE);
 
         final RecyclerView removeRv =
                 (RecyclerView) findViewById(R.id.activity_dictionaries_management_remove_rv);
@@ -193,8 +194,16 @@ public class DictionariesManagementActivity extends AppCompatActivity implements
 
         removeRv.setLayoutManager(removeLl);
 
-        final RemoteDictionaryObjectAdapter removeAdapter = new RemoteDictionaryObjectAdapter(false,
-                true, null, null);
+        final DictionaryObjectAdapter<InstalledDictionary> removeAdapter = new DictionaryObjectAdapter<>(false,
+                true, null,
+                new DictionaryObjectViewHolder.OnClickListener<InstalledDictionary>() {
+                    @Override
+                    public void onClick(InstalledDictionary aEntry) {
+                        mViewModel.uninstall(aEntry);
+
+                        System.out.println("Uninstall: " + aEntry.description);
+                    }
+                });
         removeRv.setAdapter(removeAdapter);
 
         mViewModel.getRemoteDictionaryObjects().observe(this,
@@ -211,49 +220,19 @@ public class DictionariesManagementActivity extends AppCompatActivity implements
                     }
                 });
 
-        /*
-        mViewModel.getDownloadActions().observe(this,
-                new Observer<List<DictionaryAction>>() {
+        mViewModel.getInstalledDictionaries().observe(this,
+                new Observer<List<InstalledDictionary>>() {
                     @Override
-                    public void onChanged(List<DictionaryAction> installAction) {
-                        if (installAction != null && installAction.size() > 0) {
-                            installPanel.setVisibility(View.VISIBLE);
-                            installAdapter.submitList(installAction);
-                        } else {
-                            installPanel.setVisibility(View.GONE);
-                            installAdapter.submitList(null);
-                        }
-                    }
-                });
-
-        mViewModel.getDeleteActions().observe(this,
-                new Observer<List<DictionaryAction>>() {
-                    @Override
-                    public void onChanged(List<DictionaryAction> deleteAction) {
-                        if (deleteAction != null && deleteAction.size() > 0) {
+                    public void onChanged(List<InstalledDictionary> remoteDictionaryObjects) {
+                        if (remoteDictionaryObjects != null && remoteDictionaryObjects.size() > 0) {
                             removePanel.setVisibility(View.VISIBLE);
-                            removeAdapter.submitList(deleteAction);
+                            removeAdapter.submitList(remoteDictionaryObjects);
                         } else {
                             removePanel.setVisibility(View.GONE);
                             removeAdapter.submitList(null);
                         }
                     }
                 });
-
-        mViewModel.getUpdateActions().observe(this,
-                new Observer<List<DictionaryAction>>() {
-                    @Override
-                    public void onChanged(List<DictionaryAction> updateAction) {
-                        if (updateAction != null && updateAction.size() > 0) {
-                            updatePanel.setVisibility(View.VISIBLE);
-                            updateAdapter.submitList(updateAction);
-                        } else {
-                            updatePanel.setVisibility(View.GONE);
-                            updateAdapter.submitList(null);
-                        }
-                    }
-                });
-         */
     }
 
     @MainThread

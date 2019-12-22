@@ -51,8 +51,8 @@ public interface AssetDictionaryObjectDao {
             "FROM AssetDictionaryObject INNER JOIN InstalledDictionary " +
             "ON AssetDictionaryObject.type == InstalledDictionary.type " +
             "AND AssetDictionaryObject.lang == InstalledDictionary.lang " +
-            "AND AssetDictionaryObject.date >= InstalledDictionary.date " +
-            "AND AssetDictionaryObject.version >= InstalledDictionary.version")
+//            "AND AssetDictionaryObject.date > InstalledDictionary.date " +
+            "AND AssetDictionaryObject.version > InstalledDictionary.version")
     List<AssetDictionaryObject> getInstallObjects();
 
     @Query("SELECT * FROM AssetDictionaryObject WHERE AssetDictionaryObject.type == :aType AND AssetDictionaryObject.lang == :aLang LIMIT 1")

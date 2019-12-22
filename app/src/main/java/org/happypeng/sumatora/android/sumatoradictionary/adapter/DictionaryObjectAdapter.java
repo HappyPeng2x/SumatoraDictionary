@@ -24,20 +24,21 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.ListAdapter;
 
 import org.happypeng.sumatora.android.sumatoradictionary.R;
-import org.happypeng.sumatora.android.sumatoradictionary.viewholder.RemoteDictionaryObjectViewHolder;
+import org.happypeng.sumatora.android.sumatoradictionary.db.tools.BaseDictionaryObject;
+import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionaryObjectViewHolder;
 
-public class RemoteDictionaryObjectAdapter extends ListAdapter<org.happypeng.sumatora.android.sumatoradictionary.db.RemoteDictionaryObject, RemoteDictionaryObjectViewHolder> {
+public class DictionaryObjectAdapter<T extends BaseDictionaryObject> extends ListAdapter<T, DictionaryObjectViewHolder<T>> {
     private boolean mInstallButton;
     private boolean mDeleteButton;
 
-    private final RemoteDictionaryObjectViewHolder.OnClickListener mInstallListener;
-    private final RemoteDictionaryObjectViewHolder.OnClickListener mDeleteListener;
+    private final DictionaryObjectViewHolder.OnClickListener<T> mInstallListener;
+    private final DictionaryObjectViewHolder.OnClickListener<T> mDeleteListener;
 
-    public RemoteDictionaryObjectAdapter(boolean aInstallButton,
-                                         boolean aDeleteButton,
-                                         final RemoteDictionaryObjectViewHolder.OnClickListener aInstallListener,
-                                         final RemoteDictionaryObjectViewHolder.OnClickListener aDeleteListener) {
-        super(org.happypeng.sumatora.android.sumatoradictionary.db.RemoteDictionaryObject.getDiffUtil());
+    public DictionaryObjectAdapter(boolean aInstallButton,
+                                   boolean aDeleteButton,
+                                   final DictionaryObjectViewHolder.OnClickListener<T> aInstallListener,
+                                   final DictionaryObjectViewHolder.OnClickListener<T> aDeleteListener) {
+        super(BaseDictionaryObject.<T>getDiffUtil());
 
         mInstallButton = aInstallButton;
         mDeleteButton = aDeleteButton;
@@ -48,16 +49,16 @@ public class RemoteDictionaryObjectAdapter extends ListAdapter<org.happypeng.sum
 
     @NonNull
     @Override
-    public RemoteDictionaryObjectViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+    public DictionaryObjectViewHolder<T> onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         LayoutInflater layoutInflater = LayoutInflater.from(parent.getContext());
         View view = layoutInflater.inflate(R.layout.dictionary_card, parent, false);
 
-        return new RemoteDictionaryObjectViewHolder(view, mInstallButton, mDeleteButton,
+        return new DictionaryObjectViewHolder<T>(view, mInstallButton, mDeleteButton,
                 mInstallListener, mDeleteListener);
     }
 
     @Override
-    public void onBindViewHolder(@NonNull RemoteDictionaryObjectViewHolder holder, int position) {
+    public void onBindViewHolder(@NonNull DictionaryObjectViewHolder<T> holder, int position) {
         holder.bindTo(getItem(position));
     }
 }

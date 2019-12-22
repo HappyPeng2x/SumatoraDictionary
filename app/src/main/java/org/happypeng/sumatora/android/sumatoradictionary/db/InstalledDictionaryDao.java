@@ -2,6 +2,7 @@ package org.happypeng.sumatora.android.sumatoradictionary.db;
 
 import androidx.lifecycle.LiveData;
 import androidx.room.Dao;
+import androidx.room.Delete;
 import androidx.room.Insert;
 import androidx.room.OnConflictStrategy;
 import androidx.room.Query;
@@ -15,6 +16,14 @@ public interface InstalledDictionaryDao {
 
     @Query("SELECT * FROM InstalledDictionary")
     LiveData<List<InstalledDictionary>> getAllLive();
+
+    @Query("SELECT * FROM InstalledDictionary " +
+            "WHERE InstalledDictionary.type = 'jmdict_translation' " +
+            "AND InstalledDictionary.lang != 'eng'")
+    LiveData<List<InstalledDictionary>> getRemovableLive();
+
+    @Delete
+    void delete(InstalledDictionary aAction);
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void insert(InstalledDictionary aSetting);

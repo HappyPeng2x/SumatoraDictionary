@@ -9,10 +9,11 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import org.happypeng.sumatora.android.sumatoradictionary.R;
 import org.happypeng.sumatora.android.sumatoradictionary.db.RemoteDictionaryObject;
+import org.happypeng.sumatora.android.sumatoradictionary.db.tools.BaseDictionaryObject;
 
-public class RemoteDictionaryObjectViewHolder extends RecyclerView.ViewHolder {
-    public interface OnClickListener {
-        void onClick(RemoteDictionaryObject aEntry);
+public class DictionaryObjectViewHolder<T extends BaseDictionaryObject> extends RecyclerView.ViewHolder {
+    public interface OnClickListener<U extends BaseDictionaryObject> {
+        void onClick(U aEntry);
     }
 
     private final TextView mDescription;
@@ -20,14 +21,14 @@ public class RemoteDictionaryObjectViewHolder extends RecyclerView.ViewHolder {
     private final ImageButton mInstallButton;
     private final ImageButton mDeleteButton;
 
-    private final OnClickListener mInstallListener;
-    private final OnClickListener mDeleteListener;
+    private final OnClickListener<T> mInstallListener;
+    private final OnClickListener<T> mDeleteListener;
 
-    public RemoteDictionaryObjectViewHolder(@NonNull View itemView,
-                                            boolean aInstallButton,
-                                            boolean aDeleteButton,
-                                            OnClickListener aInstallListener,
-                                            OnClickListener aDeleteListener) {
+    public DictionaryObjectViewHolder(@NonNull View itemView,
+                                      boolean aInstallButton,
+                                      boolean aDeleteButton,
+                                      OnClickListener<T> aInstallListener,
+                                      OnClickListener<T> aDeleteListener) {
         super(itemView);
 
         mDescription = (TextView) itemView.findViewById(R.id.dictionary_card_description);
@@ -49,7 +50,7 @@ public class RemoteDictionaryObjectViewHolder extends RecyclerView.ViewHolder {
         mDeleteListener = aDeleteListener;
     }
 
-    public void bindTo(final RemoteDictionaryObject aEntry) {
+    public void bindTo(final T aEntry) {
         if (aEntry == null) { return; }
 
         mDescription.setText(aEntry.description);

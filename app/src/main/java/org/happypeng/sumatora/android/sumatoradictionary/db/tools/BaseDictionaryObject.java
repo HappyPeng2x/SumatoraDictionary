@@ -17,8 +17,8 @@
 package org.happypeng.sumatora.android.sumatoradictionary.db.tools;
 
 import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.DiffUtil;
 
-import org.happypeng.sumatora.android.sumatoradictionary.db.AssetDictionaryObject;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserFactory;
 
@@ -124,5 +124,21 @@ public class BaseDictionaryObject {
         }
 
         return result;
+    }
+
+    public static <T extends BaseDictionaryObject> DiffUtil.ItemCallback<T> getDiffUtil() {
+        return new DiffUtil.ItemCallback<T>() {
+            @Override
+            public boolean areItemsTheSame(@NonNull BaseDictionaryObject oldItem, @NonNull BaseDictionaryObject newItem) {
+                return oldItem.type.equals(newItem.type) &&
+                        oldItem.lang.equals(newItem.lang);
+            }
+
+            @Override
+            public boolean areContentsTheSame(@NonNull BaseDictionaryObject oldItem, @NonNull BaseDictionaryObject newItem) {
+                return oldItem.date == newItem.date && oldItem.version == newItem.version &&
+                        oldItem.file.equals(newItem.file);
+            }
+        };
     }
 }

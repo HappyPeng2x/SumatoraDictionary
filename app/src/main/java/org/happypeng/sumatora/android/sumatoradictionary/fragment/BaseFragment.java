@@ -303,11 +303,11 @@ public class BaseFragment<M extends BaseFragmentModel> extends Fragment {
                             setNoResultsFound();
                         }
 
-                        if (status.installedDictionaries != null) {
-                            if (m_languageText != null && m_languagePopupMenu == null) {
+                        if (status.installedDictionaries != null && m_languageText != null) {
+                            // if (m_languageText != null && m_languagePopupMenu == null) {
                                 m_languagePopupMenu = initLanguagePopupMenu(m_languageText,
                                         status.installedDictionaries);
-                            }
+                            //}
                         }
                     }
                 });

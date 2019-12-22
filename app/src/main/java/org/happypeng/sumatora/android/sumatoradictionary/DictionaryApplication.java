@@ -282,6 +282,8 @@ public class DictionaryApplication extends Application {
                                                final PersistentDatabase aDB) {
             AssetManager assetManager = aApp.getAssets();
 
+            aDB.remoteDictionaryObjectDao().deleteMany(aDB.remoteDictionaryObjectDao().getAll());
+
             try {
                 InputStream in = assetManager.open("dictionaries.xml");
 

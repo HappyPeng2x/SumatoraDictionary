@@ -47,6 +47,12 @@ public interface RemoteDictionaryObjectDao {
     @Query("SELECT * FROM RemoteDictionaryObject")
     LiveData<List<RemoteDictionaryObject>> getAllLive();
 
+    @Query("SELECT * FROM RemoteDictionaryObject WHERE " +
+            "RemoteDictionaryObject.type == 'jmdict_translation' AND " +
+            "RemoteDictionaryObject.lang NOT IN " +
+            "(SELECT InstalledDictionary.lang FROM InstalledDictionary) ORDER BY RemoteDictionaryObject.lang")
+    LiveData<List<RemoteDictionaryObject>> getInstallableLive();
+
     @Delete
     void deleteMany(List<RemoteDictionaryObject> aActions);
 
