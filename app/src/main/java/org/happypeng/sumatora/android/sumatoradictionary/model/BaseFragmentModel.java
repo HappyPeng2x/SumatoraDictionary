@@ -93,7 +93,7 @@ public class BaseFragmentModel extends AndroidViewModel {
 
                                 m_currentDatabase = input;
 
-                                return QueryTool.create(input, aKey, aSearchSet, aAllowSearchAll);
+                                return QueryTool.create(input, aKey, aSearchSet, aAllowSearchAll, mApp.getRomkan());
                             }
                         });
 

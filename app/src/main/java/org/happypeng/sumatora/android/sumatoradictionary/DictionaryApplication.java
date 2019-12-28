@@ -53,6 +53,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.tools.BaseDictionary
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Settings;
 import org.happypeng.sumatora.android.sumatoradictionary.service.DictionaryDownloadService;
 import org.happypeng.sumatora.android.sumatoradictionary.xml.DictionaryBookmarkXML;
+import org.happypeng.sumatora.jromkan.Romkan;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,6 +76,8 @@ public class DictionaryApplication extends Application {
     private Settings m_settings;
 
     private DownloadEventReceiver m_downloadEventReceiver;
+
+    private Romkan m_romkan;
 
     public LiveData<PersistentDatabase> getPersistentDatabase() { return m_persistentDatabase; }
 
@@ -532,9 +535,13 @@ public class DictionaryApplication extends Application {
         }
     }
 
+    public Romkan getRomkan() { return m_romkan; }
+
     @Override
     public void onCreate() {
         super.onCreate();
+
+        m_romkan = new Romkan();
 
         if (BuildConfig.DEBUG) {
             StrictMode.setThreadPolicy(new StrictMode.ThreadPolicy.Builder()

@@ -1,5 +1,5 @@
 <resources>
-    <string name="dictionaries_url">https://drive.google.com/uc?export=download&amp;id=1IjKdMs57HMczFAzYQzpGhiZbpJntqOKO</string>
+    <string name="dictionaries_url">https://sumatora.happypeng.org/dictionaries/v4/dictionaries.xml</string>
 
     <string name="app_name">Sumatora</string>
     <string name="search_hint">Search&#8230;</string>
