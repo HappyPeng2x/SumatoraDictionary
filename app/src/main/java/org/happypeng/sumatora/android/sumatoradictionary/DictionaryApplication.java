@@ -61,6 +61,8 @@ import androidx.room.RoomDatabase;
 import androidx.room.migration.Migration;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 
+import io.requery.android.database.sqlite.RequerySQLiteOpenHelperFactory;
+
 public class DictionaryApplication extends Application {
     static final String DATABASE_NAME = "JMdict.db";
     static final String PERSISTENT_DATABASE_NAME = "PersistentDatabase.db";
@@ -287,6 +289,16 @@ public class DictionaryApplication extends Application {
             AssetManager assetManager = aApp.getAssets();
 
             try {
+                File parentDir = aOutput.getParentFile();
+
+                if (aOutput.isDirectory() && !aOutput.delete()) {
+                    System.err.println("Is directory and cannot delete " + aOutput.getAbsolutePath());
+                }
+
+                if (parentDir == null || !parentDir.mkdirs()) {
+                    System.err.println("Could not create directories for " + aOutput.getAbsolutePath());
+                }
+
                 InputStream in = assetManager.open(aName);
                 OutputStream out = new FileOutputStream(aOutput);
                 copyFile(in, out);
@@ -480,6 +492,7 @@ public class DictionaryApplication extends Application {
 
             final PersistentDatabase pDb = Room.databaseBuilder(aParams[0],
                     PersistentDatabase.class, PERSISTENT_DATABASE_NAME)
+                    .openHelperFactory(new RequerySQLiteOpenHelperFactory())
                     .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                     .setJournalMode(RoomDatabase.JournalMode.TRUNCATE)
                     .addCallback(new RoomDatabase.Callback() {
