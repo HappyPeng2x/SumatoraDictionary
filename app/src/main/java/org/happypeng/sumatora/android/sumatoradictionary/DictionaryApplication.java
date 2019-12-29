@@ -65,6 +65,8 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 
+import io.requery.android.database.sqlite.RequerySQLiteOpenHelperFactory;
+
 public class DictionaryApplication extends Application {
     public static final String DATABASE_NAME = "JMdict.db";
     static final String PERSISTENT_DATABASE_NAME = "PersistentDatabase.db";
@@ -460,6 +462,7 @@ public class DictionaryApplication extends Application {
 
             final PersistentDatabase pDb = Room.databaseBuilder(aParams[0],
                     PersistentDatabase.class, PERSISTENT_DATABASE_NAME)
+                    .openHelperFactory(new RequerySQLiteOpenHelperFactory())
                     .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                     .setJournalMode(RoomDatabase.JournalMode.TRUNCATE)
                     .build();
