@@ -25,6 +25,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElem
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.QueryTool;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.DisplayStatus;
+import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Settings;
 
 import androidx.annotation.MainThread;
 import androidx.annotation.NonNull;
@@ -53,6 +54,8 @@ public class BaseFragmentModel extends AndroidViewModel {
     public LiveData<DisplayStatus> getStatus() { return m_status; }
 
     private Integer m_bookmarkToolStatus;
+
+    private String m_lang;
 
     PersistentDatabase m_currentDatabase;
 
@@ -114,6 +117,10 @@ public class BaseFragmentModel extends AndroidViewModel {
 
                         if (m_queryTool != null) {
                             queryTool.setTerm(queryTool.getTerm(), true);
+
+                            if (m_lang != null) {
+                                queryTool.setLang(m_lang);
+                            }
                         }
                     }
                 });
@@ -134,6 +141,22 @@ public class BaseFragmentModel extends AndroidViewModel {
                         m_bookmarkToolStatus = integer;
 
                         m_status.setValue(m_status.getValue());
+                    }
+                });
+
+        LiveData<String> lang = mApp.getSettings().getValue(Settings.LANG);
+
+        m_status.addSource(lang,
+                new Observer<String>() {
+                    @Override
+                    public void onChanged(String s) {
+                        if (s != null) {
+                            m_lang = s;
+
+                            if (m_queryTool != null) {
+                                m_queryTool.setLang(s);
+                            }
+                        }
                     }
                 });
     }

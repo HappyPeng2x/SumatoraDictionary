@@ -112,6 +112,8 @@ public class DownloadEventReceiver extends BroadcastReceiver {
             return cur.getInt(cur.getColumnIndex(DownloadManager.COLUMN_STATUS));
             }
 
+        cur.close();
+
         return -1;
     }
 }

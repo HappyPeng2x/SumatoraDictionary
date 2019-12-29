@@ -104,6 +104,14 @@ public class QueryTool {
                     + "FROM jmdict.DictionaryIndex "
                     + "WHERE readingsParts MATCH ? || '*'";
 
+    static private final String SQL_QUERY_TRANSLATION_START =
+            "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryTranslationIndex.`rowid` AS seq "
+                    + "FROM ";
+    static private final String SQL_QUERY_TRANSLATION_END =
+            ".DictionaryTranslationIndex WHERE gloss MATCH ?";
+    static private final String SQL_QUERY_TRANSLATION_BEGIN_END =
+            ".DictionaryTranslationIndex WHERE gloss MATCH ? || '*'";
+
     public static class QueryStatement {
         private final int ref;
         private final int order;
@@ -216,6 +224,36 @@ public class QueryTool {
 
     public LiveData<Integer> getStatus() { return mStatus; }
 
+    @MainThread
+    public void setLang(final String aLang) {
+        new AsyncTask<Void, Void, Void>() {
+            @Override
+            protected Void doInBackground(Void... voids) {
+                setLangImplementation(aLang);
+
+                return null;
+            }
+        }.execute();
+    }
+
+    @WorkerThread
+    private void setLangImplementation(final String aLang) {
+        final String translationStatementStart =
+                SQL_QUERY_TRANSLATION_START + aLang + SQL_QUERY_TRANSLATION_END;
+        final SupportSQLiteStatement queryTranslation =
+                mDB.compileStatement(mSearchSet == null ? translationStatementStart :
+                        translationStatementStart + " AND DictionaryTranslationIndex.`rowid` IN (" + mSearchSet + ")");
+
+        final String translationBeginStatementStart =
+                SQL_QUERY_TRANSLATION_START + aLang + SQL_QUERY_TRANSLATION_BEGIN_END;
+        final SupportSQLiteStatement queryTranslationBegin =
+                mDB.compileStatement(mSearchSet == null ? translationBeginStatementStart :
+                        translationBeginStatementStart + " AND DictionaryTranslationIndex.`rowid` IN (" + mSearchSet + ")");
+
+        mQueries[12] = new QueryStatement(mRef, 13, queryTranslation, false, mRomkan);
+        mQueries[13] = new QueryStatement(mRef, 14, queryTranslationBegin, false, mRomkan);
+    }
+
     @WorkerThread
     public void createStatement() {
         if (BuildConfig.DEBUG_QUERYTOOL) {
@@ -268,7 +306,7 @@ public class QueryTool {
                 db.compileStatement(mSearchSet == null ? SQL_QUERY_PARTS_READING_NONPRIO :
                         SQL_QUERY_PARTS_READING_NONPRIO + " AND DictionaryIndex.`rowid` IN (" + mSearchSet + ")");
 
-        final QueryStatement[] queriesArray = new QueryStatement[12];
+        final QueryStatement[] queriesArray = new QueryStatement[14];
 
         queriesArray[0] = new QueryStatement(mRef,1, queryExactPrioWriting, false, mRomkan);
         queriesArray[1] = new QueryStatement(mRef,2, queryExactPrioReading, true, mRomkan);
@@ -356,7 +394,9 @@ public class QueryTool {
                     }
 
                     while (lastInsert == -1 && mQueriesPosition < mQueries.length) {
-                        lastInsert = mQueries[mQueriesPosition].execute(mTerm);
+                        if (mQueries[mQueriesPosition] != null) {
+                            lastInsert = mQueries[mQueriesPosition].execute(mTerm);
+                        }
 
                         if (BuildConfig.DEBUG_QUERYTOOL) {
                             mLog.info(this.hashCode() + " position " + mQueriesPosition + " result " + lastInsert);

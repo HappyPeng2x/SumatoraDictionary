@@ -152,6 +152,7 @@ public class DictionariesManagementActivityModel extends AndroidViewModel {
                                             aType, aLang, aVersion, aDate);
                                 }
                             });
+                    is.close();
                 } catch (Exception e) {
                     mDownloadError = e.toString();
 
