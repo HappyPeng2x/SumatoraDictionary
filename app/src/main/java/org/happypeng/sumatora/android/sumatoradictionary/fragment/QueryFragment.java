@@ -89,6 +89,8 @@ public class QueryFragment extends BaseFragment<BaseFragmentModel> {
         m_searchView = (SearchView) searchViewMenuItem.getActionView();
         m_searchView.setSearchableInfo(searchManager.getSearchableInfo(getActivity().getComponentName()));
 
+        m_searchView.setQuery(m_term, false);
+
         if (!m_openSearchBox) {
             m_searchView.setIconifiedByDefault(true);
         } else {

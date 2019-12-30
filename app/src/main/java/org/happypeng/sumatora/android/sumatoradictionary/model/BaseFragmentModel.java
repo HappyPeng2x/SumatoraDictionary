@@ -56,6 +56,7 @@ public class BaseFragmentModel extends AndroidViewModel {
     private Integer m_bookmarkToolStatus;
 
     private String m_lang;
+    private String m_term;
 
     PersistentDatabase m_currentDatabase;
 
@@ -116,7 +117,13 @@ public class BaseFragmentModel extends AndroidViewModel {
                         m_queryTool = queryTool;
 
                         if (m_queryTool != null) {
-                            queryTool.setTerm(queryTool.getTerm(), true);
+                            if (m_term != null) {
+                                queryTool.setTerm(m_term, true);
+
+                                m_term = null;
+                            } else {
+                                queryTool.setTerm(queryTool.getTerm(), true);
+                            }
 
                             if (m_lang != null) {
                                 queryTool.setLang(m_lang);
@@ -193,12 +200,18 @@ public class BaseFragmentModel extends AndroidViewModel {
     public void setTerm(@NonNull String aTerm) {
         if (m_queryTool != null) {
             m_queryTool.setTerm(aTerm, true);
+        } else {
+            m_term = aTerm;
         }
     }
 
     public String getTerm() {
         if (m_queryTool != null) {
             return m_queryTool.getTerm();
+        }
+
+        if (m_term != null) {
+            return m_term;
         }
 
         return "";
