@@ -1,0 +1,6 @@
+<repository version="4" date="20191013">
+  <dictionary uri="dictionaries/jmdict.db"
+	      type="jmdict" description="Index" lang=""/>
+  <dictionary uri="dictionaries/eng.db"
+	      type="jmdict_translation" description="English" lang="eng"/>
+</repository>

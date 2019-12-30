@@ -16,6 +16,9 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.db.tools;
 
+import android.os.AsyncTask;
+import android.provider.ContactsContract;
+
 import androidx.annotation.MainThread;
 import androidx.arch.core.util.Function;
 import androidx.lifecycle.LiveData;
@@ -27,6 +30,7 @@ import androidx.paging.PagedList;
 
 import org.happypeng.sumatora.android.sumatoradictionary.DictionaryApplication;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
+import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 
 import java.util.List;
@@ -36,6 +40,19 @@ public class DisplayStatus {
     public String backupLang;
     public PersistentDatabase database;
     public DisplayTool displayTool;
+    public List<InstalledDictionary> installedDictionaries;
+    public int ref;
+
+    private static class DatabaseInstalledDictionariesStatus {
+        PersistentDatabase database;
+        List<InstalledDictionary> installedDictionaries;
+
+        DatabaseInstalledDictionariesStatus(final PersistentDatabase aDatabase,
+                                            final List<InstalledDictionary> aInstalledDictionary) {
+            database = aDatabase;
+            installedDictionaries = aInstalledDictionary;
+        }
+    }
 
     @MainThread
     public void processChange(final MutableLiveData<DisplayStatus> aLiveData) {
@@ -62,6 +79,7 @@ public class DisplayStatus {
     public static MediatorLiveData<DisplayStatus> create(final DictionaryApplication aApp, final int aRef) {
         final MediatorLiveData<DisplayStatus> liveData = new MediatorLiveData<>();
         final DisplayStatus status = new DisplayStatus();
+        status.ref = aRef;
 
         liveData.addSource(aApp.getSettings().getValue(Settings.LANG),
                 new Observer<String>() {
@@ -85,24 +103,41 @@ public class DisplayStatus {
                     }
                 });
 
-        liveData.addSource(aApp.getPersistentDatabase(),
-                new Observer<PersistentDatabase>() {
-                    @Override
-                    public void onChanged(PersistentDatabase dictionaryDatabase) {
-                        status.database = dictionaryDatabase;
+        final LiveData<DatabaseInstalledDictionariesStatus> installedDictionaries =
+                Transformations.switchMap(aApp.getPersistentDatabase(),
+                        new Function<PersistentDatabase, LiveData<DatabaseInstalledDictionariesStatus>>() {
+                            @Override
+                            public LiveData<DatabaseInstalledDictionariesStatus> apply(final PersistentDatabase databaseInput) {
+                                return Transformations.map(databaseInput.installedDictionaryDao().getAllLive(),
+                                        new Function<List<InstalledDictionary>, DatabaseInstalledDictionariesStatus>() {
+                                            @Override
+                                            public DatabaseInstalledDictionariesStatus apply(List<InstalledDictionary> input) {
+                                                return new DatabaseInstalledDictionariesStatus(databaseInput, input);
+                                            }
+                                        });
+                            }
+                        });
 
+        final LiveData<DisplayTool> displayTool =
+                Transformations.switchMap(installedDictionaries,
+                        new Function<DatabaseInstalledDictionariesStatus, LiveData<DisplayTool>>() {
+                            @Override
+                            public LiveData<DisplayTool> apply(DatabaseInstalledDictionariesStatus input) {
+                                return DisplayTool.create(input.database, input.installedDictionaries, aRef);
+                            }
+                        });
+
+        liveData.addSource(installedDictionaries,
+                new Observer<DatabaseInstalledDictionariesStatus>() {
+                    @Override
+                    public void onChanged(DatabaseInstalledDictionariesStatus databaseInstalledDictionariesStatus) {
+                        status.installedDictionaries = databaseInstalledDictionariesStatus.installedDictionaries;
+                        status.database = databaseInstalledDictionariesStatus.database;
+
+                        status.performUpdate();
                         status.processChange(liveData);
                     }
                 });
-
-        final LiveData<DisplayTool> displayTool =
-                Transformations.switchMap(aApp.getPersistentDatabase(),
-                        new Function<PersistentDatabase, LiveData<DisplayTool>>() {
-                            @Override
-                            public LiveData<DisplayTool> apply(PersistentDatabase input) {
-                                return DisplayTool.create(input, aRef);
-                            }
-                        });
 
         liveData.addSource(displayTool,
                 new Observer<DisplayTool>() {

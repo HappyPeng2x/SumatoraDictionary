@@ -18,25 +18,17 @@ package org.happypeng.sumatora.android.sumatoradictionary.db;
 
 import androidx.room.Entity;
 
-@Entity(primaryKeys = {"seq"})
+@Entity(primaryKeys = {"ref", "seq"})
 public class DictionaryBookmarkImport {
-    public int entryOrder;
+    public int ref;
     public long seq;
-    public String readingsPrio;
-    public String readings;
-    public String writingsPrio;
-    public String writings;
-    public String pos;
-    public String xref;
-    public String ant;
-    public String misc;
-    public String lsource;
-    public String dial;
-    public String s_inf;
-    public String field;
-    public String lang;
-    public String gloss;
-    public long bookmark;
 
     public DictionaryBookmarkImport() { super(); }
+
+    public DictionaryBookmarkImport(int aRef, long aSeq) {
+        super();
+
+        ref = aRef;
+        seq = aSeq;
+    }
 }

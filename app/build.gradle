@@ -19,8 +19,8 @@ android {
         applicationId "org.happypeng.sumatora.android.sumatoradictionary"
         minSdkVersion 14
         targetSdkVersion 29
-        versionCode 19
-        versionName "0.3.8.3rc1"
+        versionCode 20
+        versionName "0.4.0beta1"
 
         javaCompileOptions {
             annotationProcessorOptions {
@@ -76,7 +76,7 @@ dependencies {
     androidTestImplementation 'androidx.test.ext:junit:1.1.1'
     androidTestImplementation 'androidx.test.espresso:espresso-intents:3.2.0'
 
-    implementation 'androidx.recyclerview:recyclerview:1.0.0'
+    implementation 'androidx.recyclerview:recyclerview:1.1.0'
     implementation 'androidx.percentlayout:percentlayout:1.0.0'
     implementation 'com.google.android.material:material:1.0.0'
     implementation 'com.github.daniel-stoneuk:material-about-library:2.4.2'
@@ -84,11 +84,11 @@ dependencies {
     implementation "androidx.lifecycle:lifecycle-extensions:2.1.0"
     annotationProcessor "androidx.lifecycle:lifecycle-compiler:2.1.0"
 
-    implementation "androidx.room:room-runtime:2.1.0"
-    annotationProcessor "androidx.room:room-compiler:2.1.0"
+    implementation "androidx.room:room-runtime:2.2.3"
+    annotationProcessor "androidx.room:room-compiler:2.2.3"
 
-    implementation "androidx.paging:paging-runtime:2.1.0"
-    implementation "androidx.paging:paging-common:2.1.0"
+    implementation "androidx.paging:paging-runtime:2.1.1"
+    implementation "androidx.paging:paging-common:2.1.1"
 
     implementation "org.slf4j:slf4j-api:1.7.25"
     implementation "com.github.tony19:logback-android:2.0.0"

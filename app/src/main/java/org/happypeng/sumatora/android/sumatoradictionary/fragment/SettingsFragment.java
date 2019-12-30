@@ -16,7 +16,6 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.fragment;
 
-import android.app.Activity;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
@@ -25,21 +24,27 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.fragment.app.Fragment;
 
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.EditText;
+import android.widget.TextView;
 
 import org.happypeng.sumatora.android.sumatoradictionary.R;
 
 public class SettingsFragment extends Fragment {
     public interface SettingsFragmentActions {
         void displayLog();
+        void manageDictionaries();
+        void setRepositoryURL(final String aUrl);
     }
 
     private SettingsFragmentActions mActions;
 
+    private EditText mRepositoryUrl;
+
     public SettingsFragment() {
-        // Required empty public constructor
     }
 
     public void setFragmentActions(SettingsFragmentActions aActions) {
@@ -68,6 +73,35 @@ public class SettingsFragment extends Fragment {
             }
         });
 
+        mRepositoryUrl = (EditText) view.findViewById(R.id.fragment_settings_dictionaries_url_input);
+        mRepositoryUrl.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+            @Override
+            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+                if (mActions != null) {
+                    mActions.setRepositoryURL(v.getText().toString());
+                }
+
+                return false;
+            }
+        });
+
+        view.findViewById(R.id.settings_manage_dictionaries).setOnClickListener(
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        if (mActions != null) {
+                            mActions.manageDictionaries();
+                        }
+                    }
+                }
+        );
+
         return view;
+    }
+
+    public void setRepositoryURL(final String aURL) {
+        if (mRepositoryUrl != null) {
+            mRepositoryUrl.setText(aURL);
+        }
     }
 }

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:orientation="horizontal">
+        <TextView
+            android:id="@+id/dictionary_card_description"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/dictionary_card_description"
+            android:textAppearance="@style/Body1" />
+
+        <ImageButton
+            android:id="@+id/dictionary_card_install"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@null"
+            android:paddingTop="5dp"
+            android:paddingRight="5dp"
+            android:paddingLeft="5dp"
+            android:contentDescription="@string/install_icon_description"
+            android:src="@drawable/ic_add_24px"/>
+
+        <ImageButton
+            android:id="@+id/dictionary_card_delete"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@null"
+            android:paddingTop="5dp"
+            android:paddingRight="5dp"
+            android:paddingLeft="5dp"
+            android:contentDescription="@string/delete_icon_description"
+            android:src="@drawable/ic_remove_24px"/>
+</LinearLayout>

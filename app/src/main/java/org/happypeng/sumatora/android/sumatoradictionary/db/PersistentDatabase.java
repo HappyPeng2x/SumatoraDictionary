@@ -21,11 +21,19 @@ import androidx.room.RoomDatabase;
 
 @Database(entities = {PersistentSetting.class,
         DictionaryBookmark.class, DictionaryBookmarkImport.class,
-        DictionaryDisplayElement.class, DictionaryElement.class}, version = 4)
+        DictionaryDisplayElement.class, DictionaryElement.class,
+        InstalledDictionary.class,
+        RemoteDictionaryObject.class,
+        LocalDictionaryObject.class,
+        AssetDictionaryObject.class}, version = 5)
 abstract public class PersistentDatabase extends RoomDatabase {
     public abstract PersistentSettingsDao persistentSettingsDao();
     public abstract DictionaryBookmarkDao dictionaryBookmarkDao();
     public abstract DictionaryBookmarkImportDao dictionaryBookmarkImportDao();
     public abstract DictionaryDisplayElementDao dictionaryDisplayElementDao();
     public abstract DictionaryElementDao dictionaryElementDao();
+    public abstract InstalledDictionaryDao installedDictionaryDao();
+    public abstract RemoteDictionaryObjectDao remoteDictionaryObjectDao();
+    public abstract LocalDictionaryObjectDao localDictionaryObjectDao();
+    public abstract AssetDictionaryObjectDao assetDictionaryObjectDao();
 }

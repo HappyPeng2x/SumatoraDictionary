@@ -7,6 +7,12 @@
         <item name="colorAccent">@color/colorAccent</item>
     </style>
 
+    <style name="DictionariesManagementToolbarTheme" parent="">
+        <item name="android:textColorPrimary">#000</item>
+        <item name="colorControlNormal">#000</item>
+        <item name="colorPrimary">#ccc</item>
+    </style>
+
     <!-- Text -->
     <style name="Body1" parent="TextAppearance.AppCompat.Body1">
         <item name="android:layout_height">wrap_content</item>

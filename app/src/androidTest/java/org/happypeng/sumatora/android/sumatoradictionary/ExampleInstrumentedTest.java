@@ -1,22 +1,17 @@
 package org.happypeng.sumatora.android.sumatoradictionary;
 
-import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 
-import androidx.test.espresso.intent.rule.IntentsTestRule;
-import androidx.test.espresso.intent.Intents;
-
-import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.rule.ActivityTestRule;
 
+import org.happypeng.sumatora.android.sumatoradictionary.activity.MainActivity;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import static androidx.test.espresso.intent.Intents.intended;
-import static org.junit.Assert.*;
 
 /**
  * Instrumented test, which will execute on an Android device.
@@ -31,7 +26,7 @@ public class ExampleInstrumentedTest {
 
     @Rule
     public ActivityTestRule activityRule = new ActivityTestRule<>(
-            Dictionary.class,
+            MainActivity.class,
             true,
             false);
 

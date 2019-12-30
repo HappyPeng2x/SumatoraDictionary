@@ -31,6 +31,7 @@ import androidx.sqlite.db.SupportSQLiteStatement;
 import org.happypeng.sumatora.android.sumatoradictionary.BuildConfig;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
+import org.happypeng.sumatora.jromkan.Romkan;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,47 +43,91 @@ public class QueryTool {
             "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, 0 AS entryOrder, DictionaryEntry.seq "
                     + "FROM jmdict.DictionaryEntry";
 
-    static private final String SQL_QUERY_EXACT_PRIO =
+    static private final String SQL_QUERY_EXACT_WRITING_PRIO =
             "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
                     + "FROM jmdict.DictionaryIndex "
-                    + "WHERE writingsPrio MATCH 'writingsPrio:' || ? || ' OR readingsPrio:' || ?";
+                    + "WHERE writingsPrio MATCH ?";
 
-    static private final String SQL_QUERY_EXACT_NONPRIO =
+    static private final String SQL_QUERY_EXACT_READING_PRIO =
             "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
                     + "FROM jmdict.DictionaryIndex "
-                    + "WHERE writingsPrio MATCH 'writings:' || ? || ' OR readings:' || ?";
+                    + "WHERE readingsPrio MATCH ?";
 
-    static private final String SQL_QUERY_BEGIN_PRIO =
-            "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
-                    + "FROM jmdict.DictionaryIndex "
-                    + "WHERE writingsPrio MATCH 'writingsPrio:' || ? || '* OR readingsPrio:' || ? || '*'";
 
-    static private final String SQL_QUERY_BEGIN_NONPRIO =
+    static private final String SQL_QUERY_EXACT_WRITING_NONPRIO =
             "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
                     + "FROM jmdict.DictionaryIndex "
-                    + "WHERE writingsPrio MATCH 'writings:' || ? || '* OR readings:' || ? || '*'";
+                    + "WHERE writings MATCH ?";
 
-    static private final String SQL_QUERY_PARTS_PRIO =
+    static private final String SQL_QUERY_EXACT_READING_NONPRIO =
             "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
                     + "FROM jmdict.DictionaryIndex "
-                    + "WHERE writingsPrio MATCH 'writingsPrioParts:' || ? || '* OR readingsPrioParts:' || ? || '*'";
+                    + "WHERE readings MATCH ?";
 
-    static private final String SQL_QUERY_PARTS_NONPRIO =
+    static private final String SQL_QUERY_BEGIN_WRITING_PRIO =
             "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
                     + "FROM jmdict.DictionaryIndex "
-                    + "WHERE writingsPrio MATCH 'writingsParts:' || ? || '* OR readingsParts:' || ? || '*'";
+                    + "WHERE writingsPrio MATCH ? || '*'";
+
+    static private final String SQL_QUERY_BEGIN_READING_PRIO =
+            "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
+                    + "FROM jmdict.DictionaryIndex "
+                    + "WHERE readingsPrio MATCH ? || '*'";
+
+    static private final String SQL_QUERY_BEGIN_WRITING_NONPRIO =
+            "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
+                    + "FROM jmdict.DictionaryIndex "
+                    + "WHERE writings MATCH ? || '*'";
+
+    static private final String SQL_QUERY_BEGIN_READING_NONPRIO =
+            "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
+                    + "FROM jmdict.DictionaryIndex "
+                    + "WHERE readings MATCH ? || '*'";
+
+    static private final String SQL_QUERY_PARTS_WRITING_PRIO =
+            "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
+                    + "FROM jmdict.DictionaryIndex "
+                    + "WHERE writingsPrioParts MATCH ? || '*'";
+
+    static private final String SQL_QUERY_PARTS_READING_PRIO =
+            "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
+                    + "FROM jmdict.DictionaryIndex "
+                    + "WHERE readingsPrioParts MATCH ? || '*'";
+
+    static private final String SQL_QUERY_PARTS_WRITING_NONPRIO =
+            "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
+                    + "FROM jmdict.DictionaryIndex "
+                    + "WHERE writingsParts MATCH ? || '*'";
+
+    static private final String SQL_QUERY_PARTS_READING_NONPRIO =
+            "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
+                    + "FROM jmdict.DictionaryIndex "
+                    + "WHERE readingsParts MATCH ? || '*'";
+
+    static private final String SQL_QUERY_TRANSLATION_START =
+            "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryTranslationIndex.`rowid` AS seq "
+                    + "FROM ";
+    static private final String SQL_QUERY_TRANSLATION_END =
+            ".DictionaryTranslationIndex WHERE gloss MATCH ?";
+    static private final String SQL_QUERY_TRANSLATION_BEGIN_END =
+            ".DictionaryTranslationIndex WHERE gloss MATCH ? || '*'";
 
     public static class QueryStatement {
         private final int ref;
         private final int order;
         private final SupportSQLiteStatement statement;
+        private final boolean kana;
+        private final Romkan romkan;
 
         private final Logger log;
 
-        private QueryStatement(int aRef, int aOrder, SupportSQLiteStatement aStatement) {
+        private QueryStatement(int aRef, int aOrder, final SupportSQLiteStatement aStatement,
+                               boolean aKana, final Romkan aRomkan) {
             ref = aRef;
             order = aOrder;
             statement = aStatement;
+            kana = aKana;
+            romkan = aRomkan;
 
             if (BuildConfig.DEBUG_QUERYTOOL) {
                 log = LoggerFactory.getLogger(getClass());
@@ -95,14 +140,19 @@ public class QueryTool {
 
         @WorkerThread
         private long execute(String term) {
+            String bindTerm = term;
+
             if (BuildConfig.DEBUG_QUERYTOOL) {
                 log.info(this.hashCode() + " execute " + order + " term " + term);
             }
 
+            if (kana) {
+                bindTerm = romkan.to_katakana(romkan.to_hepburn(term));
+            }
+
             statement.bindLong(1, ref);
             statement.bindLong(2, order);
-            statement.bindString(3, term);
-            statement.bindString(4, term);
+            statement.bindString(3, bindTerm);
 
             return statement.executeInsert();
         }
@@ -125,6 +175,7 @@ public class QueryTool {
     private QueryStatement[] mQueries;
 
     private final PersistentDatabase mDB;
+    private final Romkan mRomkan;
 
     private final MutableLiveData<Integer> mStatus;
 
@@ -141,7 +192,8 @@ public class QueryTool {
 
     final private boolean mAllowQueryAll;
 
-    public QueryTool(final PersistentDatabase aDB, int aRef, String aSearchSet, boolean aAllowQueryAll) {
+    public QueryTool(final PersistentDatabase aDB, int aRef, String aSearchSet, boolean aAllowQueryAll,
+                     final Romkan aRomkan) {
         if (BuildConfig.DEBUG_QUERYTOOL) {
             mLog = LoggerFactory.getLogger(getClass());
 
@@ -166,9 +218,41 @@ public class QueryTool {
         mSearchSet = aSearchSet;
 
         mAllowQueryAll = aAllowQueryAll;
+
+        mRomkan = aRomkan;
     }
 
     public LiveData<Integer> getStatus() { return mStatus; }
+
+    @MainThread
+    public void setLang(final String aLang) {
+        new AsyncTask<Void, Void, Void>() {
+            @Override
+            protected Void doInBackground(Void... voids) {
+                setLangImplementation(aLang);
+
+                return null;
+            }
+        }.execute();
+    }
+
+    @WorkerThread
+    private void setLangImplementation(final String aLang) {
+        final String translationStatementStart =
+                SQL_QUERY_TRANSLATION_START + aLang + SQL_QUERY_TRANSLATION_END;
+        final SupportSQLiteStatement queryTranslation =
+                mDB.compileStatement(mSearchSet == null ? translationStatementStart :
+                        translationStatementStart + " AND DictionaryTranslationIndex.`rowid` IN (" + mSearchSet + ")");
+
+        final String translationBeginStatementStart =
+                SQL_QUERY_TRANSLATION_START + aLang + SQL_QUERY_TRANSLATION_BEGIN_END;
+        final SupportSQLiteStatement queryTranslationBegin =
+                mDB.compileStatement(mSearchSet == null ? translationBeginStatementStart :
+                        translationBeginStatementStart + " AND DictionaryTranslationIndex.`rowid` IN (" + mSearchSet + ")");
+
+        mQueries[12] = new QueryStatement(mRef, 13, queryTranslation, false, mRomkan);
+        mQueries[13] = new QueryStatement(mRef, 14, queryTranslationBegin, false, mRomkan);
+    }
 
     @WorkerThread
     public void createStatement() {
@@ -185,35 +269,57 @@ public class QueryTool {
 
         mDeleteStatement = db.compileStatement(SQL_QUERY_DELETE);
 
-        // (SELECT seq FROM DictionaryBookmark)
+        final SupportSQLiteStatement queryExactPrioWriting =
+                db.compileStatement(mSearchSet == null ? SQL_QUERY_EXACT_WRITING_PRIO :
+                        SQL_QUERY_EXACT_WRITING_PRIO + " AND DictionaryIndex.`rowid` IN (" + mSearchSet + ")");
+        final SupportSQLiteStatement queryExactPrioReading =
+                db.compileStatement(mSearchSet == null ? SQL_QUERY_EXACT_READING_PRIO :
+                        SQL_QUERY_EXACT_READING_PRIO + " AND DictionaryIndex.`rowid` IN (" + mSearchSet + ")");
+        final SupportSQLiteStatement queryExactNonPrioWriting =
+                db.compileStatement(mSearchSet == null ? SQL_QUERY_EXACT_WRITING_NONPRIO :
+                        SQL_QUERY_EXACT_WRITING_NONPRIO + " AND DictionaryIndex.`rowid` IN (" + mSearchSet + ")");
+        final SupportSQLiteStatement queryExactNonPrioReading =
+                db.compileStatement(mSearchSet == null ? SQL_QUERY_EXACT_READING_NONPRIO :
+                        SQL_QUERY_EXACT_READING_NONPRIO + " AND DictionaryIndex.`rowid` IN (" + mSearchSet + ")");
+        final SupportSQLiteStatement queryBeginPrioWriting =
+                db.compileStatement(mSearchSet == null ? SQL_QUERY_BEGIN_WRITING_PRIO :
+                        SQL_QUERY_BEGIN_WRITING_PRIO + " AND DictionaryIndex.`rowid` IN (" + mSearchSet + ")");
+        final SupportSQLiteStatement queryBeginPrioReading =
+                db.compileStatement(mSearchSet == null ? SQL_QUERY_BEGIN_READING_PRIO :
+                        SQL_QUERY_BEGIN_READING_PRIO + " AND DictionaryIndex.`rowid` IN (" + mSearchSet + ")");
+        final SupportSQLiteStatement queryBeginNonPrioWriting =
+                db.compileStatement(mSearchSet == null ? SQL_QUERY_BEGIN_WRITING_NONPRIO :
+                        SQL_QUERY_BEGIN_WRITING_NONPRIO + " AND DictionaryIndex.`rowid` IN (" + mSearchSet + ")");
+        final SupportSQLiteStatement queryBeginNonPrioReading =
+                db.compileStatement(mSearchSet == null ? SQL_QUERY_BEGIN_READING_NONPRIO :
+                        SQL_QUERY_BEGIN_READING_NONPRIO + " AND DictionaryIndex.`rowid` IN (" + mSearchSet + ")");
+        final SupportSQLiteStatement queryPartsPrioWriting =
+                db.compileStatement(mSearchSet == null ? SQL_QUERY_PARTS_WRITING_PRIO :
+                        SQL_QUERY_PARTS_WRITING_PRIO + " AND DictionaryIndex.`rowid` IN (" + mSearchSet + ")");
+        final SupportSQLiteStatement queryPartsPrioReading =
+                db.compileStatement(mSearchSet == null ? SQL_QUERY_PARTS_READING_PRIO :
+                        SQL_QUERY_PARTS_READING_PRIO + " AND DictionaryIndex.`rowid` IN (" + mSearchSet + ")");
+        final SupportSQLiteStatement queryPartsNonPrioWriting =
+                db.compileStatement(mSearchSet == null ? SQL_QUERY_PARTS_WRITING_NONPRIO :
+                        SQL_QUERY_PARTS_WRITING_NONPRIO + " AND DictionaryIndex.`rowid` IN (" + mSearchSet + ")");
+        final SupportSQLiteStatement queryPartsNonPrioReading =
+                db.compileStatement(mSearchSet == null ? SQL_QUERY_PARTS_READING_NONPRIO :
+                        SQL_QUERY_PARTS_READING_NONPRIO + " AND DictionaryIndex.`rowid` IN (" + mSearchSet + ")");
 
-        final SupportSQLiteStatement queryExactPrio =
-                db.compileStatement(mSearchSet == null ? SQL_QUERY_EXACT_PRIO :
-                        SQL_QUERY_EXACT_PRIO + " AND DictionaryIndex.`rowid` IN (" + mSearchSet + ")");
-        final SupportSQLiteStatement queryExactNonPrio =
-                db.compileStatement(mSearchSet == null ? SQL_QUERY_EXACT_NONPRIO :
-                        SQL_QUERY_EXACT_NONPRIO + " AND DictionaryIndex.`rowid` IN (" + mSearchSet + ")");
-        final SupportSQLiteStatement queryBeginPrio =
-                db.compileStatement(mSearchSet == null ? SQL_QUERY_BEGIN_PRIO :
-                        SQL_QUERY_BEGIN_PRIO + " AND DictionaryIndex.`rowid` IN (" + mSearchSet + ")");
-        final SupportSQLiteStatement queryBeginNonPrio =
-                db.compileStatement(mSearchSet == null ? SQL_QUERY_BEGIN_NONPRIO :
-                        SQL_QUERY_BEGIN_NONPRIO + " AND DictionaryIndex.`rowid` IN (" + mSearchSet + ")");
-        final SupportSQLiteStatement queryPartsPrio =
-                db.compileStatement(mSearchSet == null ? SQL_QUERY_PARTS_PRIO :
-                        SQL_QUERY_PARTS_PRIO + " AND DictionaryIndex.`rowid` IN (" + mSearchSet + ")");
-        final SupportSQLiteStatement queryPartsNonPrio =
-                db.compileStatement(mSearchSet == null ? SQL_QUERY_PARTS_NONPRIO :
-                        SQL_QUERY_PARTS_NONPRIO + " AND DictionaryIndex.`rowid` IN (" + mSearchSet + ")");
+        final QueryStatement[] queriesArray = new QueryStatement[14];
 
-        final QueryStatement[] queriesArray = new QueryStatement[6];
-
-        queriesArray[0] = new QueryStatement(mRef,1, queryExactPrio);
-        queriesArray[1] = new QueryStatement(mRef,2, queryExactNonPrio);
-        queriesArray[2] = new QueryStatement(mRef,3, queryBeginPrio);
-        queriesArray[3] = new QueryStatement(mRef,4, queryBeginNonPrio);
-        queriesArray[4] = new QueryStatement(mRef,5, queryPartsPrio);
-        queriesArray[5] = new QueryStatement(mRef,6, queryPartsNonPrio);
+        queriesArray[0] = new QueryStatement(mRef,1, queryExactPrioWriting, false, mRomkan);
+        queriesArray[1] = new QueryStatement(mRef,2, queryExactPrioReading, true, mRomkan);
+        queriesArray[2] = new QueryStatement(mRef,3, queryExactNonPrioWriting, false, mRomkan);
+        queriesArray[3] = new QueryStatement(mRef,4, queryExactNonPrioReading, true, mRomkan);
+        queriesArray[4] = new QueryStatement(mRef,5, queryBeginPrioWriting, false, mRomkan);
+        queriesArray[5] = new QueryStatement(mRef,6, queryBeginPrioReading, true, mRomkan);
+        queriesArray[6] = new QueryStatement(mRef,7, queryBeginNonPrioWriting, false, mRomkan);
+        queriesArray[7] = new QueryStatement(mRef,8, queryBeginNonPrioReading, true, mRomkan);
+        queriesArray[8] = new QueryStatement(mRef,9, queryPartsPrioWriting, false, mRomkan);
+        queriesArray[9] = new QueryStatement(mRef,10, queryPartsPrioReading, true, mRomkan);
+        queriesArray[10] = new QueryStatement(mRef,11, queryPartsNonPrioWriting, false, mRomkan);
+        queriesArray[11] = new QueryStatement(mRef,12, queryPartsNonPrioReading, true, mRomkan);
 
         mQueries = queriesArray;
 
@@ -288,7 +394,9 @@ public class QueryTool {
                     }
 
                     while (lastInsert == -1 && mQueriesPosition < mQueries.length) {
-                        lastInsert = mQueries[mQueriesPosition].execute(mTerm);
+                        if (mQueries[mQueriesPosition] != null) {
+                            lastInsert = mQueries[mQueriesPosition].execute(mTerm);
+                        }
 
                         if (BuildConfig.DEBUG_QUERYTOOL) {
                             mLog.info(this.hashCode() + " position " + mQueriesPosition + " result " + lastInsert);
@@ -359,9 +467,9 @@ public class QueryTool {
 
     @MainThread
     public static LiveData<QueryTool> create(@NonNull final PersistentDatabase aDB, final int aRef,
-                                             String aSearchSet, boolean aAllowQueryAll)
+                                             String aSearchSet, boolean aAllowQueryAll, final Romkan aRomkan)
     {
-        final QueryTool tool = new QueryTool(aDB, aRef, aSearchSet, aAllowQueryAll);
+        final QueryTool tool = new QueryTool(aDB, aRef, aSearchSet, aAllowQueryAll, aRomkan);
         final MutableLiveData<QueryTool> liveData = new MutableLiveData<>();
 
         new AsyncTask<Void, Void, Void>() {
