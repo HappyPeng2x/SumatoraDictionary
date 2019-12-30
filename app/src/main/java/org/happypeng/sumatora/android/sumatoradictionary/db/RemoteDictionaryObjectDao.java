@@ -50,8 +50,20 @@ public interface RemoteDictionaryObjectDao {
     @Query("SELECT * FROM RemoteDictionaryObject WHERE " +
             "RemoteDictionaryObject.type == 'jmdict_translation' AND " +
             "RemoteDictionaryObject.lang NOT IN " +
-            "(SELECT InstalledDictionary.lang FROM InstalledDictionary) ORDER BY RemoteDictionaryObject.lang")
+            " (SELECT InstalledDictionary.lang FROM InstalledDictionary) AND " +
+            "RemoteDictionaryObject.version IN " +
+            " (SELECT InstalledDictionary.version FROM InstalledDictionary WHERE InstalledDictionary.type == 'jmdict') AND " +
+            "RemoteDictionaryObject.date IN " +
+            " (SELECT InstalledDictionary.date FROM InstalledDictionary WHERE InstalledDictionary.type == 'jmdict') " +
+            "ORDER BY RemoteDictionaryObject.lang")
     LiveData<List<RemoteDictionaryObject>> getInstallableLive();
+
+    @Query("SELECT * FROM RemoteDictionaryObject WHERE " +
+            "(RemoteDictionaryObject.version NOT IN " +
+            " (SELECT InstalledDictionary.version FROM InstalledDictionary WHERE InstalledDictionary.type == 'jmdict')) OR " +
+            "(RemoteDictionaryObject.date NOT IN " +
+            " (SELECT InstalledDictionary.date FROM InstalledDictionary WHERE InstalledDictionary.type == 'jmdict'))")
+    LiveData<List<RemoteDictionaryObject>> getUpdatableLive();
 
     @Delete
     void deleteMany(List<RemoteDictionaryObject> aActions);

@@ -27,6 +27,7 @@ import androidx.fragment.app.FragmentTransaction;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.drawerlayout.widget.DrawerLayout;
+import androidx.lifecycle.Observer;
 
 import android.view.MenuItem;
 
@@ -36,7 +37,9 @@ import android.os.Handler;
 import com.google.android.material.navigation.NavigationView;
 
 import org.happypeng.sumatora.android.sumatoradictionary.BuildConfig;
+import org.happypeng.sumatora.android.sumatoradictionary.DictionaryApplication;
 import org.happypeng.sumatora.android.sumatoradictionary.R;
+import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Settings;
 import org.happypeng.sumatora.android.sumatoradictionary.fragment.DebugFragment;
 import org.happypeng.sumatora.android.sumatoradictionary.fragment.QueryFragment;
 import org.happypeng.sumatora.android.sumatoradictionary.fragment.SettingsFragment;
@@ -59,6 +62,8 @@ public class MainActivity extends AppCompatActivity
 
     private SettingsFragment m_settingsFragment;
     private boolean m_settingsFragmentShown;
+
+    private DictionaryApplication m_app;
 
     // Fragment sequence: 1. search (always on) 2. bookmarks or settings 3. if 2 is settings, debug
 
@@ -176,6 +181,8 @@ public class MainActivity extends AppCompatActivity
             m_log.info("onCreate started");
         }
 
+        m_app = (DictionaryApplication) getApplication();
+
         setContentView(R.layout.activity_dictionary);
 
         m_navigationView = (NavigationView) findViewById(R.id.activity_main_navigation_view);
@@ -206,6 +213,16 @@ public class MainActivity extends AppCompatActivity
         m_drawer_layout = (DrawerLayout) findViewById(R.id.nav_drawer);
 
         switchToSearchFragment();
+
+        m_app.getSettings().getValue(Settings.REPOSITORY_URL).observe(this,
+                new Observer<String>() {
+                    @Override
+                    public void onChanged(String s) {
+                        if (m_settingsFragment != null) {
+                            m_settingsFragment.setRepositoryURL(s);
+                        }
+                    }
+                });
     }
 
     private void transformSearchIntent(Intent aIntent) {
@@ -334,6 +351,15 @@ public class MainActivity extends AppCompatActivity
     @Override
     public void manageDictionaries() {
         startActivityWithDelay(DictionariesManagementActivity.class);
+    }
+
+    @Override
+    public void setRepositoryURL(String aUrl) {
+        if (m_app == null) {
+            return;
+        }
+
+        m_app.getSettings().setValue(Settings.REPOSITORY_URL, aUrl);
     }
 
     @Override

@@ -42,6 +42,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.R;
 import org.happypeng.sumatora.android.sumatoradictionary.adapter.DictionaryObjectAdapter;
 import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary;
 import org.happypeng.sumatora.android.sumatoradictionary.db.RemoteDictionaryObject;
+import org.happypeng.sumatora.android.sumatoradictionary.db.tools.ValueHolder;
 import org.happypeng.sumatora.android.sumatoradictionary.model.DictionariesManagementActivityModel;
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionaryObjectViewHolder;
 
@@ -146,7 +147,7 @@ public class DictionariesManagementActivity extends AppCompatActivity implements
                 findViewById(R.id.activity_dictionaries_management_update_panel);
         updatePanel.setVisibility(View.GONE);
 
-        final RecyclerView updateRv =
+        /* final RecyclerView updateRv =
                 (RecyclerView) findViewById(R.id.activity_dictionaries_management_update_rv);
 
         final LinearLayoutManager updateLl = new LinearLayoutManager(this);
@@ -156,7 +157,7 @@ public class DictionariesManagementActivity extends AppCompatActivity implements
 
         final DictionaryObjectAdapter updateAdapter = new DictionaryObjectAdapter(false,
                 false, null, null);
-        updateRv.setAdapter(updateAdapter);
+        updateRv.setAdapter(updateAdapter); */
 
         final View installPanel =
                 findViewById(R.id.activity_dictionaries_management_install_panel);
@@ -206,13 +207,18 @@ public class DictionariesManagementActivity extends AppCompatActivity implements
                 });
         removeRv.setAdapter(removeAdapter);
 
+        final ValueHolder<Boolean> hasUpdatable = new ValueHolder<>(false);
+
         mViewModel.getRemoteDictionaryObjects().observe(this,
                 new Observer<List<RemoteDictionaryObject>>() {
                     @Override
                     public void onChanged(List<RemoteDictionaryObject> remoteDictionaryObjects) {
-                        if (remoteDictionaryObjects != null && remoteDictionaryObjects.size() > 0) {
+                        if (remoteDictionaryObjects != null && remoteDictionaryObjects.size() > 0 &&
+                                (hasUpdatable.getValue() == null ||  !hasUpdatable.getValue())) {
                             installPanel.setVisibility(View.VISIBLE);
                             installAdapter.submitList(remoteDictionaryObjects);
+
+                            updatePanel.setVisibility(View.GONE);
                         } else {
                             installPanel.setVisibility(View.GONE);
                             installAdapter.submitList(null);
@@ -230,6 +236,21 @@ public class DictionariesManagementActivity extends AppCompatActivity implements
                         } else {
                             removePanel.setVisibility(View.GONE);
                             removeAdapter.submitList(null);
+                        }
+                    }
+                });
+
+        mViewModel.getUpdatableDictionaries().observe(this,
+                new Observer<List<RemoteDictionaryObject>>() {
+                    @Override
+                    public void onChanged(List<RemoteDictionaryObject> remoteDictionaryObjects) {
+                        if (remoteDictionaryObjects != null && remoteDictionaryObjects.size() > 0) {
+                            hasUpdatable.setValue(true);
+
+                            installPanel.setVisibility(View.GONE);
+                            installAdapter.submitList(null);
+
+                            updatePanel.setVisibility(View.VISIBLE);
                         }
                     }
                 });

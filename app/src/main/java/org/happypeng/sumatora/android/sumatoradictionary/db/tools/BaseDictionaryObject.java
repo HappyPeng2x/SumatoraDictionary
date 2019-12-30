@@ -94,12 +94,18 @@ public class BaseDictionaryObject {
             int level = 0;
             String parent = null;
 
+            int version = 0;
+            int date = 0;
+
             while (eventType != XmlPullParser.END_DOCUMENT) {
                 if(eventType == XmlPullParser.START_TAG) {
                     level++;
 
                     if (xpp.getName().equals("repository")) {
                         parent = "repository";
+
+                        version = Integer.valueOf(xpp.getAttributeValue(null, "version"));
+                        date = Integer.valueOf(xpp.getAttributeValue(null, "date"));
                     }
 
                     if (level == 2 && parent != null && parent.equals("repository") &&
@@ -108,8 +114,7 @@ public class BaseDictionaryObject {
                                 xpp.getAttributeValue(null, "description"),
                                 xpp.getAttributeValue(null, "type"),
                                 xpp.getAttributeValue(null, "lang"),
-                                Integer.valueOf(xpp.getAttributeValue(null, "version")),
-                                Integer.valueOf(xpp.getAttributeValue(null, "date"))));
+                                version, date));
                     }
                 } else if(eventType == XmlPullParser.END_TAG) {
                     level--;

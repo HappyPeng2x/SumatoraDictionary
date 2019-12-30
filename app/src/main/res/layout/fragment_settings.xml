@@ -31,7 +31,7 @@
             android:id="@+id/textView3"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="URL:"
+            android:text="Repository URL:"
             android:textAppearance="@style/Body2" />
 
         <com.google.android.material.textfield.TextInputEditText
@@ -43,13 +43,6 @@
             android:scrollHorizontally="true"
             android:singleLine="true"
             android:text="@string/dictionaries_url" />
-
-        <Button
-            android:id="@+id/activity_dictionaries_management_get_button"
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:lines="1"
-            android:text="Get" />
     </LinearLayout>
 
     <ScrollView

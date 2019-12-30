@@ -36,6 +36,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.RemoteDictionaryObject;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.BaseDictionaryObject;
+import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Settings;
 
 import java.io.InputStream;
 import java.net.URL;
@@ -61,6 +62,7 @@ public class DictionariesManagementActivityModel extends AndroidViewModel {
 
     private LiveData<List<RemoteDictionaryObject>> mRemoteDictionaryObjects;
     private LiveData<List<InstalledDictionary>> mInstalledDictionaries;
+    private LiveData<List<RemoteDictionaryObject>> mUpdatableDictionaries;
 
     public LiveData<Integer> getStatus() { return mStatus; }
     public String getDownloadError() { return mDownloadError; }
@@ -71,6 +73,10 @@ public class DictionariesManagementActivityModel extends AndroidViewModel {
 
     public LiveData<List<InstalledDictionary>> getInstalledDictionaries() {
         return mInstalledDictionaries;
+    }
+
+    public LiveData<List<RemoteDictionaryObject>> getUpdatableDictionaries() {
+        return mUpdatableDictionaries;
     }
 
     public DictionariesManagementActivityModel(@NonNull Application application) {
@@ -100,6 +106,14 @@ public class DictionariesManagementActivityModel extends AndroidViewModel {
                     @Override
                     public LiveData<List<RemoteDictionaryObject>> apply(PersistentDatabase input) {
                         return input.remoteDictionaryObjectDao().getInstallableLive();
+                    }
+                });
+
+        mUpdatableDictionaries = Transformations.switchMap(mApp.getPersistentDatabase(),
+                new Function<PersistentDatabase, LiveData<List<RemoteDictionaryObject>>>() {
+                    @Override
+                    public LiveData<List<RemoteDictionaryObject>> apply(PersistentDatabase input) {
+                        return input.remoteDictionaryObjectDao().getUpdatableLive();
                     }
                 });
 
@@ -142,7 +156,15 @@ public class DictionariesManagementActivityModel extends AndroidViewModel {
                 try {
                     TrafficStats.setThreadStatsTag((int) Thread.currentThread().getId());
 
-                    URL url = new URL(mApp.getString(R.string.dictionaries_url));
+                    String repoUrl = mApp.getSettings().getValueDirect(Settings.REPOSITORY_URL);
+
+                    if (repoUrl == null) {
+                        System.err.println("Could not get repository URL from settings.");
+
+                        return null;
+                    }
+
+                    URL url = new URL(repoUrl);
                     InputStream is = url.openStream();
                     ret = RemoteDictionaryObject.fromXML(is,
                             new BaseDictionaryObject.Constructor<RemoteDictionaryObject>() {

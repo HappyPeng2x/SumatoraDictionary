@@ -164,7 +164,11 @@ public class DictionaryApplication extends Application {
             database.execSQL("DROP TABLE IF EXISTS DictionaryBookmarkImport");
             database.execSQL("CREATE TABLE IF NOT EXISTS DictionaryBookmarkImport (`ref` INTEGER NOT NULL, `seq` INTEGER NOT NULL, PRIMARY KEY(`ref`, `seq`))");
 
-            database.execSQL("CREATE TABLE IF NOT EXISTS InstalledDictionary (`file` TEXT, `description` TEXT, `type` TEXT NOT NULL, `lang` TEXT NOT NULL, `version` INTEGER NOT NULL, `date` INTEGER NOT NULL, PRIMARY KEY(`type`, `lang`))");
+            database.execSQL("CREATE TABLE IF NOT EXISTS InstalledDictionary (`description` TEXT, `type` TEXT NOT NULL, `lang` TEXT NOT NULL, `version` INTEGER NOT NULL, `date` INTEGER NOT NULL, `file` TEXT NOT NULL, PRIMARY KEY(`type`, `lang`))");
+            database.execSQL("CREATE TABLE IF NOT EXISTS RemoteDictionaryObject (`description` TEXT, `type` TEXT NOT NULL, `lang` TEXT NOT NULL, `version` INTEGER NOT NULL, `date` INTEGER NOT NULL, `file` TEXT NOT NULL, `localFile` TEXT NOT NULL, `downloadId` INTEGER NOT NULL, PRIMARY KEY(`type`, `lang`))");
+            database.execSQL("CREATE TABLE IF NOT EXISTS LocalDictionaryObject (`description` TEXT, `type` TEXT NOT NULL, `lang` TEXT NOT NULL, `version` INTEGER NOT NULL, `date` INTEGER NOT NULL, `file` TEXT NOT NULL, PRIMARY KEY(`type`, `lang`))");
+            database.execSQL("CREATE TABLE IF NOT EXISTS AssetDictionaryObject (`description` TEXT, `type` TEXT NOT NULL, `lang` TEXT NOT NULL, `version` INTEGER NOT NULL, `date` INTEGER NOT NULL, `file` TEXT NOT NULL, PRIMARY KEY(`type`, `lang`))");
+
 
             if (BuildConfig.DEBUG_DB_MIGRATION) {
                 log.info("Database migration ended");
@@ -483,6 +487,8 @@ public class DictionaryApplication extends Application {
                     Settings.LANG_DEFAULT));
             pDb.persistentSettingsDao().insertDefault(new PersistentSetting(Settings.BACKUP_LANG,
                     Settings.BACKUP_LANG_DEFAULT));
+            pDb.persistentSettingsDao().insertDefault(new PersistentSetting(Settings.REPOSITORY_URL,
+                    aParams[0].getString(R.string.dictionaries_url)));
 
             if (bookmarks == null) {
                 bookmarks = readBackupBookmarks(aParams[0]);
