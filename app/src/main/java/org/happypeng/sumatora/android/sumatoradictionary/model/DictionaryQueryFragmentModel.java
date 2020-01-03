@@ -55,6 +55,8 @@ public class DictionaryQueryFragmentModel extends AndroidViewModel {
 
     private PersistentDatabase m_currentDatabase;
 
+    private String m_term;
+
     public Integer getBookmarkToolStatus() { return m_bookmarkToolStatus; }
 
     public void initialize(final int aKey, final String aSearchSet, final boolean aAllowSearchAll,
@@ -111,7 +113,13 @@ public class DictionaryQueryFragmentModel extends AndroidViewModel {
                         m_queryTool = queryTool;
 
                         if (m_queryTool != null) {
-                            queryTool.setTerm(queryTool.getTerm(), true);
+                            if (m_term != null) {
+                                queryTool.setTerm(m_term, true);
+
+                                m_term = null;
+                            } else {
+                                queryTool.setTerm(queryTool.getTerm(), true);
+                            }
                         }
                     }
                 });
@@ -168,12 +176,18 @@ public class DictionaryQueryFragmentModel extends AndroidViewModel {
     public void setTerm(@NonNull String aTerm) {
         if (m_queryTool != null) {
             m_queryTool.setTerm(aTerm, true);
+        } else {
+            m_term = aTerm;
         }
     }
 
     public String getTerm() {
         if (m_queryTool != null) {
             return m_queryTool.getTerm();
+        }
+
+        if (m_term != null) {
+            return m_term;
         }
 
         return "";
