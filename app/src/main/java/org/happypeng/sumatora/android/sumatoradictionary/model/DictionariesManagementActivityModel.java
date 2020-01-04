@@ -63,6 +63,7 @@ public class DictionariesManagementActivityModel extends AndroidViewModel {
     private LiveData<List<RemoteDictionaryObject>> mRemoteDictionaryObjects;
     private LiveData<List<InstalledDictionary>> mInstalledDictionaries;
     private LiveData<List<RemoteDictionaryObject>> mUpdatableDictionaries;
+    private LiveData<List<RemoteDictionaryObject>> mActiveDownloads;
 
     public LiveData<Integer> getStatus() { return mStatus; }
     public String getDownloadError() { return mDownloadError; }
@@ -77,6 +78,10 @@ public class DictionariesManagementActivityModel extends AndroidViewModel {
 
     public LiveData<List<RemoteDictionaryObject>> getUpdatableDictionaries() {
         return mUpdatableDictionaries;
+    }
+
+    public LiveData<List<RemoteDictionaryObject>> getActiveDownloads() {
+        return mActiveDownloads;
     }
 
     public DictionariesManagementActivityModel(@NonNull Application application) {
@@ -114,6 +119,14 @@ public class DictionariesManagementActivityModel extends AndroidViewModel {
                     @Override
                     public LiveData<List<RemoteDictionaryObject>> apply(PersistentDatabase input) {
                         return input.remoteDictionaryObjectDao().getUpdatableLive();
+                    }
+                });
+
+        mActiveDownloads = Transformations.switchMap(mApp.getPersistentDatabase(),
+                new Function<PersistentDatabase, LiveData<List<RemoteDictionaryObject>>>() {
+                    @Override
+                    public LiveData<List<RemoteDictionaryObject>> apply(PersistentDatabase input) {
+                        return input.remoteDictionaryObjectDao().getActiveDownloads();
                     }
                 });
 
@@ -240,7 +253,7 @@ public class DictionariesManagementActivityModel extends AndroidViewModel {
                         aEntry.download((DownloadManager) mApp.getSystemService(DOWNLOAD_SERVICE),
                                 mApp.getExternalFilesDir(null));
 
-                        mDb.remoteDictionaryObjectDao().update(aEntry);
+                        mDb.remoteDictionaryObjectDao().insert(aEntry);
                     }
                 });
 

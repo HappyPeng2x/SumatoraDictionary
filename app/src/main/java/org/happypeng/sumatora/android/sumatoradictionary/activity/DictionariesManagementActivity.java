@@ -183,6 +183,22 @@ public class DictionariesManagementActivity extends AppCompatActivity implements
         }, null);
         installRv.setAdapter(installAdapter);
 
+        final View downloadsPanel =
+                findViewById(R.id.activity_dictionaries_management_downloads_panel);
+        downloadsPanel.setVisibility(View.GONE);
+
+        final RecyclerView downloadsRv =
+                (RecyclerView) findViewById(R.id.activity_dictionaries_management_downloads_rv);
+
+        final LinearLayoutManager downloadsLl = new LinearLayoutManager(this);
+        downloadsLl.setOrientation(RecyclerView.VERTICAL);
+
+        downloadsRv.setLayoutManager(downloadsLl);
+
+        final DictionaryObjectAdapter<RemoteDictionaryObject> downloadsAdapter = new DictionaryObjectAdapter<>(false, false,
+                null, null);
+        downloadsRv.setAdapter(downloadsAdapter);
+
         final View removePanel =
                 findViewById(R.id.activity_dictionaries_management_remove_panel);
         removePanel.setVisibility(View.GONE);
@@ -222,6 +238,20 @@ public class DictionariesManagementActivity extends AppCompatActivity implements
                         } else {
                             installPanel.setVisibility(View.GONE);
                             installAdapter.submitList(null);
+                        }
+                    }
+                });
+
+        mViewModel.getActiveDownloads().observe(this,
+                new Observer<List<RemoteDictionaryObject>>() {
+                    @Override
+                    public void onChanged(List<RemoteDictionaryObject> remoteDictionaryObjects) {
+                        if (remoteDictionaryObjects != null && remoteDictionaryObjects.size() > 0) {
+                            downloadsPanel.setVisibility(View.VISIBLE);
+                            downloadsAdapter.submitList(remoteDictionaryObjects);
+                        } else {
+                            downloadsPanel.setVisibility(View.GONE);
+                            downloadsAdapter.submitList(null);
                         }
                     }
                 });

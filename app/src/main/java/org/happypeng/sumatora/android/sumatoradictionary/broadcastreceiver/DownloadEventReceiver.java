@@ -25,6 +25,7 @@ import android.os.AsyncTask;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.WorkerThread;
+import androidx.sqlite.db.SupportSQLiteDatabase;
 
 import org.happypeng.sumatora.android.sumatoradictionary.DictionaryApplication;
 import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary;
@@ -76,9 +77,16 @@ public class DownloadEventReceiver extends BroadcastReceiver {
                         installRemoteDictionaryObject(d);
                     }
 
+                    // Due to a bug probably inside room itself, if we don't do this, nobody gets notified
+                    int downloadId = mDB.remoteDictionaryObjectDao().getDownloadId(d.type, d.lang);
+
+                    if (downloadId == -1) {
+                        System.err.println("downloadId is negative for " + d.type + " " + d.lang);
+                    }
+
                     d.setDownloadId(-1);
                     d.setLocalFile("");
-                    mDB.remoteDictionaryObjectDao().update(d);
+                    mDB.remoteDictionaryObjectDao().insert(d);
                 }
 
                 return null;
@@ -108,12 +116,14 @@ public class DownloadEventReceiver extends BroadcastReceiver {
         DownloadManager downloadManager= (DownloadManager) aContext.getSystemService(DOWNLOAD_SERVICE);
         Cursor cur = downloadManager.query(query);
 
+        int status = -1;
+
         if (cur.moveToNext()) {
-            return cur.getInt(cur.getColumnIndex(DownloadManager.COLUMN_STATUS));
-            }
+            status =  cur.getInt(cur.getColumnIndex(DownloadManager.COLUMN_STATUS));
+        }
 
         cur.close();
 
-        return -1;
+        return status;
     }
 }

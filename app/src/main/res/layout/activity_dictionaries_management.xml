@@ -82,6 +82,24 @@
                     android:layout_height="match_parent" />
             </LinearLayout>
             <LinearLayout
+                android:id="@+id/activity_dictionaries_management_downloads_panel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="15dp"
+                android:orientation="vertical"
+                android:visibility="gone">
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Downloads"
+                    android:paddingBottom="5dp"
+                    android:textAppearance="@style/TextAppearance.AppCompat.Large" />
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/activity_dictionaries_management_downloads_rv"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+            </LinearLayout>
+            <LinearLayout
                 android:id="@+id/activity_dictionaries_management_remove_panel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

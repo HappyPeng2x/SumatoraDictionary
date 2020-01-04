@@ -34,7 +34,6 @@ public interface RemoteDictionaryObjectDao {
     @Query("SELECT COUNT(downloadId) FROM RemoteDictionaryObject WHERE RemoteDictionaryObject.downloadId > -1")
     int getDownloadCount();
 
-
     @Query("SELECT * FROM RemoteDictionaryObject WHERE RemoteDictionaryObject.downloadId=:id")
     List<RemoteDictionaryObject> getAllForDownloadId(long id);
 
@@ -54,9 +53,16 @@ public interface RemoteDictionaryObjectDao {
             "RemoteDictionaryObject.version IN " +
             " (SELECT InstalledDictionary.version FROM InstalledDictionary WHERE InstalledDictionary.type == 'jmdict') AND " +
             "RemoteDictionaryObject.date IN " +
-            " (SELECT InstalledDictionary.date FROM InstalledDictionary WHERE InstalledDictionary.type == 'jmdict') " +
+            " (SELECT InstalledDictionary.date FROM InstalledDictionary WHERE InstalledDictionary.type == 'jmdict') AND " +
+            "(RemoteDictionaryObject.downloadId IS NULL OR RemoteDictionaryObject.downloadId == -1) " +
             "ORDER BY RemoteDictionaryObject.lang")
     LiveData<List<RemoteDictionaryObject>> getInstallableLive();
+
+    @Query("SELECT * FROM RemoteDictionaryObject WHERE RemoteDictionaryObject.downloadId > 0")
+    LiveData<List<RemoteDictionaryObject>> getActiveDownloads();
+
+    @Query("SELECT downloadId FROM remotedictionaryobject WHERE type = :type AND lang = :lang")
+    int getDownloadId(String type, String lang);
 
     @Query("SELECT * FROM RemoteDictionaryObject WHERE " +
             "(RemoteDictionaryObject.version NOT IN " +
@@ -68,8 +74,11 @@ public interface RemoteDictionaryObjectDao {
     @Delete
     void deleteMany(List<RemoteDictionaryObject> aActions);
 
+    @Delete
+    void delete(RemoteDictionaryObject aObject);
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void update(RemoteDictionaryObject aAction);
+    void insert(RemoteDictionaryObject aAction);
 
     // No installs except if explicitely required by the user
 }
