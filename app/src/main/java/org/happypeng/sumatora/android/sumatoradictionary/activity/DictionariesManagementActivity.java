@@ -21,6 +21,7 @@ import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
@@ -41,6 +42,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import org.happypeng.sumatora.android.sumatoradictionary.R;
 import org.happypeng.sumatora.android.sumatoradictionary.adapter.DictionaryObjectAdapter;
 import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary;
+import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.RemoteDictionaryObject;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.ValueHolder;
 import org.happypeng.sumatora.android.sumatoradictionary.model.DictionariesManagementActivityModel;
@@ -147,7 +149,7 @@ public class DictionariesManagementActivity extends AppCompatActivity implements
                 findViewById(R.id.activity_dictionaries_management_update_panel);
         updatePanel.setVisibility(View.GONE);
 
-        /* final RecyclerView updateRv =
+        final RecyclerView updateRv =
                 (RecyclerView) findViewById(R.id.activity_dictionaries_management_update_rv);
 
         final LinearLayoutManager updateLl = new LinearLayoutManager(this);
@@ -155,9 +157,12 @@ public class DictionariesManagementActivity extends AppCompatActivity implements
 
         updateRv.setLayoutManager(updateLl);
 
-        final DictionaryObjectAdapter updateAdapter = new DictionaryObjectAdapter(false,
+        final DictionaryObjectAdapter<RemoteDictionaryObject> updateAdapter = new DictionaryObjectAdapter<>(false,
                 false, null, null);
-        updateRv.setAdapter(updateAdapter); */
+        updateRv.setAdapter(updateAdapter);
+
+        final Button updateButton =
+                findViewById(R.id.activity_dictionaries_management_update_button);
 
         final View installPanel =
                 findViewById(R.id.activity_dictionaries_management_install_panel);
@@ -211,6 +216,10 @@ public class DictionariesManagementActivity extends AppCompatActivity implements
 
         removeRv.setLayoutManager(removeLl);
 
+        final View loadingPanel =
+                findViewById(R.id.activity_dictionaries_management_loading_panel);
+        loadingPanel.setVisibility(View.GONE);
+
         final DictionaryObjectAdapter<InstalledDictionary> removeAdapter = new DictionaryObjectAdapter<>(false,
                 true, null,
                 new DictionaryObjectViewHolder.OnClickListener<InstalledDictionary>() {
@@ -225,6 +234,28 @@ public class DictionariesManagementActivity extends AppCompatActivity implements
 
         final ValueHolder<Boolean> hasUpdatable = new ValueHolder<>(false);
 
+        mViewModel.getDatabase().observe(this,
+                new Observer<PersistentDatabase>() {
+                    @Override
+                    public void onChanged(PersistentDatabase persistentDatabase) {
+                        if (persistentDatabase == null) {
+                            installPanel.setVisibility(View.GONE);
+                            installAdapter.submitList(null);
+
+                            updatePanel.setVisibility(View.GONE);
+                            updateAdapter.submitList(null);
+
+                            removePanel.setVisibility(View.GONE);
+                            removeAdapter.submitList(null);
+
+                            downloadsPanel.setVisibility(View.GONE);
+                            downloadsAdapter.submitList(null);
+
+                            loadingPanel.setVisibility(View.VISIBLE);
+                        }
+                    }
+                });
+
         mViewModel.getRemoteDictionaryObjects().observe(this,
                 new Observer<List<RemoteDictionaryObject>>() {
                     @Override
@@ -233,8 +264,6 @@ public class DictionariesManagementActivity extends AppCompatActivity implements
                                 (hasUpdatable.getValue() == null ||  !hasUpdatable.getValue())) {
                             installPanel.setVisibility(View.VISIBLE);
                             installAdapter.submitList(remoteDictionaryObjects);
-
-                            updatePanel.setVisibility(View.GONE);
                         } else {
                             installPanel.setVisibility(View.GONE);
                             installAdapter.submitList(null);
@@ -281,9 +310,34 @@ public class DictionariesManagementActivity extends AppCompatActivity implements
                             installAdapter.submitList(null);
 
                             updatePanel.setVisibility(View.VISIBLE);
+                            updateAdapter.submitList(remoteDictionaryObjects);
+
+                            for (RemoteDictionaryObject d : remoteDictionaryObjects) {
+                                System.out.println("Remote dictionary " + d.type + " " + d.lang + ": " +
+                                        "download ID " + d.downloadId + " local file " + d.localFile);
+                            }
+                        } else {
+                            updatePanel.setVisibility(View.GONE);
+                            updateAdapter.submitList(null);
                         }
                     }
                 });
+
+        updateButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (mViewModel == null || mViewModel.getUpdatableDictionaries() == null ||
+                    mViewModel.getUpdatableDictionaries().getValue() == null) {
+                    return;
+                }
+
+                for (RemoteDictionaryObject u : mViewModel.getUpdatableDictionaries().getValue()) {
+                    mViewModel.startDownload(u);
+
+                    System.out.println("Update: " + u.description);
+                }
+            }
+        });
     }
 
     @MainThread

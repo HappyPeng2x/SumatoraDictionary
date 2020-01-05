@@ -84,6 +84,8 @@ public class DictionariesManagementActivityModel extends AndroidViewModel {
         return mActiveDownloads;
     }
 
+    public LiveData<PersistentDatabase> getDatabase() { return mApp.getPersistentDatabase(); }
+
     public DictionariesManagementActivityModel(@NonNull Application application) {
         super(application);
 
@@ -102,7 +104,11 @@ public class DictionariesManagementActivityModel extends AndroidViewModel {
                 new Function<PersistentDatabase, LiveData<List<InstalledDictionary>>>() {
                     @Override
                     public LiveData<List<InstalledDictionary>> apply(PersistentDatabase input) {
-                        return input.installedDictionaryDao().getRemovableLive();
+                        if (input != null) {
+                            return input.installedDictionaryDao().getRemovableLive();
+                        } else {
+                            return null;
+                        }
                     }
                 });
 
@@ -110,7 +116,11 @@ public class DictionariesManagementActivityModel extends AndroidViewModel {
                 new Function<PersistentDatabase, LiveData<List<RemoteDictionaryObject>>>() {
                     @Override
                     public LiveData<List<RemoteDictionaryObject>> apply(PersistentDatabase input) {
-                        return input.remoteDictionaryObjectDao().getInstallableLive();
+                        if (input != null) {
+                            return input.remoteDictionaryObjectDao().getInstallableLive();
+                        } else {
+                            return null;
+                        }
                     }
                 });
 
@@ -118,7 +128,11 @@ public class DictionariesManagementActivityModel extends AndroidViewModel {
                 new Function<PersistentDatabase, LiveData<List<RemoteDictionaryObject>>>() {
                     @Override
                     public LiveData<List<RemoteDictionaryObject>> apply(PersistentDatabase input) {
-                        return input.remoteDictionaryObjectDao().getUpdatableLive();
+                        if (input != null) {
+                            return input.remoteDictionaryObjectDao().getUpdatableLive();
+                        } else {
+                            return null;
+                        }
                     }
                 });
 
@@ -126,7 +140,11 @@ public class DictionariesManagementActivityModel extends AndroidViewModel {
                 new Function<PersistentDatabase, LiveData<List<RemoteDictionaryObject>>>() {
                     @Override
                     public LiveData<List<RemoteDictionaryObject>> apply(PersistentDatabase input) {
-                        return input.remoteDictionaryObjectDao().getActiveDownloads();
+                        if (input != null) {
+                            return input.remoteDictionaryObjectDao().getActiveDownloads();
+                        } else {
+                            return null;
+                        }
                     }
                 });
 

@@ -67,6 +67,9 @@ public class BaseFragment<M extends BaseFragmentModel> extends Fragment {
     private ProgressBar m_progressBar;
     private TextView m_statusText;
     private TextView m_searchStatusText;
+    private RecyclerView m_recyclerView;
+
+    private DictionaryPagedListAdapter m_listAdapter;
 
     TextView m_languageText;
 
@@ -121,6 +124,8 @@ public class BaseFragment<M extends BaseFragmentModel> extends Fragment {
     }
 
     private void setInPreparation() {
+        m_recyclerView.setAdapter(null);
+
         m_statusText.setVisibility(View.VISIBLE);
         m_progressBar.setVisibility(View.VISIBLE);
 
@@ -137,6 +142,8 @@ public class BaseFragment<M extends BaseFragmentModel> extends Fragment {
     }
 
     private void setReady() {
+        m_recyclerView.setAdapter(m_listAdapter);
+
         m_progressBar.setIndeterminate(false);
         m_progressBar.setMax(0);
 
@@ -224,10 +231,9 @@ public class BaseFragment<M extends BaseFragmentModel> extends Fragment {
         m_progressBar = (ProgressBar) view.findViewById(R.id.dictionary_bookmark_fragment_progressbar);
         m_statusText = (TextView) view.findViewById(R.id.dictionary_bookmark_fragment_statustext);
         m_searchStatusText = (TextView) view.findViewById(R.id.dictionary_bookmark_fragment_search_status);
+        m_recyclerView = (RecyclerView) view.findViewById(R.id.dictionary_bookmark_fragment_recyclerview);
 
         setInPreparation();
-
-        RecyclerView m_recyclerView = (RecyclerView) view.findViewById(R.id.dictionary_bookmark_fragment_recyclerview);
 
         LinearLayoutManager layoutManager = new LinearLayoutManager(getContext());
         layoutManager.setOrientation(RecyclerView.VERTICAL);
@@ -238,15 +244,15 @@ public class BaseFragment<M extends BaseFragmentModel> extends Fragment {
         m_viewModel.initialize(m_key, m_searchSet, m_allowSearchAll, m_tableObserve);
 
         final DictionarySearchElementViewHolder.Status viewHolderStatus = new DictionarySearchElementViewHolder.Status();
-        final DictionaryPagedListAdapter listAdapter = new DictionaryPagedListAdapter(viewHolderStatus, m_disableBookmarkButton);
+        m_listAdapter = new DictionaryPagedListAdapter(viewHolderStatus, m_disableBookmarkButton);
 
-        m_recyclerView.setAdapter(listAdapter);
+        m_recyclerView.setAdapter(m_listAdapter);
 
         DividerItemDecoration itemDecor = new DividerItemDecoration(getContext(),
                 layoutManager.getOrientation());
         m_recyclerView.addItemDecoration(itemDecor);
 
-        listAdapter.setBookmarkClickListener(new DictionarySearchElementViewHolder.ClickListener() {
+        m_listAdapter.setBookmarkClickListener(new DictionarySearchElementViewHolder.ClickListener() {
             @Override
             public void onClick(View aView, DictionarySearchElement aEntry) {
                 if (aEntry.getBookmark() == 0) {
@@ -276,14 +282,14 @@ public class BaseFragment<M extends BaseFragmentModel> extends Fragment {
 
                             m_lang = status.lang;
 
-                            listAdapter.notifyDataSetChanged();
+                            m_listAdapter.notifyDataSetChanged();
                         }
 
                         if ((m_backupLang == null && status.backupLang != null) ||
                                 (m_backupLang != null && !m_backupLang.equals(status.backupLang))) {
                             m_backupLang = status.backupLang;
 
-                            listAdapter.notifyDataSetChanged();
+                            m_listAdapter.notifyDataSetChanged();
                         }
 
                         viewHolderStatus.lang = status.lang;
@@ -316,7 +322,7 @@ public class BaseFragment<M extends BaseFragmentModel> extends Fragment {
                 new Observer<PagedList<DictionarySearchElement>>() {
                     @Override
                     public void onChanged(PagedList<DictionarySearchElement> dictionarySearchElements) {
-                        listAdapter.submitList(dictionarySearchElements);
+                        m_listAdapter.submitList(dictionarySearchElements);
                     }
                 });
 
@@ -389,5 +395,7 @@ public class BaseFragment<M extends BaseFragmentModel> extends Fragment {
         m_languageText = null;
         m_languagePopupMenu = null;
         m_searchView = null;
+        m_listAdapter = null;
+        m_recyclerView = null;
     }
 }

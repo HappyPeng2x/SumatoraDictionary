@@ -43,37 +43,39 @@ public class DisplayStatus {
     public List<InstalledDictionary> installedDictionaries;
     public int ref;
 
-    private static class DatabaseInstalledDictionariesStatus {
-        PersistentDatabase database;
-        List<InstalledDictionary> installedDictionaries;
-
-        DatabaseInstalledDictionariesStatus(final PersistentDatabase aDatabase,
-                                            final List<InstalledDictionary> aInstalledDictionary) {
-            database = aDatabase;
-            installedDictionaries = aInstalledDictionary;
-        }
-    }
-
     @MainThread
     public void processChange(final MutableLiveData<DisplayStatus> aLiveData) {
-        if (isInitialized()) {
+        if (isReady()) {
             aLiveData.setValue(this);
+        } else {
+            aLiveData.setValue(null);
         }
     }
 
     @MainThread
-    public void performUpdate() {
+    public void performUpdate(final MutableLiveData<DisplayStatus> aLiveData) {
         if (isReady()) {
             displayTool.performDisplayElementInsertion(lang, backupLang);
+        } else if (isInitialized()) {
+            DisplayTool.create(database, installedDictionaries, ref,
+                    new DisplayTool.Callback() {
+                        @Override
+                        public void execute(DisplayTool aDisplayTool) {
+                            displayTool = aDisplayTool;
+
+                            processChange(aLiveData);
+                        }
+                    });
         }
     }
 
     private boolean isReady() {
-        return lang != null && backupLang != null && database != null && displayTool != null;
+        return isInitialized() && displayTool != null;
     }
 
+
     public boolean isInitialized() {
-        return isReady();
+        return lang != null && backupLang != null && database != null && installedDictionaries != null;
     }
 
     public static MediatorLiveData<DisplayStatus> create(final DictionaryApplication aApp, final int aRef) {
@@ -87,7 +89,7 @@ public class DisplayStatus {
                     public void onChanged(String s) {
                         status.lang = s;
 
-                        status.performUpdate();
+                        status.performUpdate(liveData);
                         status.processChange(liveData);
                     }
                 });
@@ -98,54 +100,42 @@ public class DisplayStatus {
                     public void onChanged(String s) {
                         status.backupLang = s;
 
-                        status.performUpdate();
+                        status.performUpdate(liveData);
                         status.processChange(liveData);
                     }
                 });
 
-        final LiveData<DatabaseInstalledDictionariesStatus> installedDictionaries =
+        liveData.addSource(aApp.getPersistentDatabase(),
+                new Observer<PersistentDatabase>() {
+                    @Override
+                    public void onChanged(PersistentDatabase persistentDatabase) {
+                        status.database = persistentDatabase;
+
+                        status.performUpdate(liveData);
+                        status.processChange(liveData);
+                    }
+                });
+
+        final LiveData<List<InstalledDictionary>> installedDictionariesList =
                 Transformations.switchMap(aApp.getPersistentDatabase(),
-                        new Function<PersistentDatabase, LiveData<DatabaseInstalledDictionariesStatus>>() {
+                        new Function<PersistentDatabase, LiveData<List<InstalledDictionary>>>() {
                             @Override
-                            public LiveData<DatabaseInstalledDictionariesStatus> apply(final PersistentDatabase databaseInput) {
-                                return Transformations.map(databaseInput.installedDictionaryDao().getAllLive(),
-                                        new Function<List<InstalledDictionary>, DatabaseInstalledDictionariesStatus>() {
-                                            @Override
-                                            public DatabaseInstalledDictionariesStatus apply(List<InstalledDictionary> input) {
-                                                return new DatabaseInstalledDictionariesStatus(databaseInput, input);
-                                            }
-                                        });
+                            public LiveData<List<InstalledDictionary>> apply(PersistentDatabase input) {
+                                if (input != null) {
+                                    return input.installedDictionaryDao().getAllLive();
+                                }
+
+                                return null;
                             }
                         });
 
-        final LiveData<DisplayTool> displayTool =
-                Transformations.switchMap(installedDictionaries,
-                        new Function<DatabaseInstalledDictionariesStatus, LiveData<DisplayTool>>() {
-                            @Override
-                            public LiveData<DisplayTool> apply(DatabaseInstalledDictionariesStatus input) {
-                                return DisplayTool.create(input.database, input.installedDictionaries, aRef);
-                            }
-                        });
-
-        liveData.addSource(installedDictionaries,
-                new Observer<DatabaseInstalledDictionariesStatus>() {
+        liveData.addSource(installedDictionariesList,
+                new Observer<List<InstalledDictionary>>() {
                     @Override
-                    public void onChanged(DatabaseInstalledDictionariesStatus databaseInstalledDictionariesStatus) {
-                        status.installedDictionaries = databaseInstalledDictionariesStatus.installedDictionaries;
-                        status.database = databaseInstalledDictionariesStatus.database;
+                    public void onChanged(List<InstalledDictionary> installedDictionaries) {
+                        status.installedDictionaries = installedDictionaries;
 
-                        status.performUpdate();
-                        status.processChange(liveData);
-                    }
-                });
-
-        liveData.addSource(displayTool,
-                new Observer<DisplayTool>() {
-                    @Override
-                    public void onChanged(DisplayTool displayTool) {
-                        status.displayTool = displayTool;
-
-                        status.performUpdate();
+                        status.performUpdate(liveData);
                         status.processChange(liveData);
                     }
                 });
@@ -155,7 +145,11 @@ public class DisplayStatus {
                         new Function<PersistentDatabase, LiveData<List<DictionarySearchElement>>>() {
                             @Override
                             public LiveData<List<DictionarySearchElement>> apply(PersistentDatabase input) {
-                                return input.dictionaryDisplayElementDao().getAllDetailsLive(aRef);
+                                if (input != null) {
+                                    return input.dictionaryDisplayElementDao().getAllDetailsLive(aRef);
+                                }
+
+                                return null;
                             }
                         });
 
@@ -176,7 +170,7 @@ public class DisplayStatus {
                 new Observer<Long>() {
                     @Override
                     public void onChanged(Long aLong) {
-                        status.performUpdate();
+                        status.performUpdate(liveData);
                     }
                 });
 

@@ -68,8 +68,25 @@ public interface RemoteDictionaryObjectDao {
             "(RemoteDictionaryObject.version NOT IN " +
             " (SELECT InstalledDictionary.version FROM InstalledDictionary WHERE InstalledDictionary.type == 'jmdict')) OR " +
             "(RemoteDictionaryObject.date NOT IN " +
-            " (SELECT InstalledDictionary.date FROM InstalledDictionary WHERE InstalledDictionary.type == 'jmdict'))")
+            " (SELECT InstalledDictionary.date FROM InstalledDictionary WHERE InstalledDictionary.type == 'jmdict')) " +
+            "ORDER BY RemoteDictionaryObject.type, RemoteDictionaryObject.lang")
     LiveData<List<RemoteDictionaryObject>> getUpdatableLive();
+
+    @Query("SELECT COUNT(description) FROM RemoteDictionaryObject WHERE " +
+            "(RemoteDictionaryObject.version NOT IN " +
+            " (SELECT InstalledDictionary.version FROM InstalledDictionary WHERE InstalledDictionary.type == 'jmdict')) OR " +
+            "(RemoteDictionaryObject.date NOT IN " +
+            " (SELECT InstalledDictionary.date FROM InstalledDictionary WHERE InstalledDictionary.type == 'jmdict'))")
+    int getUpdatableCount();
+
+    @Query("SELECT * FROM RemoteDictionaryObject WHERE " +
+            "(RemoteDictionaryObject.version NOT IN " +
+            " (SELECT InstalledDictionary.version FROM InstalledDictionary WHERE InstalledDictionary.type == 'jmdict')) OR " +
+            "(RemoteDictionaryObject.date NOT IN " +
+            " (SELECT InstalledDictionary.date FROM InstalledDictionary WHERE InstalledDictionary.type == 'jmdict')) " +
+            "AND (RemoteDictionaryObject.localFile == '' OR RemoteDictionaryObject.downloadId > -1) " +
+            "ORDER BY RemoteDictionaryObject.type, RemoteDictionaryObject.lang")
+    List<RemoteDictionaryObject> getUpdatableRemaining();
 
     @Delete
     void deleteMany(List<RemoteDictionaryObject> aActions);

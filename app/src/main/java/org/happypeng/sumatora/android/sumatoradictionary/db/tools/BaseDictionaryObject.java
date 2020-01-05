@@ -110,10 +110,16 @@ public class BaseDictionaryObject {
 
                     if (level == 2 && parent != null && parent.equals("repository") &&
                             xpp.getName().equals("dictionary")) {
+                        String lang = xpp.getAttributeValue(null, "lang");
+
+                        if (lang == null) {
+                            lang = "";
+                        }
+
                         result.add(aConstructor.create(xpp.getAttributeValue(null, "uri"),
                                 xpp.getAttributeValue(null, "description"),
                                 xpp.getAttributeValue(null, "type"),
-                                xpp.getAttributeValue(null, "lang"),
+                                lang,
                                 version, date));
                     }
                 } else if(eventType == XmlPullParser.END_TAG) {

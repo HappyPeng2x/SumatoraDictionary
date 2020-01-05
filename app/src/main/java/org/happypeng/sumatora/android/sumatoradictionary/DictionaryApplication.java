@@ -640,4 +640,11 @@ public class DictionaryApplication extends Application {
             }
         }.execute();
     }
+
+    @WorkerThread
+    public void postDetachDatabase() {
+        if (m_persistentDatabase != null) {
+            m_persistentDatabase.postValue(null);
+        }
+    }
 }

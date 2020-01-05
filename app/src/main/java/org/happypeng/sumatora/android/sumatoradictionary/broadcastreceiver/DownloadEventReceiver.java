@@ -74,7 +74,27 @@ public class DownloadEventReceiver extends BroadcastReceiver {
                     System.out.println("Matching action: " + d.getType() + " " + d.getLang());
 
                     if (status == DownloadManager.STATUS_SUCCESSFUL) {
-                        installRemoteDictionaryObject(d);
+                        if (mDB.remoteDictionaryObjectDao().getUpdatableCount() > 0) {
+                            List<RemoteDictionaryObject> remaining = mDB.remoteDictionaryObjectDao().getUpdatableRemaining();
+
+                            if (remaining.size() == 1 &&
+                                remaining.get(0).type.equals(d.type) &&
+                                remaining.get(0).lang.equals(d.lang)) {
+
+                                System.out.println("All updates have been downloaded.");
+
+                                performUpdates();
+                            }
+
+                            /* System.out.println("Waiting for updates remaining: ");
+
+                            for (RemoteDictionaryObject r : remaining) {
+                                System.out.println(r.description);
+                            } */
+                        } else {
+                            installRemoteDictionaryObject(d);
+                            d.setLocalFile("");
+                        }
                     }
 
                     // Due to a bug probably inside room itself, if we don't do this, nobody gets notified
@@ -85,7 +105,6 @@ public class DownloadEventReceiver extends BroadcastReceiver {
                     }
 
                     d.setDownloadId(-1);
-                    d.setLocalFile("");
                     mDB.remoteDictionaryObjectDao().insert(d);
                 }
 
@@ -99,6 +118,13 @@ public class DownloadEventReceiver extends BroadcastReceiver {
                 mApp.updateDownloadService();
             }
         }.execute();
+    }
+
+    @WorkerThread
+    void performUpdates() {
+        PersistentDatabase db = mDB;
+
+        mApp.postDetachDatabase();
     }
 
     @WorkerThread

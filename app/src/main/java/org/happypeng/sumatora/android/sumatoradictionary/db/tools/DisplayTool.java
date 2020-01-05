@@ -129,13 +129,17 @@ public class DisplayTool {
         void execute(DisplayTool aTool);
     }
 
+    public interface Callback {
+        void execute(final DisplayTool aDisplayTool);
+    }
+
     @MainThread
-    static LiveData<DisplayTool> create(@NonNull final PersistentDatabase aDB,
+    static void create(@NonNull final PersistentDatabase aDB,
                                         @NonNull final List<InstalledDictionary> aDictionaries,
-                                        final int aRef)
+                                        final int aRef,
+                                        final Callback aCallback)
     {
         final DisplayTool tool = new DisplayTool(aDB, aDictionaries, aRef);
-        final MutableLiveData<DisplayTool> liveData = new MutableLiveData<>();
 
         new AsyncTask<Void, Void, Void>() {
             @Override
@@ -149,10 +153,10 @@ public class DisplayTool {
             protected void onPostExecute(Void aVoid) {
                 super.onPostExecute(aVoid);
 
-                liveData.setValue(tool);
+                if (aCallback != null) {
+                    aCallback.execute(tool);
+                }
             }
         }.execute();
-
-        return liveData;
     }
 }

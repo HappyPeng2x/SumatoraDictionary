@@ -23,28 +23,28 @@
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-<!--            <LinearLayout
-                android:id="@+id/activity_dictionaries_management_update_panel"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:padding="15dp"
-                android:orientation="vertical">
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Update"
-                    android:paddingBottom="5dp"
-                    android:textAppearance="@style/TextAppearance.AppCompat.Large" />
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/activity_dictionaries_management_update_rv"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent" />
-                <Button
-                    android:id="@+id/activity_dictionaries_management_update_button"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Update all" />
-            </LinearLayout>-->
+            <!--            <LinearLayout
+                            android:id="@+id/activity_dictionaries_management_update_panel"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:padding="15dp"
+                            android:orientation="vertical">
+                            <TextView
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="Update"
+                                android:paddingBottom="5dp"
+                                android:textAppearance="@style/TextAppearance.AppCompat.Large" />
+                            <androidx.recyclerview.widget.RecyclerView
+                                android:id="@+id/activity_dictionaries_management_update_rv"
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent" />
+                            <Button
+                                android:id="@+id/activity_dictionaries_management_update_button"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Update all" />
+                        </LinearLayout>-->
             <LinearLayout
                 android:id="@+id/activity_dictionaries_management_update_panel"
                 android:layout_width="match_parent"
@@ -61,7 +61,35 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Dictionaries updates are not supported by this version. Please update the application to be able to update dictionaries."
+                    android:text="The following dictionaries need to be updated:"
+                    android:paddingBottom="5dp" />
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/activity_dictionaries_management_update_rv"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+                <Button
+                    android:id="@+id/activity_dictionaries_management_update_button"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Update" />
+            </LinearLayout>
+            <LinearLayout
+                android:id="@+id/activity_dictionaries_management_loading_panel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="15dp"
+                android:orientation="vertical"
+                android:visibility="gone">
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Loading"
+                    android:paddingBottom="5dp"
+                    android:textAppearance="@style/TextAppearance.AppCompat.Large" />
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Please wait while the database is being updated."
                     android:paddingBottom="5dp" />
             </LinearLayout>
             <LinearLayout
@@ -69,7 +97,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:padding="15dp"
-                android:orientation="vertical">
+                android:orientation="vertical"
+                android:visibility="gone">
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -104,7 +133,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:padding="15dp"
-                android:orientation="vertical">
+                android:orientation="vertical"
+                android:visibility="gone">
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"

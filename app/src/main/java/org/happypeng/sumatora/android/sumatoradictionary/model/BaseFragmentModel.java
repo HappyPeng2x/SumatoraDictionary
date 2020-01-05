@@ -91,13 +91,17 @@ public class BaseFragmentModel extends AndroidViewModel {
                                     m_currentDatabase.getInvalidationTracker().removeObserver(observer);
                                 }
 
-                                if (!"".equals(aTableObserve)) {
-                                    input.getInvalidationTracker().addObserver(observer);
-                                }
-
                                 m_currentDatabase = input;
 
-                                return QueryTool.create(input, aKey, aSearchSet, aAllowSearchAll, mApp.getRomkan());
+                                if (input != null) {
+                                    if (!"".equals(aTableObserve)) {
+                                        input.getInvalidationTracker().addObserver(observer);
+                                    }
+
+                                    return QueryTool.create(input, aKey, aSearchSet, aAllowSearchAll, mApp.getRomkan());
+                                }
+
+                                return null;
                             }
                         });
 
@@ -106,7 +110,11 @@ public class BaseFragmentModel extends AndroidViewModel {
                         new Function<QueryTool, LiveData<PagedList<DictionarySearchElement>>>() {
                             @Override
                             public LiveData<PagedList<DictionarySearchElement>> apply(QueryTool input) {
-                                return input.getDisplayElements();
+                                if (input != null) {
+                                    return input.getDisplayElements();
+                                }
+
+                                return null;
                             }
                         });
 
@@ -137,7 +145,11 @@ public class BaseFragmentModel extends AndroidViewModel {
                         new Function<QueryTool, LiveData<Integer>>() {
                             @Override
                             public LiveData<Integer> apply(QueryTool input) {
-                                return input.getStatus();
+                                if (input != null) {
+                                    return input.getStatus();
+                                }
+
+                                return null;
                             }
                         });
 
@@ -147,7 +159,9 @@ public class BaseFragmentModel extends AndroidViewModel {
                     public void onChanged(Integer integer) {
                         m_bookmarkToolStatus = integer;
 
-                        m_status.setValue(m_status.getValue());
+                        if (m_status != null) {
+                            m_status.setValue(m_status.getValue());
+                        }
                     }
                 });
 
