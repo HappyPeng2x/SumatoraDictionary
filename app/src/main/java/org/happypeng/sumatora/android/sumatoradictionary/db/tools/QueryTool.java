@@ -51,7 +51,7 @@ public class QueryTool {
     static private final String SQL_QUERY_EXACT_READING_PRIO =
             "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
                     + "FROM jmdict.DictionaryIndex "
-                    + "WHERE readingsPrio MATCH ?";
+                    + "WHERE readingsPrioKana MATCH ?";
 
 
     static private final String SQL_QUERY_EXACT_WRITING_NONPRIO =
@@ -62,7 +62,7 @@ public class QueryTool {
     static private final String SQL_QUERY_EXACT_READING_NONPRIO =
             "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
                     + "FROM jmdict.DictionaryIndex "
-                    + "WHERE readings MATCH ?";
+                    + "WHERE readingsKana MATCH ?";
 
     static private final String SQL_QUERY_BEGIN_WRITING_PRIO =
             "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
@@ -72,7 +72,7 @@ public class QueryTool {
     static private final String SQL_QUERY_BEGIN_READING_PRIO =
             "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
                     + "FROM jmdict.DictionaryIndex "
-                    + "WHERE readingsPrio MATCH ? || '*'";
+                    + "WHERE readingsPrioKana MATCH ? || '*'";
 
     static private final String SQL_QUERY_BEGIN_WRITING_NONPRIO =
             "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
@@ -82,7 +82,7 @@ public class QueryTool {
     static private final String SQL_QUERY_BEGIN_READING_NONPRIO =
             "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
                     + "FROM jmdict.DictionaryIndex "
-                    + "WHERE readings MATCH ? || '*'";
+                    + "WHERE readingsKana MATCH ? || '*'";
 
     static private final String SQL_QUERY_PARTS_WRITING_PRIO =
             "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
@@ -92,7 +92,7 @@ public class QueryTool {
     static private final String SQL_QUERY_PARTS_READING_PRIO =
             "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
                     + "FROM jmdict.DictionaryIndex "
-                    + "WHERE readingsPrioParts MATCH ? || '*'";
+                    + "WHERE readingsPrioKanaParts MATCH ? || '*'";
 
     static private final String SQL_QUERY_PARTS_WRITING_NONPRIO =
             "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
@@ -102,7 +102,7 @@ public class QueryTool {
     static private final String SQL_QUERY_PARTS_READING_NONPRIO =
             "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
                     + "FROM jmdict.DictionaryIndex "
-                    + "WHERE readingsParts MATCH ? || '*'";
+                    + "WHERE readingsKanaParts MATCH ? || '*'";
 
     static private final String SQL_QUERY_TRANSLATION_START =
             "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryTranslationIndex.`rowid` AS seq "

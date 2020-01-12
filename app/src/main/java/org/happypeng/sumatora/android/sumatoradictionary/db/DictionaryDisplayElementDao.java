@@ -34,7 +34,9 @@ public interface DictionaryDisplayElementDao {
             + "DictionaryDisplayElement.lang, DictionaryDisplayElement.gloss FROM "
             + "DictionaryDisplayElement LEFT JOIN DictionaryBookmark ON DictionaryDisplayElement.seq = DictionaryBookmark.seq "
             + "WHERE ref=:ref "
-            + "ORDER BY DictionaryDisplayElement.entryOrder, DictionaryDisplayElement.seq")
+            + "ORDER BY DictionaryDisplayElement.entryOrder, "
+            + "(DictionaryDisplayElement.writingsPrio = '' AND DictionaryDisplayElement.readingsPrio = ''), "
+            + "DictionaryDisplayElement.seq")
     LiveData<List<DictionarySearchElement>> getAllDetailsLive(int ref);
 
     @Query("SELECT DictionaryDisplayElement.entryOrder, DictionaryDisplayElement.seq, "
@@ -46,7 +48,9 @@ public interface DictionaryDisplayElementDao {
             + "DictionaryDisplayElement.lang, DictionaryDisplayElement.gloss FROM "
             + "DictionaryDisplayElement LEFT JOIN DictionaryBookmark ON DictionaryDisplayElement.seq = DictionaryBookmark.seq "
             + "WHERE ref=:ref "
-            + "ORDER BY DictionaryDisplayElement.entryOrder, DictionaryDisplayElement.seq")
+            + "ORDER BY DictionaryDisplayElement.entryOrder, "
+            + "(DictionaryDisplayElement.writingsPrio = '' AND DictionaryDisplayElement.readingsPrio = ''), "
+            + "DictionaryDisplayElement.seq")
     DataSource.Factory<Integer, DictionarySearchElement> getAllDetailsLivePaged(int ref);
 
     @Query("DELETE FROM DictionaryDisplayElement")

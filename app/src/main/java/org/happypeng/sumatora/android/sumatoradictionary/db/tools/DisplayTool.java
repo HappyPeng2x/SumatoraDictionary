@@ -41,7 +41,7 @@ public class DisplayTool {
                     + "DictionaryEntry.pos, DictionaryEntry.xref, DictionaryEntry.ant, "
                     + "DictionaryEntry.misc, DictionaryEntry.lsource, DictionaryEntry.dial, "
                     + "DictionaryEntry.s_inf, DictionaryEntry.field, "
-                    + "translation.lang, "
+                    + "?, "
                     + "translation.gloss "
                     + "FROM DictionaryElement, jmdict.DictionaryEntry, ";
     static private final String SQL_QUERY_INSERT_DISPLAY_ELEMENT_END = ".DictionaryTranslation AS translation "
@@ -85,14 +85,16 @@ public class DisplayTool {
                 SupportSQLiteStatement statement = mInsertDisplayElementStatements.get(aLang);
 
                 if (statement != null) {
-                    statement.bindLong(1, mRef);
+                    statement.bindString(1, aLang);
+                    statement.bindLong(2, mRef);
                     statement.execute();
                 }
 
                 statement = mInsertDisplayElementStatements.get(aBackupLang);
 
                 if (statement != null) {
-                    statement.bindLong(1, mRef);
+                    statement.bindString(1, aLang);
+                    statement.bindLong(2, mRef);
                     statement.execute();
                 }
             }
