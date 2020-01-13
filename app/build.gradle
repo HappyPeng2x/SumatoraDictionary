@@ -19,8 +19,8 @@ android {
         applicationId "org.happypeng.sumatora.android.sumatoradictionary"
         minSdkVersion 14
         targetSdkVersion 29
-        versionCode 20
-        versionName "0.4.0beta1"
+        versionCode 21
+        versionName "0.4.0beta2"
 
         javaCompileOptions {
             annotationProcessorOptions {

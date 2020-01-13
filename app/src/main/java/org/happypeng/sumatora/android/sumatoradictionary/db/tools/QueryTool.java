@@ -36,6 +36,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class QueryTool {
+    public static final int ORDER_MULTIPLIER = 10000;
+
     static private final String SQL_QUERY_DELETE =
             "DELETE FROM DictionaryElement WHERE ref = ?";
 
@@ -104,28 +106,41 @@ public class QueryTool {
                     + "FROM jmdict.DictionaryIndex "
                     + "WHERE readingsKanaParts MATCH ? || '*'";
 
-    static private final String SQL_QUERY_TRANSLATION_START =
+    /* static private final String SQL_QUERY_TRANSLATION_START =
             "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryTranslationIndex.`rowid` AS seq "
                     + "FROM ";
     static private final String SQL_QUERY_TRANSLATION_END =
             ".DictionaryTranslationIndex WHERE gloss MATCH ?";
     static private final String SQL_QUERY_TRANSLATION_BEGIN_END =
-            ".DictionaryTranslationIndex WHERE gloss MATCH ? || '*'";
+            ".DictionaryTranslationIndex WHERE gloss MATCH ? || '*'"; */
 
-    public static class QueryStatement {
-        private final int ref;
-        private final int order;
-        private final SupportSQLiteStatement statement;
+    private static abstract class QueryStatement {
+        final int ref;
+        final int order;
+        final SupportSQLiteStatement statement;
+
+        private QueryStatement(int aRef, int aOrder, final SupportSQLiteStatement aStatement) {
+            ref = aRef;
+            order = aOrder;
+            statement = aStatement;
+        }
+
+        @WorkerThread
+        abstract long execute(String term);
+
+        public int getOrder() { return order; }
+    }
+
+    public static class BasicQueryStatement extends QueryStatement {
         private final boolean kana;
         private final Romkan romkan;
 
         private final Logger log;
 
-        private QueryStatement(int aRef, int aOrder, final SupportSQLiteStatement aStatement,
-                               boolean aKana, final Romkan aRomkan) {
-            ref = aRef;
-            order = aOrder;
-            statement = aStatement;
+        private BasicQueryStatement(int aRef, int aOrder, final SupportSQLiteStatement aStatement,
+                                    boolean aKana, final Romkan aRomkan) {
+            super(aRef, aOrder, aStatement);
+
             kana = aKana;
             romkan = aRomkan;
 
@@ -139,7 +154,7 @@ public class QueryTool {
         }
 
         @WorkerThread
-        private long execute(String term) {
+        long execute(String term) {
             String bindTerm = term;
 
             if (BuildConfig.DEBUG_QUERYTOOL) {
@@ -151,13 +166,64 @@ public class QueryTool {
             }
 
             statement.bindLong(1, ref);
-            statement.bindLong(2, order);
+            statement.bindLong(2, order*ORDER_MULTIPLIER);
             statement.bindString(3, bindTerm);
 
             return statement.executeInsert();
         }
+    }
 
-        public int getOrder() { return order; }
+    public static class ReverseQueryStatement extends QueryStatement {
+        static private final String SQL_QUERY_TRANSLATION_START =
+                "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ?+split_offsets(offsets(DictionaryTranslationIndex), ' ', 2, " + (ORDER_MULTIPLIER-1) + ") AS entryOrder, DictionaryTranslationIndex.`rowid` AS seq "
+                        + "FROM ";
+        static private final String SQL_QUERY_TRANSLATION_END =
+                ".DictionaryTranslationIndex WHERE gloss MATCH ?";
+        static private final String SQL_QUERY_TRANSLATION_BEGIN_END =
+                ".DictionaryTranslationIndex WHERE gloss MATCH ? || '*'";
+
+        private final Logger log;
+
+        private ReverseQueryStatement(int aRef, int aOrder, final SupportSQLiteStatement aStatement) {
+            super(aRef, aOrder, aStatement);
+
+            if (BuildConfig.DEBUG_QUERYTOOL) {
+                log = LoggerFactory.getLogger(getClass());
+
+                log.info(this.hashCode() + " constructor order " + order);
+            } else {
+                log = null;
+            }
+        }
+
+        @WorkerThread
+        static SupportSQLiteStatement createStatementExact(final PersistentDatabase aDB, final String aLang) {
+            String query = SQL_QUERY_TRANSLATION_START + aLang + SQL_QUERY_TRANSLATION_END;
+
+            return aDB.compileStatement(query);
+        }
+
+        @WorkerThread
+        static SupportSQLiteStatement createStatementBegin(final PersistentDatabase aDB, final String aLang) {
+            String query = SQL_QUERY_TRANSLATION_START + aLang + SQL_QUERY_TRANSLATION_BEGIN_END;
+
+            return aDB.compileStatement(query);
+        }
+
+        @Override
+        long execute(String term) {
+            String bindTerm = term;
+
+            if (BuildConfig.DEBUG_QUERYTOOL) {
+                log.info(this.hashCode() + " execute " + order + " term " + term);
+            }
+
+            statement.bindLong(1, ref);
+            statement.bindLong(2, order*ORDER_MULTIPLIER);
+            statement.bindString(3, bindTerm);
+
+            return statement.executeInsert();
+        }
     }
 
     private static final int PAGE_SIZE = 30;
@@ -238,20 +304,14 @@ public class QueryTool {
 
     @WorkerThread
     private void setLangImplementation(final String aLang) {
-        final String translationStatementStart =
-                SQL_QUERY_TRANSLATION_START + aLang + SQL_QUERY_TRANSLATION_END;
         final SupportSQLiteStatement queryTranslation =
-                mDB.compileStatement(mSearchSet == null ? translationStatementStart :
-                        translationStatementStart + " AND DictionaryTranslationIndex.`rowid` IN (" + mSearchSet + ")");
+                ReverseQueryStatement.createStatementExact(mDB, aLang);
 
-        final String translationBeginStatementStart =
-                SQL_QUERY_TRANSLATION_START + aLang + SQL_QUERY_TRANSLATION_BEGIN_END;
         final SupportSQLiteStatement queryTranslationBegin =
-                mDB.compileStatement(mSearchSet == null ? translationBeginStatementStart :
-                        translationBeginStatementStart + " AND DictionaryTranslationIndex.`rowid` IN (" + mSearchSet + ")");
+                ReverseQueryStatement.createStatementBegin(mDB, aLang);
 
-        mQueries[12] = new QueryStatement(mRef, 13, queryTranslation, false, mRomkan);
-        mQueries[13] = new QueryStatement(mRef, 14, queryTranslationBegin, false, mRomkan);
+        mQueries[12] = new ReverseQueryStatement(mRef, 13, queryTranslation);
+        mQueries[13] = new ReverseQueryStatement(mRef, 14, queryTranslationBegin);
     }
 
     @WorkerThread
@@ -308,18 +368,18 @@ public class QueryTool {
 
         final QueryStatement[] queriesArray = new QueryStatement[14];
 
-        queriesArray[0] = new QueryStatement(mRef,1, queryExactPrioWriting, false, mRomkan);
-        queriesArray[1] = new QueryStatement(mRef,2, queryExactPrioReading, true, mRomkan);
-        queriesArray[2] = new QueryStatement(mRef,3, queryExactNonPrioWriting, false, mRomkan);
-        queriesArray[3] = new QueryStatement(mRef,4, queryExactNonPrioReading, true, mRomkan);
-        queriesArray[4] = new QueryStatement(mRef,5, queryBeginPrioWriting, false, mRomkan);
-        queriesArray[5] = new QueryStatement(mRef,6, queryBeginPrioReading, true, mRomkan);
-        queriesArray[6] = new QueryStatement(mRef,7, queryBeginNonPrioWriting, false, mRomkan);
-        queriesArray[7] = new QueryStatement(mRef,8, queryBeginNonPrioReading, true, mRomkan);
-        queriesArray[8] = new QueryStatement(mRef,9, queryPartsPrioWriting, false, mRomkan);
-        queriesArray[9] = new QueryStatement(mRef,10, queryPartsPrioReading, true, mRomkan);
-        queriesArray[10] = new QueryStatement(mRef,11, queryPartsNonPrioWriting, false, mRomkan);
-        queriesArray[11] = new QueryStatement(mRef,12, queryPartsNonPrioReading, true, mRomkan);
+        queriesArray[0] = new BasicQueryStatement(mRef,1, queryExactPrioWriting, false, mRomkan);
+        queriesArray[1] = new BasicQueryStatement(mRef,2, queryExactPrioReading, true, mRomkan);
+        queriesArray[2] = new BasicQueryStatement(mRef,3, queryExactNonPrioWriting, false, mRomkan);
+        queriesArray[3] = new BasicQueryStatement(mRef,4, queryExactNonPrioReading, true, mRomkan);
+        queriesArray[4] = new BasicQueryStatement(mRef,5, queryBeginPrioWriting, false, mRomkan);
+        queriesArray[5] = new BasicQueryStatement(mRef,6, queryBeginPrioReading, true, mRomkan);
+        queriesArray[6] = new BasicQueryStatement(mRef,7, queryBeginNonPrioWriting, false, mRomkan);
+        queriesArray[7] = new BasicQueryStatement(mRef,8, queryBeginNonPrioReading, true, mRomkan);
+        queriesArray[8] = new BasicQueryStatement(mRef,9, queryPartsPrioWriting, false, mRomkan);
+        queriesArray[9] = new BasicQueryStatement(mRef,10, queryPartsPrioReading, true, mRomkan);
+        queriesArray[10] = new BasicQueryStatement(mRef,11, queryPartsNonPrioWriting, false, mRomkan);
+        queriesArray[11] = new BasicQueryStatement(mRef,12, queryPartsNonPrioReading, true, mRomkan);
 
         mQueries = queriesArray;
 

@@ -21,6 +21,8 @@ import androidx.paging.DataSource;
 import androidx.room.Dao;
 import androidx.room.Query;
 
+import org.happypeng.sumatora.android.sumatoradictionary.db.tools.QueryTool;
+
 import java.util.List;
 
 @Dao
@@ -34,8 +36,9 @@ public interface DictionaryDisplayElementDao {
             + "DictionaryDisplayElement.lang, DictionaryDisplayElement.gloss FROM "
             + "DictionaryDisplayElement LEFT JOIN DictionaryBookmark ON DictionaryDisplayElement.seq = DictionaryBookmark.seq "
             + "WHERE ref=:ref "
-            + "ORDER BY DictionaryDisplayElement.entryOrder, "
+            + "ORDER BY DictionaryDisplayElement.entryOrder/" + QueryTool.ORDER_MULTIPLIER + ", "
             + "(DictionaryDisplayElement.writingsPrio = '' AND DictionaryDisplayElement.readingsPrio = ''), "
+            + "DictionaryDisplayElement.entryOrder-" + QueryTool.ORDER_MULTIPLIER + "*(DictionaryDisplayElement.entryOrder/" + QueryTool.ORDER_MULTIPLIER + "), "
             + "DictionaryDisplayElement.seq")
     LiveData<List<DictionarySearchElement>> getAllDetailsLive(int ref);
 
@@ -48,11 +51,10 @@ public interface DictionaryDisplayElementDao {
             + "DictionaryDisplayElement.lang, DictionaryDisplayElement.gloss FROM "
             + "DictionaryDisplayElement LEFT JOIN DictionaryBookmark ON DictionaryDisplayElement.seq = DictionaryBookmark.seq "
             + "WHERE ref=:ref "
-            + "ORDER BY DictionaryDisplayElement.entryOrder, "
+            + "ORDER BY DictionaryDisplayElement.entryOrder/" + QueryTool.ORDER_MULTIPLIER + ", "
             + "(DictionaryDisplayElement.writingsPrio = '' AND DictionaryDisplayElement.readingsPrio = ''), "
-            + "DictionaryDisplayElement.seq")
-    DataSource.Factory<Integer, DictionarySearchElement> getAllDetailsLivePaged(int ref);
-
+            + "DictionaryDisplayElement.entryOrder-" + QueryTool.ORDER_MULTIPLIER + "*(DictionaryDisplayElement.entryOrder/" + QueryTool.ORDER_MULTIPLIER + "), "
+            + "DictionaryDisplayElement.seq")    DataSource.Factory<Integer, DictionarySearchElement> getAllDetailsLivePaged(int ref);
     @Query("DELETE FROM DictionaryDisplayElement")
     void deleteAll();
 }

@@ -51,6 +51,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentSetting;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.BaseDictionaryObject;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Settings;
+import org.happypeng.sumatora.android.sumatoradictionary.db.tools.SumatoraSQLiteOpenHelperFactory;
 import org.happypeng.sumatora.android.sumatoradictionary.service.DictionaryDownloadService;
 import org.happypeng.sumatora.android.sumatoradictionary.xml.DictionaryBookmarkXML;
 import org.happypeng.sumatora.jromkan.Romkan;
@@ -309,14 +310,29 @@ public class DictionaryApplication extends Application {
                 aDB.assetDictionaryObjectDao().deleteMany(aDB.assetDictionaryObjectDao().getAll());
                 aDB.assetDictionaryObjectDao().insertMany(dl);
 
+                int version = 0;
+                int date = 0;
+
+                if (dl.size() > 0) {
+                    version = dl.get(0).version;
+                    date = dl.get(0).date;
+                }
+
+                /*
+
                 List<AssetDictionaryObject> up = aDB.assetDictionaryObjectDao().getInstallObjects();
+
+                */
 
                 File databaseRoot = aApp.getDatabasePath(DATABASE_NAME).getParentFile();
                 File databaseInstallDir = new File(databaseRoot, "dictionaries");
 
+
                 if (!databaseInstallDir.exists()) {
                     databaseInstallDir.mkdirs();
                 }
+
+                /*
 
                 if (up != null) {
                     for (AssetDictionaryObject a : up) {
@@ -324,9 +340,12 @@ public class DictionaryApplication extends Application {
                     }
                 }
 
-                InstalledDictionary jmdict = aDB.installedDictionaryDao().getForTypeLang("jmdict", "");
-                InstalledDictionary jmdict_eng = aDB.installedDictionaryDao().getForTypeLang("jmdict_translation", "eng");
+                 */
 
+                InstalledDictionary jmdict = aDB.installedDictionaryDao().getForTypeLang("jmdict", "");
+                // InstalledDictionary jmdict_eng = aDB.installedDictionaryDao().getForTypeLang("jmdict_translation", "eng");
+
+                /*
                 if (jmdict == null) {
                     AssetDictionaryObject asset_jmdict = aDB.assetDictionaryObjectDao().getForTypeLang("jmdict", "");
 
@@ -334,6 +353,17 @@ public class DictionaryApplication extends Application {
                         asset_jmdict.install(assetManager, databaseInstallDir.getAbsolutePath(), aDB.installedDictionaryDao());
                     }
                 }
+                 */
+
+                if (jmdict == null || jmdict.version < version || jmdict.date < date) {
+                    List<AssetDictionaryObject> asset_jmdict = aDB.assetDictionaryObjectDao().getAll();
+
+                    for (AssetDictionaryObject d : asset_jmdict) {
+                        d.install(assetManager, databaseInstallDir.getAbsolutePath(), aDB.installedDictionaryDao());
+                    }
+                }
+
+                /*
 
                 if (jmdict_eng == null) {
                     AssetDictionaryObject asset_jmdict_eng = aDB.assetDictionaryObjectDao().getForTypeLang("jmdict_translation", "eng");
@@ -342,6 +372,7 @@ public class DictionaryApplication extends Application {
                         asset_jmdict_eng.install(assetManager, databaseInstallDir.getAbsolutePath(), aDB.installedDictionaryDao());
                     }
                 }
+                */
 
             } catch(IOException e) {
                 Log.e("tag", "IOException: ", e);
@@ -466,7 +497,7 @@ public class DictionaryApplication extends Application {
 
             final PersistentDatabase pDb = Room.databaseBuilder(aParams[0],
                     PersistentDatabase.class, PERSISTENT_DATABASE_NAME)
-                    .openHelperFactory(new RequerySQLiteOpenHelperFactory())
+                    .openHelperFactory(new SumatoraSQLiteOpenHelperFactory())
                     .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                     .setJournalMode(RoomDatabase.JournalMode.TRUNCATE)
                     .build();
