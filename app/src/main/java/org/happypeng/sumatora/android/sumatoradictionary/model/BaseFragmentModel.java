@@ -18,10 +18,12 @@ package org.happypeng.sumatora.android.sumatoradictionary.model;
 
 import android.app.Application;
 import android.os.AsyncTask;
+import android.view.View;
 
 import org.happypeng.sumatora.android.sumatoradictionary.DictionaryApplication;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
+import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.QueryTool;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.DisplayStatus;
@@ -38,9 +40,90 @@ import androidx.lifecycle.Transformations;
 import androidx.paging.PagedList;
 import androidx.room.InvalidationTracker;
 
+import java.util.List;
 import java.util.Set;
 
 public class BaseFragmentModel extends AndroidViewModel {
+    // Lang selection menu
+
+    public class LangSelectionMenuStatus {
+        public View attachView;
+        public List<InstalledDictionary> installedDictionaries;
+
+        public LangSelectionMenuStatus(final View aAttachView,
+                                       final List<InstalledDictionary> aInstalledDictionaries) {
+            attachView = aAttachView;
+            installedDictionaries = aInstalledDictionaries;
+        }
+    }
+
+    private final MediatorLiveData<LangSelectionMenuStatus> m_langSelectionMenuStatus;
+
+    public LiveData<LangSelectionMenuStatus> getLangSelectionMenuStatus() { return m_langSelectionMenuStatus; }
+
+    public void setLangSelectionMenuStatusView(final View aView) {
+        LangSelectionMenuStatus status = m_langSelectionMenuStatus.getValue();
+        List<InstalledDictionary> installedDictionaries = null;
+
+        if (status != null) {
+            installedDictionaries = status.installedDictionaries;
+        }
+
+        m_langSelectionMenuStatus.setValue(new LangSelectionMenuStatus(aView, installedDictionaries));
+    }
+
+    private void setLangSelectionMenuStatusInstalledDictionaries(final List<InstalledDictionary> aInstalledDictionaries) {
+        LangSelectionMenuStatus status = m_langSelectionMenuStatus.getValue();
+        View attachView = null;
+
+        if (status != null) {
+            attachView = status.attachView;
+        }
+
+        m_langSelectionMenuStatus.setValue(new LangSelectionMenuStatus(attachView, aInstalledDictionaries));
+    }
+
+    // Language and backup language
+
+    public class LangSelectionStatus {
+        public String lang;
+        public String backupLang;
+
+        public LangSelectionStatus(final String aLang,
+                                   final String aBackupLang) {
+            lang = aLang;
+            backupLang = aBackupLang;
+        }
+    }
+
+    private final MediatorLiveData<LangSelectionStatus> m_langSelectionStatus;
+
+    private void setLangSelectionStatusLang(final String aLang) {
+        LangSelectionStatus status = m_langSelectionStatus.getValue();
+        String backupLang = null;
+
+        if (status != null) {
+            backupLang = status.backupLang;
+        }
+
+        m_langSelectionStatus.setValue(new LangSelectionStatus(aLang, backupLang));
+    }
+
+    private void setLangSelectionStatusBackupLang(final String aBackupLang) {
+        LangSelectionStatus status = m_langSelectionStatus.getValue();
+        String lang = null;
+
+        if (status != null) {
+            lang = status.lang;
+        }
+
+        m_langSelectionStatus.setValue(new LangSelectionStatus(lang, aBackupLang));
+    }
+
+    public LiveData<LangSelectionStatus> getLangSelectionStatus() {
+        return m_langSelectionStatus;
+    }
+
     DictionaryApplication mApp;
     int mKey;
 
@@ -166,6 +249,7 @@ public class BaseFragmentModel extends AndroidViewModel {
                 });
 
         LiveData<String> lang = mApp.getSettings().getValue(Settings.LANG);
+        LiveData<String> backupLang = mApp.getSettings().getValue(Settings.BACKUP_LANG);
 
         m_status.addSource(lang,
                 new Observer<String>() {
@@ -180,6 +264,43 @@ public class BaseFragmentModel extends AndroidViewModel {
                         }
                     }
                 });
+
+        m_langSelectionStatus.addSource(lang,
+                new Observer<String>() {
+                    @Override
+                    public void onChanged(String s) {
+                        setLangSelectionStatusLang(s);
+                    }
+                });
+
+        m_langSelectionStatus.addSource(backupLang,
+                new Observer<String>() {
+                    @Override
+                    public void onChanged(String s) {
+                        setLangSelectionStatusBackupLang(s);
+                    }
+                });
+
+        LiveData<List<InstalledDictionary>> installedDictionariesLiveData =
+                Transformations.switchMap(mApp.getPersistentDatabase(),
+                        new Function<PersistentDatabase, LiveData<List<InstalledDictionary>>>() {
+                            @Override
+                            public LiveData<List<InstalledDictionary>> apply(PersistentDatabase input) {
+                                if (input == null) {
+                                    return null;
+                                }
+
+                                return input.installedDictionaryDao().getAllLive();
+                            }
+                        });
+
+        m_langSelectionMenuStatus.addSource(installedDictionariesLiveData,
+                new Observer<List<InstalledDictionary>>() {
+                    @Override
+                    public void onChanged(List<InstalledDictionary> installedDictionaries) {
+                        setLangSelectionMenuStatusInstalledDictionaries(installedDictionaries);
+                    }
+                });
     }
 
     public BaseFragmentModel(Application aApp) {
@@ -189,6 +310,9 @@ public class BaseFragmentModel extends AndroidViewModel {
 
         m_bookmarkToolStatus = null;
         m_queryTool = null;
+
+        m_langSelectionMenuStatus = new MediatorLiveData<>();
+        m_langSelectionStatus = new MediatorLiveData<>();
     }
 
     public void updateBookmark(final long seq, final long bookmark) {

@@ -25,11 +25,14 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.FragmentActivity;
+import androidx.lifecycle.Observer;
 
 import org.happypeng.sumatora.android.sumatoradictionary.R;
+import org.happypeng.sumatora.android.sumatoradictionary.model.BaseFragmentModel;
 import org.happypeng.sumatora.android.sumatoradictionary.model.BookmarkImportModel;
 
 public class BookmarkImportFragment extends BaseFragment<BookmarkImportModel> {
@@ -76,9 +79,24 @@ public class BookmarkImportFragment extends BaseFragment<BookmarkImportModel> {
         });
 
         MenuItem languageMenuItem = menu.findItem(R.id.bookmark_import_fragment_menu_language_text);
-        m_languageText = languageMenuItem.getActionView().findViewById(R.id.menuitem_language_text);
+        final TextView languageText = languageMenuItem.getActionView().findViewById(R.id.menuitem_language_text);
 
-        m_languageText.setOnClickListener(new View.OnClickListener() {
+        m_viewModel.setLangSelectionMenuStatusView(languageText);
+
+        m_viewModel.getLangSelectionStatus().observe(getViewLifecycleOwner(),
+                new Observer<BaseFragmentModel.LangSelectionStatus>() {
+                    @Override
+                    public void onChanged(BaseFragmentModel.LangSelectionStatus langSelectionStatus) {
+                        languageText.setText(langSelectionStatus.lang);
+
+                        m_listAdapter.notifyDataSetChanged();
+
+                        m_viewHolderStatus.lang = langSelectionStatus.lang;
+                    }
+                });
+
+
+        languageText.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 if (m_languagePopupMenu != null) {

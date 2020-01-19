@@ -69,9 +69,7 @@ public class BaseFragment<M extends BaseFragmentModel> extends Fragment {
     private TextView m_searchStatusText;
     private RecyclerView m_recyclerView;
 
-    private DictionaryPagedListAdapter m_listAdapter;
-
-    TextView m_languageText;
+    protected DictionaryPagedListAdapter m_listAdapter;
 
     Class<M> m_viewModelClass;
     M m_viewModel;
@@ -80,8 +78,7 @@ public class BaseFragment<M extends BaseFragmentModel> extends Fragment {
 
     private Logger m_log;
 
-    private String m_lang;
-    private String m_backupLang;
+    protected DictionarySearchElementViewHolder.Status m_viewHolderStatus;
 
     SearchView m_searchView;
 
@@ -243,8 +240,8 @@ public class BaseFragment<M extends BaseFragmentModel> extends Fragment {
                 m_viewModelClass);
         m_viewModel.initialize(m_key, m_searchSet, m_allowSearchAll, m_tableObserve);
 
-        final DictionarySearchElementViewHolder.Status viewHolderStatus = new DictionarySearchElementViewHolder.Status();
-        m_listAdapter = new DictionaryPagedListAdapter(viewHolderStatus, m_disableBookmarkButton);
+        m_viewHolderStatus = new DictionarySearchElementViewHolder.Status();
+        m_listAdapter = new DictionaryPagedListAdapter(m_viewHolderStatus, m_disableBookmarkButton);
 
         m_recyclerView.setAdapter(m_listAdapter);
 
@@ -273,9 +270,9 @@ public class BaseFragment<M extends BaseFragmentModel> extends Fragment {
                             return;
                         }
 
-                        viewHolderStatus.entities = m_viewModel.getDictionaryApplication().getEntities();
+                        m_viewHolderStatus.entities = m_viewModel.getDictionaryApplication().getEntities();
 
-                        if (m_lang == null || !m_lang.equals(status.lang)) {
+                        /* if (m_lang == null || !m_lang.equals(status.lang)) {
                             if (m_languageText != null) {
                                 m_languageText.setText(status.lang);
                             }
@@ -290,9 +287,9 @@ public class BaseFragment<M extends BaseFragmentModel> extends Fragment {
                             m_backupLang = status.backupLang;
 
                             m_listAdapter.notifyDataSetChanged();
-                        }
+                        } */
 
-                        viewHolderStatus.lang = status.lang;
+                        // viewHolderStatus.lang = status.lang;
 
                         Integer bookmarkToolStatus = m_viewModel.getBookmarkToolStatus();
 
@@ -309,12 +306,12 @@ public class BaseFragment<M extends BaseFragmentModel> extends Fragment {
                             setNoResultsFound();
                         }
 
-                        if (status.installedDictionaries != null && m_languageText != null) {
-                            // if (m_languageText != null && m_languagePopupMenu == null) {
+                        /* if (status.installedDictionaries != null && m_languageText != null) {
+                            if (m_languagePopupMenu == null) {
                                 m_languagePopupMenu = initLanguagePopupMenu(m_languageText,
                                         status.installedDictionaries);
-                            //}
-                        }
+                            }
+                        }*/
                     }
                 });
 
@@ -323,6 +320,20 @@ public class BaseFragment<M extends BaseFragmentModel> extends Fragment {
                     @Override
                     public void onChanged(PagedList<DictionarySearchElement> dictionarySearchElements) {
                         m_listAdapter.submitList(dictionarySearchElements);
+                    }
+                });
+
+        m_viewModel.getLangSelectionMenuStatus().observe(getViewLifecycleOwner(),
+                new Observer<BaseFragmentModel.LangSelectionMenuStatus>() {
+                    @Override
+                    public void onChanged(BaseFragmentModel.LangSelectionMenuStatus langSelectionMenuStatus) {
+                        if (langSelectionMenuStatus.attachView != null &&
+                            langSelectionMenuStatus.installedDictionaries != null) {
+                            if (m_languagePopupMenu == null) {
+                                m_languagePopupMenu = initLanguagePopupMenu(langSelectionMenuStatus.attachView,
+                                        langSelectionMenuStatus.installedDictionaries);
+                            }
+                        }
                     }
                 });
 
@@ -392,10 +403,10 @@ public class BaseFragment<M extends BaseFragmentModel> extends Fragment {
         m_progressBar = null;
         m_statusText = null;
         m_searchStatusText = null;
-        m_languageText = null;
         m_languagePopupMenu = null;
         m_searchView = null;
         m_listAdapter = null;
         m_recyclerView = null;
+        m_viewHolderStatus = null;
     }
 }

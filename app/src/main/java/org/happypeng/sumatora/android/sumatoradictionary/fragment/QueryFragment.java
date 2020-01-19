@@ -33,6 +33,7 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.appcompat.widget.SearchView;
 import androidx.core.content.FileProvider;
+import androidx.lifecycle.Observer;
 
 import org.happypeng.sumatora.android.sumatoradictionary.R;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
@@ -113,9 +114,23 @@ public class QueryFragment extends BaseFragment<BaseFragmentModel> {
         });
 
         MenuItem languageMenuItem = menu.findItem(R.id.bookmark_fragment_menu_language_text);
-        m_languageText = languageMenuItem.getActionView().findViewById(R.id.menuitem_language_text);
+        final TextView languageText = languageMenuItem.getActionView().findViewById(R.id.menuitem_language_text);
 
-        m_languageText.setOnClickListener(new View.OnClickListener() {
+        m_viewModel.setLangSelectionMenuStatusView(languageText);
+
+        m_viewModel.getLangSelectionStatus().observe(getViewLifecycleOwner(),
+                new Observer<BaseFragmentModel.LangSelectionStatus>() {
+                    @Override
+                    public void onChanged(BaseFragmentModel.LangSelectionStatus langSelectionStatus) {
+                        languageText.setText(langSelectionStatus.lang);
+
+                        m_listAdapter.notifyDataSetChanged();
+
+                        m_viewHolderStatus.lang = langSelectionStatus.lang;
+                    }
+                });
+
+        languageText.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 if (m_languagePopupMenu != null) {

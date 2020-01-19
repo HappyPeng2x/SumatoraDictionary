@@ -93,7 +93,7 @@ public class DisplayTool {
                 statement = mInsertDisplayElementStatements.get(aBackupLang);
 
                 if (statement != null) {
-                    statement.bindString(1, aLang);
+                    statement.bindString(1, aBackupLang);
                     statement.bindLong(2, mRef);
                     statement.execute();
                 }
