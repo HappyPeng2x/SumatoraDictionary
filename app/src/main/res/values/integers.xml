@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <integer name="database_date">20190727</integer>
-    <integer name="database_version">3</integer>
+    <integer name="database_version">4</integer>
     <integer name="database_reset">0</integer>
 </resources>

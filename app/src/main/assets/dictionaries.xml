@@ -1,0 +1,30 @@
+<repository version="4" date="20200111">
+    <dictionary uri="dictionaries/jmdict.db"
+        type="jmdict" description="Index" lang=""/>
+    <dictionary uri="dictionaries/eng.db"
+        type="jmdict_translation" description="English" lang="eng"/>
+    <dictionary
+        uri="dictionaries/ger.db"
+        type="jmdict_translation" description="Deutsch" lang="ger"/>
+    <dictionary
+        uri="dictionaries/rus.db"
+        type="jmdict_translation" description="русский язык" lang="rus"/>
+    <dictionary
+        uri="dictionaries/spa.db"
+        type="jmdict_translation" description="Español" lang="spa"/>
+    <dictionary
+        uri="dictionaries/dut.db"
+        type="jmdict_translation" description="Nederlands" lang="dut"/>
+    <dictionary
+        uri="dictionaries/hun.db"
+        type="jmdict_translation" description="Magyar nyelv" lang="hun"/>
+    <dictionary
+        uri="dictionaries/swe.db"
+        type="jmdict_translation" description="Svenska" lang="swe"/>
+    <dictionary
+        uri="dictionaries/fre.db"
+        type="jmdict_translation" description="Français" lang="fre"/>
+    <dictionary
+        uri="dictionaries/slv.db"
+        type="jmdict_translation" description="Slovenski jezik" lang="slv"/>
+</repository>

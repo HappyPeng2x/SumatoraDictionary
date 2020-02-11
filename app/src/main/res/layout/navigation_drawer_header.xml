@@ -7,7 +7,7 @@
     android:id="@+id/navigation_drawer_header"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
-    tools:context="org.happypeng.sumatora.android.sumatoradictionary.Dictionary">
+    tools:context="org.happypeng.sumatora.android.sumatoradictionary.activity.MainActivity">
 
     <FrameLayout
         android:id="@+id/navigation_drawer_header_clickable"

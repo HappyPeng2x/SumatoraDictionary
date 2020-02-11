@@ -32,6 +32,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentSetting;
 public class Settings {
     public static final String LANG = "lang";
     public static final String BACKUP_LANG = "backupLang";
+    public static final String REPOSITORY_URL = "repositoryURL";
 
     public static final String LANG_DEFAULT = "eng";
     public static final String BACKUP_LANG_DEFAULT = "eng";
@@ -55,6 +56,17 @@ public class Settings {
                         return input.persistentSettingsDao().getValue(aName);
                     }
                 });
+    }
+
+    @WorkerThread
+    public String getValueDirect(final String aName) {
+        PersistentDatabase db = m_db.getValue();
+
+        if (db != null) {
+            return db.persistentSettingsDao().getValueDirect(aName);
+        }
+
+        return null;
     }
 
     @WorkerThread

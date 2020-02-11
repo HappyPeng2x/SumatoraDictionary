@@ -31,6 +31,9 @@ public interface DictionaryBookmarkDao {
     @Query("SELECT * FROM DictionaryBookmark")
     LiveData<List<DictionaryBookmark>> getAllLive();
 
+    @Query("SELECT * FROM DictionaryBookmark")
+    List<DictionaryBookmark> getAll();
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void insert(DictionaryBookmark aBookmark);
 

@@ -4,6 +4,14 @@
 
 ![](/screenshots/Screenshot_1551520549.png)
 
+## Search from romaji
+
+![](/screenshots/Screenshot_1581404254.png)
+
+## Reverse search
+
+![](/screenshots/Screenshot_1581404274.png)
+
 ## Multilingual search
 ![](/screenshots/Screenshot_1561880402.png)
 
