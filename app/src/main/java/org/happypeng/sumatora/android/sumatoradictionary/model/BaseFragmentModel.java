@@ -208,16 +208,17 @@ public class BaseFragmentModel extends AndroidViewModel {
                         m_queryTool = queryTool;
 
                         if (m_queryTool != null) {
+                            // Need to set language before searching
+                            if (m_lang != null) {
+                                queryTool.setLang(m_lang);
+                            }
+
                             if (m_term != null) {
                                 queryTool.setTerm(m_term, true);
 
                                 m_term = null;
                             } else {
                                 queryTool.setTerm(queryTool.getTerm(), true);
-                            }
-
-                            if (m_lang != null) {
-                                queryTool.setLang(m_lang);
                             }
                         }
                     }

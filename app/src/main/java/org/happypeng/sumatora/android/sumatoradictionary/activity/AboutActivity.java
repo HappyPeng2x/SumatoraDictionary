@@ -288,6 +288,33 @@ public class AboutActivity extends MaterialAboutActivity {
                                 Uri.parse("https://github.com/requery/sqlite-android")))
                         .build())
 
+                .addCard(new MaterialAboutCard.Builder()
+                        .title("Python-romkan")
+                        .addItem(new MaterialAboutActionItem.Builder()
+                                .text("Copyright")
+                                .icon(R.drawable.ic_outline_copyright_24px)
+                                .subText("Mort Yao")
+                                .build())
+                        .addItem(new MaterialAboutActionItem.Builder()
+                                .text("License")
+                                .subText("BSD License")
+                                .icon(R.drawable.ic_outline_class_24px)
+                                .setOnClickAction(new MaterialAboutItemOnClickAction() {
+                                    @Override
+                                    public void onClick() {
+                                        Intent intent = new Intent(activity_context, LicenseActivity.class);
+                                        intent.putExtra("asset", "BSD-python-romkan.txt");
+                                        startActivity(intent);
+                                    }
+                                })
+                                .build())
+                        .addItem(ConvenienceBuilder.createWebsiteActionItem(activity_context,
+                                ContextCompat.getDrawable(activity_context, R.drawable.ic_outline_public_24px),
+                                "Visit Website",
+                                true,
+                                Uri.parse("https://www.soimort.org/python-romkan")))
+                        .build())
+
                 .build();
     }
 

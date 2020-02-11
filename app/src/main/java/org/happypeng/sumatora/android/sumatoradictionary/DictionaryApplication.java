@@ -564,6 +564,10 @@ public class DictionaryApplication extends Application {
                 }
             }
 
+            // No persistence - clear display on initialization
+            pDb.dictionaryElementDao().deleteAll();
+            pDb.dictionaryDisplayElementDao().deleteAll();
+
             aParams[0].m_persistentDatabase.postValue(pDb);
             aParams[0].getSettings().postDatabase(pDb);
 
