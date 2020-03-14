@@ -26,18 +26,14 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
 
+import org.happypeng.sumatora.android.sumatoradictionary.db.PersistantLanguageSettings;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentSetting;
 
 public class Settings {
-    public static final String LANG = "lang";
-    public static final String BACKUP_LANG = "backupLang";
     public static final String REPOSITORY_URL = "repositoryURL";
 
-    public static final String LANG_DEFAULT = "eng";
-    public static final String BACKUP_LANG_DEFAULT = "eng";
-
-    private MutableLiveData<PersistentDatabase> m_db;
+    private final MutableLiveData<PersistentDatabase> m_db;
 
     public Settings() {
         m_db = new MutableLiveData<>();

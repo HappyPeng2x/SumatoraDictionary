@@ -21,20 +21,18 @@ import android.os.AsyncTask;
 import androidx.annotation.MainThread;
 import androidx.annotation.NonNull;
 import androidx.annotation.WorkerThread;
-import androidx.lifecycle.LiveData;
-import androidx.lifecycle.MutableLiveData;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 import androidx.sqlite.db.SupportSQLiteStatement;
 
-import org.happypeng.sumatora.android.sumatoradictionary.DictionaryApplication;
 import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 
-public class DisplayTool {
-    static private final String SQL_QUERY_INSERT_DISPLAY_ELEMENT_BEGIN =
+class DisplayTool {
+    static private final String SQL_QUERY_INSERT_DISPLAY_ELEMENT =
             "INSERT OR IGNORE INTO DictionaryDisplayElement SELECT DictionaryElement.ref, DictionaryElement.entryOrder, DictionaryElement.seq, "
                     + "DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
                     + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, "
@@ -42,36 +40,62 @@ public class DisplayTool {
                     + "DictionaryEntry.misc, DictionaryEntry.lsource, DictionaryEntry.dial, "
                     + "DictionaryEntry.s_inf, DictionaryEntry.field, "
                     + "?, "
-                    + "translation.gloss "
-                    + "FROM DictionaryElement, jmdict.DictionaryEntry, ";
-    static private final String SQL_QUERY_INSERT_DISPLAY_ELEMENT_END = ".DictionaryTranslation AS translation "
-                    + "WHERE DictionaryElement.seq = DictionaryEntry.seq AND DictionaryElement.seq = translation.seq AND DictionaryElement.ref = ?";
+                    + "DictionaryTranslation.gloss, "
+                    + "null as example_sentences "
+                    + "FROM DictionaryElement, "
+                    + " jmdict.DictionaryEntry, "
+                    + " %s.DictionaryTranslation "
+                    + "WHERE DictionaryElement.seq = DictionaryEntry.seq AND "
+                    + " DictionaryElement.seq = DictionaryTranslation.seq AND "
+                    + " DictionaryElement.ref = ?";
+
+    static private final String SQL_QUERY_INSERT_DISPLAY_ELEMENT_EXAMPLES =
+            "INSERT OR IGNORE INTO DictionaryDisplayElement SELECT DictionaryElement.ref, DictionaryElement.entryOrder, DictionaryElement.seq, "
+                    + "DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
+                    + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, "
+                    + "DictionaryEntry.pos, DictionaryEntry.xref, DictionaryEntry.ant, "
+                    + "DictionaryEntry.misc, DictionaryEntry.lsource, DictionaryEntry.dial, "
+                    + "DictionaryEntry.s_inf, DictionaryEntry.field, "
+                    + "?, "
+                    + "DictionaryTranslation.gloss, "
+                    + "json_group_array(examples.sentence) as example_sentences "
+                    + "FROM DictionaryElement, "
+                    + " (jmdict.DictionaryEntry LEFT JOIN (%s.Examples, %s.ExamplesIndex) ON "
+                    + " ExamplesIndex.seq = DictionaryEntry.seq AND ExamplesIndex.id = Examples.id), "
+                    + " %s.DictionaryTranslation "
+                    + "WHERE DictionaryElement.seq = DictionaryEntry.seq AND "
+                    + " DictionaryElement.seq = DictionaryTranslation.seq AND "
+                    + " DictionaryElement.ref = ? "
+                    + "GROUP BY DictionaryElement.seq";
+
     static private final String SQL_QUERY_DELETE_DISPLAY_ELEMENT =
             "DELETE FROM DictionaryDisplayElement WHERE DictionaryDisplayElement.ref = ?";
 
-    private final PersistentDatabase mDB;
-    private final List<InstalledDictionary> mDictionaries;
+    private PersistentDatabase mDB;
+
+    private boolean mInitialized;
 
     private final int mRef;
 
-    private final HashMap<String, SupportSQLiteStatement> mInsertDisplayElementStatements;
-
+    private SupportSQLiteStatement mInsertDisplayElementStatement;
+    private SupportSQLiteStatement mInsertDisplayElementStatementBackup;
     private SupportSQLiteStatement mDeleteDisplayElement;
 
-    public DisplayTool(final PersistentDatabase aDB, final List<InstalledDictionary> aDictionaries, int aRef) {
-        mDB = aDB;
-        mRef = aRef;
-        mDictionaries = aDictionaries;
+    private String mLang;
+    private String mBackupLang;
 
-        mInsertDisplayElementStatements = new HashMap<>();
+    DisplayTool(int aRef) {
+        mRef = aRef;
+
+        mInitialized = false;
     }
 
     public boolean isInitialized() {
-        return mDeleteDisplayElement != null;
+        return mInitialized;
     }
 
     @WorkerThread
-    public synchronized void insertDisplayElement(final String aLang, final String aBackupLang) {
+    private synchronized void insertDisplayElement() {
         if (!isInitialized()) {
             return;
         }
@@ -82,31 +106,25 @@ public class DisplayTool {
                 mDeleteDisplayElement.bindLong(1, mRef);
                 mDeleteDisplayElement.execute();
 
-                SupportSQLiteStatement statement = mInsertDisplayElementStatements.get(aLang);
+                mInsertDisplayElementStatement.bindString(1, mLang);
+                mInsertDisplayElementStatement.bindLong(2, mRef);
+                mInsertDisplayElementStatement.execute();
 
-                if (statement != null) {
-                    statement.bindString(1, aLang);
-                    statement.bindLong(2, mRef);
-                    statement.execute();
-                }
-
-                statement = mInsertDisplayElementStatements.get(aBackupLang);
-
-                if (statement != null) {
-                    statement.bindString(1, aBackupLang);
-                    statement.bindLong(2, mRef);
-                    statement.execute();
+                if (mInsertDisplayElementStatementBackup != null) {
+                    mInsertDisplayElementStatementBackup.bindString(1, mBackupLang);
+                    mInsertDisplayElementStatementBackup.bindLong(2, mRef);
+                    mInsertDisplayElementStatementBackup.execute();
                 }
             }
         });
     }
 
     @MainThread
-    public void performDisplayElementInsertion(final String aLang, final String aBackupLang) {
+    void performDisplayElementInsertion() {
         new AsyncTask<Void, Void, Void>(){
             @Override
             protected Void doInBackground(Void... voids) {
-                insertDisplayElement(aLang, aBackupLang);
+                insertDisplayElement();
 
                 return null;
             }
@@ -114,39 +132,103 @@ public class DisplayTool {
     }
 
     @WorkerThread
-    public void createStatement() {
+    private void createStatement(final List<InstalledDictionary> aDictionaries) {
         SupportSQLiteDatabase db = mDB.getOpenHelper().getWritableDatabase();
 
-        for (InstalledDictionary d : mDictionaries) {
+        boolean hasExamples = false;
+        boolean hasDictionary = false;
+        boolean hasBackupDictionary = false;
+
+        for (InstalledDictionary d : aDictionaries) {
             if ("jmdict_translation".equals(d.type)) {
-                mInsertDisplayElementStatements.put(d.lang, db.compileStatement(SQL_QUERY_INSERT_DISPLAY_ELEMENT_BEGIN +
-                        d.lang + SQL_QUERY_INSERT_DISPLAY_ELEMENT_END));
+                if (mLang.equals(d.lang)) {
+                    hasDictionary = true;
+                }
+
+                if (mBackupLang != null && mBackupLang.equals(d.lang)) {
+                    hasBackupDictionary = true;
+                }
+            } else if ("tatoeba".equals(d.type) && mLang.equals(d.lang)) {
+                hasExamples = true;
             }
+        }
+
+        if (!hasDictionary) {
+            System.err.println("Dictionary for " + mLang + " is not installed.");
+        }
+
+        if (mBackupLang != null && !hasBackupDictionary) {
+            System.err.println("Dictionary for backup language " + mLang + " is not installed.");
+        }
+
+        if (hasExamples) {
+            mInsertDisplayElementStatement = db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT_EXAMPLES, "examples_" + mLang, "examples_" + mLang, mLang));
+        } else {
+            mInsertDisplayElementStatement = db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT, mLang));
         }
 
         mDeleteDisplayElement = db.compileStatement(SQL_QUERY_DELETE_DISPLAY_ELEMENT);
     }
 
-    public interface InitCallback {
-        void execute(DisplayTool aTool);
+    public interface Callback {
+        void execute();
     }
 
-    public interface Callback {
-        void execute(final DisplayTool aDisplayTool);
+    @WorkerThread
+    void closeStatements() {
+        if (mInsertDisplayElementStatement != null) {
+            try {
+                mInsertDisplayElementStatement.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            mInsertDisplayElementStatement = null;
+        }
+
+        if (mInsertDisplayElementStatementBackup != null) {
+            try {
+                mInsertDisplayElementStatementBackup.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            mInsertDisplayElementStatementBackup = null;
+        }
+
+        if (mDeleteDisplayElement != null) {
+            try {
+                mDeleteDisplayElement.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            mDeleteDisplayElement = null;
+        }
+
+        mInitialized = false;
     }
 
     @MainThread
-    static void create(@NonNull final PersistentDatabase aDB,
-                                        @NonNull final List<InstalledDictionary> aDictionaries,
-                                        final int aRef,
-                                        final Callback aCallback)
+    void initialize(@NonNull final PersistentDatabase aDB,
+                    @NonNull final List<InstalledDictionary> aDictionaries,
+                    @NonNull final String aLang,
+                    @NonNull final String aBackupLang,
+                    final Callback aCallback)
     {
-        final DisplayTool tool = new DisplayTool(aDB, aDictionaries, aRef);
+        mDB = aDB;
 
         new AsyncTask<Void, Void, Void>() {
             @Override
             protected Void doInBackground(Void... voids) {
-                tool.createStatement();
+                closeStatements();
+
+                mLang = aLang;
+                mBackupLang = aBackupLang;
+
+                if (mLang != null) {
+                    createStatement(aDictionaries);
+                }
 
                 return null;
             }
@@ -155,8 +237,10 @@ public class DisplayTool {
             protected void onPostExecute(Void aVoid) {
                 super.onPostExecute(aVoid);
 
+                mInitialized = true;
+
                 if (aCallback != null) {
-                    aCallback.execute(tool);
+                    aCallback.execute();
                 }
             }
         }.execute();

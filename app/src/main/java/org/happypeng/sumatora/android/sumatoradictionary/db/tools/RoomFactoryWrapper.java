@@ -4,10 +4,10 @@ import androidx.annotation.NonNull;
 import androidx.paging.DataSource;
 import androidx.paging.PositionalDataSource;
 
-class RoomFactoryWrapper<T> extends DataSource.Factory<Integer, T> {
+public class RoomFactoryWrapper<T> extends DataSource.Factory<Integer, T> {
     private final DataSource.Factory<Integer, T> m_wrappedFactory;
 
-    RoomFactoryWrapper(@NonNull DataSource.Factory<Integer, T> wrappedFactory) {
+    public RoomFactoryWrapper(@NonNull DataSource.Factory<Integer, T> wrappedFactory) {
         m_wrappedFactory = wrappedFactory;
     }
 

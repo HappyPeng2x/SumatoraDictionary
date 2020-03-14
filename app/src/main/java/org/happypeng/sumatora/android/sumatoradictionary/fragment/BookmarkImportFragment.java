@@ -16,7 +16,6 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.fragment;
 
-import android.app.Activity;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -32,7 +31,7 @@ import androidx.fragment.app.FragmentActivity;
 import androidx.lifecycle.Observer;
 
 import org.happypeng.sumatora.android.sumatoradictionary.R;
-import org.happypeng.sumatora.android.sumatoradictionary.model.BaseFragmentModel;
+import org.happypeng.sumatora.android.sumatoradictionary.db.PersistantLanguageSettings;
 import org.happypeng.sumatora.android.sumatoradictionary.model.BookmarkImportModel;
 
 public class BookmarkImportFragment extends BaseFragment<BookmarkImportModel> {
@@ -41,6 +40,7 @@ public class BookmarkImportFragment extends BaseFragment<BookmarkImportModel> {
     }
 
     private Uri mUri;
+    private TextView m_languageText;
 
     @Override
     public void onCreateOptionsMenu(@NonNull Menu menu, @NonNull MenuInflater inflater) {
@@ -79,8 +79,21 @@ public class BookmarkImportFragment extends BaseFragment<BookmarkImportModel> {
         });
 
         MenuItem languageMenuItem = menu.findItem(R.id.bookmark_import_fragment_menu_language_text);
-        final TextView languageText = languageMenuItem.getActionView().findViewById(R.id.menuitem_language_text);
+        m_languageText = languageMenuItem.getActionView().findViewById(R.id.menuitem_language_text);
 
+        if (m_viewModel.getInstalledDictionaries().getValue() != null) {
+            initLanguagePopupMenu(m_languageText, m_viewModel.getInstalledDictionaries().getValue());
+        }
+
+        m_viewModel.getLanguageSettingsLive().observe(getViewLifecycleOwner(),
+                new Observer<PersistantLanguageSettings>() {
+                    @Override
+                    public void onChanged(PersistantLanguageSettings persistantLanguageSettings) {
+                        m_languageText.setText(persistantLanguageSettings.lang);
+                    }
+                });
+
+        /*
         m_viewModel.setLangSelectionMenuStatusView(languageText);
 
         m_viewModel.getLangSelectionStatus().observe(getViewLifecycleOwner(),
@@ -95,8 +108,10 @@ public class BookmarkImportFragment extends BaseFragment<BookmarkImportModel> {
                     }
                 });
 
+         */
 
-        languageText.setOnClickListener(new View.OnClickListener() {
+
+        m_languageText.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 if (m_languagePopupMenu != null) {
@@ -119,6 +134,11 @@ public class BookmarkImportFragment extends BaseFragment<BookmarkImportModel> {
         }
 
         return v;
+    }
+
+    @Override
+    View getLanguagePopupMenuAnchorView() {
+        return m_languageText;
     }
 
     public void setParameters(int aKey) {

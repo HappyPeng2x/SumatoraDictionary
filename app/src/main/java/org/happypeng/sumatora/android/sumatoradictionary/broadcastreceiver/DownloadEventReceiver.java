@@ -115,7 +115,7 @@ public class DownloadEventReceiver extends BroadcastReceiver {
             protected void onPostExecute(Void aVoid) {
                 super.onPostExecute(aVoid);
 
-                mApp.updateDownloadService();
+                // mApp.updateDownloadService();
             }
         }.execute();
     }
@@ -124,7 +124,7 @@ public class DownloadEventReceiver extends BroadcastReceiver {
     void performUpdates() {
         PersistentDatabase db = mDB;
 
-        mApp.postDetachDatabase();
+        // mApp.postDetachDatabase();
     }
 
     @WorkerThread

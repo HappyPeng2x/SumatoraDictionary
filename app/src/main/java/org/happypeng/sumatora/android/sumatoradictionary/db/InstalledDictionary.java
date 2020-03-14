@@ -28,6 +28,7 @@ import androidx.room.RoomDatabase;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 
 import org.happypeng.sumatora.android.sumatoradictionary.BuildConfig;
+import org.happypeng.sumatora.android.sumatoradictionary.db.tools.AttachedDatabases;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.BaseDictionaryObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -87,16 +88,43 @@ public class InstalledDictionary extends BaseDictionaryObject {
                 (version >= aDictionary.version && date > aDictionary.date));
     }
 
-    public void attach(RoomDatabase aDB) {
-        SupportSQLiteDatabase db = aDB.getOpenHelper().getWritableDatabase();
-
+    public String getAlias() {
         String alias = type;
 
         if (type.equals("jmdict_translation")) {
             alias = lang;
+        } else if (type.equals("tatoeba")) {
+            alias = "examples_" + lang;
         }
 
-        db.execSQL("ATTACH '" + file + "' AS " + alias);
+        return alias;
+    }
+
+    public boolean isAttached(RoomDatabase aDB) {
+        List<String> attachedDatabases = AttachedDatabases.getAttachedDatabases(aDB);
+        String alias = getAlias();
+        boolean attached = false;
+
+        for (String n : attachedDatabases) {
+            if (n.equals(alias)) {
+                attached = true;
+            }
+        }
+
+        return attached;
+    }
+
+    @WorkerThread
+    public void attach(RoomDatabase aDB) {
+        if (!isAttached(aDB)) {
+            SupportSQLiteDatabase db = aDB.getOpenHelper().getWritableDatabase();
+
+            db.execSQL("ATTACH '" + file + "' AS " + getAlias());
+
+            if (BuildConfig.DEBUG_DB_MIGRATION) {
+                m_log.info("Attaching " + file + " as " + getAlias());
+            }
+        }
     }
 
     public boolean delete() {
@@ -105,15 +133,16 @@ public class InstalledDictionary extends BaseDictionaryObject {
         return f.delete();
     }
 
+    @WorkerThread
     public void detach(RoomDatabase aDB) {
-        SupportSQLiteDatabase db = aDB.getOpenHelper().getWritableDatabase();
+        if (isAttached(aDB)) {
+            SupportSQLiteDatabase db = aDB.getOpenHelper().getWritableDatabase();
 
-        String alias = type;
+            db.execSQL("DETACH " + getAlias());
 
-        if (type.equals("jmdict_translation")) {
-            alias = lang;
+            if (BuildConfig.DEBUG_DB_MIGRATION) {
+                m_log.info("Detaching  " + getAlias());
+            }
         }
-
-        db.execSQL("DETACH " + alias);
     }
 }

@@ -48,6 +48,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import org.happypeng.sumatora.android.sumatoradictionary.BuildConfig;
 import org.happypeng.sumatora.android.sumatoradictionary.adapter.DictionaryPagedListAdapter;
+import org.happypeng.sumatora.android.sumatoradictionary.model.BaseFragmentModelFactory;
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionarySearchElementViewHolder;
 import org.happypeng.sumatora.android.sumatoradictionary.R;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
@@ -60,8 +61,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Set;
 
-public class BaseFragment<M extends BaseFragmentModel> extends Fragment {
+public abstract class BaseFragment<M extends BaseFragmentModel> extends Fragment {
     static final String AUTHORITY = "org.happypeng.sumatora.android.sumatoradictionary.fileprovider";
 
     private ProgressBar m_progressBar;
@@ -236,7 +238,7 @@ public class BaseFragment<M extends BaseFragmentModel> extends Fragment {
         layoutManager.setOrientation(RecyclerView.VERTICAL);
         m_recyclerView.setLayoutManager(layoutManager);
 
-        m_viewModel = ViewModelProviders.of(getActivity()).get(String.valueOf(m_key),
+        m_viewModel = ViewModelProviders.of(getActivity(), new BaseFragmentModelFactory(getActivity().getApplication())).get(String.valueOf(m_key),
                 m_viewModelClass);
         m_viewModel.initialize(m_key, m_searchSet, m_allowSearchAll, m_tableObserve);
 
@@ -261,61 +263,28 @@ public class BaseFragment<M extends BaseFragmentModel> extends Fragment {
         });
 
         m_viewModel.getStatus().observe(getViewLifecycleOwner(),
-                new Observer<DisplayStatus>() {
+                new Observer<Integer>() {
                     @Override
-                    public void onChanged(DisplayStatus status) {
-                        if (status == null || !status.isInitialized()) {
-                            setInPreparation();
-
-                            return;
-                        }
+                    public void onChanged(Integer status) {
 
                         m_viewHolderStatus.entities = m_viewModel.getDictionaryApplication().getEntities();
 
-                        /* if (m_lang == null || !m_lang.equals(status.lang)) {
-                            if (m_languageText != null) {
-                                m_languageText.setText(status.lang);
-                            }
-
-                            m_lang = status.lang;
-
-                            m_listAdapter.notifyDataSetChanged();
-                        }
-
-                        if ((m_backupLang == null && status.backupLang != null) ||
-                                (m_backupLang != null && !m_backupLang.equals(status.backupLang))) {
-                            m_backupLang = status.backupLang;
-
-                            m_listAdapter.notifyDataSetChanged();
-                        } */
-
-                        // viewHolderStatus.lang = status.lang;
-
-                        Integer bookmarkToolStatus = m_viewModel.getBookmarkToolStatus();
-
-                        if (bookmarkToolStatus == null || bookmarkToolStatus == QueryTool.STATUS_PRE_INITIALIZED) {
+                        if (status == null || status == BaseFragmentModel.STATUS_PRE_INITIALIZED) {
                             setInPreparation();
-                        } else if (bookmarkToolStatus == QueryTool.STATUS_INITIALIZED) {
+                        } else if (status == BaseFragmentModel.STATUS_INITIALIZED) {
                             setReady();
-                        } else if (bookmarkToolStatus == QueryTool.STATUS_SEARCHING) {
+                        } else if (status == BaseFragmentModel.STATUS_SEARCHING) {
                             setSearching();
-                        } else if (bookmarkToolStatus == QueryTool.STATUS_RESULTS_FOUND ||
-                                bookmarkToolStatus == QueryTool.STATUS_RESULTS_FOUND_ENDED) {
+                        } else if (status == BaseFragmentModel.STATUS_RESULTS_FOUND ||
+                                status == BaseFragmentModel.STATUS_RESULTS_FOUND_ENDED) {
                             setResultsFound();
-                        } else if (bookmarkToolStatus == QueryTool.STATUS_NO_RESULTS_FOUND_ENDED) {
+                        } else if (status == BaseFragmentModel.STATUS_NO_RESULTS_FOUND_ENDED) {
                             setNoResultsFound();
                         }
-
-                        /* if (status.installedDictionaries != null && m_languageText != null) {
-                            if (m_languagePopupMenu == null) {
-                                m_languagePopupMenu = initLanguagePopupMenu(m_languageText,
-                                        status.installedDictionaries);
-                            }
-                        }*/
                     }
                 });
 
-        m_viewModel.getElementList().observe(getViewLifecycleOwner(),
+        m_viewModel.getDisplayElements().observe(getViewLifecycleOwner(),
                 new Observer<PagedList<DictionarySearchElement>>() {
                     @Override
                     public void onChanged(PagedList<DictionarySearchElement> dictionarySearchElements) {
@@ -323,6 +292,15 @@ public class BaseFragment<M extends BaseFragmentModel> extends Fragment {
                     }
                 });
 
+        m_viewModel.getInstalledDictionaries().observe(getViewLifecycleOwner(),
+                new Observer<List<InstalledDictionary>>() {
+                    @Override
+                    public void onChanged(List<InstalledDictionary> installedDictionaries) {
+                        initLanguagePopupMenu(getLanguagePopupMenuAnchorView(),
+                                installedDictionaries);
+                    }
+                });
+        /*
         m_viewModel.getLangSelectionMenuStatus().observe(getViewLifecycleOwner(),
                 new Observer<BaseFragmentModel.LangSelectionMenuStatus>() {
                     @Override
@@ -335,10 +313,12 @@ public class BaseFragment<M extends BaseFragmentModel> extends Fragment {
                             }
                         }
                     }
-                });
+                }); */
 
         return view;
     }
+
+    abstract View getLanguagePopupMenuAnchorView();
 
     private void displayInitializationToast() {
         Toast.makeText(getContext(), "Initialization still in progress...", Toast.LENGTH_LONG).show();
@@ -366,19 +346,21 @@ public class BaseFragment<M extends BaseFragmentModel> extends Fragment {
         }
     }
 
-    private PopupMenu initLanguagePopupMenu(final View aAnchor, final List<InstalledDictionary> aLanguage) {
-        PopupMenu popupMenu = null;
-
+    void initLanguagePopupMenu(final View aAnchor, final List<InstalledDictionary> aLanguage) {
         if (aLanguage != null) {
-            popupMenu = new PopupMenu(getContext(), aAnchor);
-            Menu menu = popupMenu.getMenu();
+            m_languagePopupMenu = new PopupMenu(getContext(), aAnchor);
+            Menu menu = m_languagePopupMenu.getMenu();
 
             for (final InstalledDictionary l : aLanguage) {
                 if ("jmdict_translation".equals(l.type)) {
                     menu.add(l.description).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
                         @Override
                         public boolean onMenuItemClick(MenuItem item) {
-                            m_viewModel.getDictionaryApplication().getSettings().setValue(Settings.LANG, l.lang);
+                            if (!l.lang.equals("eng")) {
+                                m_viewModel.getDictionaryApplication().setPersistentLanguageSettings(l.lang, "eng");
+                            } else {
+                                m_viewModel.getDictionaryApplication().setPersistentLanguageSettings(l.lang, null);
+                            }
 
                             return false;
                         }
@@ -386,8 +368,6 @@ public class BaseFragment<M extends BaseFragmentModel> extends Fragment {
                 }
             }
         }
-
-        return popupMenu;
     }
 
     public void setIntentSearchTerm(@NonNull String aIntentSearchTerm) {

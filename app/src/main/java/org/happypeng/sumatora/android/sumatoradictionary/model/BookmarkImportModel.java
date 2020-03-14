@@ -45,14 +45,14 @@ public class BookmarkImportModel extends BaseFragmentModel {
     }
 
     public void cancelImport() {
-        if (m_currentDatabase == null) {
+        if (mCurrentDatabase == null) {
             return;
         }
 
         new AsyncTask<Void, Void, Void>() {
             @Override
             protected Void doInBackground(Void... voids) {
-                m_currentDatabase.dictionaryBookmarkImportDao().deleteAll();
+                mCurrentDatabase.dictionaryBookmarkImportDao().deleteAll();
 
                 return null;
             }
@@ -60,7 +60,7 @@ public class BookmarkImportModel extends BaseFragmentModel {
     }
 
     public void commitBookmarks() {
-        if (m_currentDatabase == null) {
+        if (mCurrentDatabase == null) {
             System.err.println("Trying to commit bookmarks without DB");
 
             return;
@@ -70,14 +70,14 @@ public class BookmarkImportModel extends BaseFragmentModel {
             @Override
             protected Void doInBackground(Void... voids) {
                 try {
-                    m_currentDatabase.runInTransaction(new Runnable() {
+                    mCurrentDatabase.runInTransaction(new Runnable() {
                         @Override
                         public void run() {
-                            SupportSQLiteDatabase sqldb = m_currentDatabase.getOpenHelper().getWritableDatabase();
+                            SupportSQLiteDatabase sqldb = mCurrentDatabase.getOpenHelper().getWritableDatabase();
 
                             sqldb.execSQL(SQL_BOOKMARK_IMPORT_COMMIT);
 
-                            m_currentDatabase.dictionaryBookmarkImportDao().deleteAll();
+                            mCurrentDatabase.dictionaryBookmarkImportDao().deleteAll();
                         }
                     });
 
@@ -106,13 +106,13 @@ public class BookmarkImportModel extends BaseFragmentModel {
                         return null;
                     }
 
-                    m_currentDatabase.runInTransaction(new Runnable() {
+                    mCurrentDatabase.runInTransaction(new Runnable() {
                         @Override
                         public void run() {
-                            m_currentDatabase.dictionaryBookmarkImportDao().deleteAll();
+                            mCurrentDatabase.dictionaryBookmarkImportDao().deleteAll();
 
                             for (Long seq : seqs) {
-                                m_currentDatabase.dictionaryBookmarkImportDao().insert(
+                                mCurrentDatabase.dictionaryBookmarkImportDao().insert(
                                         new DictionaryBookmarkImport(mKey, seq));
                             }
                         }

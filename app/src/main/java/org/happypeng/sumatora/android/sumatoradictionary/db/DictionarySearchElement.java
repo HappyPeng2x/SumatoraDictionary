@@ -33,6 +33,7 @@ public class DictionarySearchElement {
     public String field;
     public String lang;
     public String gloss;
+    public String example_sentences;
     public long bookmark;
 
     public DictionarySearchElement() { }

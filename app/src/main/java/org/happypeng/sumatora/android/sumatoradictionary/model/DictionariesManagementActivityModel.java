@@ -283,7 +283,7 @@ public class DictionariesManagementActivityModel extends AndroidViewModel {
                 super.onPostExecute(aVoid);
 
                 if (mApp != null) {
-                    mApp.updateDownloadService();
+                    // mApp.updateDownloadService();
                 }
             }
         }.execute();

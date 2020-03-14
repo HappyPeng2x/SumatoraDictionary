@@ -1,4 +1,4 @@
-<repository version="4" date="20200111">
+<repository version="4" date="20200229">
     <dictionary uri="dictionaries/jmdict.db"
         type="jmdict" description="Index" lang=""/>
     <dictionary uri="dictionaries/eng.db"
@@ -27,4 +27,7 @@
     <dictionary
         uri="dictionaries/slv.db"
         type="jmdict_translation" description="Slovenski jezik" lang="slv"/>
+    <dictionary
+        uri="dictionaries/examples_en.db"
+        type="tatoeba" description="English examples" lang="eng" />
 </repository>

@@ -37,6 +37,7 @@ import androidx.lifecycle.Observer;
 
 import org.happypeng.sumatora.android.sumatoradictionary.R;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
+import org.happypeng.sumatora.android.sumatoradictionary.db.PersistantLanguageSettings;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.model.BaseFragmentModel;
 import org.happypeng.sumatora.android.sumatoradictionary.xml.DictionaryBookmarkXML;
@@ -47,12 +48,18 @@ import java.util.List;
 public class QueryFragment extends BaseFragment<BaseFragmentModel> {
     private boolean m_allowExport;
     private boolean m_openSearchBox;
+    private TextView m_languageText;
 
     public QueryFragment() {
         super();
 
         m_allowExport = false;
         m_openSearchBox = false;
+    }
+
+    @Override
+    View getLanguagePopupMenuAnchorView() {
+        return m_languageText;
     }
 
     public void setParameters(int a_key, String aSearchSet, boolean aAllowSearchAll,
@@ -106,16 +113,34 @@ public class QueryFragment extends BaseFragment<BaseFragmentModel> {
             public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
                 if (m_searchView.getQuery() != null) {
                     m_term = m_searchView.getQuery().toString();
-                    m_viewModel.setTerm(m_term);
+
+                    if (!m_term.equals(m_viewModel.getTerm())) {
+                        m_viewModel.setTerm(m_term);
+                    }
                 }
 
-                return false;
+                return true;
             }
         });
 
         MenuItem languageMenuItem = menu.findItem(R.id.bookmark_fragment_menu_language_text);
-        final TextView languageText = languageMenuItem.getActionView().findViewById(R.id.menuitem_language_text);
+        m_languageText = languageMenuItem.getActionView().findViewById(R.id.menuitem_language_text);
 
+        if (m_viewModel.getInstalledDictionaries().getValue() != null) {
+            initLanguagePopupMenu(m_languageText, m_viewModel.getInstalledDictionaries().getValue());
+        }
+
+        m_viewModel.getLanguageSettingsLive().observe(getViewLifecycleOwner(),
+                new Observer<PersistantLanguageSettings>() {
+                    @Override
+                    public void onChanged(PersistantLanguageSettings persistantLanguageSettings) {
+                        if (persistantLanguageSettings != null) {
+                            m_languageText.setText(persistantLanguageSettings.lang);
+                        }
+                    }
+                });
+
+        /*
         m_viewModel.setLangSelectionMenuStatusView(languageText);
 
         m_viewModel.getLangSelectionStatus().observe(getViewLifecycleOwner(),
@@ -129,8 +154,9 @@ public class QueryFragment extends BaseFragment<BaseFragmentModel> {
                         m_viewHolderStatus.lang = langSelectionStatus.lang;
                     }
                 });
+         */
 
-        languageText.setOnClickListener(new View.OnClickListener() {
+        m_languageText.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 if (m_languagePopupMenu != null) {

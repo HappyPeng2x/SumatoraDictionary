@@ -17,9 +17,6 @@
 package org.happypeng.sumatora.android.sumatoradictionary;
 
 import android.app.Application;
-import android.app.DownloadManager;
-import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.res.AssetManager;
 import android.database.Cursor;
 import android.database.SQLException;
@@ -28,12 +25,11 @@ import android.os.AsyncTask;
 import android.os.StrictMode;
 import android.util.Log;
 
-import androidx.annotation.MainThread;
 import androidx.annotation.NonNull;
 import androidx.annotation.WorkerThread;
 import androidx.arch.core.util.Function;
-import androidx.core.content.ContextCompat;
 import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MediatorLiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.Transformations;
@@ -46,13 +42,12 @@ import org.happypeng.sumatora.android.sumatoradictionary.broadcastreceiver.Downl
 import org.happypeng.sumatora.android.sumatoradictionary.db.AssetDictionaryObject;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
 import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary;
-import org.happypeng.sumatora.android.sumatoradictionary.db.LocalDictionaryObject;
+import org.happypeng.sumatora.android.sumatoradictionary.db.PersistantLanguageSettings;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentSetting;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.BaseDictionaryObject;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Settings;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.SumatoraSQLiteOpenHelperFactory;
-import org.happypeng.sumatora.android.sumatoradictionary.service.DictionaryDownloadService;
 import org.happypeng.sumatora.android.sumatoradictionary.xml.DictionaryBookmarkXML;
 import org.happypeng.sumatora.jromkan.Romkan;
 import org.slf4j.Logger;
@@ -66,13 +61,12 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 
-import io.requery.android.database.sqlite.RequerySQLiteOpenHelperFactory;
-
 public class DictionaryApplication extends Application {
     public static final String DATABASE_NAME = "JMdict.db";
     static final String PERSISTENT_DATABASE_NAME = "PersistentDatabase.db";
 
     protected MutableLiveData<PersistentDatabase> m_persistentDatabase;
+    private MutableLiveData<PersistantLanguageSettings> m_persistentLanguageSettings;
 
     private HashMap<String, String> m_entities;
 
@@ -83,6 +77,7 @@ public class DictionaryApplication extends Application {
     private Romkan m_romkan;
 
     public LiveData<PersistentDatabase> getPersistentDatabase() { return m_persistentDatabase; }
+    public LiveData<PersistantLanguageSettings> getPersistentLanguageSettings() { return m_persistentLanguageSettings; }
 
     public Settings getSettings() { return m_settings; }
 
@@ -174,6 +169,24 @@ public class DictionaryApplication extends Application {
             if (BuildConfig.DEBUG_DB_MIGRATION) {
                 log.info("Database migration ended");
             }
+        }
+    };
+
+    static final Migration MIGRATION_5_6 = new Migration(5, 6) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            Logger log;
+
+            if (BuildConfig.DEBUG_DB_MIGRATION) {
+                log = LoggerFactory.getLogger(this.getClass());
+
+                log.info("Starting database migration");
+            }
+
+            database.execSQL("DROP TABLE IF EXISTS DictionaryDisplayElement");
+
+            database.execSQL("CREATE TABLE IF NOT EXISTS DictionaryDisplayElement (`ref` INTEGER NOT NULL, `entryOrder` INTEGER NOT NULL, `seq` INTEGER NOT NULL, `readingsPrio` TEXT, `readings` TEXT, `writingsPrio` TEXT, `writings` TEXT, `pos` TEXT, `xref` TEXT, `ant` TEXT, `misc` TEXT, `lsource` TEXT, `dial` TEXT, `s_inf` TEXT, `field` TEXT, `lang` TEXT, `gloss` TEXT, `example_sentences` TEXT, PRIMARY KEY(`ref`, `seq`))");
+            database.execSQL("CREATE TABLE IF NOT EXISTS PersistentLanguageSettings (`ref` INTEGER NOT NULL, `lang` TEXT NOT NULL, `backupLang` TEXT, PRIMARY KEY(`ref`))");
         }
     };
 
@@ -318,12 +331,6 @@ public class DictionaryApplication extends Application {
                     date = dl.get(0).date;
                 }
 
-                /*
-
-                List<AssetDictionaryObject> up = aDB.assetDictionaryObjectDao().getInstallObjects();
-
-                */
-
                 File databaseRoot = aApp.getDatabasePath(DATABASE_NAME).getParentFile();
                 File databaseInstallDir = new File(databaseRoot, "dictionaries");
 
@@ -332,28 +339,7 @@ public class DictionaryApplication extends Application {
                     databaseInstallDir.mkdirs();
                 }
 
-                /*
-
-                if (up != null) {
-                    for (AssetDictionaryObject a : up) {
-                        a.install(assetManager, databaseInstallDir.getAbsolutePath(), aDB.installedDictionaryDao());
-                    }
-                }
-
-                 */
-
                 InstalledDictionary jmdict = aDB.installedDictionaryDao().getForTypeLang("jmdict", "");
-                // InstalledDictionary jmdict_eng = aDB.installedDictionaryDao().getForTypeLang("jmdict_translation", "eng");
-
-                /*
-                if (jmdict == null) {
-                    AssetDictionaryObject asset_jmdict = aDB.assetDictionaryObjectDao().getForTypeLang("jmdict", "");
-
-                    if (asset_jmdict != null) {
-                        asset_jmdict.install(assetManager, databaseInstallDir.getAbsolutePath(), aDB.installedDictionaryDao());
-                    }
-                }
-                 */
 
                 if (jmdict == null || jmdict.version < version || jmdict.date < date) {
                     List<AssetDictionaryObject> asset_jmdict = aDB.assetDictionaryObjectDao().getAll();
@@ -362,18 +348,6 @@ public class DictionaryApplication extends Application {
                         d.install(assetManager, databaseInstallDir.getAbsolutePath(), aDB.installedDictionaryDao());
                     }
                 }
-
-                /*
-
-                if (jmdict_eng == null) {
-                    AssetDictionaryObject asset_jmdict_eng = aDB.assetDictionaryObjectDao().getForTypeLang("jmdict_translation", "eng");
-
-                    if (asset_jmdict_eng != null) {
-                        asset_jmdict_eng.install(assetManager, databaseInstallDir.getAbsolutePath(), aDB.installedDictionaryDao());
-                    }
-                }
-                */
-
             } catch(IOException e) {
                 Log.e("tag", "IOException: ", e);
                 Log.e("tag", "Could not update dictionaries.");
@@ -498,7 +472,8 @@ public class DictionaryApplication extends Application {
             final PersistentDatabase pDb = Room.databaseBuilder(aParams[0],
                     PersistentDatabase.class, PERSISTENT_DATABASE_NAME)
                     .openHelperFactory(new SumatoraSQLiteOpenHelperFactory())
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4,
+                            MIGRATION_4_5, MIGRATION_5_6)
                     .setJournalMode(RoomDatabase.JournalMode.TRUNCATE)
                     .build();
 
@@ -507,17 +482,20 @@ public class DictionaryApplication extends Application {
             List<InstalledDictionary> dictionaries = pDb.installedDictionaryDao().getAll();
 
             for (InstalledDictionary d : dictionaries) {
-                d.attach(pDb);
+                if (d.type.equals("jmdict")) {
+                    d.attach(pDb);
+                }
             }
 
             if (BuildConfig.DEBUG_DB_MIGRATION) {
                 m_log.info("Setting default settings");
             }
 
-            pDb.persistentSettingsDao().insertDefault(new PersistentSetting(Settings.LANG,
-                    Settings.LANG_DEFAULT));
-            pDb.persistentSettingsDao().insertDefault(new PersistentSetting(Settings.BACKUP_LANG,
-                    Settings.BACKUP_LANG_DEFAULT));
+            if (pDb.persistentLanguageSettingsDao().getLanguageSettingsDirect(0) == null) {
+                pDb.persistentLanguageSettingsDao().update(new PersistantLanguageSettings(0,
+                        PersistantLanguageSettings.LANG_DEFAULT, PersistantLanguageSettings.BACKUP_LANG_DEFAULT));
+            }
+
             pDb.persistentSettingsDao().insertDefault(new PersistentSetting(Settings.REPOSITORY_URL,
                     aParams[0].getString(R.string.dictionaries_url)));
 
@@ -600,8 +578,10 @@ public class DictionaryApplication extends Application {
         }
 
         m_persistentDatabase = new MutableLiveData<>();
+        m_persistentLanguageSettings = new MutableLiveData<>();
 
-        setupDownloadService();
+        // setupDownloadService();
+        setupAttachListener();
 
         m_settings = new Settings();
 
@@ -610,9 +590,105 @@ public class DictionaryApplication extends Application {
         new InitializeDBTask().execute(this);
     }
 
+    public void setPersistentLanguageSettings(final @NonNull String aLang, final @NonNull String aBackupLang) {
+        if (m_persistentDatabase.getValue() == null) {
+            return;
+        }
+
+        new AsyncTask<Void, Void, Void>() {
+            @Override
+            protected Void doInBackground(Void... voids) {
+                m_persistentDatabase.getValue().persistentLanguageSettingsDao().update(new PersistantLanguageSettings(0, aLang, aBackupLang));
+
+                return null;
+            }
+        }.execute();
+    }
+
+    private class ApplicationLanguageSettings {
+        PersistentDatabase db;
+        PersistantLanguageSettings settings;
+    }
+
+    private void setupAttachListener() {
+        final MediatorLiveData<ApplicationLanguageSettings> liveSettings = new MediatorLiveData<>();
+        final ApplicationLanguageSettings settings = new ApplicationLanguageSettings();
+
+        LiveData<PersistantLanguageSettings> persistantLanguageSettings =
+                Transformations.switchMap(m_persistentDatabase,
+                        new Function<PersistentDatabase, LiveData<PersistantLanguageSettings>>() {
+                            @Override
+                            public LiveData<PersistantLanguageSettings> apply(PersistentDatabase input) {
+                                if (input == null) {
+                                    return null;
+                                }
+
+                                return input.persistentLanguageSettingsDao().getLanguageSettings(0);
+                            }
+                        });
+
+        liveSettings.addSource(m_persistentDatabase,
+                new Observer<PersistentDatabase>() {
+                    @Override
+                    public void onChanged(PersistentDatabase persistentDatabase) {
+                        settings.db = persistentDatabase;
+
+                        liveSettings.setValue(settings);
+                    }
+                });
+
+        liveSettings.addSource(persistantLanguageSettings,
+                new Observer<PersistantLanguageSettings>() {
+                    @Override
+                    public void onChanged(PersistantLanguageSettings persistantLanguageSettings) {
+                        settings.settings = persistantLanguageSettings;
+
+                        liveSettings.setValue(settings);
+                    }
+                });
+
+        liveSettings.observeForever(new Observer<ApplicationLanguageSettings>() {
+            @Override
+            public void onChanged(ApplicationLanguageSettings applicationLanguageSettings) {
+                if (m_persistentLanguageSettings.getValue() != null) {
+                    m_persistentLanguageSettings.setValue(null);
+                }
+
+                if (settings.db != null && settings.settings != null) {
+                    new AsyncTask<Void, Void, Void>() {
+                        @Override
+                        protected Void doInBackground(Void... voids) {
+                            List<InstalledDictionary> dictionaries = settings.db.installedDictionaryDao().getAll();
+
+                            for (InstalledDictionary d : dictionaries) {
+                                if (d.type.equals("jmdict_translation") || d.type.equals("tatoeba")) {
+                                    if (d.lang.equals(settings.settings.lang) ||
+                                            (settings.settings.backupLang != null && d.lang.equals(settings.settings.backupLang))) {
+                                        d.attach(settings.db);
+                                    } else {
+                                        d.detach(settings.db);
+                                    }
+                                }
+                            }
+
+                            return null;
+                        }
+
+                        @Override
+                        protected void onPostExecute(Void aVoid) {
+                            super.onPostExecute(aVoid);
+
+                            m_persistentLanguageSettings.setValue(settings.settings);
+                        }
+                    }.execute();
+                }
+            }
+        });
+    }
+
     // Registers a broadcast receiver for download completions
     // Starts a foreground service to keep the application alive during downloads
-    private void setupDownloadService() {
+    /* private void setupDownloadService() {
         m_persistentDatabase.observeForever(new Observer<PersistentDatabase>() {
             @Override
             public void onChanged(PersistentDatabase persistentDatabase) {
@@ -638,8 +714,9 @@ public class DictionaryApplication extends Application {
                                 return input.localDictionaryObjectDao().getInstallObjects();
                             }
                         });
-    }
+    } */
 
+    /*
     @MainThread
     public void updateDownloadService() {
         new AsyncTask<Void, Void, Boolean>() {
@@ -674,12 +751,14 @@ public class DictionaryApplication extends Application {
                 }
             }
         }.execute();
-    }
+    } */
 
+    /*
     @WorkerThread
     public void postDetachDatabase() {
         if (m_persistentDatabase != null) {
             m_persistentDatabase.postValue(null);
         }
     }
+    */
 }
