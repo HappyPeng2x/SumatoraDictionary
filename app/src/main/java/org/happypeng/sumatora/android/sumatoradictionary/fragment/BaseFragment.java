@@ -16,6 +16,7 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.fragment;
 
+import android.app.Application;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.PorterDuff;
@@ -40,6 +41,8 @@ import androidx.appcompat.widget.SearchView;
 import androidx.appcompat.widget.Toolbar;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModel;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.lifecycle.ViewModelProviders;
 import androidx.paging.PagedList;
 import androidx.recyclerview.widget.DividerItemDecoration;
@@ -69,8 +72,9 @@ public abstract class BaseFragment<M extends BaseFragmentModel> extends Fragment
 
     protected DictionaryPagedListAdapter m_listAdapter;
 
-    Class<M> m_viewModelClass;
-    M m_viewModel;
+    private Class<M> m_viewModelClass;
+    private BaseFragmentModelFactory.Creator m_viewModelCreator;
+    protected M m_viewModel;
 
     PopupMenu m_languagePopupMenu;
 
@@ -105,6 +109,7 @@ public abstract class BaseFragment<M extends BaseFragmentModel> extends Fragment
     }
 
     public void setParameters(Class<M> a_viewModelClass,
+                              BaseFragmentModelFactory.Creator a_viewModelCreator,
                               int a_key, String aSearchSet, boolean aAllowSearchAll,
                               @NonNull String aTitle, @NonNull String aTableObserve,
                               boolean aHasHomeButton, boolean aDisableBookmarkButton) {
@@ -116,6 +121,7 @@ public abstract class BaseFragment<M extends BaseFragmentModel> extends Fragment
         m_tableObserve = aTableObserve;
         m_hasHomeButton = aHasHomeButton;
         m_disableBookmarkButton = aDisableBookmarkButton;
+        m_viewModelCreator = a_viewModelCreator;
     }
 
     private void setInPreparation() {
@@ -239,9 +245,10 @@ public abstract class BaseFragment<M extends BaseFragmentModel> extends Fragment
         layoutManager.setOrientation(RecyclerView.VERTICAL);
         m_recyclerView.setLayoutManager(layoutManager);
 
-        m_viewModel = ViewModelProviders.of(getActivity(), new BaseFragmentModelFactory(getActivity().getApplication())).get(String.valueOf(m_key),
-                m_viewModelClass);
-        m_viewModel.initialize(m_key, m_searchSet, m_allowSearchAll, m_tableObserve);
+        ViewModelProvider provider = new ViewModelProvider(getActivity(),
+                new BaseFragmentModelFactory(getActivity().getApplication(),
+                        m_viewModelCreator));
+        m_viewModel = provider.get(Integer.toString(m_key), m_viewModelClass);
 
         m_viewHolderStatus = new DictionarySearchElementViewHolder.Status();
         m_listAdapter = new DictionaryPagedListAdapter(m_viewHolderStatus, m_disableBookmarkButton);

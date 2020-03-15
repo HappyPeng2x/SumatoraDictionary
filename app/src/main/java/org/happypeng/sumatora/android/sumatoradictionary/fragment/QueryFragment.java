@@ -40,6 +40,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistantLanguageSettings;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.model.BaseFragmentModel;
+import org.happypeng.sumatora.android.sumatoradictionary.model.BaseFragmentModelFactory;
 import org.happypeng.sumatora.android.sumatoradictionary.xml.DictionaryBookmarkXML;
 
 import java.io.File;
@@ -62,10 +63,18 @@ public class QueryFragment extends BaseFragment<BaseFragmentModel> {
         return m_languageText;
     }
 
-    public void setParameters(int a_key, String aSearchSet, boolean aAllowSearchAll,
+    public void setParameters(final int a_key, final String aSearchSet, final boolean aAllowSearchAll,
                               @NonNull String aTitle, boolean aAllowExport,
-                              boolean aOpenSearchBox, @NonNull String aTableObserve) {
-        setParameters(BaseFragmentModel.class, a_key, aSearchSet, aAllowSearchAll,
+                              boolean aOpenSearchBox, @NonNull final String aTableObserve) {
+        setParameters(BaseFragmentModel.class,
+                new BaseFragmentModelFactory.Creator() {
+                    @Override
+                    public BaseFragmentModel create() {
+                        return new BaseFragmentModel(getActivity().getApplication(),
+                                a_key, aSearchSet, aAllowSearchAll, aTableObserve);
+                    }
+                },
+                a_key, aSearchSet, aAllowSearchAll,
                 aTitle, aTableObserve, true, false);
 
         m_allowExport = aAllowExport;

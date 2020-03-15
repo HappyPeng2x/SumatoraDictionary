@@ -23,23 +23,28 @@ import androidx.lifecycle.ViewModel;
 import androidx.lifecycle.ViewModelProvider;
 
 public class BaseFragmentModelFactory extends ViewModelProvider.AndroidViewModelFactory {
-    @NonNull
-    private final Application mApp;
+    public interface Creator {
+        BaseFragmentModel create();
+    }
 
-    public BaseFragmentModelFactory(@NonNull Application application) {
+    private final Creator mCreator;
+
+    public BaseFragmentModelFactory(@NonNull Application application,
+                                    Creator aCreator) {
         super(application);
 
-        mApp = application;
+        mCreator = aCreator;
     }
 
     @NonNull
     @Override
     public <T extends ViewModel> T create(@NonNull Class<T> modelClass) {
-        if (modelClass.isAssignableFrom(BaseFragmentModel.class)) {
-            return (T) new BaseFragmentModel(mApp);
+        T ret = modelClass.cast(mCreator.create());
+
+        if (ret != null) {
+            return ret;
         }
-        throw new IllegalArgumentException("Unknown ViewModel class");
+
+        throw new IllegalArgumentException("ViewModel cast failed");
     }
-
-
 }

@@ -236,11 +236,9 @@ public class BaseFragmentModel extends AndroidViewModel {
 
         @Override
         long execute(String term) {
-            String bindTerm = term;
-
             statement.bindLong(1, ref);
             statement.bindLong(2, order * ORDER_MULTIPLIER);
-            statement.bindString(3, bindTerm);
+            statement.bindString(3, term);
 
             return statement.executeInsert();
         }
@@ -272,13 +270,17 @@ public class BaseFragmentModel extends AndroidViewModel {
 
     private Romkan mRomkan;
     private QueryNextStatementResult mQueryResult;
-    private String mSearchSet;
-    private boolean mAllowQueryAll;
 
     // Other status elements
-    DictionaryApplication mApp;
     PersistentDatabase mCurrentDatabase;
-    int mKey;
+
+    private final String mSearchSet;
+    private final boolean mAllowQueryAll;
+    private final String mTableObserve;
+
+    final DictionaryApplication mApp;
+
+    final int mKey;
 
     private String mTerm;
 
@@ -382,19 +384,14 @@ public class BaseFragmentModel extends AndroidViewModel {
         });
     }
 
-    public void initialize(final int aKey, final String aSearchSet, final boolean aAllowSearchAll,
-                           final @NonNull String aTableObserve) {
-        mKey = aKey;
-        mSearchSet = aSearchSet;
-        mAllowQueryAll = aAllowSearchAll;
-
+    private void initialize() {
         mCurrentDatabase = null;
 
         // Queries related initialization
-        final InvalidationTracker.Observer observer = new InvalidationTracker.Observer(aTableObserve) {
+        final InvalidationTracker.Observer observer = new InvalidationTracker.Observer(mTableObserve) {
             @Override
             public void onInvalidated(@NonNull Set<String> tables) {
-                // re-display results with same terms
+                processQueryInitial();
             }
         };
 
@@ -474,7 +471,7 @@ public class BaseFragmentModel extends AndroidViewModel {
 
                         if (mQueryStatements != null) {
                             // Clear query, close statements, create new statements and perform query
-                            resetQuery(mCurrentDatabase, aKey, mQueryStatements, new QueryNextStatementCallback() {
+                            resetQuery(mCurrentDatabase, mKey, mQueryStatements, new QueryNextStatementCallback() {
                                 @Override
                                 public void callback(QueryNextStatementResult aResult) {
                                     mQueryResult = aResult;
@@ -504,7 +501,7 @@ public class BaseFragmentModel extends AndroidViewModel {
                         }
 
                         if (mCurrentDatabase != null) {
-                            if (!"".equals(aTableObserve)) {
+                            if (!"".equals(mTableObserve)) {
                                 mCurrentDatabase.getInvalidationTracker().addObserver(observer);
                             }
                         }
@@ -594,7 +591,10 @@ public class BaseFragmentModel extends AndroidViewModel {
                 });
     }
 
-    BaseFragmentModel(Application aApp) {
+    public BaseFragmentModel(Application aApp,
+                      final int aKey, final String aSearchSet,
+                      final boolean aAllowSearchAll,
+                      final @NonNull String aTableObserve) {
         super(aApp);
 
         mApp = (DictionaryApplication) aApp;
@@ -604,6 +604,13 @@ public class BaseFragmentModel extends AndroidViewModel {
 
         mTerm = "";
         mState = STATUS_PRE_INITIALIZED;
+
+        mKey = aKey;
+        mSearchSet = aSearchSet;
+        mAllowQueryAll = aAllowSearchAll;
+        mTableObserve = aTableObserve;
+
+        initialize();
     }
 
     public void updateBookmark(final long seq, final long bookmark) {

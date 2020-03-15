@@ -32,6 +32,8 @@ import androidx.lifecycle.Observer;
 
 import org.happypeng.sumatora.android.sumatoradictionary.R;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistantLanguageSettings;
+import org.happypeng.sumatora.android.sumatoradictionary.model.BaseFragmentModel;
+import org.happypeng.sumatora.android.sumatoradictionary.model.BaseFragmentModelFactory;
 import org.happypeng.sumatora.android.sumatoradictionary.model.BookmarkImportModel;
 
 public class BookmarkImportFragment extends BaseFragment<BookmarkImportModel> {
@@ -141,9 +143,18 @@ public class BookmarkImportFragment extends BaseFragment<BookmarkImportModel> {
         return m_languageText;
     }
 
-    public void setParameters(int aKey) {
-        setParameters(BookmarkImportModel.class, aKey,
-                "SELECT seq FROM DictionaryBookmarkImport WHERE ref=" + aKey, true,
+    public void setParameters(final int aKey) {
+        final String aSearchSet = "SELECT seq FROM DictionaryBookmarkImport WHERE ref=" + aKey;
+
+        setParameters(BookmarkImportModel.class,
+                new BaseFragmentModelFactory.Creator() {
+                    @Override
+                    public BaseFragmentModel create() {
+                        return new BookmarkImportModel(getActivity().getApplication(),
+                                aKey, aSearchSet, true, "DictionaryBookmarkImport");
+                    }
+                },
+                aKey, aSearchSet, true,
                 "Import bookmarks", "DictionaryBookmarkImport", false, true);
     }
 
