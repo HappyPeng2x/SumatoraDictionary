@@ -40,7 +40,6 @@ import java.util.HashMap;
 
 public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
     public static class Status {
-        public String lang;
         public HashMap<String, String> entities;
     }
 
@@ -250,7 +249,7 @@ public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
     }
 
     public void bindTo(final DictionarySearchElement entry) {
-        if (!entry.lang.equals(m_status.lang)) {
+        if (!entry.getLang().equals(entry.getLangSetting())) {
             m_cardView.setBackgroundColor(Color.LTGRAY);
         } else {
             m_cardView.setBackgroundColor(Color.WHITE);

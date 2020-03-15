@@ -56,7 +56,7 @@ public class BaseFragmentModel extends AndroidViewModel {
                     + "DictionaryEntry.pos, DictionaryEntry.xref, DictionaryEntry.ant, "
                     + "DictionaryEntry.misc, DictionaryEntry.lsource, DictionaryEntry.dial, "
                     + "DictionaryEntry.s_inf, DictionaryEntry.field, "
-                    + "?, "
+                    + "?, ?, "
                     + "DictionaryTranslation.gloss, "
                     + "null as example_sentences "
                     + "FROM DictionaryElement, "
@@ -73,7 +73,7 @@ public class BaseFragmentModel extends AndroidViewModel {
                     + "DictionaryEntry.pos, DictionaryEntry.xref, DictionaryEntry.ant, "
                     + "DictionaryEntry.misc, DictionaryEntry.lsource, DictionaryEntry.dial, "
                     + "DictionaryEntry.s_inf, DictionaryEntry.field, "
-                    + "?, "
+                    + "?, ?, "
                     + "DictionaryTranslation.gloss, "
                     + "json_group_array(examples.sentence) as example_sentences "
                     + "FROM DictionaryElement, "
@@ -340,7 +340,12 @@ public class BaseFragmentModel extends AndroidViewModel {
                         public void callback(QueryNextStatementResult aResult) {
                             mQueryResult = aResult;
 
-                            if (mState != STATUS_RESULTS_FOUND_ENDED) {
+                            if (!mQueryResult.found) {
+                                if (mState != STATUS_NO_RESULTS_FOUND_ENDED) {
+                                    mState = STATUS_NO_RESULTS_FOUND_ENDED;
+                                    mStatus.setValue(mState);
+                                }
+                            } else if (mState != STATUS_RESULTS_FOUND_ENDED) {
                                 mState = STATUS_RESULTS_FOUND_ENDED;
                                 mStatus.setValue(mState);
                             }
@@ -709,12 +714,14 @@ public class BaseFragmentModel extends AndroidViewModel {
                         aContainer.deleteDisplayElement.execute();
 
                         aContainer.insertDisplayElementStatement.bindString(1, aLanguageSettings.lang);
-                        aContainer.insertDisplayElementStatement.bindLong(2, aKey);
+                        aContainer.insertDisplayElementStatement.bindString(2, aLanguageSettings.lang);
+                        aContainer.insertDisplayElementStatement.bindLong(3, aKey);
                         aContainer.insertDisplayElementStatement.execute();
 
                         if (aContainer.insertDisplayElementStatementBackup != null) {
                             aContainer.insertDisplayElementStatementBackup.bindString(1, aLanguageSettings.backupLang);
-                            aContainer.insertDisplayElementStatementBackup.bindLong(2, aKey);
+                            aContainer.insertDisplayElementStatementBackup.bindString(2, aLanguageSettings.lang);
+                            aContainer.insertDisplayElementStatementBackup.bindLong(3, aKey);
                             aContainer.insertDisplayElementStatementBackup.execute();
                         }
                     }
@@ -768,6 +775,11 @@ public class BaseFragmentModel extends AndroidViewModel {
                 } else {
                     container.insertDisplayElementStatement =
                             db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT, aLanguageSettings.lang));
+
+                    if (hasBackupDictionary) {
+                        container.insertDisplayElementStatementBackup =
+                                db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT, aLanguageSettings.backupLang));
+                    }
                 }
 
                 container.deleteDisplayElement = db.compileStatement(SQL_QUERY_DELETE_DISPLAY_ELEMENT);
@@ -1086,20 +1098,35 @@ public class BaseFragmentModel extends AndroidViewModel {
             return;
         }
 
+        // No need to go to async task if there is no statement
+        if (aStatements.insertAllStatement == null && aCallback != null) {
+            final QueryNextStatementResult result = new QueryNextStatementResult();
+
+            result.found = false;
+            result.nextStatement = 0;
+
+            aCallback.callback(result);
+
+            return;
+        }
+
         new AsyncTask<Void, Void, QueryNextStatementResult>() {
             @Override
             protected QueryNextStatementResult doInBackground(Void... voids) {
                 final QueryNextStatementResult result = new QueryNextStatementResult();
 
                 result.nextStatement = 0;
-                result.found = true;
+                result.found = false;
 
                 aDatabase.runInTransaction(new Runnable() {
                     @Override
                     public void run() {
                         if (aAllowQueryAll) {
                             aStatements.insertAllStatement.bindLong(1, aKey);
-                            aStatements.insertAllStatement.executeInsert();
+
+                            if (aStatements.insertAllStatement.executeInsert() > 0) {
+                                result.found = true;
+                            }
                         }
                     }
                 });

@@ -47,21 +47,17 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import org.happypeng.sumatora.android.sumatoradictionary.BuildConfig;
-import org.happypeng.sumatora.android.sumatoradictionary.adapter.DictionaryPagedListAdapter;
-import org.happypeng.sumatora.android.sumatoradictionary.model.BaseFragmentModelFactory;
-import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionarySearchElementViewHolder;
 import org.happypeng.sumatora.android.sumatoradictionary.R;
+import org.happypeng.sumatora.android.sumatoradictionary.adapter.DictionaryPagedListAdapter;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
 import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary;
-import org.happypeng.sumatora.android.sumatoradictionary.db.tools.DisplayStatus;
-import org.happypeng.sumatora.android.sumatoradictionary.db.tools.QueryTool;
-import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Settings;
 import org.happypeng.sumatora.android.sumatoradictionary.model.BaseFragmentModel;
+import org.happypeng.sumatora.android.sumatoradictionary.model.BaseFragmentModelFactory;
+import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionarySearchElementViewHolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import java.util.Set;
 
 public abstract class BaseFragment<M extends BaseFragmentModel> extends Fragment {
     static final String AUTHORITY = "org.happypeng.sumatora.android.sumatoradictionary.fileprovider";
@@ -183,7 +179,12 @@ public abstract class BaseFragment<M extends BaseFragmentModel> extends Fragment
         }
 
         m_searchStatusText.setVisibility(View.VISIBLE);
-        m_searchStatusText.setText("No results found for term '" + m_term + "'.");
+
+        if (!m_allowSearchAll && "".equals(m_term)) {
+            m_searchStatusText.setText("");
+        } else {
+            m_searchStatusText.setText("No results found for term '" + m_term + "'.");
+        }
 
         m_statusText.setVisibility(View.GONE);
         m_progressBar.setVisibility(View.GONE);
@@ -266,7 +267,6 @@ public abstract class BaseFragment<M extends BaseFragmentModel> extends Fragment
                 new Observer<Integer>() {
                     @Override
                     public void onChanged(Integer status) {
-
                         m_viewHolderStatus.entities = m_viewModel.getDictionaryApplication().getEntities();
 
                         if (status == null || status == BaseFragmentModel.STATUS_PRE_INITIALIZED) {
@@ -300,20 +300,6 @@ public abstract class BaseFragment<M extends BaseFragmentModel> extends Fragment
                                 installedDictionaries);
                     }
                 });
-        /*
-        m_viewModel.getLangSelectionMenuStatus().observe(getViewLifecycleOwner(),
-                new Observer<BaseFragmentModel.LangSelectionMenuStatus>() {
-                    @Override
-                    public void onChanged(BaseFragmentModel.LangSelectionMenuStatus langSelectionMenuStatus) {
-                        if (langSelectionMenuStatus.attachView != null &&
-                            langSelectionMenuStatus.installedDictionaries != null) {
-                            if (m_languagePopupMenu == null) {
-                                m_languagePopupMenu = initLanguagePopupMenu(langSelectionMenuStatus.attachView,
-                                        langSelectionMenuStatus.installedDictionaries);
-                            }
-                        }
-                    }
-                }); */
 
         return view;
     }

@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 6,
-    "identityHash": "e242a9f574f9d4d88298485b3ce13a7c",
+    "identityHash": "17f2a3a3a158a428627ee179caf708c4",
     "entities": [
       {
         "tableName": "PersistentSetting",
@@ -85,7 +85,7 @@
       },
       {
         "tableName": "DictionaryDisplayElement",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`ref` INTEGER NOT NULL, `entryOrder` INTEGER NOT NULL, `seq` INTEGER NOT NULL, `readingsPrio` TEXT, `readings` TEXT, `writingsPrio` TEXT, `writings` TEXT, `pos` TEXT, `xref` TEXT, `ant` TEXT, `misc` TEXT, `lsource` TEXT, `dial` TEXT, `s_inf` TEXT, `field` TEXT, `lang` TEXT, `gloss` TEXT, `example_sentences` TEXT, PRIMARY KEY(`ref`, `seq`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`ref` INTEGER NOT NULL, `entryOrder` INTEGER NOT NULL, `seq` INTEGER NOT NULL, `readingsPrio` TEXT, `readings` TEXT, `writingsPrio` TEXT, `writings` TEXT, `pos` TEXT, `xref` TEXT, `ant` TEXT, `misc` TEXT, `lsource` TEXT, `dial` TEXT, `s_inf` TEXT, `field` TEXT, `lang` TEXT, `lang_setting` TEXT, `gloss` TEXT, `example_sentences` TEXT, PRIMARY KEY(`ref`, `seq`))",
         "fields": [
           {
             "fieldPath": "ref",
@@ -180,6 +180,12 @@
           {
             "fieldPath": "lang",
             "columnName": "lang",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "lang_setting",
+            "columnName": "lang_setting",
             "affinity": "TEXT",
             "notNull": false
           },
@@ -491,7 +497,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'e242a9f574f9d4d88298485b3ce13a7c')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '17f2a3a3a158a428627ee179caf708c4')"
     ]
   }
 }

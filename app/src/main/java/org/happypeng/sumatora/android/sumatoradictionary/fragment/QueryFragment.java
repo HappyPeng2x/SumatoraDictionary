@@ -140,22 +140,6 @@ public class QueryFragment extends BaseFragment<BaseFragmentModel> {
                     }
                 });
 
-        /*
-        m_viewModel.setLangSelectionMenuStatusView(languageText);
-
-        m_viewModel.getLangSelectionStatus().observe(getViewLifecycleOwner(),
-                new Observer<BaseFragmentModel.LangSelectionStatus>() {
-                    @Override
-                    public void onChanged(BaseFragmentModel.LangSelectionStatus langSelectionStatus) {
-                        languageText.setText(langSelectionStatus.lang);
-
-                        m_listAdapter.notifyDataSetChanged();
-
-                        m_viewHolderStatus.lang = langSelectionStatus.lang;
-                    }
-                });
-         */
-
         m_languageText.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {

@@ -36,6 +36,7 @@ public class DictionaryDisplayElement {
     public String s_inf;
     public String field;
     public String lang;
+    public String lang_setting;
     public String gloss;
     public String example_sentences;
 

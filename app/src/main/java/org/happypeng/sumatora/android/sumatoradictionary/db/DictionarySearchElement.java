@@ -32,6 +32,7 @@ public class DictionarySearchElement {
     public String s_inf;
     public String field;
     public String lang;
+    public String lang_setting;
     public String gloss;
     public String example_sentences;
     public long bookmark;
@@ -65,6 +66,8 @@ public class DictionarySearchElement {
     public String getLang() {
         return lang;
     }
+
+    public String getLangSetting() { return lang_setting; }
 
     public String getGloss() {
         return gloss;

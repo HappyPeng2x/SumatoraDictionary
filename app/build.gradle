@@ -46,7 +46,7 @@ android {
             buildConfigField("boolean", "DEBUG_UI", "true");
         }
     }
-    buildToolsVersion '28.0.3'
+    buildToolsVersion '29.0.3'
     productFlavors {
     }
 }
@@ -57,7 +57,7 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.1.0'
     implementation 'androidx.legacy:legacy-support-v4:1.0.0'
 
-    testImplementation 'junit:junit:4.12'
+    testImplementation 'junit:junit:4.13'
     androidTestImplementation 'androidx.test:core:1.2.0'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
     androidTestImplementation 'androidx.test.ext:junit:1.1.1'
@@ -65,20 +65,20 @@ dependencies {
 
     implementation 'androidx.recyclerview:recyclerview:1.1.0'
     implementation 'androidx.percentlayout:percentlayout:1.0.0'
-    implementation 'com.google.android.material:material:1.0.0'
+    implementation 'com.google.android.material:material:1.1.0'
     implementation 'com.github.daniel-stoneuk:material-about-library:2.4.2'
 
-    implementation "androidx.lifecycle:lifecycle-extensions:2.1.0"
-    annotationProcessor "androidx.lifecycle:lifecycle-compiler:2.1.0"
+    implementation "androidx.lifecycle:lifecycle-extensions:2.2.0"
+    annotationProcessor "androidx.lifecycle:lifecycle-compiler:2.2.0"
 
-    implementation "androidx.room:room-runtime:2.2.3"
-    annotationProcessor "androidx.room:room-compiler:2.2.3"
+    implementation "androidx.room:room-runtime:2.2.4"
+    annotationProcessor "androidx.room:room-compiler:2.2.4"
 
     implementation "androidx.paging:paging-runtime:2.1.1"
     implementation "androidx.paging:paging-common:2.1.1"
 
-    implementation "org.slf4j:slf4j-api:1.7.25"
+    implementation 'org.slf4j:slf4j-api:1.7.30'
     implementation "com.github.tony19:logback-android:2.0.0"
 
-    implementation 'io.requery:sqlite-android:3.30.1'
+    implementation 'io.requery:sqlite-android:3.31.0'
 }
