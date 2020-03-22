@@ -244,10 +244,10 @@ public class BaseFragmentModel extends AndroidViewModel {
 
     public static class QueryAllStatement extends QueryStatement {
         private QueryAllStatement(final PersistentDatabase aDB,
-                                    int aRef, int aOrder,
-                                    final PersistantLanguageSettings aLanguageSettings,
-                                    final SupportSQLiteStatement aStatement,
-                                    final SupportSQLiteStatement aBackupStatement) {
+                                  int aRef, int aOrder,
+                                  final PersistantLanguageSettings aLanguageSettings,
+                                  final SupportSQLiteStatement aStatement,
+                                  final SupportSQLiteStatement aBackupStatement) {
             super(aDB, aRef, aOrder, aLanguageSettings, aStatement, aBackupStatement);
         }
 
@@ -255,33 +255,28 @@ public class BaseFragmentModel extends AndroidViewModel {
         long execute(final String term) {
             final ValueHolder<Long> returnValue = new ValueHolder<>(Long.valueOf(-1));
 
-            database.runInTransaction(new Runnable() {
-                @Override
-                public void run() {
-                    long insert = -1;
-                    long backupInsert = -1;
+            long insert = -1;
+            long backupInsert = -1;
 
-                    statement.bindLong(1, ref);
-                    statement.bindLong(2, order);
-                    statement.bindString(3, languageSettings.lang);
-                    statement.bindString(4, languageSettings.lang);
+            statement.bindLong(1, ref);
+            statement.bindLong(2, order);
+            statement.bindString(3, languageSettings.lang);
+            statement.bindString(4, languageSettings.lang);
 
-                    insert = statement.executeInsert();
+            insert = statement.executeInsert();
 
-                    if (backupStatement != null) {
-                        backupStatement.bindLong(1, ref);
-                        backupStatement.bindLong(2, order);
-                        backupStatement.bindString(3, languageSettings.backupLang);
-                        backupStatement.bindString(4, languageSettings.lang);
+            if (backupStatement != null) {
+                backupStatement.bindLong(1, ref);
+                backupStatement.bindLong(2, order);
+                backupStatement.bindString(3, languageSettings.backupLang);
+                backupStatement.bindString(4, languageSettings.lang);
 
-                        backupInsert = backupStatement.executeInsert();
+                backupInsert = backupStatement.executeInsert();
 
-                        returnValue.setValue(Math.max(backupInsert, insert));
-                    } else {
-                        returnValue.setValue(insert);
-                    }
-                }
-            });
+                returnValue.setValue(Math.max(backupInsert, insert));
+            } else {
+                returnValue.setValue(insert);
+            }
 
             return returnValue.getValue();
         }
@@ -343,49 +338,59 @@ public class BaseFragmentModel extends AndroidViewModel {
     // Query
     @MainThread
     private void processQueryInitial()  {
-        if ("".equals(mTerm)) {
-            insertQueryAll(mCurrentDatabase, mAllowQueryAll, mKey, mLanguageSettings,
-                    mQueryStatements, new QueryNextStatementCallback() {
-                        @Override
-                        public void callback(QueryNextStatementResult aResult) {
-                            mQueryResult = aResult;
+        mStatus.setValue(STATUS_SEARCHING);
 
-                            if (!mQueryResult.found) {
-                                mStatus.setValue(STATUS_NO_RESULTS_FOUND_ENDED);
-                            } else {
-                                mStatus.setValue(STATUS_RESULTS_FOUND_ENDED);
-                            }
-                        }
-                    });
-        } else {
-            executeQueryNextStatement(mCurrentDatabase, mTerm, mQueryResult, mQueryStatements, new QueryNextStatementCallback() {
-                @Override
-                public void callback(QueryNextStatementResult aResult) {
-                    mQueryResult = aResult;
+        executeQueryInitial(mCurrentDatabase, mTerm, mQueryResult, mQueryStatements, new QueryNextStatementCallback() {
+            @Override
+            public void callback(QueryNextStatementResult aResult) {
+                mQueryResult = aResult;
 
-                    if (!mQueryResult.found) {
-                        mStatus.setValue(STATUS_NO_RESULTS_FOUND_ENDED);
+                if (!mQueryResult.found) {
+                    mStatus.setValue(STATUS_NO_RESULTS_FOUND_ENDED);
+                } else {
+                    if (aResult.nextStatement >= mQueryStatements.statements.length) {
+                        mStatus.setValue(STATUS_RESULTS_FOUND_ENDED);
                     } else {
-                        if (aResult.nextStatement >= mQueryStatements.statements.length) {
-                            mStatus.setValue(STATUS_RESULTS_FOUND_ENDED);
-                        } else {
-                            mStatus.setValue(STATUS_RESULTS_FOUND);
-                        }
+                        mStatus.setValue(STATUS_RESULTS_FOUND);
                     }
                 }
-            });
-        }
+            }
+        });
     }
 
-    @MainThread
-    private void resetAndProcessQueryInitial() {
+    // Delete all elements in table then perform query in a single transaction
+    private void processResetAndQueryInitial()  {
+        mStatus.setValue(STATUS_SEARCHING);
+
+        executeResetAndQueryInitial(mKey, mCurrentDatabase, mTerm, mQueryResult, mQueryStatements, new QueryNextStatementCallback() {
+            @Override
+            public void callback(QueryNextStatementResult aResult) {
+                mQueryResult = aResult;
+
+                if (!mQueryResult.found) {
+                    mStatus.setValue(STATUS_NO_RESULTS_FOUND_ENDED);
+                } else {
+                    if (aResult.nextStatement >= mQueryStatements.statements.length) {
+                        mStatus.setValue(STATUS_RESULTS_FOUND_ENDED);
+                    } else {
+                        mStatus.setValue(STATUS_RESULTS_FOUND);
+                    }
+                }
+            }
+        });
+    }
+
+    // Delete all elements in table in a transaction, then perform query in another transaction (it resets scroll)
+    private void processResetThenQueryInitial()  {
+        mStatus.setValue(STATUS_SEARCHING);
+
         resetQuery(mCurrentDatabase, mKey, mQueryStatements, new QueryNextStatementCallback() {
             @Override
             public void callback(QueryNextStatementResult aResult) {
                 mQueryResult = aResult;
 
                 processQueryInitial();
-            };
+            }
         });
     }
 
@@ -440,7 +445,7 @@ public class BaseFragmentModel extends AndroidViewModel {
         final InvalidationTracker.Observer observer = new InvalidationTracker.Observer(mTableObserve) {
             @Override
             public void onInvalidated(@NonNull Set<String> tables) {
-                resetAndProcessQueryInitial();
+                processResetAndQueryInitial();
             }
         };
 
@@ -545,7 +550,7 @@ public class BaseFragmentModel extends AndroidViewModel {
         if (!aTerm.equals(mTerm)) {
             mTerm = aTerm;
 
-            resetAndProcessQueryInitial();
+            processResetThenQueryInitial();
         }
     }
 
@@ -769,60 +774,32 @@ public class BaseFragmentModel extends AndroidViewModel {
         void callback(QueryNextStatementResult aResult);
     }
 
-    @MainThread
-    private static void insertQueryAll(final PersistentDatabase aDatabase,
-                                       final boolean aAllowQueryAll,
-                                       final int aKey,
-                                       final PersistantLanguageSettings aLanguageSettings,
-                                       final QueryStatementsContainer aStatements,
-                                       final QueryNextStatementCallback aCallback) {
-        if (aDatabase == null || aStatements == null) {
-            return;
+    @WorkerThread
+    private static QueryNextStatementResult performInsertQueryAll(final QueryStatementsContainer aStatements) {
+        final QueryNextStatementResult result = new QueryNextStatementResult();
+
+        result.nextStatement = 0;
+        result.found = false;
+
+        if (aStatements.insertAllStatement != null && aStatements.insertAllStatement.execute(null) > 0) {
+            result.found = true;
         }
 
-        // No need to go to async task if there is no statement
-        if (aStatements.insertAllStatement == null && aCallback != null) {
-            final QueryNextStatementResult result = new QueryNextStatementResult();
+        return result;
+    }
 
-            result.found = false;
-            result.nextStatement = 0;
+    @WorkerThread
+    private static QueryNextStatementResult performResetQuery(final int mKey,
+                                                              final QueryStatementsContainer aStatements) {
+        final QueryNextStatementResult result = new QueryNextStatementResult();
 
-            aCallback.callback(result);
+        result.nextStatement = 0;
+        result.found = false;
 
-            return;
-        }
+        aStatements.deleteStatement.bindLong(1, mKey);
+        aStatements.deleteStatement.executeUpdateDelete();
 
-        new AsyncTask<Void, Void, QueryNextStatementResult>() {
-            @Override
-            protected QueryNextStatementResult doInBackground(Void... voids) {
-                final QueryNextStatementResult result = new QueryNextStatementResult();
-
-                result.nextStatement = 0;
-                result.found = false;
-
-                aDatabase.runInTransaction(new Runnable() {
-                    @Override
-                    public void run() {
-                        if (aAllowQueryAll) {
-                            if (aStatements.insertAllStatement.execute(null) > 0) {
-                                result.found = true;
-                            }
-                        }
-                    }
-                });
-
-                return result;
-            }
-
-            @Override
-            protected void onPostExecute(QueryNextStatementResult queryNextStatementResult) {
-                super.onPostExecute(queryNextStatementResult);
-
-                if (aCallback != null) {
-                    aCallback.callback(queryNextStatementResult);
-                }
-            }
-        }.execute();
+        return result;
     }
 
     @MainThread
@@ -839,14 +816,99 @@ public class BaseFragmentModel extends AndroidViewModel {
             protected QueryNextStatementResult doInBackground(Void... voids) {
                 final QueryNextStatementResult result = new QueryNextStatementResult();
 
-                result.nextStatement = 0;
-                result.found = false;
+                aDatabase.runInTransaction(new Runnable() {
+                    @Override
+                    public void run() {
+                        final QueryNextStatementResult newResult =
+                            performResetQuery(mKey, aStatements);
+
+                        result.nextStatement = newResult.nextStatement;
+                        result.found = newResult.found;
+                    }
+                });
+
+                return result;
+            }
+
+            @Override
+            protected void onPostExecute(QueryNextStatementResult queryNextStatementResult) {
+                super.onPostExecute(queryNextStatementResult);
+
+                if (aCallback != null) {
+                    aCallback.callback(queryNextStatementResult);
+                }
+            }
+        }.execute();
+    }
+
+    @WorkerThread
+    private static QueryNextStatementResult performQueryInitial(final String aTerm,
+                                                                final QueryNextStatementResult aPreviousResult,
+                                                                final QueryStatementsContainer aStatements) {
+        if ("".equals(aTerm)) {
+            return performInsertQueryAll(aStatements);
+        } else {
+            return performExecuteQueryNextStatement(aTerm, aPreviousResult, aStatements);
+        }
+    }
+
+    @WorkerThread
+    private static QueryNextStatementResult performResetAndQueryInitial(final int aKey,
+                                                                        final String aTerm,
+                                                                        final QueryNextStatementResult aPreviousResult,
+                                                                        final QueryStatementsContainer aStatements) {
+        QueryNextStatementResult result = performResetQuery(aKey, aStatements);
+        return performQueryInitial(aTerm, result, aStatements);
+    }
+
+    @WorkerThread
+    private static QueryNextStatementResult performExecuteQueryNextStatement(final String aTerm,
+                                                                             final QueryNextStatementResult aPreviousResult,
+                                                                             final QueryStatementsContainer aStatements) {
+        long lastInsert = -1;
+        final QueryNextStatementResult result = new QueryNextStatementResult();
+
+        result.nextStatement = aPreviousResult == null ? 0 : aPreviousResult.nextStatement;
+
+        while (lastInsert == -1 && result.nextStatement < aStatements.statements.length) {
+            if (aStatements.statements[result.nextStatement] != null) {
+                lastInsert = aStatements.statements[result.nextStatement].execute(aTerm);
+            }
+
+            result.nextStatement = result.nextStatement + 1;
+        }
+
+        if (lastInsert >= 0) {
+            result.found = true;
+        }
+
+        return result;
+    }
+
+    @MainThread
+    private static void executeQueryInitial(final PersistentDatabase aDatabase,
+                                            final String aTerm,
+                                            final QueryNextStatementResult aPreviousResult,
+                                            final QueryStatementsContainer aStatements,
+                                            final QueryNextStatementCallback aCallback) {
+        if (aDatabase == null || aTerm == null || aStatements == null ||
+                (aPreviousResult != null && aPreviousResult.nextStatement >= aStatements.statements.length)) {
+            return;
+        }
+
+        new AsyncTask<Void, Void, QueryNextStatementResult>() {
+            @Override
+            protected QueryNextStatementResult doInBackground(Void... voids) {
+                final QueryNextStatementResult result = new QueryNextStatementResult();
 
                 aDatabase.runInTransaction(new Runnable() {
                     @Override
                     public void run() {
-                        aStatements.deleteStatement.bindLong(1, mKey);
-                        aStatements.deleteStatement.executeUpdateDelete();
+                        final QueryNextStatementResult newResult =
+                                performQueryInitial(aTerm, aPreviousResult, aStatements);
+
+                        result.found = newResult.found;
+                        result.nextStatement = newResult.nextStatement;
                     }
                 });
 
@@ -865,12 +927,13 @@ public class BaseFragmentModel extends AndroidViewModel {
     }
 
     @MainThread
-    private static void executeQueryNextStatement(final PersistentDatabase aDatabase,
-                                                  final String aTerm,
-                                                  final QueryNextStatementResult aPreviousResult,
-                                                  final QueryStatementsContainer aStatements,
-                                                  final QueryNextStatementCallback aCallback) {
-        if (aDatabase == null || aTerm == null || aTerm.equals("") || aStatements == null ||
+    private static void executeResetAndQueryInitial(final int aKey,
+                                                    final PersistentDatabase aDatabase,
+                                                    final String aTerm,
+                                                    final QueryNextStatementResult aPreviousResult,
+                                                    final QueryStatementsContainer aStatements,
+                                                    final QueryNextStatementCallback aCallback) {
+        if (aDatabase == null || aTerm == null || aStatements == null ||
                 (aPreviousResult != null && aPreviousResult.nextStatement >= aStatements.statements.length)) {
             return;
         }
@@ -883,20 +946,11 @@ public class BaseFragmentModel extends AndroidViewModel {
                 aDatabase.runInTransaction(new Runnable() {
                     @Override
                     public void run() {
-                        long lastInsert = -1;
-                        result.nextStatement = aPreviousResult == null ? 0 : aPreviousResult.nextStatement;
+                        final QueryNextStatementResult newResult =
+                                performResetAndQueryInitial(aKey, aTerm, aPreviousResult, aStatements);
 
-                        while (lastInsert == -1 && result.nextStatement < aStatements.statements.length) {
-                            if (aStatements.statements[result.nextStatement] != null) {
-                                lastInsert = aStatements.statements[result.nextStatement].execute(aTerm);
-                            }
-
-                            result.nextStatement = result.nextStatement + 1;
-                        }
-
-                        if (lastInsert >= 0) {
-                            result.found = true;
-                        }
+                        result.found = newResult.found;
+                        result.nextStatement = newResult.nextStatement;
                     }
                 });
 
@@ -932,7 +986,7 @@ public class BaseFragmentModel extends AndroidViewModel {
                                     @Override
                                     public void onItemAtEndLoaded(@NonNull DictionarySearchElement itemAtEnd) {
                                         if (!"".equals(mTerm)) {
-                                            executeQueryNextStatement(mCurrentDatabase, mTerm, mQueryResult, mQueryStatements, new QueryNextStatementCallback() {
+                                            executeQueryInitial(mCurrentDatabase, mTerm, mQueryResult, mQueryStatements, new QueryNextStatementCallback() {
                                                 @Override
                                                 public void callback(QueryNextStatementResult aResult) {
                                                     mQueryResult = aResult;
