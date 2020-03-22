@@ -154,8 +154,7 @@ public class BookmarkImportFragment extends BaseFragment<BookmarkImportModel> {
                                 aKey, aSearchSet, true, "DictionaryBookmarkImport");
                     }
                 },
-                aKey, aSearchSet, true,
-                "Import bookmarks", "DictionaryBookmarkImport", false, true);
+                aKey, "Import bookmarks", false, true);
     }
 
     public void processUri(Uri aUri) {

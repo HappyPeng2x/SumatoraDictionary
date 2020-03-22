@@ -41,6 +41,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistantLanguageSettings;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.RoomFactoryWrapper;
+import org.happypeng.sumatora.android.sumatoradictionary.db.tools.ValueHolder;
 import org.happypeng.sumatora.jromkan.Romkan;
 
 import java.io.IOException;
@@ -50,112 +51,96 @@ import java.util.Set;
 public class BaseFragmentModel extends AndroidViewModel {
     // Display related SQL queries
     static private final String SQL_QUERY_INSERT_DISPLAY_ELEMENT =
-            "INSERT OR IGNORE INTO DictionaryDisplayElement SELECT DictionaryElement.ref, DictionaryElement.entryOrder, DictionaryElement.seq, "
-                    + "DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
-                    + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, "
-                    + "DictionaryEntry.pos, DictionaryEntry.xref, DictionaryEntry.ant, "
-                    + "DictionaryEntry.misc, DictionaryEntry.lsource, DictionaryEntry.dial, "
-                    + "DictionaryEntry.s_inf, DictionaryEntry.field, "
-                    + "?, ?, "
-                    + "DictionaryTranslation.gloss, "
-                    + "null as example_sentences "
-                    + "FROM DictionaryElement, "
-                    + " jmdict.DictionaryEntry, "
-                    + " %s.DictionaryTranslation "
-                    + "WHERE DictionaryElement.seq = DictionaryEntry.seq AND "
-                    + " DictionaryElement.seq = DictionaryTranslation.seq AND "
-                    + " DictionaryElement.ref = ?";
+            "INSERT OR IGNORE INTO DictionaryDisplayElement "
+                    + "SELECT ? AS ref, "
+                        + "? AS entryOrder, "
+                        + "DictionaryEntry.seq, "
+                        + "DictionaryEntry.readingsPrio, "
+                        + "DictionaryEntry.readings, "
+                        + "DictionaryEntry.writingsPrio, "
+                        + "DictionaryEntry.writings, "
+                        + "DictionaryEntry.pos, "
+                        + "DictionaryEntry.xref, "
+                        + "DictionaryEntry.ant, "
+                        + "DictionaryEntry.misc, "
+                        + "DictionaryEntry.lsource, "
+                        + "DictionaryEntry.dial, "
+                        + "DictionaryEntry.s_inf, "
+                        + "DictionaryEntry.field, "
+                        + "? AS lang, "
+                        + "? AS lang_setting, "
+                        + "DictionaryTranslation.gloss, "
+                        + "null as example_sentences "
+                    + "FROM jmdict.DictionaryEntry, "
+                        + "%s.DictionaryTranslation "
+                    + "WHERE DictionaryEntry.seq = DictionaryTranslation.seq AND "
+                        + "DictionaryEntry.seq IN (%s) %s";
 
-    static private final String SQL_QUERY_INSERT_DISPLAY_ELEMENT_EXAMPLES =
-            "INSERT OR IGNORE INTO DictionaryDisplayElement SELECT DictionaryElement.ref, DictionaryElement.entryOrder, DictionaryElement.seq, "
-                    + "DictionaryEntry.readingsPrio, DictionaryEntry.readings, "
-                    + "DictionaryEntry.writingsPrio, DictionaryEntry.writings, "
-                    + "DictionaryEntry.pos, DictionaryEntry.xref, DictionaryEntry.ant, "
-                    + "DictionaryEntry.misc, DictionaryEntry.lsource, DictionaryEntry.dial, "
-                    + "DictionaryEntry.s_inf, DictionaryEntry.field, "
-                    + "?, ?, "
-                    + "DictionaryTranslation.gloss, "
-                    + "json_group_array(examples.sentence) as example_sentences "
-                    + "FROM DictionaryElement, "
-                    + " (jmdict.DictionaryEntry LEFT JOIN (%s.Examples, %s.ExamplesIndex) ON "
-                    + " ExamplesIndex.seq = DictionaryEntry.seq AND ExamplesIndex.id = Examples.id), "
-                    + " %s.DictionaryTranslation "
-                    + "WHERE DictionaryElement.seq = DictionaryEntry.seq AND "
-                    + " DictionaryElement.seq = DictionaryTranslation.seq AND "
-                    + " DictionaryElement.ref = ? "
-                    + "GROUP BY DictionaryElement.seq";
-
-    static private final String SQL_QUERY_DELETE_DISPLAY_ELEMENT =
+    static private final String SQL_QUERY_DELETE =
             "DELETE FROM DictionaryDisplayElement WHERE DictionaryDisplayElement.ref = ?";
 
     // Query related SQL queries
-    public static final int ORDER_MULTIPLIER = 10000;
-
-    static private final String SQL_QUERY_DELETE =
-            "DELETE FROM DictionaryElement WHERE ref = ?";
-
     static private final String SQL_QUERY_ALL =
-            "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, 0 AS entryOrder, DictionaryEntry.seq "
+            "SELECT DictionaryEntry.seq "
                     + "FROM jmdict.DictionaryEntry";
 
     static private final String SQL_QUERY_EXACT_WRITING_PRIO =
-            "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
+            "SELECT DictionaryIndex.`rowid` AS seq "
                     + "FROM jmdict.DictionaryIndex "
                     + "WHERE writingsPrio MATCH ?";
 
     static private final String SQL_QUERY_EXACT_READING_PRIO =
-            "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
+            "SELECT DictionaryIndex.`rowid` AS seq "
                     + "FROM jmdict.DictionaryIndex "
                     + "WHERE readingsPrioKana MATCH ?";
 
-
     static private final String SQL_QUERY_EXACT_WRITING_NONPRIO =
-            "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
+            "SELECT DictionaryIndex.`rowid` AS seq "
                     + "FROM jmdict.DictionaryIndex "
                     + "WHERE writings MATCH ?";
 
     static private final String SQL_QUERY_EXACT_READING_NONPRIO =
-            "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
+            "SELECT DictionaryIndex.`rowid` AS seq "
                     + "FROM jmdict.DictionaryIndex "
                     + "WHERE readingsKana MATCH ?";
 
     static private final String SQL_QUERY_BEGIN_WRITING_PRIO =
-            "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
+            "SELECT DictionaryIndex.`rowid` AS seq "
                     + "FROM jmdict.DictionaryIndex "
                     + "WHERE writingsPrio MATCH ? || '*'";
 
     static private final String SQL_QUERY_BEGIN_READING_PRIO =
-            "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
+            "SELECT DictionaryIndex.`rowid` AS seq "
                     + "FROM jmdict.DictionaryIndex "
                     + "WHERE readingsPrioKana MATCH ? || '*'";
 
     static private final String SQL_QUERY_BEGIN_WRITING_NONPRIO =
-            "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
+            "SELECT DictionaryIndex.`rowid` AS seq "
                     + "FROM jmdict.DictionaryIndex "
                     + "WHERE writings MATCH ? || '*'";
 
     static private final String SQL_QUERY_BEGIN_READING_NONPRIO =
-            "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
+            "SELECT DictionaryIndex.`rowid` AS seq "
                     + "FROM jmdict.DictionaryIndex "
                     + "WHERE readingsKana MATCH ? || '*'";
 
     static private final String SQL_QUERY_PARTS_WRITING_PRIO =
-            "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
+            "SELECT DictionaryIndex.`rowid` AS seq "
                     + "FROM jmdict.DictionaryIndex "
                     + "WHERE writingsPrioParts MATCH ? || '*'";
 
     static private final String SQL_QUERY_PARTS_READING_PRIO =
-            "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
+            "SELECT DictionaryIndex.`rowid` AS seq "
                     + "FROM jmdict.DictionaryIndex "
                     + "WHERE readingsPrioKanaParts MATCH ? || '*'";
 
     static private final String SQL_QUERY_PARTS_WRITING_NONPRIO =
-            "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
+            "SELECT DictionaryIndex.`rowid` AS seq "
                     + "FROM jmdict.DictionaryIndex "
                     + "WHERE writingsParts MATCH ? || '*'";
 
     static private final String SQL_QUERY_PARTS_READING_NONPRIO =
-            "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ? AS entryOrder, DictionaryIndex.`rowid` AS seq "
+            "SELECT DictionaryIndex.`rowid` AS seq "
                     + "FROM jmdict.DictionaryIndex "
                     + "WHERE readingsKanaParts MATCH ? || '*'";
 
@@ -163,12 +148,22 @@ public class BaseFragmentModel extends AndroidViewModel {
     private static abstract class QueryStatement {
         final int ref;
         final int order;
+        final PersistantLanguageSettings languageSettings;
+        final PersistentDatabase database;
         final SupportSQLiteStatement statement;
+        final SupportSQLiteStatement backupStatement;
 
-        private QueryStatement(int aRef, int aOrder, final SupportSQLiteStatement aStatement) {
+        private QueryStatement(final PersistentDatabase aDB,
+                               int aRef, int aOrder,
+                               final PersistantLanguageSettings aLanguageSettings,
+                               final SupportSQLiteStatement aStatement,
+                               final SupportSQLiteStatement aBackupStatement) {
             ref = aRef;
             order = aOrder;
             statement = aStatement;
+            backupStatement = aBackupStatement;
+            languageSettings = aLanguageSettings;
+            database = aDB;
         }
 
         @WorkerThread
@@ -177,70 +172,118 @@ public class BaseFragmentModel extends AndroidViewModel {
         public int getOrder() {
             return order;
         }
+
+        @WorkerThread
+        public void close() throws IOException {
+            statement.close();
+
+            if (backupStatement != null) {
+                backupStatement.close();
+            }
+        }
     }
 
     public static class BasicQueryStatement extends QueryStatement {
         private final boolean kana;
         private final Romkan romkan;
 
-        private BasicQueryStatement(int aRef, int aOrder, final SupportSQLiteStatement aStatement,
+        private BasicQueryStatement(final PersistentDatabase aDB,
+                                    int aRef, int aOrder,
+                                    final PersistantLanguageSettings aLanguageSettings,
+                                    final SupportSQLiteStatement aStatement,
+                                    final SupportSQLiteStatement aBackupStatement,
                                     boolean aKana, final Romkan aRomkan) {
-            super(aRef, aOrder, aStatement);
+            super(aDB, aRef, aOrder, aLanguageSettings, aStatement, aBackupStatement);
 
             kana = aKana;
             romkan = aRomkan;
         }
 
         @WorkerThread
-        long execute(String term) {
-            String bindTerm = term;
+        long execute(final String term) {
+            final ValueHolder<Long> returnValue = new ValueHolder<>(Long.valueOf(-1));
 
-            if (kana) {
-                bindTerm = romkan.to_katakana(romkan.to_hepburn(term));
-            }
+            database.runInTransaction(new Runnable() {
+                @Override
+                public void run() {
+                    String bindTerm = term;
+                    long insert = -1;
+                    long backupInsert = -1;
 
-            statement.bindLong(1, ref);
-            statement.bindLong(2, order * ORDER_MULTIPLIER);
-            statement.bindString(3, bindTerm);
+                    if (kana) {
+                        bindTerm = romkan.to_katakana(romkan.to_hepburn(term));
+                    }
 
-            return statement.executeInsert();
+                    statement.bindLong(1, ref);
+                    statement.bindLong(2, order);
+                    statement.bindString(3, languageSettings.lang);
+                    statement.bindString(4, languageSettings.lang);
+                    statement.bindString(5, bindTerm);
+
+                    insert = statement.executeInsert();
+
+                    if (backupStatement != null) {
+                        backupStatement.bindLong(1, ref);
+                        backupStatement.bindLong(2, order);
+                        backupStatement.bindString(3, languageSettings.backupLang);
+                        backupStatement.bindString(4, languageSettings.lang);
+                        backupStatement.bindString(5, bindTerm);
+
+                        backupInsert = backupStatement.executeInsert();
+
+                        returnValue.setValue(Math.max(backupInsert, insert));
+                    } else {
+                        returnValue.setValue(insert);
+                    }
+                }
+            });
+
+            return returnValue.getValue();
         }
     }
 
-    public static class ReverseQueryStatement extends QueryStatement {
-        static private final String SQL_QUERY_TRANSLATION_START =
-                "INSERT OR IGNORE INTO DictionaryElement SELECT ? AS ref, ?+split_offsets(offsets(DictionaryTranslationIndex), ' ', 2, " + (ORDER_MULTIPLIER - 1) + ") AS entryOrder, DictionaryTranslationIndex.`rowid` AS seq "
-                        + "FROM ";
-        static private final String SQL_QUERY_TRANSLATION_END =
-                ".DictionaryTranslationIndex WHERE gloss MATCH ?";
-        static private final String SQL_QUERY_TRANSLATION_BEGIN_END =
-                ".DictionaryTranslationIndex WHERE gloss MATCH ? || '*'";
-
-        private ReverseQueryStatement(int aRef, int aOrder, final SupportSQLiteStatement aStatement) {
-            super(aRef, aOrder, aStatement);
+    public static class QueryAllStatement extends QueryStatement {
+        private QueryAllStatement(final PersistentDatabase aDB,
+                                    int aRef, int aOrder,
+                                    final PersistantLanguageSettings aLanguageSettings,
+                                    final SupportSQLiteStatement aStatement,
+                                    final SupportSQLiteStatement aBackupStatement) {
+            super(aDB, aRef, aOrder, aLanguageSettings, aStatement, aBackupStatement);
         }
 
         @WorkerThread
-        static SupportSQLiteStatement createStatementExact(final PersistentDatabase aDB, final String aLang) {
-            String query = SQL_QUERY_TRANSLATION_START + aLang + SQL_QUERY_TRANSLATION_END;
+        long execute(final String term) {
+            final ValueHolder<Long> returnValue = new ValueHolder<>(Long.valueOf(-1));
 
-            return aDB.compileStatement(query);
-        }
+            database.runInTransaction(new Runnable() {
+                @Override
+                public void run() {
+                    long insert = -1;
+                    long backupInsert = -1;
 
-        @WorkerThread
-        static SupportSQLiteStatement createStatementBegin(final PersistentDatabase aDB, final String aLang) {
-            String query = SQL_QUERY_TRANSLATION_START + aLang + SQL_QUERY_TRANSLATION_BEGIN_END;
+                    statement.bindLong(1, ref);
+                    statement.bindLong(2, order);
+                    statement.bindString(3, languageSettings.lang);
+                    statement.bindString(4, languageSettings.lang);
 
-            return aDB.compileStatement(query);
-        }
+                    insert = statement.executeInsert();
 
-        @Override
-        long execute(String term) {
-            statement.bindLong(1, ref);
-            statement.bindLong(2, order * ORDER_MULTIPLIER);
-            statement.bindString(3, term);
+                    if (backupStatement != null) {
+                        backupStatement.bindLong(1, ref);
+                        backupStatement.bindLong(2, order);
+                        backupStatement.bindString(3, languageSettings.backupLang);
+                        backupStatement.bindString(4, languageSettings.lang);
 
-            return statement.executeInsert();
+                        backupInsert = backupStatement.executeInsert();
+
+                        returnValue.setValue(Math.max(backupInsert, insert));
+                    } else {
+                        returnValue.setValue(insert);
+                    }
+                }
+            });
+
+            return returnValue.getValue();
         }
     }
 
@@ -254,9 +297,6 @@ public class BaseFragmentModel extends AndroidViewModel {
     public static final int STATUS_RESULTS_FOUND = 3;
     public static final int STATUS_NO_RESULTS_FOUND_ENDED = 4;
     public static final int STATUS_RESULTS_FOUND_ENDED = 5;
-
-    // Display related SQL statements
-    private DisplayStatementsContainer mDisplayStatements;
 
     // Lang selection menu
     private LiveData<List<InstalledDictionary>> mInstalledDictionariesLive;
@@ -308,7 +348,7 @@ public class BaseFragmentModel extends AndroidViewModel {
         int state = STATUS_PRE_INITIALIZED;
 
         if (mCurrentDatabase != null && mLanguageSettings != null && mInstalledDictionaries != null &&
-                mQueryStatements != null && mQueryStatements.statements.length == 14 && mDisplayStatements != null) {
+                mQueryStatements != null && mQueryStatements.statements.length == 14) {
             state = STATUS_INITIALIZED;
         }
 
@@ -337,7 +377,8 @@ public class BaseFragmentModel extends AndroidViewModel {
                 }
 
                 if ("".equals(mTerm)) {
-                    insertQueryAll(mCurrentDatabase, mAllowQueryAll, mKey, mQueryStatements, new QueryNextStatementCallback() {
+                    insertQueryAll(mCurrentDatabase, mAllowQueryAll, mKey, mLanguageSettings,
+                            mQueryStatements, new QueryNextStatementCallback() {
                         @Override
                         public void callback(QueryNextStatementResult aResult) {
                             mQueryResult = aResult;
@@ -395,53 +436,13 @@ public class BaseFragmentModel extends AndroidViewModel {
             }
         };
 
-        // Display
-        final Function<Void, Void> processDisplayStatements = new Function<Void, Void>() {
-            @Override
-            public Void apply(Void input) {
-                if (mCurrentDatabase != null && mLanguageSettings != null && mInstalledDictionaries != null) {
-                    createDisplayStatements(mCurrentDatabase, mLanguageSettings, mInstalledDictionaries,
-                            new DisplayStatementsCallback() {
-                                @Override
-                                public void callback(DisplayStatementsContainer aContainer) {
-                                    mDisplayStatements = aContainer;
-
-                                    updateInitializationStatus();
-
-                                    insertDisplayElements(mCurrentDatabase, mKey, mLanguageSettings, aContainer);
-                                }
-                            });
-                }
-
-                return null;
-            }
-        };
-
-        final Function<Void, Void> processQueryLanguage = new Function<Void, Void>() {
-            @Override
-            public Void apply(Void input) {
-                if (mCurrentDatabase != null && mLanguageSettings != null) {
-                    setQueryLang(mCurrentDatabase, mLanguageSettings.lang, mKey, mQueryStatements, new QueryStatementsCallback() {
-                        @Override
-                        public void callback(QueryStatementsContainer statements) {
-                            mQueryStatements = statements;
-
-                            updateInitializationStatus();
-
-                            processQueryInitial();
-                        }
-                    });
-                }
-                return null;
-            }
-        };
-
         // Create new statements and perform query
         final Function<Void, Void> processQueryStatements = new Function<Void, Void>() {
             @Override
             public Void apply(Void input) {
-                if (mCurrentDatabase != null) {
-                    createQueryStatements(mCurrentDatabase, mKey, mAllowQueryAll, mSearchSet, mRomkan,
+                if (mCurrentDatabase != null && mLanguageSettings != null) {
+                    createQueryStatements(mCurrentDatabase, mKey, mAllowQueryAll, mSearchSet,
+                            mLanguageSettings, mRomkan,
                             new QueryStatementsCallback() {
                                 @Override
                                 public void callback(QueryStatementsContainer statements) {
@@ -449,9 +450,36 @@ public class BaseFragmentModel extends AndroidViewModel {
 
                                     updateInitializationStatus();
 
-                                    processQueryLanguage.apply(null);
+                                    processQueryInitial();
                                 }
                             });
+                }
+
+                return null;
+            }
+        };
+
+        final Function<Void, Void> resetQueryStatements = new Function<Void, Void>() {
+            @Override
+            public Void apply(Void input) {
+                if (mQueryStatements != null) {
+                    // Clear query, close statements, create new statements and perform query
+                    resetQuery(mCurrentDatabase, mKey, mQueryStatements, new QueryNextStatementCallback() {
+                        @Override
+                        public void callback(QueryNextStatementResult aResult) {
+                            mQueryResult = aResult;
+
+                            closeQueryStatements(mQueryStatements, new QueryStatementsCallback() {
+                                @Override
+                                public void callback(QueryStatementsContainer statements) {
+                                    processQueryStatements.apply(null);
+                                }
+                            });
+                        }
+                    });
+                } else {
+                    // Create new statements and perform query
+                    processQueryStatements.apply(null);
                 }
 
                 return null;
@@ -469,36 +497,7 @@ public class BaseFragmentModel extends AndroidViewModel {
 
                         mCurrentDatabase = persistentDatabase;
 
-                        if (mQueryStatements != null) {
-                            // Clear query, close statements, create new statements and perform query
-                            resetQuery(mCurrentDatabase, mKey, mQueryStatements, new QueryNextStatementCallback() {
-                                @Override
-                                public void callback(QueryNextStatementResult aResult) {
-                                    mQueryResult = aResult;
-
-                                    closeQueryStatements(mQueryStatements, new QueryStatementsCallback() {
-                                        @Override
-                                        public void callback(QueryStatementsContainer statements) {
-                                            processQueryStatements.apply(null);
-                                        }
-                                    });
-                                }
-                            });
-                        } else {
-                            // Create new statements and perform query
-                            processQueryStatements.apply(null);
-                        }
-
-                        if (mDisplayStatements != null) {
-                            closeDisplayStatements(mDisplayStatements, new DisplayStatementsCallback() {
-                                @Override
-                                public void callback(DisplayStatementsContainer aContainer) {
-                                    processDisplayStatements.apply(null);
-                                }
-                            });
-                        } else {
-                            processDisplayStatements.apply(null);
-                        }
+                        resetQueryStatements.apply(null);
 
                         if (mCurrentDatabase != null) {
                             if (!"".equals(mTableObserve)) {
@@ -512,25 +511,74 @@ public class BaseFragmentModel extends AndroidViewModel {
         mStatus.addSource(mApp.getPersistentLanguageSettings(),
                 new Observer<PersistantLanguageSettings>() {
                     @Override
-                    public void onChanged(PersistantLanguageSettings s) {
+                    public void onChanged(final PersistantLanguageSettings s) {
                         mLanguageSettings = s;
 
-                        // Query
-                        processQueryLanguage.apply(null);
+                        if (mQueryStatements != null && mLanguageSettings == null) {
+                                resetQuery(mCurrentDatabase, mKey, mQueryStatements, new QueryNextStatementCallback() {
+                                    @Override
+                                    public void callback(QueryNextStatementResult aResult) {
+                                        mQueryResult = aResult;
 
-                        // Display
-                        if (mDisplayStatements != null) {
-                            closeDisplayStatements(mDisplayStatements, new DisplayStatementsCallback() {
+                                        final QueryStatementsContainer statements = mQueryStatements;
+                                        mQueryStatements = null;
+
+                                        updateInitializationStatus();
+
+                                        closeQueryStatements(statements, null);
+                                    }
+                                });
+                        }
+
+                        if (mQueryStatements == null && mLanguageSettings != null) {
+                                createQueryStatements(mCurrentDatabase, mKey, mAllowQueryAll, mSearchSet,
+                                        mLanguageSettings, mRomkan,
+                                        new QueryStatementsCallback() {
+                                            @Override
+                                            public void callback(QueryStatementsContainer statements) {
+                                                mQueryStatements = statements;
+
+                                                updateInitializationStatus();
+
+                                                processQueryInitial();
+                                            }
+                                        });
+                        }
+
+                        if (mQueryStatements != null && mLanguageSettings != null) {
+                            resetQuery(mCurrentDatabase, mKey, mQueryStatements, new QueryNextStatementCallback() {
                                 @Override
-                                public void callback(DisplayStatementsContainer aContainer) {
-                                    processDisplayStatements.apply(null);
+                                public void callback(QueryNextStatementResult aResult) {
+                                    mQueryResult = aResult;
+
+                                    final QueryStatementsContainer statements = mQueryStatements;
+                                    mQueryStatements = null;
+
+                                    updateInitializationStatus();
+
+                                    closeQueryStatements(statements, new QueryStatementsCallback() {
+                                        @Override
+                                        public void callback(QueryStatementsContainer statements) {
+                                            createQueryStatements(mCurrentDatabase, mKey, mAllowQueryAll, mSearchSet,
+                                                    mLanguageSettings, mRomkan,
+                                                    new QueryStatementsCallback() {
+                                                        @Override
+                                                        public void callback(QueryStatementsContainer statements) {
+                                                            mQueryStatements = statements;
+
+                                                            updateInitializationStatus();
+
+                                                            processQueryInitial();
+                                                        }
+                                                    });
+                                        }
+                                    });
                                 }
                             });
-                        } else {
-                            processDisplayStatements.apply(null);
                         }
                     }
                 });
+
 
         // Installed dictionaries list
         mInstalledDictionariesLive =
@@ -552,41 +600,6 @@ public class BaseFragmentModel extends AndroidViewModel {
                     @Override
                     public void onChanged(List<InstalledDictionary> installedDictionaries) {
                         mInstalledDictionaries = installedDictionaries;
-
-                        // Display
-                        if (mDisplayStatements != null) {
-                            closeDisplayStatements(mDisplayStatements, new DisplayStatementsCallback() {
-                                @Override
-                                public void callback(DisplayStatementsContainer aContainer) {
-                                    processDisplayStatements.apply(null);
-                                }
-                            });
-                        } else {
-                            processDisplayStatements.apply(null);
-                        }
-                    }
-                });
-
-        // Query results
-        final LiveData<Long> elements =
-                Transformations.switchMap(mApp.getPersistentDatabase(),
-                        new Function<PersistentDatabase, LiveData<Long>>() {
-                            @Override
-                            public LiveData<Long> apply(PersistentDatabase input) {
-                                if (input != null) {
-                                    return input.dictionaryElementDao().getFirstLive();
-                                }
-
-                                return null;
-                            }
-                        });
-
-        // Query results changed
-        mStatus.addSource(elements,
-                new Observer<Long>() {
-                    @Override
-                    public void onChanged(Long aLong) {
-                        insertDisplayElements(mCurrentDatabase, mKey, mLanguageSettings, mDisplayStatements);
                     }
                 });
     }
@@ -639,13 +652,7 @@ public class BaseFragmentModel extends AndroidViewModel {
         if (!aTerm.equals(mTerm)) {
             mTerm = aTerm;
 
-            deleteDisplayElements(mCurrentDatabase, mKey, mDisplayStatements,
-                    new DisplayCallback() {
-                        @Override
-                        public void callback() {
-                            processQueryInitial();
-                        }
-                    });
+            processQueryInitial();
         }
     }
 
@@ -653,212 +660,12 @@ public class BaseFragmentModel extends AndroidViewModel {
         return mTerm;
     }
 
-    // Display related methods
-    static class DisplayStatementsContainer {
-        SupportSQLiteStatement insertDisplayElementStatement;
-        SupportSQLiteStatement insertDisplayElementStatementBackup;
-        SupportSQLiteStatement deleteDisplayElement;
-    }
-
-    interface DisplayStatementsCallback {
-        void callback(DisplayStatementsContainer aContainer);
-    }
-
-    interface DisplayCallback {
-        void callback();
-    }
-
-    @MainThread
-    private static void deleteDisplayElements(final PersistentDatabase aDatabase,
-                                              final int aKey,
-                                              final DisplayStatementsContainer aContainer,
-                                              final DisplayCallback aCallback) {
-        if (aDatabase == null || aContainer == null) {
-            return;
-        }
-
-        new AsyncTask<Void, Void, Void>() {
-            @Override
-            protected Void doInBackground(Void... voids) {
-                aDatabase.runInTransaction(new Runnable() {
-                    @Override
-                    public void run() {
-                        aContainer.deleteDisplayElement.bindLong(1, aKey);
-                        aContainer.deleteDisplayElement.execute();
-                    }
-                });
-
-                return null;
-            }
-
-            @Override
-            protected void onPostExecute(Void aVoid) {
-                super.onPostExecute(aVoid);
-
-                if (aCallback != null) {
-                    aCallback.callback();
-                }
-            }
-        }.execute();
-    }
-
-    @MainThread
-    private static void insertDisplayElements(final PersistentDatabase aDatabase,
-                                              final int aKey,
-                                              final PersistantLanguageSettings aLanguageSettings,
-                                              final DisplayStatementsContainer aContainer) {
-        if (aDatabase == null || aLanguageSettings == null || aContainer == null) {
-            return;
-        }
-
-        new AsyncTask<Void, Void, Void>() {
-            @Override
-            protected Void doInBackground(Void... voids) {
-                aDatabase.runInTransaction(new Runnable() {
-                    @Override
-                    public void run() {
-                        aContainer.deleteDisplayElement.bindLong(1, aKey);
-                        aContainer.deleteDisplayElement.execute();
-
-                        aContainer.insertDisplayElementStatement.bindString(1, aLanguageSettings.lang);
-                        aContainer.insertDisplayElementStatement.bindString(2, aLanguageSettings.lang);
-                        aContainer.insertDisplayElementStatement.bindLong(3, aKey);
-                        aContainer.insertDisplayElementStatement.execute();
-
-                        if (aContainer.insertDisplayElementStatementBackup != null) {
-                            aContainer.insertDisplayElementStatementBackup.bindString(1, aLanguageSettings.backupLang);
-                            aContainer.insertDisplayElementStatementBackup.bindString(2, aLanguageSettings.lang);
-                            aContainer.insertDisplayElementStatementBackup.bindLong(3, aKey);
-                            aContainer.insertDisplayElementStatementBackup.execute();
-                        }
-                    }
-                });
-
-                return null;
-            }
-        }.execute();
-    }
-
-    // NO BACKUP LANGUAGE STATEMENT YET!
-    @MainThread
-    private static void createDisplayStatements(final PersistentDatabase aDatabase, final PersistantLanguageSettings aLanguageSettings,
-                                                final List<InstalledDictionary> aDictionaries, final DisplayStatementsCallback aCallback) {
-        new AsyncTask<Void, Void, DisplayStatementsContainer>() {
-            @Override
-            protected DisplayStatementsContainer doInBackground(Void... voids) {
-                DisplayStatementsContainer container = new DisplayStatementsContainer();
-                SupportSQLiteDatabase db = aDatabase.getOpenHelper().getWritableDatabase();
-
-                boolean hasExamples = false;
-                boolean hasDictionary = false;
-                boolean hasBackupDictionary = false;
-
-                for (InstalledDictionary d : aDictionaries) {
-                    if ("jmdict_translation".equals(d.type)) {
-                        if (aLanguageSettings.lang.equals(d.lang)) {
-                            hasDictionary = true;
-                        }
-
-                        if (aLanguageSettings.backupLang != null && aLanguageSettings.backupLang.equals(d.lang)) {
-                            hasBackupDictionary = true;
-                        }
-                    } else if ("tatoeba".equals(d.type) && aLanguageSettings.lang.equals(d.lang)) {
-                        hasExamples = true;
-                    }
-                }
-
-                if (!hasDictionary) {
-                    System.err.println("Dictionary for " + aLanguageSettings.lang + " is not installed.");
-                }
-
-                if (aLanguageSettings.backupLang != null && !hasBackupDictionary) {
-                    System.err.println("Dictionary for backup language " + aLanguageSettings.backupLang + " is not installed.");
-                }
-
-                if (hasExamples) {
-                    container.insertDisplayElementStatement =
-                            db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT_EXAMPLES, "examples_" + aLanguageSettings.lang,
-                                    "examples_" + aLanguageSettings.lang, aLanguageSettings.lang));
-                } else {
-                    container.insertDisplayElementStatement =
-                            db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT, aLanguageSettings.lang));
-
-                    if (hasBackupDictionary) {
-                        container.insertDisplayElementStatementBackup =
-                                db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT, aLanguageSettings.backupLang));
-                    }
-                }
-
-                container.deleteDisplayElement = db.compileStatement(SQL_QUERY_DELETE_DISPLAY_ELEMENT);
-
-                return container;
-            }
-
-            @Override
-            protected void onPostExecute(DisplayStatementsContainer displayStatementsContainer) {
-                super.onPostExecute(displayStatementsContainer);
-
-                aCallback.callback(displayStatementsContainer);
-            }
-        }.execute();
-
-
-    }
-
-    @MainThread
-    private static void closeDisplayStatements(final DisplayStatementsContainer aContainer,
-                                               final DisplayStatementsCallback aCallback) {
-        new AsyncTask<Void, Void, Void>() {
-            @Override
-            protected Void doInBackground(Void... voids) {
-                if (aContainer.insertDisplayElementStatement != null) {
-                    try {
-                        aContainer.insertDisplayElementStatement.close();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-
-                    aContainer.insertDisplayElementStatement = null;
-                }
-
-                if (aContainer.insertDisplayElementStatementBackup != null) {
-                    try {
-                        aContainer.insertDisplayElementStatementBackup.close();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-
-                    aContainer.insertDisplayElementStatementBackup = null;
-                }
-
-                if (aContainer.deleteDisplayElement != null) {
-                    try {
-                        aContainer.deleteDisplayElement.close();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-
-                    aContainer.deleteDisplayElement = null;
-                }
-
-                return null;
-            }
-
-            @Override
-            protected void onPostExecute(Void aVoid) {
-                super.onPostExecute(aVoid);
-
-                aCallback.callback(null);
-            }
-        }.execute();
-    }
-
     // Query related methods
 
     // Initialization: mKey, mSearchSet, mRomkan, mCurrentDatabase -> mQueries, mLang -> end
     static class QueryStatementsContainer {
         QueryStatement[] statements;
-        SupportSQLiteStatement insertAllStatement;
+        QueryStatement insertAllStatement;
         SupportSQLiteStatement deleteStatement;
     }
 
@@ -868,71 +675,129 @@ public class BaseFragmentModel extends AndroidViewModel {
 
     @MainThread
     private static void createQueryStatements(final PersistentDatabase aDatabase, final int aKey, final boolean aAllowQueryAll,
-                                              final String aSearchSet, final Romkan aRomkan, final QueryStatementsCallback aCallback) {
+                                              final String aSearchSet, final PersistantLanguageSettings aLanguageSettings,
+                                              final Romkan aRomkan, final QueryStatementsCallback aCallback) {
         new AsyncTask<Void, Void, QueryStatementsContainer>() {
             @Override
             protected QueryStatementsContainer doInBackground(Void... voids) {
                 QueryStatementsContainer container = new QueryStatementsContainer();
                 SupportSQLiteDatabase db = aDatabase.getOpenHelper().getWritableDatabase();
 
+                String searchSet = aSearchSet == null ? "" : "AND DictionaryEntry.seq IN (" + aSearchSet + ")";
+
                 if (aAllowQueryAll) {
-                    container.insertAllStatement = db.compileStatement(aSearchSet == null ? SQL_QUERY_ALL :
-                            SQL_QUERY_ALL + " WHERE DictionaryEntry.seq IN (" + aSearchSet + ")");
+                    container.insertAllStatement = new QueryAllStatement(aDatabase, aKey, 1, aLanguageSettings,
+                            db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
+                                    aLanguageSettings.lang, SQL_QUERY_ALL, searchSet)),
+                            aLanguageSettings.backupLang == null ? db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
+                                    aLanguageSettings.backupLang, SQL_QUERY_ALL, searchSet)) : null);
                 }
 
                 container.deleteStatement = db.compileStatement(SQL_QUERY_DELETE);
 
                 final SupportSQLiteStatement queryExactPrioWriting =
-                        db.compileStatement(aSearchSet == null ? SQL_QUERY_EXACT_WRITING_PRIO :
-                                SQL_QUERY_EXACT_WRITING_PRIO + " AND DictionaryIndex.`rowid` IN (" + aSearchSet + ")");
+                        db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
+                                aLanguageSettings.lang, SQL_QUERY_EXACT_WRITING_PRIO, searchSet));
                 final SupportSQLiteStatement queryExactPrioReading =
-                        db.compileStatement(aSearchSet == null ? SQL_QUERY_EXACT_READING_PRIO :
-                                SQL_QUERY_EXACT_READING_PRIO + " AND DictionaryIndex.`rowid` IN (" + aSearchSet + ")");
+                        db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
+                                aLanguageSettings.lang, SQL_QUERY_EXACT_READING_PRIO, searchSet));
                 final SupportSQLiteStatement queryExactNonPrioWriting =
-                        db.compileStatement(aSearchSet == null ? SQL_QUERY_EXACT_WRITING_NONPRIO :
-                                SQL_QUERY_EXACT_WRITING_NONPRIO + " AND DictionaryIndex.`rowid` IN (" + aSearchSet + ")");
+                        db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
+                                aLanguageSettings.lang, SQL_QUERY_EXACT_WRITING_NONPRIO, searchSet));
                 final SupportSQLiteStatement queryExactNonPrioReading =
-                        db.compileStatement(aSearchSet == null ? SQL_QUERY_EXACT_READING_NONPRIO :
-                                SQL_QUERY_EXACT_READING_NONPRIO + " AND DictionaryIndex.`rowid` IN (" + aSearchSet + ")");
+                        db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
+                                aLanguageSettings.lang, SQL_QUERY_EXACT_READING_NONPRIO, searchSet));
                 final SupportSQLiteStatement queryBeginPrioWriting =
-                        db.compileStatement(aSearchSet == null ? SQL_QUERY_BEGIN_WRITING_PRIO :
-                                SQL_QUERY_BEGIN_WRITING_PRIO + " AND DictionaryIndex.`rowid` IN (" + aSearchSet + ")");
+                        db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
+                                aLanguageSettings.lang, SQL_QUERY_BEGIN_WRITING_PRIO, searchSet));
                 final SupportSQLiteStatement queryBeginPrioReading =
-                        db.compileStatement(aSearchSet == null ? SQL_QUERY_BEGIN_READING_PRIO :
-                                SQL_QUERY_BEGIN_READING_PRIO + " AND DictionaryIndex.`rowid` IN (" + aSearchSet + ")");
+                        db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
+                                aLanguageSettings.lang, SQL_QUERY_BEGIN_READING_PRIO, searchSet));
                 final SupportSQLiteStatement queryBeginNonPrioWriting =
-                        db.compileStatement(aSearchSet == null ? SQL_QUERY_BEGIN_WRITING_NONPRIO :
-                                SQL_QUERY_BEGIN_WRITING_NONPRIO + " AND DictionaryIndex.`rowid` IN (" + aSearchSet + ")");
+                        db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
+                                aLanguageSettings.lang, SQL_QUERY_BEGIN_WRITING_NONPRIO, searchSet));
                 final SupportSQLiteStatement queryBeginNonPrioReading =
-                        db.compileStatement(aSearchSet == null ? SQL_QUERY_BEGIN_READING_NONPRIO :
-                                SQL_QUERY_BEGIN_READING_NONPRIO + " AND DictionaryIndex.`rowid` IN (" + aSearchSet + ")");
+                        db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
+                                aLanguageSettings.lang, SQL_QUERY_BEGIN_READING_NONPRIO, searchSet));
                 final SupportSQLiteStatement queryPartsPrioWriting =
-                        db.compileStatement(aSearchSet == null ? SQL_QUERY_PARTS_WRITING_PRIO :
-                                SQL_QUERY_PARTS_WRITING_PRIO + " AND DictionaryIndex.`rowid` IN (" + aSearchSet + ")");
+                        db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
+                                aLanguageSettings.lang, SQL_QUERY_PARTS_WRITING_PRIO, searchSet));
                 final SupportSQLiteStatement queryPartsPrioReading =
-                        db.compileStatement(aSearchSet == null ? SQL_QUERY_PARTS_READING_PRIO :
-                                SQL_QUERY_PARTS_READING_PRIO + " AND DictionaryIndex.`rowid` IN (" + aSearchSet + ")");
+                        db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
+                                aLanguageSettings.lang, SQL_QUERY_PARTS_READING_PRIO, searchSet));
                 final SupportSQLiteStatement queryPartsNonPrioWriting =
-                        db.compileStatement(aSearchSet == null ? SQL_QUERY_PARTS_WRITING_NONPRIO :
-                                SQL_QUERY_PARTS_WRITING_NONPRIO + " AND DictionaryIndex.`rowid` IN (" + aSearchSet + ")");
+                        db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
+                                aLanguageSettings.lang, SQL_QUERY_PARTS_WRITING_NONPRIO, searchSet));
                 final SupportSQLiteStatement queryPartsNonPrioReading =
-                        db.compileStatement(aSearchSet == null ? SQL_QUERY_PARTS_READING_NONPRIO :
-                                SQL_QUERY_PARTS_READING_NONPRIO + " AND DictionaryIndex.`rowid` IN (" + aSearchSet + ")");
+                        db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
+                                aLanguageSettings.lang, SQL_QUERY_PARTS_READING_NONPRIO, searchSet));
+
+                SupportSQLiteStatement queryExactPrioWritingBackup = null;
+                SupportSQLiteStatement queryExactPrioReadingBackup = null;
+                SupportSQLiteStatement queryExactNonPrioWritingBackup = null;
+                SupportSQLiteStatement queryExactNonPrioReadingBackup = null;
+                SupportSQLiteStatement queryBeginPrioWritingBackup = null;
+                SupportSQLiteStatement queryBeginPrioReadingBackup = null;
+                SupportSQLiteStatement queryBeginNonPrioWritingBackup = null;
+                SupportSQLiteStatement queryBeginNonPrioReadingBackup = null;
+                SupportSQLiteStatement queryPartsPrioWritingBackup = null;
+                SupportSQLiteStatement queryPartsPrioReadingBackup = null;
+                SupportSQLiteStatement queryPartsNonPrioWritingBackup = null;
+                SupportSQLiteStatement queryPartsNonPrioReadingBackup = null;
+
+                if (aLanguageSettings.backupLang != null) {
+                    queryExactPrioWritingBackup =
+                            db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
+                                    aLanguageSettings.backupLang, SQL_QUERY_EXACT_WRITING_PRIO, searchSet));
+                    queryExactPrioReadingBackup =
+                            db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
+                                    aLanguageSettings.backupLang, SQL_QUERY_EXACT_READING_PRIO, searchSet));
+                    queryExactNonPrioWritingBackup =
+                            db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
+                                    aLanguageSettings.backupLang, SQL_QUERY_EXACT_WRITING_NONPRIO, searchSet));
+                    queryExactNonPrioReadingBackup =
+                            db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
+                                    aLanguageSettings.backupLang, SQL_QUERY_EXACT_READING_NONPRIO, searchSet));
+                    queryBeginPrioWritingBackup =
+                            db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
+                                    aLanguageSettings.backupLang, SQL_QUERY_BEGIN_WRITING_PRIO, searchSet));
+                    queryBeginPrioReadingBackup =
+                            db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
+                                    aLanguageSettings.backupLang, SQL_QUERY_BEGIN_READING_PRIO, searchSet));
+                    queryBeginNonPrioWritingBackup =
+                            db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
+                                    aLanguageSettings.backupLang, SQL_QUERY_BEGIN_READING_PRIO, searchSet));
+                    queryBeginNonPrioReadingBackup =
+                            db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
+                                    aLanguageSettings.backupLang, SQL_QUERY_BEGIN_READING_NONPRIO, searchSet));
+                    queryPartsPrioWritingBackup =
+                            db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
+                                    aLanguageSettings.backupLang, SQL_QUERY_PARTS_WRITING_PRIO, searchSet));
+                    queryPartsPrioReadingBackup =
+                            db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
+                                    aLanguageSettings.backupLang, SQL_QUERY_PARTS_READING_PRIO, searchSet));
+                    queryPartsNonPrioWritingBackup =
+                            db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
+                                    aLanguageSettings.backupLang, SQL_QUERY_PARTS_WRITING_NONPRIO, searchSet));
+                    queryPartsNonPrioReadingBackup =
+                            db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
+                                    aLanguageSettings.backupLang, SQL_QUERY_PARTS_READING_NONPRIO, searchSet));
+                }
 
                 container.statements = new QueryStatement[12];
 
-                container.statements[0] = new BasicQueryStatement(aKey, 1, queryExactPrioWriting, false, aRomkan);
-                container.statements[1] = new BasicQueryStatement(aKey, 2, queryExactPrioReading, true, aRomkan);
-                container.statements[2] = new BasicQueryStatement(aKey, 3, queryExactNonPrioWriting, false, aRomkan);
-                container.statements[3] = new BasicQueryStatement(aKey, 4, queryExactNonPrioReading, true, aRomkan);
-                container.statements[4] = new BasicQueryStatement(aKey, 5, queryBeginPrioWriting, false, aRomkan);
-                container.statements[5] = new BasicQueryStatement(aKey, 6, queryBeginPrioReading, true, aRomkan);
-                container.statements[6] = new BasicQueryStatement(aKey, 7, queryBeginNonPrioWriting, false, aRomkan);
-                container.statements[7] = new BasicQueryStatement(aKey, 8, queryBeginNonPrioReading, true, aRomkan);
-                container.statements[8] = new BasicQueryStatement(aKey, 9, queryPartsPrioWriting, false, aRomkan);
-                container.statements[9] = new BasicQueryStatement(aKey, 10, queryPartsPrioReading, true, aRomkan);
-                container.statements[10] = new BasicQueryStatement(aKey, 11, queryPartsNonPrioWriting, false, aRomkan);
-                container.statements[11] = new BasicQueryStatement(aKey, 12, queryPartsNonPrioReading, true, aRomkan);
+                container.statements[0] = new BasicQueryStatement(aDatabase, aKey, 1, aLanguageSettings, queryExactPrioWriting, queryExactPrioWritingBackup, false, aRomkan);
+                container.statements[1] = new BasicQueryStatement(aDatabase, aKey, 2, aLanguageSettings, queryExactPrioReading, queryExactPrioReadingBackup, true, aRomkan);
+                container.statements[2] = new BasicQueryStatement(aDatabase, aKey, 3, aLanguageSettings, queryExactNonPrioWriting, queryExactNonPrioWritingBackup, false, aRomkan);
+                container.statements[3] = new BasicQueryStatement(aDatabase, aKey, 4, aLanguageSettings, queryExactNonPrioReading, queryExactNonPrioReadingBackup, true, aRomkan);
+                container.statements[4] = new BasicQueryStatement(aDatabase, aKey, 5, aLanguageSettings, queryBeginPrioWriting, queryBeginPrioWritingBackup, false, aRomkan);
+                container.statements[5] = new BasicQueryStatement(aDatabase, aKey, 6, aLanguageSettings, queryBeginPrioReading, queryBeginPrioReadingBackup, true, aRomkan);
+                container.statements[6] = new BasicQueryStatement(aDatabase, aKey, 7, aLanguageSettings, queryBeginNonPrioWriting, queryBeginNonPrioWritingBackup, false, aRomkan);
+                container.statements[7] = new BasicQueryStatement(aDatabase, aKey, 8, aLanguageSettings, queryBeginNonPrioReading, queryBeginNonPrioReadingBackup, true, aRomkan);
+                container.statements[8] = new BasicQueryStatement(aDatabase, aKey, 9, aLanguageSettings, queryPartsPrioWriting, queryPartsPrioWritingBackup, false, aRomkan);
+                container.statements[9] = new BasicQueryStatement(aDatabase, aKey, 10, aLanguageSettings, queryPartsPrioReading, queryPartsPrioReadingBackup, true, aRomkan);
+                container.statements[10] = new BasicQueryStatement(aDatabase, aKey, 11, aLanguageSettings, queryPartsNonPrioWriting, queryPartsNonPrioWritingBackup, false, aRomkan);
+                container.statements[11] = new BasicQueryStatement(aDatabase, aKey, 12, aLanguageSettings, queryPartsNonPrioReading, queryPartsNonPrioReadingBackup, true, aRomkan);
 
                 return container;
             }
@@ -977,7 +842,7 @@ public class BaseFragmentModel extends AndroidViewModel {
                     for (QueryStatement s : aContainer.statements) {
                         if (s != null) {
                             try {
-                                s.statement.close();
+                                s.close();
                             } catch (IOException e) {
                                 e.printStackTrace();
                             }
@@ -994,95 +859,11 @@ public class BaseFragmentModel extends AndroidViewModel {
             protected void onPostExecute(Void aVoid) {
                 super.onPostExecute(aVoid);
 
-                aCallback.callback(null);
-            }
-        }.execute();
-    }
-
-    @MainThread
-    private static void setQueryLang(final PersistentDatabase aDatabase, final String aLang, final int aKey,
-                                     final QueryStatementsContainer aContainer, final QueryStatementsCallback aCallback) {
-        if (aDatabase == null || aLang == null || aContainer == null) {
-            return;
-        }
-
-        new AsyncTask<Void, Void, ReverseQueryStatement[]>() {
-            @Override
-            protected ReverseQueryStatement[] doInBackground(Void... voids) {
-                ReverseQueryStatement[] statements = new ReverseQueryStatement[2];
-
-                statements[0] =
-                        new ReverseQueryStatement(aKey, 13, ReverseQueryStatement.createStatementExact(aDatabase, aLang));
-
-                statements[1] =
-                        new ReverseQueryStatement(aKey, 14, ReverseQueryStatement.createStatementBegin(aDatabase, aLang));
-
-                return statements;
-            }
-
-            @Override
-            protected void onPostExecute(ReverseQueryStatement[] reverseQueryStatements) {
-                super.onPostExecute(reverseQueryStatements);
-
-                QueryStatementsContainer container = new QueryStatementsContainer();
-
-                container.statements = new QueryStatement[14];
-
-                for (int i = 0; i < 12; i++) {
-                    container.statements[i] = aContainer.statements[i];
-                }
-
-                container.statements[12] = reverseQueryStatements[0];
-                container.statements[13] = reverseQueryStatements[1];
-
-                container.deleteStatement = aContainer.deleteStatement;
-                container.insertAllStatement = aContainer.insertAllStatement;
-
                 if (aCallback != null) {
-                    aCallback.callback(container);
+                    aCallback.callback(null);
                 }
             }
         }.execute();
-    }
-
-    // The display itself
-    public
-    LiveData<PagedList<DictionarySearchElement>> getDisplayElements() {
-        final PagedList.Config pagedListConfig =
-                (new PagedList.Config.Builder()).setEnablePlaceholders(false)
-                        .setPrefetchDistance(PAGE_SIZE)
-                        .setPageSize(PREFETCH_DISTANCE).build();
-
-        return Transformations.switchMap(mApp.getPersistentDatabase(),
-                new Function<PersistentDatabase, LiveData<PagedList<DictionarySearchElement>>>() {
-                    @Override
-                    public LiveData<PagedList<DictionarySearchElement>> apply(PersistentDatabase input) {
-                        return new LivePagedListBuilder<>
-                                (new RoomFactoryWrapper<>(input.dictionaryDisplayElementDao().getAllDetailsLivePaged(mKey)), pagedListConfig)
-                                .setBoundaryCallback(new PagedList.BoundaryCallback<DictionarySearchElement>() {
-                                    @Override
-                                    public void onItemAtEndLoaded(@NonNull DictionarySearchElement itemAtEnd) {
-                                        if (!"".equals(mTerm)) {
-                                            executeQueryNextStatement(mCurrentDatabase, mTerm, mQueryResult, mQueryStatements, new QueryNextStatementCallback() {
-                                                @Override
-                                                public void callback(QueryNextStatementResult aResult) {
-                                                    mQueryResult = aResult;
-
-                                                    if (mQueryStatements != null && mQueryResult.nextStatement >= mQueryStatements.statements.length) {
-                                                        if (mState != STATUS_RESULTS_FOUND_ENDED && mState != STATUS_NO_RESULTS_FOUND_ENDED) {
-                                                            mState = STATUS_RESULTS_FOUND_ENDED;
-                                                            mStatus.setValue(mState);
-                                                        }
-                                                    }
-                                                }
-                                            });
-                                        }
-
-                                        super.onItemAtEndLoaded(itemAtEnd);
-                                    }
-                                }).build();
-                    }
-                });
     }
 
     // Query execution
@@ -1099,6 +880,7 @@ public class BaseFragmentModel extends AndroidViewModel {
     private static void insertQueryAll(final PersistentDatabase aDatabase,
                                        final boolean aAllowQueryAll,
                                        final int aKey,
+                                       final PersistantLanguageSettings aLanguageSettings,
                                        final QueryStatementsContainer aStatements,
                                        final QueryNextStatementCallback aCallback) {
         if (aDatabase == null || aStatements == null) {
@@ -1129,9 +911,7 @@ public class BaseFragmentModel extends AndroidViewModel {
                     @Override
                     public void run() {
                         if (aAllowQueryAll) {
-                            aStatements.insertAllStatement.bindLong(1, aKey);
-
-                            if (aStatements.insertAllStatement.executeInsert() > 0) {
+                            if (aStatements.insertAllStatement.execute(null) > 0) {
                                 result.found = true;
                             }
                         }
@@ -1239,5 +1019,45 @@ public class BaseFragmentModel extends AndroidViewModel {
                 }
             }
         }.execute();
+    }
+
+    // The display itself
+    public
+    LiveData<PagedList<DictionarySearchElement>> getDisplayElements() {
+        final PagedList.Config pagedListConfig =
+                (new PagedList.Config.Builder()).setEnablePlaceholders(false)
+                        .setPrefetchDistance(PAGE_SIZE)
+                        .setPageSize(PREFETCH_DISTANCE).build();
+
+        return Transformations.switchMap(mApp.getPersistentDatabase(),
+                new Function<PersistentDatabase, LiveData<PagedList<DictionarySearchElement>>>() {
+                    @Override
+                    public LiveData<PagedList<DictionarySearchElement>> apply(PersistentDatabase input) {
+                        return new LivePagedListBuilder<>
+                                (new RoomFactoryWrapper<>(input.dictionaryDisplayElementDao().getAllDetailsLivePaged(mKey)), pagedListConfig)
+                                .setBoundaryCallback(new PagedList.BoundaryCallback<DictionarySearchElement>() {
+                                    @Override
+                                    public void onItemAtEndLoaded(@NonNull DictionarySearchElement itemAtEnd) {
+                                        if (!"".equals(mTerm)) {
+                                            executeQueryNextStatement(mCurrentDatabase, mTerm, mQueryResult, mQueryStatements, new QueryNextStatementCallback() {
+                                                @Override
+                                                public void callback(QueryNextStatementResult aResult) {
+                                                    mQueryResult = aResult;
+
+                                                    if (mQueryStatements != null && mQueryResult.nextStatement >= mQueryStatements.statements.length) {
+                                                        if (mState != STATUS_RESULTS_FOUND_ENDED && mState != STATUS_NO_RESULTS_FOUND_ENDED) {
+                                                            mState = STATUS_RESULTS_FOUND_ENDED;
+                                                            mStatus.setValue(mState);
+                                                        }
+                                                    }
+                                                }
+                                            });
+                                        }
+
+                                        super.onItemAtEndLoaded(itemAtEnd);
+                                    }
+                                }).build();
+                    }
+                });
     }
 }

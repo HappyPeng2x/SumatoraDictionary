@@ -36,9 +36,7 @@ public interface DictionaryDisplayElementDao {
             + "DictionaryDisplayElement.lang, DictionaryDisplayElement.lang_setting, DictionaryDisplayElement.gloss, DictionaryDisplayElement.example_sentences FROM "
             + "DictionaryDisplayElement LEFT JOIN DictionaryBookmark ON DictionaryDisplayElement.seq = DictionaryBookmark.seq "
             + "WHERE ref=:ref "
-            + "ORDER BY DictionaryDisplayElement.entryOrder/" + BaseFragmentModel.ORDER_MULTIPLIER + ", "
-            + "(DictionaryDisplayElement.writingsPrio = '' AND DictionaryDisplayElement.readingsPrio = ''), "
-            + "DictionaryDisplayElement.entryOrder-" + BaseFragmentModel.ORDER_MULTIPLIER + "*(DictionaryDisplayElement.entryOrder/" + BaseFragmentModel.ORDER_MULTIPLIER + "), "
+            + "ORDER BY DictionaryDisplayElement.entryOrder, "
             + "DictionaryDisplayElement.seq")
     LiveData<List<DictionarySearchElement>> getAllDetailsLive(int ref);
 
@@ -51,10 +49,9 @@ public interface DictionaryDisplayElementDao {
             + "DictionaryDisplayElement.lang, DictionaryDisplayElement.lang_setting, DictionaryDisplayElement.gloss, DictionaryDisplayElement.example_sentences FROM "
             + "DictionaryDisplayElement LEFT JOIN DictionaryBookmark ON DictionaryDisplayElement.seq = DictionaryBookmark.seq "
             + "WHERE ref=:ref "
-            + "ORDER BY DictionaryDisplayElement.entryOrder/" + BaseFragmentModel.ORDER_MULTIPLIER + ", "
-            + "(DictionaryDisplayElement.writingsPrio = '' AND DictionaryDisplayElement.readingsPrio = ''), "
-            + "DictionaryDisplayElement.entryOrder-" + BaseFragmentModel.ORDER_MULTIPLIER + "*(DictionaryDisplayElement.entryOrder/" + BaseFragmentModel.ORDER_MULTIPLIER + "), "
-            + "DictionaryDisplayElement.seq")    DataSource.Factory<Integer, DictionarySearchElement> getAllDetailsLivePaged(int ref);
+            + "ORDER BY DictionaryDisplayElement.entryOrder, "
+            + "DictionaryDisplayElement.seq")
+    DataSource.Factory<Integer, DictionarySearchElement> getAllDetailsLivePaged(int ref);
     @Query("DELETE FROM DictionaryDisplayElement")
     void deleteAll();
 }

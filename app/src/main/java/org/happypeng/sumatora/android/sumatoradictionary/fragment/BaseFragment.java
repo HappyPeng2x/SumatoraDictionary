@@ -16,7 +16,6 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.fragment;
 
-import android.app.Application;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.PorterDuff;
@@ -41,9 +40,7 @@ import androidx.appcompat.widget.SearchView;
 import androidx.appcompat.widget.Toolbar;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.Observer;
-import androidx.lifecycle.ViewModel;
 import androidx.lifecycle.ViewModelProvider;
-import androidx.lifecycle.ViewModelProviders;
 import androidx.paging.PagedList;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -85,10 +82,7 @@ public abstract class BaseFragment<M extends BaseFragmentModel> extends Fragment
     SearchView m_searchView;
 
     private int m_key;
-    private String m_searchSet;
-    private boolean m_allowSearchAll;
     private String m_title;
-    private String m_tableObserve;
     private boolean m_hasHomeButton;
     private boolean m_disableBookmarkButton;
 
@@ -100,32 +94,25 @@ public abstract class BaseFragment<M extends BaseFragmentModel> extends Fragment
         }
 
         m_key = 0;
-        m_searchSet = null;
-        m_allowSearchAll = false;
         m_title = null;
-        m_tableObserve = "";
 
         m_term = "";
     }
 
     public void setParameters(Class<M> a_viewModelClass,
                               BaseFragmentModelFactory.Creator a_viewModelCreator,
-                              int a_key, String aSearchSet, boolean aAllowSearchAll,
-                              @NonNull String aTitle, @NonNull String aTableObserve,
+                              int a_key, @NonNull String aTitle,
                               boolean aHasHomeButton, boolean aDisableBookmarkButton) {
         m_viewModelClass = a_viewModelClass;
         m_key = a_key;
-        m_searchSet = aSearchSet;
-        m_allowSearchAll = aAllowSearchAll;
         m_title = aTitle;
-        m_tableObserve = aTableObserve;
         m_hasHomeButton = aHasHomeButton;
         m_disableBookmarkButton = aDisableBookmarkButton;
         m_viewModelCreator = a_viewModelCreator;
     }
 
     private void setInPreparation() {
-        m_recyclerView.setAdapter(null);
+        // m_recyclerView.setAdapter(null);
 
         m_statusText.setVisibility(View.VISIBLE);
         m_progressBar.setVisibility(View.VISIBLE);
@@ -136,14 +123,13 @@ public abstract class BaseFragment<M extends BaseFragmentModel> extends Fragment
         m_statusText.setText("Loading database...");
         m_searchStatusText.setVisibility(View.GONE);
 
-
         if (m_searchView != null) {
             m_searchView.setActivated(false);
         }
     }
 
     private void setReady() {
-        m_recyclerView.setAdapter(m_listAdapter);
+        // m_recyclerView.setAdapter(m_listAdapter);
 
         m_progressBar.setIndeterminate(false);
         m_progressBar.setMax(0);
@@ -184,11 +170,11 @@ public abstract class BaseFragment<M extends BaseFragmentModel> extends Fragment
             m_searchView.setActivated(true);
         }
 
-        m_searchStatusText.setVisibility(View.VISIBLE);
-
-        if (!m_allowSearchAll && "".equals(m_term)) {
+        if ("".equals(m_term)) {
+            m_searchStatusText.setVisibility(View.GONE);
             m_searchStatusText.setText("");
         } else {
+            m_searchStatusText.setVisibility(View.VISIBLE);
             m_searchStatusText.setText("No results found for term '" + m_term + "'.");
         }
 
@@ -205,8 +191,13 @@ public abstract class BaseFragment<M extends BaseFragmentModel> extends Fragment
             m_searchView.setActivated(true);
         }
 
-        m_searchStatusText.setVisibility(View.VISIBLE);
-        m_searchStatusText.setText("Results for term '" + m_term + "':");
+        if ("".equals(m_term)) {
+            m_searchStatusText.setVisibility(View.GONE);
+            m_searchStatusText.setText("");
+        } else {
+            m_searchStatusText.setVisibility(View.VISIBLE);
+            m_searchStatusText.setText("Results for term '" + m_term + "':");
+        }
 
         m_statusText.setVisibility(View.GONE);
         m_progressBar.setVisibility(View.GONE);

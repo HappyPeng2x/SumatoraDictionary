@@ -74,8 +74,7 @@ public class QueryFragment extends BaseFragment<BaseFragmentModel> {
                                 a_key, aSearchSet, aAllowSearchAll, aTableObserve);
                     }
                 },
-                a_key, aSearchSet, aAllowSearchAll,
-                aTitle, aTableObserve, true, false);
+                a_key, aTitle, true, false);
 
         m_allowExport = aAllowExport;
         m_openSearchBox = aOpenSearchBox;
