@@ -324,8 +324,6 @@ public class BaseFragmentModel extends AndroidViewModel {
 
     private String mTerm;
 
-    private int mState;
-
     // Status
     private MediatorLiveData<Integer> mStatus;
 
@@ -342,168 +340,64 @@ public class BaseFragmentModel extends AndroidViewModel {
         return mApp.getPersistentLanguageSettings();
     }
 
-    // Updaters
-    @MainThread
-    private void updateInitializationStatus() {
-        int state = STATUS_PRE_INITIALIZED;
-
-        if (mCurrentDatabase != null && mLanguageSettings != null && mInstalledDictionaries != null &&
-                mQueryStatements != null && mQueryStatements.statements.length == 14) {
-            state = STATUS_INITIALIZED;
-        }
-
-        if (state != mState) {
-            mState = state;
-
-            mStatus.setValue(mState);
-        }
-    }
-
     // Query
     @MainThread
     private void processQueryInitial()  {
-        if (mCurrentDatabase == null || mTerm == null || mQueryStatements == null) {
-            return;
-        }
+        if ("".equals(mTerm)) {
+            insertQueryAll(mCurrentDatabase, mAllowQueryAll, mKey, mLanguageSettings,
+                    mQueryStatements, new QueryNextStatementCallback() {
+                        @Override
+                        public void callback(QueryNextStatementResult aResult) {
+                            mQueryResult = aResult;
 
+                            if (!mQueryResult.found) {
+                                mStatus.setValue(STATUS_NO_RESULTS_FOUND_ENDED);
+                            } else {
+                                mStatus.setValue(STATUS_RESULTS_FOUND_ENDED);
+                            }
+                        }
+                    });
+        } else {
+            executeQueryNextStatement(mCurrentDatabase, mTerm, mQueryResult, mQueryStatements, new QueryNextStatementCallback() {
+                @Override
+                public void callback(QueryNextStatementResult aResult) {
+                    mQueryResult = aResult;
+
+                    if (!mQueryResult.found) {
+                        mStatus.setValue(STATUS_NO_RESULTS_FOUND_ENDED);
+                    } else {
+                        if (aResult.nextStatement >= mQueryStatements.statements.length) {
+                            mStatus.setValue(STATUS_RESULTS_FOUND_ENDED);
+                        } else {
+                            mStatus.setValue(STATUS_RESULTS_FOUND);
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    @MainThread
+    private void resetAndProcessQueryInitial() {
         resetQuery(mCurrentDatabase, mKey, mQueryStatements, new QueryNextStatementCallback() {
             @Override
             public void callback(QueryNextStatementResult aResult) {
                 mQueryResult = aResult;
 
-                if (mState != STATUS_SEARCHING) {
-                    mState = STATUS_SEARCHING;
-                    mStatus.setValue(mState);
-                }
-
-                if ("".equals(mTerm)) {
-                    insertQueryAll(mCurrentDatabase, mAllowQueryAll, mKey, mLanguageSettings,
-                            mQueryStatements, new QueryNextStatementCallback() {
-                        @Override
-                        public void callback(QueryNextStatementResult aResult) {
-                            mQueryResult = aResult;
-
-                            if (!mQueryResult.found) {
-                                if (mState != STATUS_NO_RESULTS_FOUND_ENDED) {
-                                    mState = STATUS_NO_RESULTS_FOUND_ENDED;
-                                    mStatus.setValue(mState);
-                                }
-                            } else if (mState != STATUS_RESULTS_FOUND_ENDED) {
-                                mState = STATUS_RESULTS_FOUND_ENDED;
-                                mStatus.setValue(mState);
-                            }
-                        }
-                    });
-                } else {
-                    executeQueryNextStatement(mCurrentDatabase, mTerm, mQueryResult, mQueryStatements, new QueryNextStatementCallback() {
-                        @Override
-                        public void callback(QueryNextStatementResult aResult) {
-                            mQueryResult = aResult;
-
-                            if (!mQueryResult.found) {
-                                if (mState != STATUS_NO_RESULTS_FOUND_ENDED) {
-                                    mState = STATUS_NO_RESULTS_FOUND_ENDED;
-                                    mStatus.setValue(mState);
-                                }
-                            } else {
-                                if (aResult.nextStatement >= mQueryStatements.statements.length) {
-                                    if (mState != STATUS_RESULTS_FOUND_ENDED) {
-                                        mState = STATUS_RESULTS_FOUND_ENDED;
-                                        mStatus.setValue(mState);
-                                    }
-                                } else {
-                                    if (mState != STATUS_RESULTS_FOUND) {
-                                        mState = STATUS_RESULTS_FOUND;
-                                        mStatus.setValue(mState);
-                                    }
-                                }
-                            }
-                        }
-                    });
-                }
-            }
+                processQueryInitial();
+            };
         });
     }
 
     private void initialize() {
         mCurrentDatabase = null;
 
-        // Queries related initialization
-        final InvalidationTracker.Observer observer = new InvalidationTracker.Observer(mTableObserve) {
-            @Override
-            public void onInvalidated(@NonNull Set<String> tables) {
-                processQueryInitial();
-            }
-        };
-
-        // Create new statements and perform query
-        final Function<Void, Void> processQueryStatements = new Function<Void, Void>() {
-            @Override
-            public Void apply(Void input) {
-                if (mCurrentDatabase != null && mLanguageSettings != null) {
-                    createQueryStatements(mCurrentDatabase, mKey, mAllowQueryAll, mSearchSet,
-                            mLanguageSettings, mRomkan,
-                            new QueryStatementsCallback() {
-                                @Override
-                                public void callback(QueryStatementsContainer statements) {
-                                    mQueryStatements = statements;
-
-                                    updateInitializationStatus();
-
-                                    processQueryInitial();
-                                }
-                            });
-                }
-
-                return null;
-            }
-        };
-
-        final Function<Void, Void> resetQueryStatements = new Function<Void, Void>() {
-            @Override
-            public Void apply(Void input) {
-                if (mQueryStatements != null) {
-                    // Clear query, close statements, create new statements and perform query
-                    resetQuery(mCurrentDatabase, mKey, mQueryStatements, new QueryNextStatementCallback() {
-                        @Override
-                        public void callback(QueryNextStatementResult aResult) {
-                            mQueryResult = aResult;
-
-                            closeQueryStatements(mQueryStatements, new QueryStatementsCallback() {
-                                @Override
-                                public void callback(QueryStatementsContainer statements) {
-                                    processQueryStatements.apply(null);
-                                }
-                            });
-                        }
-                    });
-                } else {
-                    // Create new statements and perform query
-                    processQueryStatements.apply(null);
-                }
-
-                return null;
-            }
-        };
-
         // Database changed
         mStatus.addSource(mApp.getPersistentDatabase(),
                 new Observer<PersistentDatabase>() {
                     @Override
                     public void onChanged(PersistentDatabase persistentDatabase) {
-                        if (mCurrentDatabase != null) {
-                            mCurrentDatabase.getInvalidationTracker().removeObserver(observer);
-                        }
-
-                        mCurrentDatabase = persistentDatabase;
-
-                        resetQueryStatements.apply(null);
-
-                        if (mCurrentDatabase != null) {
-                            if (!"".equals(mTableObserve)) {
-                                mCurrentDatabase.getInvalidationTracker().addObserver(observer);
-                            }
-                        }
+                        performInitialization(mLanguageSettings, persistentDatabase);
                     }
                 });
 
@@ -512,73 +406,9 @@ public class BaseFragmentModel extends AndroidViewModel {
                 new Observer<PersistantLanguageSettings>() {
                     @Override
                     public void onChanged(final PersistantLanguageSettings s) {
-                        mLanguageSettings = s;
-
-                        if (mQueryStatements != null && mLanguageSettings == null) {
-                                resetQuery(mCurrentDatabase, mKey, mQueryStatements, new QueryNextStatementCallback() {
-                                    @Override
-                                    public void callback(QueryNextStatementResult aResult) {
-                                        mQueryResult = aResult;
-
-                                        final QueryStatementsContainer statements = mQueryStatements;
-                                        mQueryStatements = null;
-
-                                        updateInitializationStatus();
-
-                                        closeQueryStatements(statements, null);
-                                    }
-                                });
-                        }
-
-                        if (mQueryStatements == null && mLanguageSettings != null) {
-                                createQueryStatements(mCurrentDatabase, mKey, mAllowQueryAll, mSearchSet,
-                                        mLanguageSettings, mRomkan,
-                                        new QueryStatementsCallback() {
-                                            @Override
-                                            public void callback(QueryStatementsContainer statements) {
-                                                mQueryStatements = statements;
-
-                                                updateInitializationStatus();
-
-                                                processQueryInitial();
-                                            }
-                                        });
-                        }
-
-                        if (mQueryStatements != null && mLanguageSettings != null) {
-                            resetQuery(mCurrentDatabase, mKey, mQueryStatements, new QueryNextStatementCallback() {
-                                @Override
-                                public void callback(QueryNextStatementResult aResult) {
-                                    mQueryResult = aResult;
-
-                                    final QueryStatementsContainer statements = mQueryStatements;
-                                    mQueryStatements = null;
-
-                                    updateInitializationStatus();
-
-                                    closeQueryStatements(statements, new QueryStatementsCallback() {
-                                        @Override
-                                        public void callback(QueryStatementsContainer statements) {
-                                            createQueryStatements(mCurrentDatabase, mKey, mAllowQueryAll, mSearchSet,
-                                                    mLanguageSettings, mRomkan,
-                                                    new QueryStatementsCallback() {
-                                                        @Override
-                                                        public void callback(QueryStatementsContainer statements) {
-                                                            mQueryStatements = statements;
-
-                                                            updateInitializationStatus();
-
-                                                            processQueryInitial();
-                                                        }
-                                                    });
-                                        }
-                                    });
-                                }
-                            });
-                        }
+                        performInitialization(s, mCurrentDatabase);
                     }
                 });
-
 
         // Installed dictionaries list
         mInstalledDictionariesLive =
@@ -604,6 +434,70 @@ public class BaseFragmentModel extends AndroidViewModel {
                 });
     }
 
+    @MainThread
+    private void performInitialization(final PersistantLanguageSettings aLanguageSettings,
+                                       final PersistentDatabase aDatabase) {
+        final InvalidationTracker.Observer observer = new InvalidationTracker.Observer(mTableObserve) {
+            @Override
+            public void onInvalidated(@NonNull Set<String> tables) {
+                resetAndProcessQueryInitial();
+            }
+        };
+
+        final QueryStatementsCallback callback =
+                new QueryStatementsCallback() {
+            @Override
+            public void callback(QueryStatementsContainer oldStatements) {
+                mCurrentDatabase = aDatabase;
+
+                createQueryStatements(mCurrentDatabase, mKey, mAllowQueryAll, mSearchSet,
+                        aLanguageSettings, mRomkan,
+                        new QueryStatementsCallback() {
+                            @Override
+                            public void callback(QueryStatementsContainer statements) {
+                                mLanguageSettings = aLanguageSettings;
+                                mQueryStatements = statements;
+
+                                if (!"".equals(mTableObserve)) {
+                                    mCurrentDatabase.getInvalidationTracker().addObserver(observer);
+                                }
+
+                                mStatus.setValue(STATUS_INITIALIZED);
+
+                                processQueryInitial();
+                            }
+                        });
+            }
+        };
+
+        mStatus.setValue(STATUS_PRE_INITIALIZED);
+
+        if (mQueryStatements != null) {
+            resetQuery(mCurrentDatabase, mKey, mQueryStatements, new QueryNextStatementCallback() {
+                @Override
+                public void callback(QueryNextStatementResult aResult) {
+                    mQueryResult = aResult;
+
+                    final QueryStatementsContainer statements = mQueryStatements;
+                    mQueryStatements = null;
+
+                    mCurrentDatabase.getInvalidationTracker().removeObserver(observer);
+
+                    closeQueryStatements(statements, (aLanguageSettings == null || aDatabase == null) ? null : callback);
+                }
+            });
+        }
+
+        if (mQueryStatements == null && aLanguageSettings != null && aDatabase != null) {
+            callback.callback(null);
+        }
+
+        if (aLanguageSettings == null || aDatabase == null) {
+            mLanguageSettings = aLanguageSettings;
+            mCurrentDatabase = aDatabase;
+        }
+    }
+
     public BaseFragmentModel(Application aApp,
                       final int aKey, final String aSearchSet,
                       final boolean aAllowSearchAll,
@@ -616,7 +510,6 @@ public class BaseFragmentModel extends AndroidViewModel {
         mStatus = new MediatorLiveData<>();
 
         mTerm = "";
-        mState = STATUS_PRE_INITIALIZED;
 
         mKey = aKey;
         mSearchSet = aSearchSet;
@@ -652,7 +545,7 @@ public class BaseFragmentModel extends AndroidViewModel {
         if (!aTerm.equals(mTerm)) {
             mTerm = aTerm;
 
-            processQueryInitial();
+            resetAndProcessQueryInitial();
         }
     }
 
@@ -689,7 +582,7 @@ public class BaseFragmentModel extends AndroidViewModel {
                     container.insertAllStatement = new QueryAllStatement(aDatabase, aKey, 1, aLanguageSettings,
                             db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
                                     aLanguageSettings.lang, SQL_QUERY_ALL, searchSet)),
-                            aLanguageSettings.backupLang == null ? db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
+                            aLanguageSettings.backupLang != null ? db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
                                     aLanguageSettings.backupLang, SQL_QUERY_ALL, searchSet)) : null);
                 }
 
@@ -1045,10 +938,7 @@ public class BaseFragmentModel extends AndroidViewModel {
                                                     mQueryResult = aResult;
 
                                                     if (mQueryStatements != null && mQueryResult.nextStatement >= mQueryStatements.statements.length) {
-                                                        if (mState != STATUS_RESULTS_FOUND_ENDED && mState != STATUS_NO_RESULTS_FOUND_ENDED) {
-                                                            mState = STATUS_RESULTS_FOUND_ENDED;
-                                                            mStatus.setValue(mState);
-                                                        }
+                                                        mStatus.setValue(STATUS_RESULTS_FOUND_ENDED);
                                                     }
                                                 }
                                             });
