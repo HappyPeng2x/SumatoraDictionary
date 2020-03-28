@@ -78,6 +78,43 @@ public class BaseFragmentModel extends AndroidViewModel {
                         + "DictionaryEntry.seq IN (%s) %s "
                     + "GROUP BY DictionaryEntry.seq";
 
+    // split_offsets(offsets(DictionaryTranslationIndex), ' ', 2, 500)
+
+    static private final String SQL_REVERSE_QUERY_INSERT_DISPLAY_ELEMENT =
+            "INSERT OR IGNORE INTO DictionaryDisplayElement "
+                    + "SELECT ? AS ref, "
+                    + "(1-min(1,max(length(DictionaryEntry.readingsPrio), length(DictionaryEntry.writingsPrio))))*10000+"
+                    + "100*DictionaryTranslation.gloss_id AS entryOrder, "
+                    + "DictionaryEntry.seq, "
+                    + "DictionaryEntry.readingsPrio, "
+                    + "DictionaryEntry.readings, "
+                    + "DictionaryEntry.writingsPrio, "
+                    + "DictionaryEntry.writings, "
+                    + "DictionaryEntry.pos, "
+                    + "DictionaryEntry.xref, "
+                    + "DictionaryEntry.ant, "
+                    + "DictionaryEntry.misc, "
+                    + "DictionaryEntry.lsource, "
+                    + "DictionaryEntry.dial, "
+                    + "DictionaryEntry.s_inf, "
+                    + "DictionaryEntry.field, "
+                    + "? AS lang, "
+                    + "? AS lang_setting, "
+                    + "json_group_array(DictionaryTranslation.gloss) AS gloss, "
+                    + "null as example_sentences "
+                    + "FROM jmdict.DictionaryEntry, "
+                    + "%s.DictionaryTranslation "
+                    + "WHERE DictionaryEntry.seq = DictionaryTranslation.seq AND "
+                    + "DictionaryTranslation.rowid IN "
+                    + "(%s) %s "
+                    + "GROUP BY DictionaryEntry.seq";
+
+    static private final String SQL_REVERSE_QUERY_EXACT =
+            "SELECT docid FROM DictionaryTranslationIndex WHERE gloss MATCH ?";
+
+    static private final String SQL_REVERSE_QUERY_BEGIN =
+            "SELECT docid FROM DictionaryTranslationIndex WHERE gloss MATCH ? || '*'";
+
     static private final String SQL_QUERY_DELETE =
             "DELETE FROM DictionaryDisplayElement WHERE DictionaryDisplayElement.ref = ?";
 
@@ -149,19 +186,17 @@ public class BaseFragmentModel extends AndroidViewModel {
     // Query related classes
     private static abstract class QueryStatement {
         final int ref;
-        final int order;
         final PersistantLanguageSettings languageSettings;
         final PersistentDatabase database;
         final SupportSQLiteStatement statement;
         final SupportSQLiteStatement backupStatement;
 
         private QueryStatement(final PersistentDatabase aDB,
-                               int aRef, int aOrder,
+                               int aRef,
                                final PersistantLanguageSettings aLanguageSettings,
                                final SupportSQLiteStatement aStatement,
                                final SupportSQLiteStatement aBackupStatement) {
             ref = aRef;
-            order = aOrder;
             statement = aStatement;
             backupStatement = aBackupStatement;
             languageSettings = aLanguageSettings;
@@ -170,10 +205,6 @@ public class BaseFragmentModel extends AndroidViewModel {
 
         @WorkerThread
         abstract long execute(String term);
-
-        public int getOrder() {
-            return order;
-        }
 
         @WorkerThread
         public void close() throws IOException {
@@ -188,6 +219,7 @@ public class BaseFragmentModel extends AndroidViewModel {
     public static class BasicQueryStatement extends QueryStatement {
         private final boolean kana;
         private final Romkan romkan;
+        final int order;
 
         private BasicQueryStatement(final PersistentDatabase aDB,
                                     int aRef, int aOrder,
@@ -195,62 +227,103 @@ public class BaseFragmentModel extends AndroidViewModel {
                                     final SupportSQLiteStatement aStatement,
                                     final SupportSQLiteStatement aBackupStatement,
                                     boolean aKana, final Romkan aRomkan) {
-            super(aDB, aRef, aOrder, aLanguageSettings, aStatement, aBackupStatement);
+            super(aDB, aRef, aLanguageSettings, aStatement, aBackupStatement);
 
             kana = aKana;
             romkan = aRomkan;
+            order = aOrder;
         }
 
         @WorkerThread
         long execute(final String term) {
             final ValueHolder<Long> returnValue = new ValueHolder<>(Long.valueOf(-1));
 
-            database.runInTransaction(new Runnable() {
-                @Override
-                public void run() {
-                    String bindTerm = term;
-                    long insert = -1;
-                    long backupInsert = -1;
+            String bindTerm = term;
+            long insert = -1;
+            long backupInsert = -1;
 
-                    if (kana) {
-                        bindTerm = romkan.to_katakana(romkan.to_hepburn(term));
-                    }
+            if (kana) {
+                bindTerm = romkan.to_katakana(romkan.to_hepburn(term));
+            }
 
-                    statement.bindLong(1, ref);
-                    statement.bindLong(2, order);
-                    statement.bindString(3, languageSettings.lang);
-                    statement.bindString(4, languageSettings.lang);
-                    statement.bindString(5, bindTerm);
+            statement.bindLong(1, ref);
+            statement.bindLong(2, order);
+            statement.bindString(3, languageSettings.lang);
+            statement.bindString(4, languageSettings.lang);
+            statement.bindString(5, bindTerm);
 
-                    insert = statement.executeInsert();
+            insert = statement.executeInsert();
 
-                    if (backupStatement != null) {
-                        backupStatement.bindLong(1, ref);
-                        backupStatement.bindLong(2, order);
-                        backupStatement.bindString(3, languageSettings.backupLang);
-                        backupStatement.bindString(4, languageSettings.lang);
-                        backupStatement.bindString(5, bindTerm);
+            if (backupStatement != null) {
+                backupStatement.bindLong(1, ref);
+                backupStatement.bindLong(2, order);
+                backupStatement.bindString(3, languageSettings.backupLang);
+                backupStatement.bindString(4, languageSettings.lang);
+                backupStatement.bindString(5, bindTerm);
 
-                        backupInsert = backupStatement.executeInsert();
+                backupInsert = backupStatement.executeInsert();
 
-                        returnValue.setValue(Math.max(backupInsert, insert));
-                    } else {
-                        returnValue.setValue(insert);
-                    }
-                }
-            });
+                returnValue.setValue(Math.max(backupInsert, insert));
+            } else {
+                returnValue.setValue(insert);
+            }
 
             return returnValue.getValue();
         }
     }
 
+    public static class ReverseQueryStatement extends QueryStatement {
+
+        private ReverseQueryStatement(final PersistentDatabase aDB,
+                                      int aRef,
+                                      final PersistantLanguageSettings aLanguageSettings,
+                                      final SupportSQLiteStatement aStatement,
+                                      final SupportSQLiteStatement aBackupStatement) {
+            super(aDB, aRef, aLanguageSettings, aStatement, aBackupStatement);
+        }
+
+        @WorkerThread
+        long execute(final String term) {
+            long returnValue = -1;
+
+            long insert = -1;
+            long backupInsert = -1;
+
+            statement.bindLong(1, ref);
+            statement.bindString(2, languageSettings.lang);
+            statement.bindString(3, languageSettings.lang);
+            statement.bindString(4, term);
+
+            insert = statement.executeInsert();
+
+            if (backupStatement != null) {
+                backupStatement.bindLong(1, ref);
+                backupStatement.bindString(2, languageSettings.backupLang);
+                backupStatement.bindString(3, languageSettings.lang);
+                backupStatement.bindString(4, term);
+
+                backupInsert = backupStatement.executeInsert();
+
+                returnValue = Math.max(backupInsert, insert);
+            } else {
+                returnValue = insert;
+            }
+
+            return returnValue;
+        }
+    }
+
     public static class QueryAllStatement extends QueryStatement {
+        final int order;
+
         private QueryAllStatement(final PersistentDatabase aDB,
                                   int aRef, int aOrder,
                                   final PersistantLanguageSettings aLanguageSettings,
                                   final SupportSQLiteStatement aStatement,
                                   final SupportSQLiteStatement aBackupStatement) {
-            super(aDB, aRef, aOrder, aLanguageSettings, aStatement, aBackupStatement);
+            super(aDB, aRef, aLanguageSettings, aStatement, aBackupStatement);
+
+            order = aOrder;
         }
 
         @WorkerThread
@@ -642,6 +715,12 @@ public class BaseFragmentModel extends AndroidViewModel {
                 final SupportSQLiteStatement queryPartsNonPrioReading =
                         db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
                                 aLanguageSettings.lang, SQL_QUERY_PARTS_READING_NONPRIO, searchSet));
+                final SupportSQLiteStatement reverseQueryExact =
+                        db.compileStatement(String.format(SQL_REVERSE_QUERY_INSERT_DISPLAY_ELEMENT,
+                                aLanguageSettings.lang, SQL_REVERSE_QUERY_EXACT, searchSet));
+                final SupportSQLiteStatement reverseQueryBegin =
+                        db.compileStatement(String.format(SQL_REVERSE_QUERY_INSERT_DISPLAY_ELEMENT,
+                                aLanguageSettings.lang, SQL_REVERSE_QUERY_BEGIN, searchSet));
 
                 SupportSQLiteStatement queryExactPrioWritingBackup = null;
                 SupportSQLiteStatement queryExactPrioReadingBackup = null;
@@ -655,6 +734,8 @@ public class BaseFragmentModel extends AndroidViewModel {
                 SupportSQLiteStatement queryPartsPrioReadingBackup = null;
                 SupportSQLiteStatement queryPartsNonPrioWritingBackup = null;
                 SupportSQLiteStatement queryPartsNonPrioReadingBackup = null;
+                SupportSQLiteStatement reverseQueryExactBackup = null;
+                SupportSQLiteStatement reverseQueryBeginBackup = null;
 
                 if (aLanguageSettings.backupLang != null) {
                     queryExactPrioWritingBackup =
@@ -693,9 +774,15 @@ public class BaseFragmentModel extends AndroidViewModel {
                     queryPartsNonPrioReadingBackup =
                             db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
                                     aLanguageSettings.backupLang, SQL_QUERY_PARTS_READING_NONPRIO, searchSet));
+                    reverseQueryExactBackup =
+                            db.compileStatement(String.format(SQL_REVERSE_QUERY_INSERT_DISPLAY_ELEMENT,
+                                    aLanguageSettings.backupLang, SQL_REVERSE_QUERY_EXACT, searchSet));
+                    reverseQueryBeginBackup =
+                            db.compileStatement(String.format(SQL_REVERSE_QUERY_INSERT_DISPLAY_ELEMENT,
+                                    aLanguageSettings.backupLang, SQL_REVERSE_QUERY_BEGIN, searchSet));
                 }
 
-                container.statements = new QueryStatement[12];
+                container.statements = new QueryStatement[14];
 
                 container.statements[0] = new BasicQueryStatement(aDatabase, aKey, 1, aLanguageSettings, queryExactPrioWriting, queryExactPrioWritingBackup, false, aRomkan);
                 container.statements[1] = new BasicQueryStatement(aDatabase, aKey, 2, aLanguageSettings, queryExactPrioReading, queryExactPrioReadingBackup, true, aRomkan);
@@ -709,6 +796,8 @@ public class BaseFragmentModel extends AndroidViewModel {
                 container.statements[9] = new BasicQueryStatement(aDatabase, aKey, 10, aLanguageSettings, queryPartsPrioReading, queryPartsPrioReadingBackup, true, aRomkan);
                 container.statements[10] = new BasicQueryStatement(aDatabase, aKey, 11, aLanguageSettings, queryPartsNonPrioWriting, queryPartsNonPrioWritingBackup, false, aRomkan);
                 container.statements[11] = new BasicQueryStatement(aDatabase, aKey, 12, aLanguageSettings, queryPartsNonPrioReading, queryPartsNonPrioReadingBackup, true, aRomkan);
+                container.statements[12] = new ReverseQueryStatement(aDatabase, aKey, aLanguageSettings, reverseQueryExact, reverseQueryExactBackup);
+                container.statements[13] = new ReverseQueryStatement(aDatabase, aKey, aLanguageSettings, reverseQueryBegin, reverseQueryBeginBackup);
 
                 return container;
             }
