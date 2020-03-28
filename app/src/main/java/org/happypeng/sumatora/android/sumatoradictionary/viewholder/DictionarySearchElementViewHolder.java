@@ -201,17 +201,6 @@ public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
              }
 
              for (int i = 0; i < gloss.length(); i++) {
-                 JSONArray elements = gloss.getJSONArray(i);
-                 StringBuilder gb = new StringBuilder();
-
-                 for (int j = 0; j < elements.length(); j++) {
-                     if (gb.length() > 0) {
-                         gb.append(", ");
-                     }
-
-                     gb.append(elements.getString(j));
-                 }
-
                  if (glossCount > 0) {
                      sb.append("　");
                  }
@@ -237,7 +226,7 @@ public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
                      }
                  }
 
-                 sb.append(gb.toString());
+                 sb.append(gloss.getString(i));
 
                  glossCount = glossCount + 1;
              }

@@ -18,6 +18,7 @@ package org.happypeng.sumatora.android.sumatoradictionary.model;
 
 import android.app.Application;
 import android.os.AsyncTask;
+import android.os.Handler;
 
 import androidx.annotation.MainThread;
 import androidx.annotation.NonNull;
@@ -69,12 +70,13 @@ public class BaseFragmentModel extends AndroidViewModel {
                         + "DictionaryEntry.field, "
                         + "? AS lang, "
                         + "? AS lang_setting, "
-                        + "DictionaryTranslation.gloss, "
+                        + "json_group_array(DictionaryTranslation.gloss) AS gloss, "
                         + "null as example_sentences "
                     + "FROM jmdict.DictionaryEntry, "
                         + "%s.DictionaryTranslation "
                     + "WHERE DictionaryEntry.seq = DictionaryTranslation.seq AND "
-                        + "DictionaryEntry.seq IN (%s) %s";
+                        + "DictionaryEntry.seq IN (%s) %s "
+                    + "GROUP BY DictionaryEntry.seq";
 
     static private final String SQL_QUERY_DELETE =
             "DELETE FROM DictionaryDisplayElement WHERE DictionaryDisplayElement.ref = ?";
@@ -315,6 +317,9 @@ public class BaseFragmentModel extends AndroidViewModel {
 
     final DictionaryApplication mApp;
 
+    // To execute code on the main thread from InvalidationTracker observer
+    private final Handler mHandler;
+
     final int mKey;
 
     private String mTerm;
@@ -359,6 +364,7 @@ public class BaseFragmentModel extends AndroidViewModel {
     }
 
     // Delete all elements in table then perform query in a single transaction
+    @MainThread
     private void processResetAndQueryInitial()  {
         mStatus.setValue(STATUS_SEARCHING);
 
@@ -445,7 +451,12 @@ public class BaseFragmentModel extends AndroidViewModel {
         final InvalidationTracker.Observer observer = new InvalidationTracker.Observer(mTableObserve) {
             @Override
             public void onInvalidated(@NonNull Set<String> tables) {
-                processResetAndQueryInitial();
+                mHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        processResetAndQueryInitial();
+                    }
+                });
             }
         };
 
@@ -520,6 +531,8 @@ public class BaseFragmentModel extends AndroidViewModel {
         mSearchSet = aSearchSet;
         mAllowQueryAll = aAllowSearchAll;
         mTableObserve = aTableObserve;
+
+        mHandler = new Handler(mApp.getMainLooper());
 
         initialize();
     }
