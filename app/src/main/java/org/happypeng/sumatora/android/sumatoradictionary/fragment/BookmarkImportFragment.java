@@ -31,7 +31,7 @@ import androidx.fragment.app.FragmentActivity;
 import androidx.lifecycle.Observer;
 
 import org.happypeng.sumatora.android.sumatoradictionary.R;
-import org.happypeng.sumatora.android.sumatoradictionary.db.PersistantLanguageSettings;
+import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings;
 import org.happypeng.sumatora.android.sumatoradictionary.model.BaseFragmentModel;
 import org.happypeng.sumatora.android.sumatoradictionary.model.BaseFragmentModelFactory;
 import org.happypeng.sumatora.android.sumatoradictionary.model.BookmarkImportModel;
@@ -88,30 +88,14 @@ public class BookmarkImportFragment extends BaseFragment<BookmarkImportModel> {
         }
 
         m_viewModel.getLanguageSettingsLive().observe(getViewLifecycleOwner(),
-                new Observer<PersistantLanguageSettings>() {
+                new Observer<PersistentLanguageSettings>() {
                     @Override
-                    public void onChanged(PersistantLanguageSettings persistantLanguageSettings) {
-                        m_languageText.setText(persistantLanguageSettings.lang);
+                    public void onChanged(PersistentLanguageSettings persistentLanguageSettings) {
+                        if (persistentLanguageSettings != null) {
+                            m_languageText.setText(persistentLanguageSettings.lang);
+                        }
                     }
                 });
-
-        /*
-        m_viewModel.setLangSelectionMenuStatusView(languageText);
-
-        m_viewModel.getLangSelectionStatus().observe(getViewLifecycleOwner(),
-                new Observer<BaseFragmentModel.LangSelectionStatus>() {
-                    @Override
-                    public void onChanged(BaseFragmentModel.LangSelectionStatus langSelectionStatus) {
-                        languageText.setText(langSelectionStatus.lang);
-
-                        m_listAdapter.notifyDataSetChanged();
-
-                        m_viewHolderStatus.lang = langSelectionStatus.lang;
-                    }
-                });
-
-         */
-
 
         m_languageText.setOnClickListener(new View.OnClickListener() {
             @Override

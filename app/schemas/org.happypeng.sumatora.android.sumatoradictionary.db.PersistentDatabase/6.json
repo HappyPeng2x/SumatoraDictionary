@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 6,
-    "identityHash": "17f2a3a3a158a428627ee179caf708c4",
+    "identityHash": "daa245bd60d4904d98cb08837ab62251",
     "entities": [
       {
         "tableName": "PersistentSetting",
@@ -462,7 +462,7 @@
         "foreignKeys": []
       },
       {
-        "tableName": "PersistantLanguageSettings",
+        "tableName": "PersistentLanguageSettings",
         "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`ref` INTEGER NOT NULL, `lang` TEXT NOT NULL, `backupLang` TEXT, PRIMARY KEY(`ref`))",
         "fields": [
           {
@@ -497,7 +497,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '17f2a3a3a158a428627ee179caf708c4')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'daa245bd60d4904d98cb08837ab62251')"
     ]
   }
 }

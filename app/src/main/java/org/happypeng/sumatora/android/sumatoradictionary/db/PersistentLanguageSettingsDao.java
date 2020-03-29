@@ -24,12 +24,12 @@ import androidx.room.Query;
 
 @Dao
 public interface PersistentLanguageSettingsDao {
-    @Query("SELECT * FROM PersistantLanguageSettings WHERE ref = :ref")
-    LiveData<PersistantLanguageSettings> getLanguageSettings(int ref);
+    @Query("SELECT * FROM PersistentLanguageSettings WHERE ref = :ref")
+    LiveData<PersistentLanguageSettings> getLanguageSettings(int ref);
 
-    @Query("SELECT * FROM PersistantLanguageSettings WHERE ref = :ref")
-    PersistantLanguageSettings getLanguageSettingsDirect(int ref);
+    @Query("SELECT * FROM PersistentLanguageSettings WHERE ref = :ref")
+    PersistentLanguageSettings getLanguageSettingsDirect(int ref);
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void update(PersistantLanguageSettings aLanguageSettings);
+    void update(PersistentLanguageSettings aLanguageSettings);
 }

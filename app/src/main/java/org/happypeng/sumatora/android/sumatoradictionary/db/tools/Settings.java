@@ -19,14 +19,12 @@ package org.happypeng.sumatora.android.sumatoradictionary.db.tools;
 import android.os.AsyncTask;
 
 import androidx.annotation.MainThread;
-import androidx.annotation.NonNull;
 import androidx.annotation.WorkerThread;
 import androidx.arch.core.util.Function;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
 
-import org.happypeng.sumatora.android.sumatoradictionary.db.PersistantLanguageSettings;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentSetting;
 

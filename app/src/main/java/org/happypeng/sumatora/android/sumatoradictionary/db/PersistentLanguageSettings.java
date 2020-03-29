@@ -20,7 +20,7 @@ import androidx.annotation.NonNull;
 import androidx.room.Entity;
 
 @Entity(primaryKeys = {"ref"})
-public class PersistantLanguageSettings {
+public class PersistentLanguageSettings {
     public static final String LANG_DEFAULT = "eng";
     public static final String BACKUP_LANG_DEFAULT = "eng";
 
@@ -28,12 +28,12 @@ public class PersistantLanguageSettings {
     public @NonNull String lang;
     public String backupLang;
 
-    public PersistantLanguageSettings() {
+    public PersistentLanguageSettings() {
         lang = "";
         ref = 0;
     }
 
-    public PersistantLanguageSettings(int aRef, final @NonNull String aLang, final String aBackupLang) {
+    public PersistentLanguageSettings(int aRef, final @NonNull String aLang, final String aBackupLang) {
         ref = aRef;
         lang = aLang;
         backupLang = aBackupLang;

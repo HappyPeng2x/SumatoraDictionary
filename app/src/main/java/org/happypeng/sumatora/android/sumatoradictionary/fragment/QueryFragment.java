@@ -37,7 +37,7 @@ import androidx.lifecycle.Observer;
 
 import org.happypeng.sumatora.android.sumatoradictionary.R;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
-import org.happypeng.sumatora.android.sumatoradictionary.db.PersistantLanguageSettings;
+import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.model.BaseFragmentModel;
 import org.happypeng.sumatora.android.sumatoradictionary.model.BaseFragmentModelFactory;
@@ -139,11 +139,11 @@ public class QueryFragment extends BaseFragment<BaseFragmentModel> {
         }
 
         m_viewModel.getLanguageSettingsLive().observe(getViewLifecycleOwner(),
-                new Observer<PersistantLanguageSettings>() {
+                new Observer<PersistentLanguageSettings>() {
                     @Override
-                    public void onChanged(PersistantLanguageSettings persistantLanguageSettings) {
-                        if (persistantLanguageSettings != null) {
-                            m_languageText.setText(persistantLanguageSettings.lang);
+                    public void onChanged(PersistentLanguageSettings persistentLanguageSettings) {
+                        if (persistentLanguageSettings != null) {
+                            m_languageText.setText(persistentLanguageSettings.lang);
                         }
                     }
                 });

@@ -42,7 +42,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.broadcastreceiver.Downl
 import org.happypeng.sumatora.android.sumatoradictionary.db.AssetDictionaryObject;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
 import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary;
-import org.happypeng.sumatora.android.sumatoradictionary.db.PersistantLanguageSettings;
+import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentSetting;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.BaseDictionaryObject;
@@ -66,7 +66,7 @@ public class DictionaryApplication extends Application {
     static final String PERSISTENT_DATABASE_NAME = "PersistentDatabase.db";
 
     protected MutableLiveData<PersistentDatabase> m_persistentDatabase;
-    private MutableLiveData<PersistantLanguageSettings> m_persistentLanguageSettings;
+    private MutableLiveData<PersistentLanguageSettings> m_persistentLanguageSettings;
 
     private HashMap<String, String> m_entities;
 
@@ -77,7 +77,7 @@ public class DictionaryApplication extends Application {
     private Romkan m_romkan;
 
     public LiveData<PersistentDatabase> getPersistentDatabase() { return m_persistentDatabase; }
-    public LiveData<PersistantLanguageSettings> getPersistentLanguageSettings() { return m_persistentLanguageSettings; }
+    public LiveData<PersistentLanguageSettings> getPersistentLanguageSettings() { return m_persistentLanguageSettings; }
 
     public Settings getSettings() { return m_settings; }
 
@@ -492,8 +492,8 @@ public class DictionaryApplication extends Application {
             }
 
             if (pDb.persistentLanguageSettingsDao().getLanguageSettingsDirect(0) == null) {
-                pDb.persistentLanguageSettingsDao().update(new PersistantLanguageSettings(0,
-                        PersistantLanguageSettings.LANG_DEFAULT, PersistantLanguageSettings.BACKUP_LANG_DEFAULT));
+                pDb.persistentLanguageSettingsDao().update(new PersistentLanguageSettings(0,
+                        PersistentLanguageSettings.LANG_DEFAULT, PersistentLanguageSettings.BACKUP_LANG_DEFAULT));
             }
 
             pDb.persistentSettingsDao().insertDefault(new PersistentSetting(Settings.REPOSITORY_URL,
@@ -598,7 +598,7 @@ public class DictionaryApplication extends Application {
         new AsyncTask<Void, Void, Void>() {
             @Override
             protected Void doInBackground(Void... voids) {
-                m_persistentDatabase.getValue().persistentLanguageSettingsDao().update(new PersistantLanguageSettings(0, aLang, aBackupLang));
+                m_persistentDatabase.getValue().persistentLanguageSettingsDao().update(new PersistentLanguageSettings(0, aLang, aBackupLang));
 
                 return null;
             }
@@ -607,18 +607,18 @@ public class DictionaryApplication extends Application {
 
     private class ApplicationLanguageSettings {
         PersistentDatabase db;
-        PersistantLanguageSettings settings;
+        PersistentLanguageSettings settings;
     }
 
     private void setupAttachListener() {
         final MediatorLiveData<ApplicationLanguageSettings> liveSettings = new MediatorLiveData<>();
         final ApplicationLanguageSettings settings = new ApplicationLanguageSettings();
 
-        LiveData<PersistantLanguageSettings> persistantLanguageSettings =
+        LiveData<PersistentLanguageSettings> persistantLanguageSettings =
                 Transformations.switchMap(m_persistentDatabase,
-                        new Function<PersistentDatabase, LiveData<PersistantLanguageSettings>>() {
+                        new Function<PersistentDatabase, LiveData<PersistentLanguageSettings>>() {
                             @Override
-                            public LiveData<PersistantLanguageSettings> apply(PersistentDatabase input) {
+                            public LiveData<PersistentLanguageSettings> apply(PersistentDatabase input) {
                                 if (input == null) {
                                     return null;
                                 }
@@ -638,10 +638,10 @@ public class DictionaryApplication extends Application {
                 });
 
         liveSettings.addSource(persistantLanguageSettings,
-                new Observer<PersistantLanguageSettings>() {
+                new Observer<PersistentLanguageSettings>() {
                     @Override
-                    public void onChanged(PersistantLanguageSettings persistantLanguageSettings) {
-                        settings.settings = persistantLanguageSettings;
+                    public void onChanged(PersistentLanguageSettings persistentLanguageSettings) {
+                        settings.settings = persistentLanguageSettings;
 
                         liveSettings.setValue(settings);
                     }
