@@ -450,6 +450,14 @@ public class BaseFragmentModel extends AndroidViewModel {
         return mApp.getPersistentLanguageSettings();
     }
 
+    public int getQueryPosition() {
+        if (mQueryResult != null && mQueryResult.nextStatement > 0) {
+            return mQueryResult.nextStatement - 1;
+        }
+
+        return 0;
+    }
+
     // Query
     @MainThread
     private void processQueryInitial()  {

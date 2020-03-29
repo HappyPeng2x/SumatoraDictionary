@@ -17,22 +17,18 @@
 package org.happypeng.sumatora.android.sumatoradictionary.activity;
 
 import android.content.Intent;
+import android.os.Bundle;
+import android.os.Handler;
+import android.view.MenuItem;
 
 import androidx.annotation.NonNull;
-import androidx.core.app.ActivityCompat;
+import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.view.GravityCompat;
+import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
-
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.lifecycle.Observer;
-
-import android.view.MenuItem;
-
-import android.os.Bundle;
-import android.os.Handler;
 
 import com.google.android.material.navigation.NavigationView;
 
@@ -178,14 +174,26 @@ public class MainActivity extends AppCompatActivity
         if (BuildConfig.DEBUG_DICTIONARY_ACTIVITY) {
             m_log = LoggerFactory.getLogger(this.getClass());
 
-            m_log.info("onCreate started");
+            m_log.info("onCreate()");
+        }
+
+        if (savedInstanceState != null) {
+            FragmentManager fragmentManager = getSupportFragmentManager();
+
+            m_dictionarySearchFragment = (QueryFragment) fragmentManager.getFragment(savedInstanceState, SEARCH_FRAGMENT_TAG);
+            m_dictionaryBookmarkFragment = (QueryFragment) fragmentManager.getFragment(savedInstanceState, BOOKMARK_FRAGMENT_TAG);
+            m_debugFragment = (DebugFragment) fragmentManager.getFragment(savedInstanceState, DEBUG_FRAGMENT_TAG);
+
+            m_log.info("Fragments restored: " + (m_dictionarySearchFragment == null ? "" : SEARCH_FRAGMENT_TAG) +
+                    (m_dictionaryBookmarkFragment == null ? "" : BOOKMARK_FRAGMENT_TAG) +
+                    (m_debugFragment == null ? "" : DEBUG_FRAGMENT_TAG));
         }
 
         m_app = (DictionaryApplication) getApplication();
 
         setContentView(R.layout.activity_dictionary);
 
-        m_navigationView = (NavigationView) findViewById(R.id.activity_main_navigation_view);
+        m_navigationView = findViewById(R.id.activity_main_navigation_view);
         m_navigationView.setNavigationItemSelectedListener(new NavigationView.OnNavigationItemSelectedListener() {
             @Override
             public boolean onNavigationItemSelected(@NonNull MenuItem pMenuItem) {
@@ -290,6 +298,31 @@ public class MainActivity extends AppCompatActivity
     {
         super.onDestroy();
     }
+
+    /*
+    @Override
+    protected void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+
+        FragmentManager fragmentManager = getSupportFragmentManager();
+
+        if (m_dictionarySearchFragment != null) {
+            fragmentManager.putFragment(outState, SEARCH_FRAGMENT_TAG, m_dictionarySearchFragment);
+        }
+
+        if (m_dictionaryBookmarkFragment != null) {
+            fragmentManager.putFragment(outState, BOOKMARK_FRAGMENT_TAG, m_dictionaryBookmarkFragment);
+        }
+
+        if (m_debugFragment != null) {
+            fragmentManager.putFragment(outState, DEBUG_FRAGMENT_TAG, m_debugFragment);
+        }
+
+        m_log.info("Fragments saved: " + (m_dictionarySearchFragment == null ? "" : SEARCH_FRAGMENT_TAG) +
+                (m_dictionaryBookmarkFragment == null ? "" : BOOKMARK_FRAGMENT_TAG) +
+                (m_debugFragment == null ? "" : DEBUG_FRAGMENT_TAG));
+    }
+     */
 
     @Override
     public boolean onOptionsItemSelected(MenuItem pMenuItem) {

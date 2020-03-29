@@ -31,7 +31,7 @@ android {
             buildConfigField("boolean", "DEBUG_DICTIONARY_ACTIVITY", "false");
             buildConfigField("boolean", "DEBUG_LAUNCH_ACTIVITY", "false");
             buildConfigField("boolean", "DEBUG_DB_MIGRATION", "false");
-            buildConfigField("boolean", "DEBUG_UI", "false");
+            buildConfigField("boolean", "DEBUG_BASE_FRAGMENT", "false");
 
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
@@ -43,7 +43,7 @@ android {
             buildConfigField("boolean", "DEBUG_DICTIONARY_ACTIVITY", "true");
             buildConfigField("boolean", "DEBUG_LAUNCH_ACTIVITY", "true");
             buildConfigField("boolean", "DEBUG_DB_MIGRATION", "true");
-            buildConfigField("boolean", "DEBUG_UI", "true");
+            buildConfigField("boolean", "DEBUG_BASE_FRAGMENT", "true");
         }
     }
     buildToolsVersion '29.0.3'

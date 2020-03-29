@@ -66,18 +66,19 @@ public abstract class BaseFragment<M extends BaseFragmentModel> extends Fragment
     private TextView m_statusText;
     private TextView m_searchStatusText;
     private RecyclerView m_recyclerView;
+    private LinearLayoutManager m_layoutManager;
 
-    protected DictionaryPagedListAdapter m_listAdapter;
+    private DictionaryPagedListAdapter m_listAdapter;
 
     private Class<M> m_viewModelClass;
     private BaseFragmentModelFactory.Creator m_viewModelCreator;
-    protected M m_viewModel;
+    M m_viewModel;
 
     PopupMenu m_languagePopupMenu;
 
     private Logger m_log;
 
-    protected DictionarySearchElementViewHolder.Status m_viewHolderStatus;
+    private DictionarySearchElementViewHolder.Status m_viewHolderStatus;
 
     SearchView m_searchView;
 
@@ -89,7 +90,7 @@ public abstract class BaseFragment<M extends BaseFragmentModel> extends Fragment
     String m_term;
 
     public BaseFragment() {
-        if (BuildConfig.DEBUG_UI) {
+        if (BuildConfig.DEBUG_BASE_FRAGMENT) {
             m_log = LoggerFactory.getLogger(this.getClass());
         }
 
@@ -99,10 +100,10 @@ public abstract class BaseFragment<M extends BaseFragmentModel> extends Fragment
         m_term = "";
     }
 
-    public void setParameters(Class<M> a_viewModelClass,
-                              BaseFragmentModelFactory.Creator a_viewModelCreator,
-                              int a_key, @NonNull String aTitle,
-                              boolean aHasHomeButton, boolean aDisableBookmarkButton) {
+    void setParameters(Class<M> a_viewModelClass,
+                       BaseFragmentModelFactory.Creator a_viewModelCreator,
+                       int a_key, @NonNull String aTitle,
+                       boolean aHasHomeButton, boolean aDisableBookmarkButton) {
         m_viewModelClass = a_viewModelClass;
         m_key = a_key;
         m_title = aTitle;
@@ -206,6 +207,19 @@ public abstract class BaseFragment<M extends BaseFragmentModel> extends Fragment
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
+        final String restoredTerm = savedInstanceState == null ? null : savedInstanceState.getString("term");
+        final int restoredQueryPos = savedInstanceState == null ? 0 : savedInstanceState.getInt("query");
+        final int restoredScrollPos = savedInstanceState == null ? 0 : savedInstanceState.getInt("scroll");
+
+        if (m_log != null) {
+            m_log.info("onCreateView()");
+
+            m_log.info("Restore information: term '" +
+                    (restoredTerm == null ? "" : restoredTerm) +
+                    "' query position " + restoredQueryPos +
+                    " scroll position " + restoredScrollPos);
+        }
+
         m_languagePopupMenu = null;
 
         final AppCompatActivity activity = (AppCompatActivity) getActivity();
@@ -232,9 +246,9 @@ public abstract class BaseFragment<M extends BaseFragmentModel> extends Fragment
 
         setInPreparation();
 
-        LinearLayoutManager layoutManager = new LinearLayoutManager(getContext());
-        layoutManager.setOrientation(RecyclerView.VERTICAL);
-        m_recyclerView.setLayoutManager(layoutManager);
+        m_layoutManager = new LinearLayoutManager(getContext());
+        m_layoutManager.setOrientation(RecyclerView.VERTICAL);
+        m_recyclerView.setLayoutManager(m_layoutManager);
 
         ViewModelProvider provider = new ViewModelProvider(getActivity(),
                 new BaseFragmentModelFactory(getActivity().getApplication(),
@@ -247,7 +261,7 @@ public abstract class BaseFragment<M extends BaseFragmentModel> extends Fragment
         m_recyclerView.setAdapter(m_listAdapter);
 
         DividerItemDecoration itemDecor = new DividerItemDecoration(getContext(),
-                layoutManager.getOrientation());
+                m_layoutManager.getOrientation());
         m_recyclerView.addItemDecoration(itemDecor);
 
         m_listAdapter.setBookmarkClickListener(new DictionarySearchElementViewHolder.ClickListener() {
@@ -302,11 +316,32 @@ public abstract class BaseFragment<M extends BaseFragmentModel> extends Fragment
         return view;
     }
 
-    abstract View getLanguagePopupMenuAnchorView();
+    /*
+    @Override
+    public void onSaveInstanceState(@NonNull Bundle outState) {
+        if (m_log != null) {
+            m_log.info("onSaveInstanceState()");
+        }
 
-    private void displayInitializationToast() {
-        Toast.makeText(getContext(), "Initialization still in progress...", Toast.LENGTH_LONG).show();
+        super.onSaveInstanceState(outState);
+
+        if (m_layoutManager != null && m_viewModel != null) {
+            final int scrollPos = m_layoutManager.findFirstVisibleItemPosition();
+            final int queryPos =  m_viewModel.getQueryPosition();
+            final String term = m_viewModel.getTerm();
+
+            outState.putInt("scroll", scrollPos);
+            outState.putInt("query", queryPos);
+            outState.putString("term", term);
+
+            if (m_log != null) {
+                m_log.info("Save information: scroll position " + scrollPos + ", query position " + queryPos + ", term '" + term + "'");
+            }
+        }
     }
+     */
+
+    abstract View getLanguagePopupMenuAnchorView();
 
     void colorMenu(Menu aMenu) {
         Context ctx = getContext();
@@ -355,12 +390,21 @@ public abstract class BaseFragment<M extends BaseFragmentModel> extends Fragment
     }
 
     public void setIntentSearchTerm(@NonNull String aIntentSearchTerm) {
+        if (m_log != null) {
+            m_log.info("setIntentSearchTerm()");
+            m_log.info("Term from intent: " + aIntentSearchTerm);
+        }
+
         m_term = aIntentSearchTerm;
         m_viewModel.setTerm(m_term);
     }
 
     @Override
     public void onDestroyView() {
+        if (m_log != null) {
+            m_log.info("onDestroyView()");
+        }
+
         super.onDestroyView();
 
         // Avoid using old pointers when view has been destroyed
@@ -372,5 +416,6 @@ public abstract class BaseFragment<M extends BaseFragmentModel> extends Fragment
         m_listAdapter = null;
         m_recyclerView = null;
         m_viewHolderStatus = null;
+        m_layoutManager = null;
     }
 }
