@@ -27,6 +27,7 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -128,6 +129,21 @@ public class QueryFragment extends BaseFragment<BaseFragmentModel> {
                 }
 
                 return true;
+            }
+        });
+
+        ImageView closeButton = m_searchView.findViewById(R.id.search_close_btn);
+
+        closeButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if ("".equals(m_viewModel.getTerm())) {
+                    m_searchView.setIconified(true);
+                } else {
+                    m_searchView.setQuery("", true);
+                    m_viewModel.setTerm("");
+                    m_term = "";
+                }
             }
         });
 
