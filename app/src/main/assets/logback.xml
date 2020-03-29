@@ -21,8 +21,12 @@
         </rollingPolicy>
     </appender>
 
+    <appender name="async" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="file" />
+    </appender>
+
     <root level="ALL">
         <appender-ref ref="logcat" />
-        <appender-ref ref="file" />
+        <appender-ref ref="async" />
     </root>
 </configuration>
