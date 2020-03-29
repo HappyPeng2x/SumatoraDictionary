@@ -76,7 +76,7 @@ public abstract class BaseFragment<M extends BaseFragmentModel> extends Fragment
 
     PopupMenu m_languagePopupMenu;
 
-    private Logger m_log;
+    Logger m_log;
 
     private DictionarySearchElementViewHolder.Status m_viewHolderStatus;
 

@@ -120,6 +120,10 @@ public class QueryFragment extends BaseFragment<BaseFragmentModel> {
         mSearchSrcTextView.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+                if (m_log != null) {
+                    m_log.info("onEditorAction()");
+                }
+
                 if (m_searchView.getQuery() != null) {
                     m_term = m_searchView.getQuery().toString();
 
