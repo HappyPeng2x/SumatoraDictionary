@@ -41,7 +41,6 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElem
 import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
-import org.happypeng.sumatora.android.sumatoradictionary.db.tools.RoomFactoryWrapper;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.ValueHolder;
 import org.happypeng.sumatora.jromkan.Romkan;
 
@@ -1148,7 +1147,7 @@ public class BaseFragmentModel extends AndroidViewModel {
                     @Override
                     public LiveData<PagedList<DictionarySearchElement>> apply(PersistentDatabase input) {
                         return new LivePagedListBuilder<>
-                                (new RoomFactoryWrapper<>(input.dictionaryDisplayElementDao().getAllDetailsLivePaged(mKey)), pagedListConfig)
+                                (input.dictionaryDisplayElementDao().getAllDetailsLivePaged(mKey), pagedListConfig)
                                 .setBoundaryCallback(new PagedList.BoundaryCallback<DictionarySearchElement>() {
                                     @Override
                                     public void onItemAtEndLoaded(@NonNull DictionarySearchElement itemAtEnd) {
