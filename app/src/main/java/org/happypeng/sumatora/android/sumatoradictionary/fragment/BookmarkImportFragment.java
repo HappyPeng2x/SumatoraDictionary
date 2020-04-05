@@ -37,6 +37,43 @@ import org.happypeng.sumatora.android.sumatoradictionary.model.BaseFragmentModel
 import org.happypeng.sumatora.android.sumatoradictionary.model.BookmarkImportModel;
 
 public class BookmarkImportFragment extends BaseFragment<BookmarkImportModel> {
+    @Override
+    protected Class<BookmarkImportModel> getViewModelClass() {
+        return BookmarkImportModel.class;
+    }
+
+    @Override
+    protected BaseFragmentModelFactory.Creator getViewModelCreator() {
+        return new BaseFragmentModelFactory.Creator() {
+            @Override
+            public BaseFragmentModel create() {
+                return new BookmarkImportModel(getActivity().getApplication(),
+                        getKey(), "SELECT seq FROM DictionaryBookmarkImport WHERE ref=" + getKey(),
+                        true, "DictionaryBookmarkImport");
+            }
+        };
+    }
+
+    @Override
+    protected int getKey() {
+        return 3;
+    }
+
+    @Override
+    protected String getTitle() {
+        return "Import bookmarks";
+    }
+
+    @Override
+    protected boolean getHasHomeButton() {
+        return false;
+    }
+
+    @Override
+    protected boolean getDisableBookmarkButton() {
+        return true;
+    }
+
     public BookmarkImportFragment() {
         super();
     }
@@ -125,20 +162,6 @@ public class BookmarkImportFragment extends BaseFragment<BookmarkImportModel> {
     @Override
     View getLanguagePopupMenuAnchorView() {
         return m_languageText;
-    }
-
-    public void setParameters(final int aKey) {
-        final String aSearchSet = "SELECT seq FROM DictionaryBookmarkImport WHERE ref=" + aKey;
-
-        setParameters(BookmarkImportModel.class,
-                new BaseFragmentModelFactory.Creator() {
-                    @Override
-                    public BaseFragmentModel create() {
-                        return new BookmarkImportModel(getActivity().getApplication(),
-                                aKey, aSearchSet, true, "DictionaryBookmarkImport");
-                    }
-                },
-                aKey, "Import bookmarks", false, true);
     }
 
     public void processUri(Uri aUri) {

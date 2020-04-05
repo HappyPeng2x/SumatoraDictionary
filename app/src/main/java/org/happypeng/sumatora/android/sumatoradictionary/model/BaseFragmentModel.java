@@ -196,6 +196,11 @@ public class BaseFragmentModel extends AndroidViewModel {
                     + "FROM jmdict.DictionaryIndex "
                     + "WHERE readingsKanaParts MATCH ? || '*'";
 
+    @Override
+    protected void onCleared() {
+        super.onCleared();
+    }
+
     // Query related classes
     private static abstract class QueryStatement {
         final int ref;
@@ -421,9 +426,9 @@ public class BaseFragmentModel extends AndroidViewModel {
     // Other status elements
     PersistentDatabase mCurrentDatabase;
 
-    private final String mSearchSet;
-    private final boolean mAllowQueryAll;
-    private final String mTableObserve;
+    private String mSearchSet;
+    private boolean mAllowQueryAll;
+    private String mTableObserve;
 
     final DictionaryApplication mApp;
 
@@ -519,6 +524,11 @@ public class BaseFragmentModel extends AndroidViewModel {
     }
 
     private void initialize() {
+        // setParameters not done
+        if (mKey == -1) {
+            return;
+        }
+
         mCurrentDatabase = null;
 
         // Database changed
@@ -592,7 +602,7 @@ public class BaseFragmentModel extends AndroidViewModel {
                                 mLanguageSettings = aLanguageSettings;
                                 mQueryStatements = statements;
 
-                                if (!"".equals(mTableObserve)) {
+                                if (mTableObserve != null && !"".equals(mTableObserve)) {
                                     mCurrentDatabase.getInvalidationTracker().addObserver(observer);
                                 }
 

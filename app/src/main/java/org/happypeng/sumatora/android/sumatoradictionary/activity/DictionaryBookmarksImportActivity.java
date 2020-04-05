@@ -22,8 +22,6 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
 
         BookmarkImportFragment fragment = new BookmarkImportFragment();
 
-        fragment.setParameters(3);
-
         FragmentManager fm = getSupportFragmentManager();
 
         FragmentTransaction fragmentTransaction = fm.beginTransaction();

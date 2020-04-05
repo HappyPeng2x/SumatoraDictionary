@@ -22,6 +22,7 @@ import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
+import android.os.Parcelable;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -51,6 +52,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.R;
 import org.happypeng.sumatora.android.sumatoradictionary.adapter.DictionaryPagedListAdapter;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
 import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary;
+import org.happypeng.sumatora.android.sumatoradictionary.db.tools.ValueHolder;
 import org.happypeng.sumatora.android.sumatoradictionary.model.BaseFragmentModel;
 import org.happypeng.sumatora.android.sumatoradictionary.model.BaseFragmentModelFactory;
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionarySearchElementViewHolder;
@@ -70,9 +72,7 @@ public abstract class BaseFragment<M extends BaseFragmentModel> extends Fragment
 
     private DictionaryPagedListAdapter m_listAdapter;
 
-    private Class<M> m_viewModelClass;
-    private BaseFragmentModelFactory.Creator m_viewModelCreator;
-    M m_viewModel;
+    protected M m_viewModel;
 
     PopupMenu m_languagePopupMenu;
 
@@ -82,34 +82,21 @@ public abstract class BaseFragment<M extends BaseFragmentModel> extends Fragment
 
     SearchView m_searchView;
 
-    private int m_key;
-    private String m_title;
-    private boolean m_hasHomeButton;
-    private boolean m_disableBookmarkButton;
-
     String m_term;
+
+    private Bundle m_state;
+
+    protected abstract Class<M> getViewModelClass();
+    protected abstract BaseFragmentModelFactory.Creator getViewModelCreator();
+    protected abstract int getKey();
+    protected abstract String getTitle();
+    protected abstract boolean getHasHomeButton();
+    protected abstract boolean getDisableBookmarkButton();
 
     public BaseFragment() {
         if (BuildConfig.DEBUG_BASE_FRAGMENT) {
             m_log = LoggerFactory.getLogger(this.getClass());
         }
-
-        m_key = 0;
-        m_title = null;
-
-        m_term = "";
-    }
-
-    void setParameters(Class<M> a_viewModelClass,
-                       BaseFragmentModelFactory.Creator a_viewModelCreator,
-                       int a_key, @NonNull String aTitle,
-                       boolean aHasHomeButton, boolean aDisableBookmarkButton) {
-        m_viewModelClass = a_viewModelClass;
-        m_key = a_key;
-        m_title = aTitle;
-        m_hasHomeButton = aHasHomeButton;
-        m_disableBookmarkButton = aDisableBookmarkButton;
-        m_viewModelCreator = a_viewModelCreator;
     }
 
     private void setInPreparation() {
@@ -130,8 +117,6 @@ public abstract class BaseFragment<M extends BaseFragmentModel> extends Fragment
     }
 
     private void setReady() {
-        // m_recyclerView.setAdapter(m_listAdapter);
-
         m_progressBar.setIndeterminate(false);
         m_progressBar.setMax(0);
 
@@ -207,17 +192,9 @@ public abstract class BaseFragment<M extends BaseFragmentModel> extends Fragment
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        final String restoredTerm = savedInstanceState == null ? null : savedInstanceState.getString("term");
-        final int restoredQueryPos = savedInstanceState == null ? 0 : savedInstanceState.getInt("query");
-        final int restoredScrollPos = savedInstanceState == null ? 0 : savedInstanceState.getInt("scroll");
-
-        if (m_log != null) {
-            m_log.info("onCreateView()");
-
-            m_log.info("Restore information: term '" +
-                    (restoredTerm == null ? "" : restoredTerm) +
-                    "' query position " + restoredQueryPos +
-                    " scroll position " + restoredScrollPos);
+        if (savedInstanceState == null && m_state != null) {
+            savedInstanceState = m_state;
+            m_state = null;
         }
 
         m_languagePopupMenu = null;
@@ -227,8 +204,10 @@ public abstract class BaseFragment<M extends BaseFragmentModel> extends Fragment
 
         final Toolbar tb = (Toolbar) view.findViewById(R.id.dictionary_bookmark_fragment_toolbar);
 
-        if (m_title != null) {
-            tb.setTitle(m_title);
+        final String title = getTitle();
+
+        if (title != null) {
+            tb.setTitle(title);
         }
 
         activity.setSupportActionBar(tb);
@@ -237,28 +216,36 @@ public abstract class BaseFragment<M extends BaseFragmentModel> extends Fragment
 
         final ActionBar actionBar = activity.getSupportActionBar();
         actionBar.setHomeAsUpIndicator(R.drawable.ic_menu_white_24dp);
-        actionBar.setDisplayHomeAsUpEnabled(m_hasHomeButton);
+        actionBar.setDisplayHomeAsUpEnabled(getHasHomeButton());
 
-        m_progressBar = (ProgressBar) view.findViewById(R.id.dictionary_bookmark_fragment_progressbar);
-        m_statusText = (TextView) view.findViewById(R.id.dictionary_bookmark_fragment_statustext);
-        m_searchStatusText = (TextView) view.findViewById(R.id.dictionary_bookmark_fragment_search_status);
-        m_recyclerView = (RecyclerView) view.findViewById(R.id.dictionary_bookmark_fragment_recyclerview);
+        m_progressBar = view.findViewById(R.id.dictionary_bookmark_fragment_progressbar);
+        m_statusText = view.findViewById(R.id.dictionary_bookmark_fragment_statustext);
+        m_searchStatusText = view.findViewById(R.id.dictionary_bookmark_fragment_search_status);
+        m_recyclerView = view.findViewById(R.id.dictionary_bookmark_fragment_recyclerview);
 
         setInPreparation();
 
-        m_layoutManager = new LinearLayoutManager(getContext());
-        m_layoutManager.setOrientation(RecyclerView.VERTICAL);
-        m_recyclerView.setLayoutManager(m_layoutManager);
+        m_layoutManager = (LinearLayoutManager) m_recyclerView.getLayoutManager();
 
         ViewModelProvider provider = new ViewModelProvider(getActivity(),
                 new BaseFragmentModelFactory(getActivity().getApplication(),
-                        m_viewModelCreator));
-        m_viewModel = provider.get(Integer.toString(m_key), m_viewModelClass);
+                        getViewModelCreator()));
+        m_viewModel = provider.get(Integer.toString(getKey()), getViewModelClass());
+
+        if (m_term == null) {
+            m_term = m_viewModel.getTerm();
+        }
 
         m_viewHolderStatus = new DictionarySearchElementViewHolder.Status();
-        m_listAdapter = new DictionaryPagedListAdapter(m_viewHolderStatus, m_disableBookmarkButton);
+        m_listAdapter = new DictionaryPagedListAdapter(m_viewHolderStatus, getDisableBookmarkButton());
 
         m_recyclerView.setAdapter(m_listAdapter);
+
+        final ValueHolder<Parcelable> layoutManagerState = new ValueHolder<>(null);
+
+        if (savedInstanceState != null && m_layoutManager != null) {
+            layoutManagerState.setValue(savedInstanceState.getParcelable("LAYOUT_MANAGER_STATE"));
+        }
 
         DividerItemDecoration itemDecor = new DividerItemDecoration(getContext(),
                 m_layoutManager.getOrientation());
@@ -300,7 +287,18 @@ public abstract class BaseFragment<M extends BaseFragmentModel> extends Fragment
                 new Observer<PagedList<DictionarySearchElement>>() {
                     @Override
                     public void onChanged(PagedList<DictionarySearchElement> dictionarySearchElements) {
-                        m_listAdapter.submitList(dictionarySearchElements);
+                        m_listAdapter.submitList(dictionarySearchElements,
+                                new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        Parcelable layoutManagerStateParcelable = layoutManagerState.getValue();
+
+                                        if (layoutManagerStateParcelable != null) {
+                                            m_layoutManager.onRestoreInstanceState(layoutManagerStateParcelable);
+                                            layoutManagerState.setValue(null);
+                                        }
+                                    }
+                                });
                     }
                 });
 
@@ -316,30 +314,18 @@ public abstract class BaseFragment<M extends BaseFragmentModel> extends Fragment
         return view;
     }
 
-    /*
     @Override
     public void onSaveInstanceState(@NonNull Bundle outState) {
         if (m_log != null) {
-            m_log.info("onSaveInstanceState()");
+            m_log.info("onSaveInstanceState");
         }
 
         super.onSaveInstanceState(outState);
 
-        if (m_layoutManager != null && m_viewModel != null) {
-            final int scrollPos = m_layoutManager.findFirstVisibleItemPosition();
-            final int queryPos =  m_viewModel.getQueryPosition();
-            final String term = m_viewModel.getTerm();
-
-            outState.putInt("scroll", scrollPos);
-            outState.putInt("query", queryPos);
-            outState.putString("term", term);
-
-            if (m_log != null) {
-                m_log.info("Save information: scroll position " + scrollPos + ", query position " + queryPos + ", term '" + term + "'");
-            }
+        if (m_layoutManager != null) {
+            outState.putParcelable("LAYOUT_MANAGER_STATE", m_layoutManager.onSaveInstanceState());
         }
     }
-     */
 
     abstract View getLanguagePopupMenuAnchorView();
 
@@ -406,6 +392,9 @@ public abstract class BaseFragment<M extends BaseFragmentModel> extends Fragment
         }
 
         super.onDestroyView();
+
+        m_state = new Bundle();
+        onSaveInstanceState(m_state);
 
         // Avoid using old pointers when view has been destroyed
         m_progressBar = null;

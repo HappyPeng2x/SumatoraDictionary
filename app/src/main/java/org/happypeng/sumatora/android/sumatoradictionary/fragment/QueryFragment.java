@@ -47,38 +47,34 @@ import org.happypeng.sumatora.android.sumatoradictionary.xml.DictionaryBookmarkX
 import java.io.File;
 import java.util.List;
 
-public class QueryFragment extends BaseFragment<BaseFragmentModel> {
-    private boolean m_allowExport;
-    private boolean m_openSearchBox;
+public abstract class QueryFragment extends BaseFragment<BaseFragmentModel> {
     private TextView m_languageText;
 
-    public QueryFragment() {
-        super();
-
-        m_allowExport = false;
-        m_openSearchBox = false;
+    @Override
+    protected Class<BaseFragmentModel> getViewModelClass() {
+        return BaseFragmentModel.class;
     }
+
+    @Override
+    protected BaseFragmentModelFactory.Creator getViewModelCreator() {
+        return new BaseFragmentModelFactory.Creator() {
+            @Override
+            public BaseFragmentModel create() {
+                return new BaseFragmentModel(getActivity().getApplication(),
+                        getKey(), getSearchSet(), getAllowSearchAll(), getTableObserve());
+            }
+        };
+    }
+
+    protected abstract String getSearchSet();
+    protected abstract boolean getAllowSearchAll();
+    protected abstract String getTableObserve();
+    protected abstract boolean getAllowExport();
+    protected abstract boolean getOpenSearchBox();
 
     @Override
     View getLanguagePopupMenuAnchorView() {
         return m_languageText;
-    }
-
-    public void setParameters(final int a_key, final String aSearchSet, final boolean aAllowSearchAll,
-                              @NonNull String aTitle, boolean aAllowExport,
-                              boolean aOpenSearchBox, @NonNull final String aTableObserve) {
-        setParameters(BaseFragmentModel.class,
-                new BaseFragmentModelFactory.Creator() {
-                    @Override
-                    public BaseFragmentModel create() {
-                        return new BaseFragmentModel(getActivity().getApplication(),
-                                a_key, aSearchSet, aAllowSearchAll, aTableObserve);
-                    }
-                },
-                a_key, aTitle, true, false);
-
-        m_allowExport = aAllowExport;
-        m_openSearchBox = aOpenSearchBox;
     }
 
     @Override
@@ -87,7 +83,7 @@ public class QueryFragment extends BaseFragment<BaseFragmentModel> {
 
         inflater.inflate(R.menu.bookmark_query_menu, menu);
 
-        if (m_allowExport) {
+        if (getAllowExport()) {
             menu.findItem(R.id.share_bookmarks).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
                 @Override
                 public boolean onMenuItemClick(MenuItem item) {
@@ -108,7 +104,7 @@ public class QueryFragment extends BaseFragment<BaseFragmentModel> {
 
         m_searchView.setQuery(m_term, false);
 
-        if (!m_openSearchBox) {
+        if (!getOpenSearchBox()) {
             m_searchView.setIconifiedByDefault(true);
         } else {
             m_searchView.setIconifiedByDefault(false);
