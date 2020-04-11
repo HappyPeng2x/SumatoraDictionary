@@ -21,6 +21,7 @@ import android.net.Uri;
 import android.os.AsyncTask;
 
 import androidx.annotation.NonNull;
+import androidx.lifecycle.LiveData;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmarkImport;
@@ -38,7 +39,7 @@ public class BookmarkImportModel extends BaseFragmentModel {
     public BookmarkImportModel(Application aApp,
                                final int aKey, final String aSearchSet,
                                final boolean aAllowSearchAll,
-                               final @NonNull String aTableObserve) {
+                               final LiveData<Long> aTableObserve) {
         super(aApp, aKey, aSearchSet, aAllowSearchAll, aTableObserve);
 
         m_UriImported = false;

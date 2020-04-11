@@ -427,12 +427,9 @@ public class BaseFragmentModel extends AndroidViewModel {
 
     private String mSearchSet;
     private boolean mAllowQueryAll;
-    private String mTableObserve;
+    private LiveData<Long> mTableObserve;
 
     final DictionaryApplication mApp;
-
-    // To execute code on the main thread from InvalidationTracker observer
-    private final Handler mHandler;
 
     final int mKey;
 
@@ -575,18 +572,6 @@ public class BaseFragmentModel extends AndroidViewModel {
     @MainThread
     private void performInitialization(final PersistentLanguageSettings aLanguageSettings,
                                        final PersistentDatabase aDatabase) {
-        final InvalidationTracker.Observer observer = new InvalidationTracker.Observer(mTableObserve) {
-            @Override
-            public void onInvalidated(@NonNull Set<String> tables) {
-                mHandler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        processResetAndQueryInitial();
-                    }
-                });
-            }
-        };
-
         final QueryStatementsCallback callback =
                 new QueryStatementsCallback() {
             @Override
@@ -601,8 +586,14 @@ public class BaseFragmentModel extends AndroidViewModel {
                                 mLanguageSettings = aLanguageSettings;
                                 mQueryStatements = statements;
 
-                                if (mTableObserve != null && !"".equals(mTableObserve)) {
-                                    mCurrentDatabase.getInvalidationTracker().addObserver(observer);
+                                if (mTableObserve != null) {
+                                    mStatus.addSource(mTableObserve,
+                                            new Observer<Long>() {
+                                                @Override
+                                                public void onChanged(Long aLong) {
+                                                    processResetAndQueryInitial();
+                                                }
+                                            });
                                 }
 
                                 mStatus.setValue(STATUS_INITIALIZED);
@@ -624,7 +615,9 @@ public class BaseFragmentModel extends AndroidViewModel {
                     final QueryStatementsContainer statements = mQueryStatements;
                     mQueryStatements = null;
 
-                    mCurrentDatabase.getInvalidationTracker().removeObserver(observer);
+                    if (mTableObserve != null) {
+                        mStatus.removeSource(mTableObserve);
+                    }
 
                     closeQueryStatements(statements, (aLanguageSettings == null || aDatabase == null) ? null : callback);
                 }
@@ -644,7 +637,7 @@ public class BaseFragmentModel extends AndroidViewModel {
     public BaseFragmentModel(Application aApp,
                       final int aKey, final String aSearchSet,
                       final boolean aAllowSearchAll,
-                      final @NonNull String aTableObserve) {
+                      final LiveData<Long> aTableObserve) {
         super(aApp);
 
         mApp = (DictionaryApplication) aApp;
@@ -658,8 +651,6 @@ public class BaseFragmentModel extends AndroidViewModel {
         mSearchSet = aSearchSet;
         mAllowQueryAll = aAllowSearchAll;
         mTableObserve = aTableObserve;
-
-        mHandler = new Handler(mApp.getMainLooper());
 
         initialize();
     }

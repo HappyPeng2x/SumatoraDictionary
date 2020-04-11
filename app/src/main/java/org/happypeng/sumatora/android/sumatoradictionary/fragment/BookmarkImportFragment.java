@@ -27,10 +27,15 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.arch.core.util.Function;
 import androidx.fragment.app.FragmentActivity;
+import androidx.lifecycle.LiveData;
 import androidx.lifecycle.Observer;
+import androidx.lifecycle.Transformations;
 
+import org.happypeng.sumatora.android.sumatoradictionary.DictionaryApplication;
 import org.happypeng.sumatora.android.sumatoradictionary.R;
+import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings;
 import org.happypeng.sumatora.android.sumatoradictionary.model.BaseFragmentModel;
 import org.happypeng.sumatora.android.sumatoradictionary.model.BaseFragmentModelFactory;
@@ -47,9 +52,22 @@ public class BookmarkImportFragment extends BaseFragment<BookmarkImportModel> {
         return new BaseFragmentModelFactory.Creator() {
             @Override
             public BaseFragmentModel create() {
+                final LiveData<Long> tableObserve =
+                        Transformations.switchMap(((DictionaryApplication) getActivity().getApplication()).getPersistentDatabase(),
+                        new Function<PersistentDatabase, LiveData<Long>>() {
+                            @Override
+                            public LiveData<Long> apply(PersistentDatabase input) {
+                                if (input != null) {
+                                    return input.dictionaryBookmarkDao().getFirstLive();
+                                }
+
+                                return null;
+                            }
+                        });
+
                 return new BookmarkImportModel(getActivity().getApplication(),
                         getKey(), "SELECT seq FROM DictionaryBookmarkImport WHERE ref=" + getKey(),
-                        true, "DictionaryBookmarkImport");
+                        true, tableObserve);
             }
         };
     }

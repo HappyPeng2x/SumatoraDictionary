@@ -34,8 +34,10 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.appcompat.widget.SearchView;
 import androidx.core.content.FileProvider;
+import androidx.lifecycle.LiveData;
 import androidx.lifecycle.Observer;
 
+import org.happypeng.sumatora.android.sumatoradictionary.DictionaryApplication;
 import org.happypeng.sumatora.android.sumatoradictionary.R;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings;
@@ -61,14 +63,15 @@ public abstract class QueryFragment extends BaseFragment<BaseFragmentModel> {
             @Override
             public BaseFragmentModel create() {
                 return new BaseFragmentModel(getActivity().getApplication(),
-                        getKey(), getSearchSet(), getAllowSearchAll(), getTableObserve());
+                        getKey(), getSearchSet(), getAllowSearchAll(),
+                        getTableObserve((DictionaryApplication) getActivity().getApplication()));
             }
         };
     }
 
     protected abstract String getSearchSet();
     protected abstract boolean getAllowSearchAll();
-    protected abstract String getTableObserve();
+    protected abstract LiveData<Long> getTableObserve(DictionaryApplication aApp);
     protected abstract boolean getAllowExport();
     protected abstract boolean getOpenSearchBox();
 

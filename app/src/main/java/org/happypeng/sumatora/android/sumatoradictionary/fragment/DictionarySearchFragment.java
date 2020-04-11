@@ -16,6 +16,10 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.fragment;
 
+import androidx.lifecycle.LiveData;
+
+import org.happypeng.sumatora.android.sumatoradictionary.DictionaryApplication;
+
 public class DictionarySearchFragment extends QueryFragment {
     @Override
     protected String getSearchSet() {
@@ -28,7 +32,7 @@ public class DictionarySearchFragment extends QueryFragment {
     }
 
     @Override
-    protected String getTableObserve() {
+    protected LiveData<Long> getTableObserve(DictionaryApplication aApp) {
         return null;
     }
 

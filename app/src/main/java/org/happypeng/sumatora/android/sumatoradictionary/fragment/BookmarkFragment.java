@@ -16,6 +16,13 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.fragment;
 
+import androidx.arch.core.util.Function;
+import androidx.lifecycle.LiveData;
+import androidx.lifecycle.Transformations;
+
+import org.happypeng.sumatora.android.sumatoradictionary.DictionaryApplication;
+import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
+
 public class BookmarkFragment extends QueryFragment {
     @Override
     protected String getSearchSet() {
@@ -28,8 +35,18 @@ public class BookmarkFragment extends QueryFragment {
     }
 
     @Override
-    protected String getTableObserve() {
-        return "DictionaryBookmark";
+    protected LiveData<Long> getTableObserve(DictionaryApplication aApp) {
+        return Transformations.switchMap(aApp.getPersistentDatabase(),
+                new Function<PersistentDatabase, LiveData<Long>>() {
+                    @Override
+                    public LiveData<Long> apply(PersistentDatabase input) {
+                        if (input != null) {
+                            return input.dictionaryBookmarkDao().getFirstLive();
+                        }
+
+                        return null;
+                    }
+                });
     }
 
     @Override
