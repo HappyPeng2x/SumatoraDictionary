@@ -495,7 +495,7 @@ public class BaseFragmentModel extends AndroidViewModel {
     private void processResetAndQueryInitial()  {
         mStatus.setValue(STATUS_SEARCHING);
 
-        executeResetAndQueryInitial(mKey, mCurrentDatabase, mTerm, mQueryResult, mQueryStatements, new QueryNextStatementCallback() {
+        executeResetAndQueryInitial(mKey, mCurrentDatabase, mTerm, null, mQueryStatements, new QueryNextStatementCallback() {
             @Override
             public void callback(QueryNextStatementResult aResult) {
                 mQueryResult = aResult;
