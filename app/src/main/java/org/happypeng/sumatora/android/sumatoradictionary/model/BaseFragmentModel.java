@@ -18,7 +18,7 @@ package org.happypeng.sumatora.android.sumatoradictionary.model;
 
 import android.app.Application;
 import android.os.AsyncTask;
-import android.os.Handler;
+import android.os.Parcelable;
 
 import androidx.annotation.MainThread;
 import androidx.annotation.NonNull;
@@ -31,7 +31,6 @@ import androidx.lifecycle.Observer;
 import androidx.lifecycle.Transformations;
 import androidx.paging.LivePagedListBuilder;
 import androidx.paging.PagedList;
-import androidx.room.InvalidationTracker;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 import androidx.sqlite.db.SupportSQLiteStatement;
 
@@ -39,14 +38,13 @@ import org.happypeng.sumatora.android.sumatoradictionary.DictionaryApplication;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
 import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary;
-import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
+import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.ValueHolder;
 import org.happypeng.sumatora.jromkan.Romkan;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Set;
 
 public class BaseFragmentModel extends AndroidViewModel {
     // Display related SQL queries
@@ -425,6 +423,8 @@ public class BaseFragmentModel extends AndroidViewModel {
     // Other status elements
     PersistentDatabase mCurrentDatabase;
 
+    private Parcelable mLayoutManagerState;
+
     private String mSearchSet;
     private boolean mAllowQueryAll;
     private LiveData<Long> mTableObserve;
@@ -457,6 +457,14 @@ public class BaseFragmentModel extends AndroidViewModel {
         }
 
         return 0;
+    }
+
+    public Parcelable getLayoutManagerState() {
+        return mLayoutManagerState;
+    }
+
+    public void setLayoutManagerState(final Parcelable aLayoutManagerState) {
+        mLayoutManagerState = aLayoutManagerState;
     }
 
     // Query

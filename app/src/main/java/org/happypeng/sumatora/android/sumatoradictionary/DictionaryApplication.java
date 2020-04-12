@@ -573,7 +573,6 @@ public class DictionaryApplication extends Application {
             StrictMode.setVmPolicy(new StrictMode.VmPolicy.Builder()
                     .detectAll()
                     .penaltyLog()
-                    .penaltyDeath()
                     .build());
         }
 

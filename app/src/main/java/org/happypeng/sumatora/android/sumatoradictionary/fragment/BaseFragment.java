@@ -32,7 +32,6 @@ import android.view.ViewGroup;
 import android.widget.PopupMenu;
 import android.widget.ProgressBar;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBar;
@@ -241,12 +240,6 @@ public abstract class BaseFragment<M extends BaseFragmentModel> extends Fragment
 
         m_recyclerView.setAdapter(m_listAdapter);
 
-        final ValueHolder<Parcelable> layoutManagerState = new ValueHolder<>(null);
-
-        if (savedInstanceState != null && m_layoutManager != null) {
-            layoutManagerState.setValue(savedInstanceState.getParcelable("LAYOUT_MANAGER_STATE"));
-        }
-
         DividerItemDecoration itemDecor = new DividerItemDecoration(getContext(),
                 m_layoutManager.getOrientation());
         m_recyclerView.addItemDecoration(itemDecor);
@@ -291,11 +284,11 @@ public abstract class BaseFragment<M extends BaseFragmentModel> extends Fragment
                                 new Runnable() {
                                     @Override
                                     public void run() {
-                                        Parcelable layoutManagerStateParcelable = layoutManagerState.getValue();
+                                        Parcelable layoutManagerStateParcelable = m_viewModel.getLayoutManagerState();
 
                                         if (layoutManagerStateParcelable != null) {
                                             m_layoutManager.onRestoreInstanceState(layoutManagerStateParcelable);
-                                            layoutManagerState.setValue(null);
+                                            m_viewModel.setLayoutManagerState(null);
                                         }
                                     }
                                 });
@@ -322,8 +315,8 @@ public abstract class BaseFragment<M extends BaseFragmentModel> extends Fragment
 
         super.onSaveInstanceState(outState);
 
-        if (m_layoutManager != null) {
-            outState.putParcelable("LAYOUT_MANAGER_STATE", m_layoutManager.onSaveInstanceState());
+        if (m_viewModel != null && m_layoutManager != null) {
+            m_viewModel.setLayoutManagerState(m_layoutManager.onSaveInstanceState());
         }
     }
 
