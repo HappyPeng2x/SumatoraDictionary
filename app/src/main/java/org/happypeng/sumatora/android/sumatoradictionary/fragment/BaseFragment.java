@@ -315,8 +315,14 @@ public abstract class BaseFragment<M extends BaseFragmentModel> extends Fragment
 
         super.onSaveInstanceState(outState);
 
-        if (m_viewModel != null && m_layoutManager != null) {
-            m_viewModel.setLayoutManagerState(m_layoutManager.onSaveInstanceState());
+        if (m_viewModel != null) {
+            if (m_layoutManager != null) {
+                m_viewModel.setLayoutManagerState(m_layoutManager.onSaveInstanceState());
+            }
+
+            if (m_searchView != null) {
+                m_viewModel.setSearchViewOpenedState(!m_searchView.isIconified());
+            }
         }
     }
 

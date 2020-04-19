@@ -70,9 +70,13 @@ public abstract class QueryFragment extends BaseFragment<BaseFragmentModel> {
     }
 
     protected abstract String getSearchSet();
+
     protected abstract boolean getAllowSearchAll();
+
     protected abstract LiveData<Long> getTableObserve(DictionaryApplication aApp);
+
     protected abstract boolean getAllowExport();
+
     protected abstract boolean getOpenSearchBox();
 
     @Override
@@ -109,6 +113,7 @@ public abstract class QueryFragment extends BaseFragment<BaseFragmentModel> {
 
         if (!getOpenSearchBox()) {
             m_searchView.setIconifiedByDefault(true);
+            m_searchView.setIconified(!m_viewModel.getSearchViewOpenedState());
         } else {
             m_searchView.setIconifiedByDefault(false);
         }
@@ -177,6 +182,8 @@ public abstract class QueryFragment extends BaseFragment<BaseFragmentModel> {
         });
 
         colorMenu(menu);
+
+        m_searchView.requestFocus();
     }
 
     private void displayInitializationToast() {
@@ -244,6 +251,15 @@ public abstract class QueryFragment extends BaseFragment<BaseFragmentModel> {
             Toast.makeText(getContext(), "Bookmarks sharing failed...", Toast.LENGTH_LONG).show();
 
             System.err.println(e.toString());
+        }
+    }
+
+    @Override
+    public void setIntentSearchTerm(@NonNull String aIntentSearchTerm) {
+        super.setIntentSearchTerm(aIntentSearchTerm);
+
+        if (m_searchView != null) {
+            m_searchView.setQuery(aIntentSearchTerm, false);
         }
     }
 }
