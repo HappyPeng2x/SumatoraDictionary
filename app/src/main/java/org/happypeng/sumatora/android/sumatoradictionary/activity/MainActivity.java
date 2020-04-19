@@ -198,7 +198,9 @@ public class MainActivity extends AppCompatActivity
                 m_log.info("setting search term to " + aIntent.getStringExtra("SEARCH_TERM"));
             }
 
-            if (Intent.ACTION_SEARCH.equals(aIntent.getAction())) {
+            if ((Intent.ACTION_SEARCH.equals(aIntent.getAction()) ||
+                Intent.ACTION_MAIN.equals(aIntent.getAction())) &&
+                aIntent.hasExtra("SEARCH_TERM")) {
                 FragmentManager fm = getSupportFragmentManager();
 
                 String fragmentTag = fm.getBackStackEntryAt(fm.getBackStackEntryCount() - 1).getName();

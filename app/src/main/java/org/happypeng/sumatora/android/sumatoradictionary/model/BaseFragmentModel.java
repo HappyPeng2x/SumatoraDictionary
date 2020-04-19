@@ -424,6 +424,10 @@ public class BaseFragmentModel extends AndroidViewModel {
     PersistentDatabase mCurrentDatabase;
 
     private Parcelable mLayoutManagerState;
+    private boolean mOpenSearchView;
+
+    private MediatorLiveData<PagedList<DictionarySearchElement>> mDisplayElementsMediator;
+    private PagedList<DictionarySearchElement> mDictionarySearchElement;
 
     private String mSearchSet;
     private boolean mAllowQueryAll;
@@ -467,6 +471,14 @@ public class BaseFragmentModel extends AndroidViewModel {
         mLayoutManagerState = aLayoutManagerState;
     }
 
+    public boolean getSearchViewOpenedState() {
+        return mOpenSearchView;
+    }
+
+    public void setSearchViewOpenedState(final boolean aOpen) {
+        mOpenSearchView = aOpen;
+    }
+
     // Query
     @MainThread
     private void processQueryInitial()  {
@@ -495,6 +507,12 @@ public class BaseFragmentModel extends AndroidViewModel {
     private void processResetAndQueryInitial()  {
         mStatus.setValue(STATUS_SEARCHING);
 
+        processResetAndQueryInitialOnInitialization();
+    }
+
+    // Delete all elements in table then perform query in a single transaction - non initialized status
+    @MainThread
+    private void processResetAndQueryInitialOnInitialization()  {
         executeResetAndQueryInitial(mKey, mCurrentDatabase, mTerm, null, mQueryStatements, new QueryNextStatementCallback() {
             @Override
             public void callback(QueryNextStatementResult aResult) {
@@ -575,6 +593,51 @@ public class BaseFragmentModel extends AndroidViewModel {
                         mInstalledDictionaries = installedDictionaries;
                     }
                 });
+
+        final PagedList.Config pagedListConfig =
+                (new PagedList.Config.Builder()).setEnablePlaceholders(false)
+                        .setPrefetchDistance(PAGE_SIZE)
+                        .setPageSize(PREFETCH_DISTANCE).build();
+
+        LiveData<PagedList<DictionarySearchElement>> displayElements =
+                Transformations.switchMap(mApp.getPersistentDatabase(),
+                    new Function<PersistentDatabase, LiveData<PagedList<DictionarySearchElement>>>() {
+                        @Override
+                        public LiveData<PagedList<DictionarySearchElement>> apply(PersistentDatabase input) {
+                            return new LivePagedListBuilder<>
+                                    (input.dictionaryDisplayElementDao().getAllDetailsLivePaged(mKey), pagedListConfig)
+                                    .setBoundaryCallback(new PagedList.BoundaryCallback<DictionarySearchElement>() {
+                                        @Override
+                                        public void onItemAtEndLoaded(@NonNull DictionarySearchElement itemAtEnd) {
+                                            if (!"".equals(mTerm)) {
+                                                executeQueryInitial(mCurrentDatabase, mTerm, mQueryResult, mQueryStatements, new QueryNextStatementCallback() {
+                                                    @Override
+                                                    public void callback(QueryNextStatementResult aResult) {
+                                                        mQueryResult = aResult;
+
+                                                        if (mQueryStatements != null && mQueryResult.nextStatement >= mQueryStatements.statements.length) {
+                                                            mStatus.setValue(STATUS_RESULTS_FOUND_ENDED);
+                                                        }
+                                                    }
+                                                });
+                                            }
+
+                                            super.onItemAtEndLoaded(itemAtEnd);
+                                        }
+                                    }).build();
+                        }
+                    });
+
+        mDisplayElementsMediator.addSource(displayElements, new Observer<PagedList<DictionarySearchElement>>() {
+            @Override
+            public void onChanged(PagedList<DictionarySearchElement> dictionarySearchElements) {
+                mDictionarySearchElement = dictionarySearchElements;
+
+                if (mStatus.getValue() != STATUS_PRE_INITIALIZED) {
+                    mDisplayElementsMediator.setValue(mDictionarySearchElement);
+                }
+            }
+        });
     }
 
     @MainThread
@@ -604,9 +667,7 @@ public class BaseFragmentModel extends AndroidViewModel {
                                             });
                                 }
 
-                                mStatus.setValue(STATUS_INITIALIZED);
-
-                                processQueryInitial();
+                                processResetAndQueryInitialOnInitialization();
                             }
                         });
             }
@@ -652,6 +713,7 @@ public class BaseFragmentModel extends AndroidViewModel {
         mRomkan = mApp.getRomkan();
 
         mStatus = new MediatorLiveData<>();
+        mDisplayElementsMediator = new MediatorLiveData<>();
 
         mTerm = "";
 
@@ -1136,37 +1198,6 @@ public class BaseFragmentModel extends AndroidViewModel {
     // The display itself
     public
     LiveData<PagedList<DictionarySearchElement>> getDisplayElements() {
-        final PagedList.Config pagedListConfig =
-                (new PagedList.Config.Builder()).setEnablePlaceholders(false)
-                        .setPrefetchDistance(PAGE_SIZE)
-                        .setPageSize(PREFETCH_DISTANCE).build();
-
-        return Transformations.switchMap(mApp.getPersistentDatabase(),
-                new Function<PersistentDatabase, LiveData<PagedList<DictionarySearchElement>>>() {
-                    @Override
-                    public LiveData<PagedList<DictionarySearchElement>> apply(PersistentDatabase input) {
-                        return new LivePagedListBuilder<>
-                                (input.dictionaryDisplayElementDao().getAllDetailsLivePaged(mKey), pagedListConfig)
-                                .setBoundaryCallback(new PagedList.BoundaryCallback<DictionarySearchElement>() {
-                                    @Override
-                                    public void onItemAtEndLoaded(@NonNull DictionarySearchElement itemAtEnd) {
-                                        if (!"".equals(mTerm)) {
-                                            executeQueryInitial(mCurrentDatabase, mTerm, mQueryResult, mQueryStatements, new QueryNextStatementCallback() {
-                                                @Override
-                                                public void callback(QueryNextStatementResult aResult) {
-                                                    mQueryResult = aResult;
-
-                                                    if (mQueryStatements != null && mQueryResult.nextStatement >= mQueryStatements.statements.length) {
-                                                        mStatus.setValue(STATUS_RESULTS_FOUND_ENDED);
-                                                    }
-                                                }
-                                            });
-                                        }
-
-                                        super.onItemAtEndLoaded(itemAtEnd);
-                                    }
-                                }).build();
-                    }
-                });
+        return mDisplayElementsMediator;
     }
 }
