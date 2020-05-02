@@ -39,6 +39,7 @@ public class DictionaryDisplayElement {
     public String lang_setting;
     public String gloss;
     public String example_sentences;
+    public String example_translations;
 
     public DictionaryDisplayElement() { super(); }
 }

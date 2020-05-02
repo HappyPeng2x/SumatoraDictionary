@@ -190,6 +190,23 @@ public class DictionaryApplication extends Application {
         }
     };
 
+    static final Migration MIGRATION_6_7 = new Migration(6, 7) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            Logger log;
+
+            if (BuildConfig.DEBUG_DB_MIGRATION) {
+                log = LoggerFactory.getLogger(this.getClass());
+
+                log.info("Starting database migration");
+            }
+
+            database.execSQL("DROP TABLE IF EXISTS DictionaryDisplayElement");
+
+            database.execSQL("CREATE TABLE IF NOT EXISTS DictionaryDisplayElement (`ref` INTEGER NOT NULL, `entryOrder` INTEGER NOT NULL, `seq` INTEGER NOT NULL, `readingsPrio` TEXT, `readings` TEXT, `writingsPrio` TEXT, `writings` TEXT, `pos` TEXT, `xref` TEXT, `ant` TEXT, `misc` TEXT, `lsource` TEXT, `dial` TEXT, `s_inf` TEXT, `field` TEXT, `lang` TEXT, `lang_setting` TEXT, `gloss` TEXT, `example_sentences` TEXT, `example_translations` TEXT, PRIMARY KEY(`ref`, `seq`))");
+        }
+    };
+
     private static class InitializeDBTask extends AsyncTask<DictionaryApplication, Void, Void> {
         private Logger m_log;
 
@@ -473,7 +490,7 @@ public class DictionaryApplication extends Application {
                     PersistentDatabase.class, PERSISTENT_DATABASE_NAME)
                     .openHelperFactory(new SumatoraSQLiteOpenHelperFactory())
                     .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4,
-                            MIGRATION_4_5, MIGRATION_5_6)
+                            MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
                     .setJournalMode(RoomDatabase.JournalMode.TRUNCATE)
                     .build();
 
@@ -662,7 +679,7 @@ public class DictionaryApplication extends Application {
                             for (InstalledDictionary d : dictionaries) {
                                 if (d.type.equals("jmdict_translation") || d.type.equals("tatoeba")) {
                                     if (d.lang.equals(settings.settings.lang) ||
-                                            (settings.settings.backupLang != null && d.lang.equals(settings.settings.backupLang))) {
+                                            (d.lang.equals(settings.settings.backupLang))) {
                                         d.attach(settings.db);
                                     } else {
                                         d.detach(settings.db);

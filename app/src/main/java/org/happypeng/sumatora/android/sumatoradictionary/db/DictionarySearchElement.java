@@ -35,6 +35,7 @@ public class DictionarySearchElement {
     public String lang_setting;
     public String gloss;
     public String example_sentences;
+    public String example_translations;
     public long bookmark;
 
     public DictionarySearchElement() { }
@@ -83,4 +84,7 @@ public class DictionarySearchElement {
     public String getDial() { return dial; }
     public String getS_inf() { return s_inf; }
     public String getField() { return field; }
+
+    public String getExampleSentences() { return example_sentences; }
+    public String getExampleTranslations() { return example_translations; }
 }

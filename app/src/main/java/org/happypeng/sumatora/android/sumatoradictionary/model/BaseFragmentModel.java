@@ -68,12 +68,22 @@ public class BaseFragmentModel extends AndroidViewModel {
                         + "? AS lang, "
                         + "? AS lang_setting, "
                         + "json_group_array(DictionaryTranslation.gloss) AS gloss, "
-                        + "null as example_sentences "
-                    + "FROM jmdict.DictionaryEntry, "
+                        + "%s as example_sentences, "
+                        + "%s as example_translations "
+                    + "FROM jmdict.DictionaryEntry %s, "
                         + "%s.DictionaryTranslation "
                     + "WHERE DictionaryEntry.seq = DictionaryTranslation.seq AND "
                         + "DictionaryEntry.seq IN (%s) %s "
                     + "GROUP BY DictionaryEntry.seq";
+
+    static private final String SQL_QUERY_JOIN_EXAMPLES =
+            "LEFT JOIN %s.ExamplesSummary ON DictionaryEntry.seq = ExamplesSummary.seq ";
+
+    static private final String SQL_QUERY_EXAMPLE_SENTENCES =
+            "ExamplesSummary.sentences";
+
+    static private final String SQL_QUERY_EXAMPLE_TRANSLATIONS =
+            "ExamplesSummary.translations";
 
     static private final String SQL_REVERSE_QUERY_INSERT_ELEMENT =
             "INSERT OR IGNORE INTO DictionaryElement "
@@ -116,9 +126,10 @@ public class BaseFragmentModel extends AndroidViewModel {
                     + "? AS lang, "
                     + "? AS lang_setting, "
                     + "json_group_array(DictionaryTranslation.gloss) AS gloss, "
-                    + "null as example_sentences "
+                    + "%s as example_sentences, "
+                    + "%s as example_translations "
                     + "FROM DictionaryElement, "
-                    + "jmdict.DictionaryEntry, "
+                    + "jmdict.DictionaryEntry %s, "
                     + "%s.DictionaryTranslation "
                     + "WHERE DictionaryElement.seq = DictionaryEntry.seq AND "
                     + "DictionaryElement.seq = DictionaryTranslation.seq AND "
@@ -784,52 +795,70 @@ public class BaseFragmentModel extends AndroidViewModel {
 
                 String searchSet = aSearchSet == null ? "" : "AND DictionaryEntry.seq IN (" + aSearchSet + ")";
 
+                List<InstalledDictionary> installedDictionaries = aDatabase.installedDictionaryDao().getAll();
+
+                String examplesQuerySentences = "null";
+                String examplesQueryTranslations = "null";
+                String examplesLeftJoin = "";
+
+                String backupExamplesQuery = "null";
+                String backupExamplesQueryTranslations = "null";
+                String backupExamplesLeftJoin = "";
+
+                for (InstalledDictionary d : installedDictionaries) {
+                    if ("tatoeba".equals(d.getType()) && aLanguageSettings.lang.equals(d.getLang())) {
+                        examplesQuerySentences = SQL_QUERY_EXAMPLE_SENTENCES;
+                        examplesQueryTranslations = SQL_QUERY_EXAMPLE_TRANSLATIONS;
+                        examplesLeftJoin = String.format(SQL_QUERY_JOIN_EXAMPLES, "examples_" + d.getLang(), "examples_" + d.getLang());
+                    }
+                }
+
                 if (aAllowQueryAll) {
                     container.insertAllStatement = new QueryAllStatement(aDatabase, aKey, 1, aLanguageSettings,
                             db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                                    aLanguageSettings.lang, SQL_QUERY_ALL, searchSet)),
+                                    examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, aLanguageSettings.lang, SQL_QUERY_ALL, searchSet)),
                             aLanguageSettings.backupLang != null ? db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                                    aLanguageSettings.backupLang, SQL_QUERY_ALL, searchSet)) : null);
+                                    backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, aLanguageSettings.backupLang, SQL_QUERY_ALL, searchSet)) : null);
                 }
 
                 container.deleteStatement = db.compileStatement(SQL_QUERY_DELETE);
 
                 final SupportSQLiteStatement queryExactPrioWriting =
                         db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                                aLanguageSettings.lang, SQL_QUERY_EXACT_WRITING_PRIO, searchSet));
+                                examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, aLanguageSettings.lang, SQL_QUERY_EXACT_WRITING_PRIO, searchSet));
                 final SupportSQLiteStatement queryExactPrioReading =
                         db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                                aLanguageSettings.lang, SQL_QUERY_EXACT_READING_PRIO, searchSet));
+                                examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, aLanguageSettings.lang, SQL_QUERY_EXACT_READING_PRIO, searchSet));
                 final SupportSQLiteStatement queryExactNonPrioWriting =
                         db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                                aLanguageSettings.lang, SQL_QUERY_EXACT_WRITING_NONPRIO, searchSet));
+                                examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, aLanguageSettings.lang, SQL_QUERY_EXACT_WRITING_NONPRIO, searchSet));
                 final SupportSQLiteStatement queryExactNonPrioReading =
                         db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                                aLanguageSettings.lang, SQL_QUERY_EXACT_READING_NONPRIO, searchSet));
+                                examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, aLanguageSettings.lang, SQL_QUERY_EXACT_READING_NONPRIO, searchSet));
                 final SupportSQLiteStatement queryBeginPrioWriting =
                         db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                                aLanguageSettings.lang, SQL_QUERY_BEGIN_WRITING_PRIO, searchSet));
+                                examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, aLanguageSettings.lang, SQL_QUERY_BEGIN_WRITING_PRIO, searchSet));
                 final SupportSQLiteStatement queryBeginPrioReading =
                         db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                                aLanguageSettings.lang, SQL_QUERY_BEGIN_READING_PRIO, searchSet));
+                                examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, aLanguageSettings.lang, SQL_QUERY_BEGIN_READING_PRIO, searchSet));
                 final SupportSQLiteStatement queryBeginNonPrioWriting =
                         db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                                aLanguageSettings.lang, SQL_QUERY_BEGIN_WRITING_NONPRIO, searchSet));
+                                examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, aLanguageSettings.lang, SQL_QUERY_BEGIN_WRITING_NONPRIO, searchSet));
                 final SupportSQLiteStatement queryBeginNonPrioReading =
                         db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                                aLanguageSettings.lang, SQL_QUERY_BEGIN_READING_NONPRIO, searchSet));
+                                examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, aLanguageSettings.lang, SQL_QUERY_BEGIN_READING_NONPRIO, searchSet));
                 final SupportSQLiteStatement queryPartsPrioWriting =
                         db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                                aLanguageSettings.lang, SQL_QUERY_PARTS_WRITING_PRIO, searchSet));
+                                examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, aLanguageSettings.lang, SQL_QUERY_PARTS_WRITING_PRIO, searchSet));
                 final SupportSQLiteStatement queryPartsPrioReading =
                         db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                                aLanguageSettings.lang, SQL_QUERY_PARTS_READING_PRIO, searchSet));
+                                examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, aLanguageSettings.lang, SQL_QUERY_PARTS_READING_PRIO, searchSet));
                 final SupportSQLiteStatement queryPartsNonPrioWriting =
                         db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                                aLanguageSettings.lang, SQL_QUERY_PARTS_WRITING_NONPRIO, searchSet));
+                                examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, aLanguageSettings.lang, SQL_QUERY_PARTS_WRITING_NONPRIO, searchSet));
                 final SupportSQLiteStatement queryPartsNonPrioReading =
                         db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                                aLanguageSettings.lang, SQL_QUERY_PARTS_READING_NONPRIO, searchSet));
+                                examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, aLanguageSettings.lang, SQL_QUERY_PARTS_READING_NONPRIO, searchSet));
                 final SupportSQLiteStatement reverseQueryExact =
                         db.compileStatement(String.format(SQL_REVERSE_QUERY_INSERT_ELEMENT,
                                 aLanguageSettings.lang, String.format(SQL_REVERSE_QUERY_EXACT, aLanguageSettings.lang), searchSet));
@@ -839,7 +868,7 @@ public class BaseFragmentModel extends AndroidViewModel {
 
                 final SupportSQLiteStatement reverseQueryDisplayElement =
                         db.compileStatement(String.format(SQL_QUERY_DICTIONARY_ELEMENT_DISPLAY,
-                                aLanguageSettings.lang));
+                                examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, aLanguageSettings.lang));
                 final SupportSQLiteStatement reverseQueryDeleteElements =
                         db.compileStatement(SQL_REVERSE_QUERY_DELETE_ELEMENTS);
 
@@ -862,40 +891,40 @@ public class BaseFragmentModel extends AndroidViewModel {
                 if (aLanguageSettings.backupLang != null) {
                     queryExactPrioWritingBackup =
                             db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                                    aLanguageSettings.backupLang, SQL_QUERY_EXACT_WRITING_PRIO, searchSet));
+                                    backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, aLanguageSettings.backupLang, SQL_QUERY_EXACT_WRITING_PRIO, searchSet));
                     queryExactPrioReadingBackup =
                             db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                                    aLanguageSettings.backupLang, SQL_QUERY_EXACT_READING_PRIO, searchSet));
+                                    backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, aLanguageSettings.backupLang, SQL_QUERY_EXACT_READING_PRIO, searchSet));
                     queryExactNonPrioWritingBackup =
                             db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                                    aLanguageSettings.backupLang, SQL_QUERY_EXACT_WRITING_NONPRIO, searchSet));
+                                    backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, aLanguageSettings.backupLang, SQL_QUERY_EXACT_WRITING_NONPRIO, searchSet));
                     queryExactNonPrioReadingBackup =
                             db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                                    aLanguageSettings.backupLang, SQL_QUERY_EXACT_READING_NONPRIO, searchSet));
+                                    backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, aLanguageSettings.backupLang, SQL_QUERY_EXACT_READING_NONPRIO, searchSet));
                     queryBeginPrioWritingBackup =
                             db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                                    aLanguageSettings.backupLang, SQL_QUERY_BEGIN_WRITING_PRIO, searchSet));
+                                    backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, aLanguageSettings.backupLang, SQL_QUERY_BEGIN_WRITING_PRIO, searchSet));
                     queryBeginPrioReadingBackup =
                             db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                                    aLanguageSettings.backupLang, SQL_QUERY_BEGIN_READING_PRIO, searchSet));
+                                    backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, aLanguageSettings.backupLang, SQL_QUERY_BEGIN_READING_PRIO, searchSet));
                     queryBeginNonPrioWritingBackup =
                             db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                                    aLanguageSettings.backupLang, SQL_QUERY_BEGIN_READING_PRIO, searchSet));
+                                    backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, aLanguageSettings.backupLang, SQL_QUERY_BEGIN_READING_PRIO, searchSet));
                     queryBeginNonPrioReadingBackup =
                             db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                                    aLanguageSettings.backupLang, SQL_QUERY_BEGIN_READING_NONPRIO, searchSet));
+                                    backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, aLanguageSettings.backupLang, SQL_QUERY_BEGIN_READING_NONPRIO, searchSet));
                     queryPartsPrioWritingBackup =
                             db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                                    aLanguageSettings.backupLang, SQL_QUERY_PARTS_WRITING_PRIO, searchSet));
+                                    backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, aLanguageSettings.backupLang, SQL_QUERY_PARTS_WRITING_PRIO, searchSet));
                     queryPartsPrioReadingBackup =
                             db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                                    aLanguageSettings.backupLang, SQL_QUERY_PARTS_READING_PRIO, searchSet));
+                                    backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, aLanguageSettings.backupLang, SQL_QUERY_PARTS_READING_PRIO, searchSet));
                     queryPartsNonPrioWritingBackup =
                             db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                                    aLanguageSettings.backupLang, SQL_QUERY_PARTS_WRITING_NONPRIO, searchSet));
+                                    backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, aLanguageSettings.backupLang, SQL_QUERY_PARTS_WRITING_NONPRIO, searchSet));
                     queryPartsNonPrioReadingBackup =
                             db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                                    aLanguageSettings.backupLang, SQL_QUERY_PARTS_READING_NONPRIO, searchSet));
+                                    backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, aLanguageSettings.backupLang, SQL_QUERY_PARTS_READING_NONPRIO, searchSet));
                     reverseQueryExactBackup =
                             db.compileStatement(String.format(SQL_REVERSE_QUERY_INSERT_ELEMENT,
                                     aLanguageSettings.backupLang, String.format(SQL_REVERSE_QUERY_EXACT, aLanguageSettings.backupLang), searchSet));
@@ -904,7 +933,7 @@ public class BaseFragmentModel extends AndroidViewModel {
                                     aLanguageSettings.backupLang, String.format(SQL_REVERSE_QUERY_BEGIN, aLanguageSettings.backupLang), searchSet));
                     reverseQueryDisplayBackupElement =
                             db.compileStatement(String.format(SQL_QUERY_DICTIONARY_ELEMENT_DISPLAY,
-                                    aLanguageSettings.backupLang));
+                                    backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, aLanguageSettings.backupLang));
                 }
 
                 container.statements = new QueryStatement[14];

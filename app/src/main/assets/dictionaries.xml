@@ -27,7 +27,7 @@
     <dictionary
         uri="dictionaries/slv.db"
         type="jmdict_translation" description="Slovenski jezik" lang="slv"/>
-<!--    <dictionary
-        uri="dictionaries/examples_en.db"
-        type="tatoeba" description="English examples" lang="eng" />-->
+    <dictionary
+        uri="dictionaries/examples_eng.db"
+        type="tatoeba" description="English examples" lang="eng" />
 </repository>
