@@ -10,7 +10,11 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal">
+        android:orientation="vertical">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
 
             <TextView
                 android:id="@+id/word_card_text"
@@ -34,8 +38,14 @@
                 android:paddingLeft="5dp"
                 android:contentDescription="@string/bookmark_icon_description"
                 android:src="@drawable/ic_outline_bookmark_border_24px"/>
+        </LinearLayout>
 
-
+        <se.fekete.furiganatextview.furiganaview.FuriganaTextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/furigana_text"
+            android:textAppearance="@style/TextAppearance.AppCompat.Body2"
+            app:contains_ruby_tags="true" />
     </LinearLayout>
 
 </FrameLayout>

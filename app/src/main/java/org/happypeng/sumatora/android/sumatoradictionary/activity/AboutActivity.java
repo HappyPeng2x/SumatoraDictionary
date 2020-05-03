@@ -315,6 +315,33 @@ public class AboutActivity extends MaterialAboutActivity {
                                 Uri.parse("https://www.soimort.org/python-romkan")))
                         .build())
 
+                .addCard(new MaterialAboutCard.Builder()
+                        .title("FuriganaTextView")
+                        .addItem(new MaterialAboutActionItem.Builder()
+                                .text("Copyright")
+                                .icon(R.drawable.ic_outline_copyright_24px)
+                                .subText("lofe90 (Loránd), sh0 (Siim Meerits)")
+                                .build())
+                        .addItem(new MaterialAboutActionItem.Builder()
+                                .text("License")
+                                .subText("Creative Commons Attribution-ShareAlike License (V3.0)")
+                                .icon(R.drawable.ic_outline_class_24px)
+                                .setOnClickAction(new MaterialAboutItemOnClickAction() {
+                                    @Override
+                                    public void onClick() {
+                                        Intent intent = new Intent(activity_context, LicenseActivity.class);
+                                        intent.putExtra("asset", "CC-by-SA-3.0.txt");
+                                        startActivity(intent);
+                                    }
+                                })
+                                .build())
+                        .addItem(ConvenienceBuilder.createWebsiteActionItem(activity_context,
+                                ContextCompat.getDrawable(activity_context, R.drawable.ic_outline_public_24px),
+                                "Visit Website",
+                                true,
+                                Uri.parse("https://github.com/lofe90/FuriganaTextView")))
+                        .build())
+
                 .build();
     }
 

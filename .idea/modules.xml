@@ -4,6 +4,7 @@
     <modules>
       <module fileurl="file://$PROJECT_DIR$/SumatoraDictionary.iml" filepath="$PROJECT_DIR$/SumatoraDictionary.iml" group="SumatoraDictionary" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" group="SumatoraDictionary/app" />
+      <module fileurl="file://$PROJECT_DIR$/libraries/FuriganaTextView/Furigana/furiganatextview/furiganatextview.iml" filepath="$PROJECT_DIR$/libraries/FuriganaTextView/Furigana/furiganatextview/furiganatextview.iml" group="SumatoraDictionary/furiganatextview" />
     </modules>
   </component>
 </project>
