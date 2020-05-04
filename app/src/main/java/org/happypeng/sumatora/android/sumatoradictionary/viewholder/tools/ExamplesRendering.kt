@@ -40,7 +40,7 @@ fun renderSentence(aSentence: String): String {
         val writing = if (it.sentence == "") {it.writing} else {it.sentence}
         val reading = if (it.reading == writing) {""} else {it.reading}
 
-        if (reading != "") { "<ruby>${writing}<rt>${reading}</rt></ruby>" }
+        if (reading != "") { "{${writing};${reading}}" }
             else { writing }
     }.reduce { acc, string -> acc + string }
 }

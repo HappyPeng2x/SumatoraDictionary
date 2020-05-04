@@ -128,9 +128,13 @@ public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
 
                 for (int i = 0; i < sentences.length(); i++) {
                     exampleSb.append(ExamplesRenderingKt.renderSentence(sentences.getString(i)));
-                    exampleSb.append("\n");
+                    exampleSb.append("\n[");
                     exampleSb.append(translations.getString(i));
-                    exampleSb.append(" ");
+                    exampleSb.append("]");
+
+                    if (i <= sentences.length() - 2) {
+                        exampleSb.append("\n");
+                    }
                 }
             } catch (JSONException e) {
                 e.printStackTrace();
