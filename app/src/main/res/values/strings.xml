@@ -15,7 +15,4 @@
     <string name="nav_drawer_item_bookmarks">Bookmarks</string>
     <string name="nav_drawer_about">About</string>
     <string name="nav_drawer_settings">Settings</string>
-
-    <!-- Test data -->
-    <string name="furigana_text"><![CDATA[<ruby>宮崎駿<rt>みやざきはやお</rt></ruby>さんは<ruby>有名<rt>ゆうめい</rt></ruby>です。]]></string>
 </resources>

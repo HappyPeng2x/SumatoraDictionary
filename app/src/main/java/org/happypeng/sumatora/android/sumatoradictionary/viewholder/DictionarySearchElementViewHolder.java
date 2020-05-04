@@ -30,13 +30,20 @@ import android.widget.TextView;
 
 import org.happypeng.sumatora.android.sumatoradictionary.R;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
+import org.happypeng.sumatora.android.sumatoradictionary.viewholder.tools.ExampleWord;
 import org.json.JSONArray;
 import org.json.JSONException;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import org.happypeng.sumatora.android.sumatoradictionary.viewholder.tools.ExamplesRenderingKt;
+
 import java.util.HashMap;
+import java.util.Iterator;
+
+import kotlin.sequences.Sequence;
+import se.fekete.furiganatextview.furiganaview.FuriganaTextView;
 
 public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
     public static class Status {
@@ -53,14 +60,17 @@ public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
     private final ImageButton m_bookmarkStar;
     private final FrameLayout m_cardView;
 
+    private final FuriganaTextView m_furiganaTextView;
+
     private ClickListener m_bookmarkClickListener;
 
     public DictionarySearchElementViewHolder(View itemView, final Status aStatus) {
         super(itemView);
 
-        m_textViewView = (TextView) itemView.findViewById(R.id.word_card_text);
-        m_bookmarkStar = (ImageButton) itemView.findViewById(R.id.word_card_bookmark_icon);
-        m_cardView = (FrameLayout) itemView.findViewById(R.id.word_card_view);
+        m_textViewView = itemView.findViewById(R.id.word_card_text);
+        m_bookmarkStar = itemView.findViewById(R.id.word_card_bookmark_icon);
+        m_cardView = itemView.findViewById(R.id.word_card_view);
+        m_furiganaTextView = itemView.findViewById(R.id.word_card_examples);
 
         m_status = aStatus;
     }
@@ -106,6 +116,28 @@ public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
 
     public void setBookmarkClickListener(ClickListener aListener) {
         m_bookmarkClickListener = aListener;
+    }
+
+    private String renderEntryExamples(final DictionarySearchElement aEntry) {
+        StringBuilder exampleSb = new StringBuilder();
+
+        if (aEntry.getExampleSentences() != null) {
+            try {
+                JSONArray sentences = new JSONArray(aEntry.getExampleSentences());
+                JSONArray translations = new JSONArray(aEntry.getExampleTranslations());
+
+                for (int i = 0; i < sentences.length(); i++) {
+                    exampleSb.append(ExamplesRenderingKt.renderSentence(sentences.getString(i)));
+                    exampleSb.append("\n");
+                    exampleSb.append(translations.getString(i));
+                    exampleSb.append(" ");
+                }
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+        }
+
+        return exampleSb.toString();
     }
 
      private SpannableStringBuilder renderEntry(final DictionarySearchElement aEntry) {
@@ -234,7 +266,7 @@ public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
              e.printStackTrace();
          }
 
-        return sb;
+         return sb;
     }
 
     public void bindTo(final DictionarySearchElement entry) {
@@ -245,6 +277,15 @@ public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
         }
 
         m_textViewView.setText(renderEntry(entry));
+
+        String examples = renderEntryExamples(entry);
+
+        if (examples.length() > 0) {
+            m_furiganaTextView.setFuriganaText(examples);
+            m_furiganaTextView.setVisibility(View.VISIBLE);
+        } else {
+            m_furiganaTextView.setVisibility(View.GONE);
+        }
 
         if (m_bookmarkClickListener != null) {
             m_bookmarkStar.setOnClickListener(new View.OnClickListener() {

@@ -41,10 +41,11 @@
         </LinearLayout>
 
         <se.fekete.furiganatextview.furiganaview.FuriganaTextView
+            android:id="@+id/word_card_examples"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/furigana_text"
             android:textAppearance="@style/TextAppearance.AppCompat.Body2"
+            android:visibility="gone"
             app:contains_ruby_tags="true" />
     </LinearLayout>
 
