@@ -44,8 +44,14 @@
             android:id="@+id/word_card_examples"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textAppearance="@style/TextAppearance.AppCompat.Body2"
+            android:layout_marginLeft="6dp"
+            android:layout_marginStart="6dp"
+            android:layout_marginRight="6dp"
+            android:layout_marginEnd="6dp"
+            android:textColor="#000"
+            android:textSize="14sp"
             android:visibility="gone"
+            app:furigana_text_size="10sp"
             app:contains_ruby_tags="false" />
     </LinearLayout>
 
