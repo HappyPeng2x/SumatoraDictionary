@@ -28,21 +28,16 @@ import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.TextView;
 
-import org.happypeng.sumatora.android.sumatoradictionary.R;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
-import org.happypeng.sumatora.android.sumatoradictionary.viewholder.tools.ExampleWord;
-import org.json.JSONArray;
-import org.json.JSONException;
-
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
-import org.happypeng.sumatora.android.sumatoradictionary.viewholder.tools.ExamplesRenderingKt;
+import org.happypeng.sumatora.android.sumatoradictionary.R;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
+import org.json.JSONArray;
+import org.json.JSONException;
 
 import java.util.HashMap;
-import java.util.Iterator;
 
-import kotlin.sequences.Sequence;
 import se.fekete.furiganatextview.furiganaview.FuriganaTextView;
 
 public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
@@ -127,7 +122,7 @@ public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
                 JSONArray translations = new JSONArray(aEntry.getExampleTranslations());
 
                 for (int i = 0; i < sentences.length(); i++) {
-                    exampleSb.append(ExamplesRenderingKt.renderSentence(sentences.getString(i)));
+                    exampleSb.append(sentences.getString(i));
                     exampleSb.append("\n[");
                     exampleSb.append(translations.getString(i));
                     exampleSb.append("]");
