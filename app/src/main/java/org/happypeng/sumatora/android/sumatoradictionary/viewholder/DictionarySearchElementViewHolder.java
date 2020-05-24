@@ -28,15 +28,17 @@ import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.TextView;
 
-import org.happypeng.sumatora.android.sumatoradictionary.R;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
-import org.json.JSONArray;
-import org.json.JSONException;
-
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import org.happypeng.sumatora.android.sumatoradictionary.R;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
+import org.happypeng.sumatora.android.superrubyspan.tools.JapaneseText;
+import org.json.JSONArray;
+import org.json.JSONException;
+
 import java.util.HashMap;
+import java.util.regex.Pattern;
 
 public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
     public static class Status {
@@ -229,6 +231,37 @@ public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
                  sb.append(gloss.getString(i));
 
                  glossCount = glossCount + 1;
+             }
+         } catch (JSONException e) {
+             e.printStackTrace();
+         }
+
+         try {
+             final String exampleSentences = aEntry.getExampleSentences();
+             final String exampleTranslations = aEntry.getExampleTranslations();
+
+             if (exampleSentences != null &&
+                     exampleTranslations != null) {
+                 final JSONArray exampleSentencesArray = new JSONArray(aEntry.getExampleSentences());
+                 final JSONArray exampleTranslationsArray = new JSONArray(aEntry.getExampleTranslations());
+
+                 for (int i = 0; i < exampleSentencesArray.length(); i++) {
+                     if (i == 0) {
+                         sb.append("\n\n");
+                         sb.setSpan(new RelativeSizeSpan(0.3f), sb.length() - 2, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                     }
+
+                     if (i < exampleTranslationsArray.length()) {
+                         JapaneseText.spannifyWithFurigana(sb, "→ " + exampleSentencesArray.getString(i), 0.9f);
+                     }
+
+                     sb.append(" ");
+                     sb.append(exampleTranslationsArray.getString(i));
+
+                     if (i + 1 < exampleSentencesArray.length()) {
+                         sb.append("\n");
+                     }
+                 }
              }
          } catch (JSONException e) {
              e.printStackTrace();
