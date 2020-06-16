@@ -207,6 +207,21 @@ public class DictionaryApplication extends Application {
         }
     };
 
+    static final Migration MIGRATION_7_8 = new Migration(7, 8) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            Logger log;
+
+            if (BuildConfig.DEBUG_DB_MIGRATION) {
+                log = LoggerFactory.getLogger(this.getClass());
+
+                log.info("Starting database migration");
+            }
+
+            database.execSQL("ALTER TABLE DictionaryBookmark ADD COLUMN memo TEXT");
+        }
+    };
+
     private static class InitializeDBTask extends AsyncTask<DictionaryApplication, Void, Void> {
         private Logger m_log;
 
@@ -269,7 +284,7 @@ public class DictionaryApplication extends Application {
 
                 if (cur.getCount() != 0) {
                     while (cur.moveToNext()) {
-                        list.add(new DictionaryBookmark(cur.getLong(0), 1));
+                        list.add(new DictionaryBookmark(cur.getLong(0), 1, null));
                     }
                 }
 
@@ -490,7 +505,7 @@ public class DictionaryApplication extends Application {
                     PersistentDatabase.class, PERSISTENT_DATABASE_NAME)
                     .openHelperFactory(new SumatoraSQLiteOpenHelperFactory())
                     .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4,
-                            MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+                            MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
                     .setJournalMode(RoomDatabase.JournalMode.TRUNCATE)
                     .build();
 

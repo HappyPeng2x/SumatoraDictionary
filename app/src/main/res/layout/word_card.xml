@@ -12,17 +12,43 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal">
 
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
             <TextView
                 android:id="@+id/word_card_text"
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:background="?android:selectableItemBackground"
                 app:fontFamily="sans-serif"
                 android:padding="6dp"
                 android:textColor="#000"
                 android:textSize="14sp"
-                android:layout_weight="1"
                 tools:text="Text 1" />
+
+            <EditText
+                android:id="@+id/word_card_memo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="#ffffdd"
+                app:fontFamily="sans-serif"
+                android:padding="6dp"
+                android:textColor="#000"
+                android:textSize="14sp"
+                tools:text="Text 1"
+                android:importantForAutofill="no"
+                android:hint="Memo"
+                android:inputType="textAutoCorrect|textMultiLine"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
 
             <ImageButton
                 android:id="@+id/word_card_bookmark_icon"
@@ -35,6 +61,30 @@
                 android:contentDescription="@string/bookmark_icon_description"
                 android:src="@drawable/ic_outline_bookmark_border_24px"/>
 
+            <ImageButton
+                android:id="@+id/word_card_memo_icon"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@null"
+                android:paddingTop="5dp"
+                android:paddingRight="5dp"
+                android:paddingLeft="5dp"
+                android:contentDescription="@string/bookmark_icon_description"
+                android:src="@drawable/ic_edit_24px"/>
+
+            <ImageButton
+                android:id="@+id/word_card_delete_memo_icon"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@null"
+                android:paddingTop="5dp"
+                android:paddingRight="5dp"
+                android:paddingLeft="5dp"
+                android:contentDescription="@string/bookmark_icon_description"
+                android:src="@drawable/ic_delete_24px"
+                android:visibility="gone" />
+
+        </LinearLayout>
 
     </LinearLayout>
 

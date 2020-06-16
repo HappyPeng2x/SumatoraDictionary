@@ -51,7 +51,6 @@ import org.happypeng.sumatora.android.sumatoradictionary.R;
 import org.happypeng.sumatora.android.sumatoradictionary.adapter.DictionaryPagedListAdapter;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
 import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary;
-import org.happypeng.sumatora.android.sumatoradictionary.db.tools.ValueHolder;
 import org.happypeng.sumatora.android.sumatoradictionary.model.BaseFragmentModel;
 import org.happypeng.sumatora.android.sumatoradictionary.model.BaseFragmentModelFactory;
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionarySearchElementViewHolder;
@@ -244,14 +243,19 @@ public abstract class BaseFragment<M extends BaseFragmentModel> extends Fragment
                 m_layoutManager.getOrientation());
         m_recyclerView.addItemDecoration(itemDecor);
 
-        m_listAdapter.setBookmarkClickListener(new DictionarySearchElementViewHolder.ClickListener() {
+        m_listAdapter.setBookmarkClickListener(new DictionarySearchElementViewHolder.EventListener() {
             @Override
-            public void onClick(View aView, DictionarySearchElement aEntry) {
+            public void onBookmarkClick(View aView, DictionarySearchElement aEntry) {
                 if (aEntry.getBookmark() == 0) {
                     m_viewModel.updateBookmark(aEntry.getSeq(), 1);
                 } else {
                     m_viewModel.updateBookmark(aEntry.getSeq(), 0);
                 }
+            }
+
+            @Override
+            public void onMemoEdit(DictionarySearchElement aEntry, String aString) {
+                m_viewModel.updateMemo(aEntry, aString);
             }
         });
 

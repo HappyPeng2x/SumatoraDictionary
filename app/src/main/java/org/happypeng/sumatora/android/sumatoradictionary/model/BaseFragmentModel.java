@@ -736,13 +736,26 @@ public class BaseFragmentModel extends AndroidViewModel {
         initialize();
     }
 
+    public void updateMemo(final DictionarySearchElement entry, final String memo) {
+        new AsyncTask<Void, Void, Void>() {
+            @Override
+            protected Void doInBackground(Void... voids) {
+                if (mApp.getPersistentDatabase().getValue() != null) {
+                    mApp.getPersistentDatabase().getValue().dictionaryBookmarkDao().insert(new DictionaryBookmark(entry.seq, entry.bookmark, memo));
+                }
+
+                return null;
+            }
+        }.execute();
+    }
+
     public void updateBookmark(final long seq, final long bookmark) {
         new AsyncTask<Void, Void, Void>() {
             @Override
             protected Void doInBackground(Void... aParams) {
                 if (mApp.getPersistentDatabase().getValue() != null) {
                     if (bookmark != 0) {
-                        mApp.getPersistentDatabase().getValue().dictionaryBookmarkDao().insert(new DictionaryBookmark(seq, bookmark));
+                        mApp.getPersistentDatabase().getValue().dictionaryBookmarkDao().insert(new DictionaryBookmark(seq, bookmark, null));
                     } else {
                         mApp.getPersistentDatabase().getValue().dictionaryBookmarkDao().delete(seq);
                     }

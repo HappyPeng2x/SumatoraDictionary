@@ -23,11 +23,13 @@ import androidx.room.Query;
 public class DictionaryBookmark {
     public long seq;
     public long bookmark;
+    public String memo;
 
     public DictionaryBookmark() {}
 
-    public DictionaryBookmark(long aSeq, long aBookmark) {
+    public DictionaryBookmark(long aSeq, long aBookmark, String aMemo) {
         seq = aSeq;
         bookmark = aBookmark;
+        memo = aMemo;
     }
 }

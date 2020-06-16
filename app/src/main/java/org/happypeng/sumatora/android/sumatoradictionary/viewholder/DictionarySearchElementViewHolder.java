@@ -17,13 +17,16 @@
 package org.happypeng.sumatora.android.sumatoradictionary.viewholder;
 
 import android.graphics.Color;
+import android.text.Editable;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
+import android.text.TextWatcher;
 import android.text.style.BackgroundColorSpan;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.RelativeSizeSpan;
 import android.text.style.StyleSpan;
 import android.view.View;
+import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.TextView;
@@ -38,7 +41,6 @@ import org.json.JSONArray;
 import org.json.JSONException;
 
 import java.util.HashMap;
-import java.util.regex.Pattern;
 
 public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
     public static class Status {
@@ -47,22 +49,59 @@ public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
 
     private final Status m_status;
 
-    public interface ClickListener {
-        void onClick(View aView, DictionarySearchElement aEntry);
+    public interface EventListener {
+        void onBookmarkClick(View aView, DictionarySearchElement aEntry);
+        void onMemoEdit(DictionarySearchElement aEntry, String aString);
     }
 
     private final TextView m_textViewView;
     private final ImageButton m_bookmarkStar;
+    private final ImageButton m_editMemoButton;
+    private final ImageButton m_deleteMemoButton;
     private final FrameLayout m_cardView;
+    private final EditText m_memoEditText;
 
-    private ClickListener m_bookmarkClickListener;
+    private TextWatcher m_textWatcher;
+
+    private EventListener m_bookmarkEventListener;
+
+    private void openMemo() {
+        m_memoEditText.setVisibility(View.VISIBLE);
+        m_editMemoButton.setVisibility(View.GONE);
+        m_deleteMemoButton.setVisibility(View.VISIBLE);
+    }
+
+    private void closeMemo() {
+        m_memoEditText.setVisibility(View.GONE);
+        m_editMemoButton.setVisibility(View.VISIBLE);
+        m_deleteMemoButton.setVisibility(View.GONE);
+
+        m_memoEditText.setText("");
+    }
 
     public DictionarySearchElementViewHolder(View itemView, final Status aStatus) {
         super(itemView);
 
-        m_textViewView = (TextView) itemView.findViewById(R.id.word_card_text);
-        m_bookmarkStar = (ImageButton) itemView.findViewById(R.id.word_card_bookmark_icon);
-        m_cardView = (FrameLayout) itemView.findViewById(R.id.word_card_view);
+        m_textViewView = itemView.findViewById(R.id.word_card_text);
+        m_bookmarkStar = itemView.findViewById(R.id.word_card_bookmark_icon);
+        m_cardView = itemView.findViewById(R.id.word_card_view);
+        m_editMemoButton = itemView.findViewById(R.id.word_card_memo_icon);
+        m_deleteMemoButton = itemView.findViewById(R.id.word_card_delete_memo_icon);
+        m_memoEditText = itemView.findViewById(R.id.word_card_memo);
+
+        m_editMemoButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                openMemo();
+            }
+        });
+
+        m_deleteMemoButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                closeMemo();
+            }
+        });
 
         m_status = aStatus;
     }
@@ -106,8 +145,8 @@ public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
         m_bookmarkStar.setVisibility(View.GONE);
     }
 
-    public void setBookmarkClickListener(ClickListener aListener) {
-        m_bookmarkClickListener = aListener;
+    public void setBookmarkClickListener(EventListener aListener) {
+        m_bookmarkEventListener = aListener;
     }
 
      private SpannableStringBuilder renderEntry(final DictionarySearchElement aEntry) {
@@ -271,6 +310,11 @@ public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
     }
 
     public void bindTo(final DictionarySearchElement entry) {
+        if (m_textWatcher != null) {
+            m_memoEditText.removeTextChangedListener(m_textWatcher);
+            m_textWatcher = null;
+        }
+
         if (!entry.getLang().equals(entry.getLangSetting())) {
             m_cardView.setBackgroundColor(Color.LTGRAY);
         } else {
@@ -279,11 +323,11 @@ public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
 
         m_textViewView.setText(renderEntry(entry));
 
-        if (m_bookmarkClickListener != null) {
+        if (m_bookmarkEventListener != null) {
             m_bookmarkStar.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    m_bookmarkClickListener.onClick(v, entry);
+                    m_bookmarkEventListener.onBookmarkClick(v, entry);
                 }
             });
         }
@@ -293,5 +337,36 @@ public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
         } else {
             m_bookmarkStar.setImageResource(R.drawable.ic_outline_bookmark_border_24px);
         }
+
+        final String memo = entry.getMemo();
+
+        if (memo != null && !"".equals(memo)) {
+            openMemo();
+
+            m_memoEditText.setText(memo);
+        } else {
+            closeMemo();
+        }
+
+        m_textWatcher = new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                if (m_bookmarkEventListener != null) {
+                    m_bookmarkEventListener.onMemoEdit(entry, s.toString());
+                }
+            }
+        };
+
+        m_memoEditText.addTextChangedListener(m_textWatcher);
     }
 }

@@ -26,7 +26,7 @@ import androidx.room.RoomDatabase;
         RemoteDictionaryObject.class,
         LocalDictionaryObject.class,
         AssetDictionaryObject.class,
-        PersistentLanguageSettings.class}, version = 7)
+        PersistentLanguageSettings.class}, version = 8)
 abstract public class PersistentDatabase extends RoomDatabase {
     public abstract PersistentSettingsDao persistentSettingsDao();
     public abstract DictionaryBookmarkDao dictionaryBookmarkDao();

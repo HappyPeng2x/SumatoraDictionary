@@ -35,7 +35,7 @@ public class DictionaryPagedListAdapter extends PagedListAdapter<DictionarySearc
     private final DictionarySearchElementViewHolder.Status m_status;
     private boolean m_disableBookmarkButton;
 
-    private DictionarySearchElementViewHolder.ClickListener m_bookmarkClickListener;
+    private DictionarySearchElementViewHolder.EventListener m_bookmarkEventListener;
 
     public DictionaryPagedListAdapter(@NonNull final DictionarySearchElementViewHolder.Status aStatus,
                                       boolean aDisableBookmarkButton) {
@@ -53,8 +53,8 @@ public class DictionaryPagedListAdapter extends PagedListAdapter<DictionarySearc
         return getItem(position).getSeq();
     }
 
-    public void setBookmarkClickListener(DictionarySearchElementViewHolder.ClickListener aListener) {
-        m_bookmarkClickListener = aListener;
+    public void setBookmarkClickListener(DictionarySearchElementViewHolder.EventListener aListener) {
+        m_bookmarkEventListener = aListener;
     }
 
     public void setBookmarks(HashMap<Long, Long> aBookmarks) {
@@ -74,7 +74,7 @@ public class DictionaryPagedListAdapter extends PagedListAdapter<DictionarySearc
             holder.disableBookmarkButton();
         }
 
-        holder.setBookmarkClickListener(m_bookmarkClickListener);
+        holder.setBookmarkClickListener(m_bookmarkEventListener);
         return holder;
     }
 
