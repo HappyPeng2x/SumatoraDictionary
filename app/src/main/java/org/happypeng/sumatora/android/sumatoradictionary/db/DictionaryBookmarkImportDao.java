@@ -32,4 +32,7 @@ public interface DictionaryBookmarkImportDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void insert(DictionaryBookmarkImport aBookmark);
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    void insertMany(List<DictionaryBookmarkImport> aBookmark);
 }

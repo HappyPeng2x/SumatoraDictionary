@@ -17,12 +17,16 @@
 package org.happypeng.sumatora.android.sumatoradictionary.model;
 
 import android.app.Application;
+import android.content.ContentResolver;
 import android.net.Uri;
 import android.os.AsyncTask;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
 import androidx.sqlite.db.SupportSQLiteDatabase;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmarkImport;
 import org.happypeng.sumatora.android.sumatoradictionary.xml.DictionaryBookmarkXML;
@@ -100,28 +104,56 @@ public class BookmarkImportModel extends BaseFragmentModel {
             @Override
             protected Void doInBackground(Void... voids) {
                 try {
-                    InputStream is = mApp.getContentResolver().openInputStream(aUri);
-                    final List<Long> seqs = DictionaryBookmarkXML.readXML(is);
-                    is.close();
+                    final ContentResolver contentResolver = mApp.getContentResolver();
+                    final InputStream is = contentResolver.openInputStream(aUri);
+                    final String type = contentResolver.getType(aUri);
 
-                    if (seqs == null) {
-                        // TBD: error management
-                        // mStatus.postValue(STATUS_ERROR);
+                    if ("text/xml".equals(type)) {
+                        final List<Long> seqs = DictionaryBookmarkXML.readXML(is);
+                        is.close();
 
-                        return null;
-                    }
+                        if (seqs == null) {
+                            // TBD: error management
+                            // mStatus.postValue(STATUS_ERROR);
 
-                    mCurrentDatabase.runInTransaction(new Runnable() {
-                        @Override
-                        public void run() {
-                            mCurrentDatabase.dictionaryBookmarkImportDao().deleteAll();
-
-                            for (Long seq : seqs) {
-                                mCurrentDatabase.dictionaryBookmarkImportDao().insert(
-                                        new DictionaryBookmarkImport(mKey, seq));
-                            }
+                            return null;
                         }
-                    });
+
+                        mCurrentDatabase.runInTransaction(new Runnable() {
+                            @Override
+                            public void run() {
+                                mCurrentDatabase.dictionaryBookmarkImportDao().deleteAll();
+
+                                for (Long seq : seqs) {
+                                    mCurrentDatabase.dictionaryBookmarkImportDao().insert(
+                                            new DictionaryBookmarkImport(mKey, seq, null));
+                                }
+                            }
+                        });
+                    } else if ("application/json".equals(type)) {
+                        final ObjectMapper mapper = new ObjectMapper();
+                        final List<DictionaryBookmarkImport> bookmarks = mapper.readValue(is, new TypeReference<List<DictionaryBookmarkImport>>() {});
+                        is.close();
+
+                        for (DictionaryBookmarkImport dictionaryBookmarkImport : bookmarks) {
+                            dictionaryBookmarkImport.ref = mKey;
+                        }
+
+                        if (bookmarks == null) {
+                            // TBD: error management
+                            // mStatus.postValue(STATUS_ERROR);
+
+                            return null;
+                        }
+
+                        mCurrentDatabase.runInTransaction(new Runnable() {
+                            @Override
+                            public void run() {
+                                mCurrentDatabase.dictionaryBookmarkImportDao().deleteAll();
+                                mCurrentDatabase.dictionaryBookmarkImportDao().insertMany(bookmarks);
+                            }
+                        });
+                    }
 
                     // TBD: status management
                     // mStatus.postValue(STATUS_PROCESSED);

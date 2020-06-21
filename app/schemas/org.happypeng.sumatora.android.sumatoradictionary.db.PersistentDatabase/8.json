@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 8,
-    "identityHash": "2c2419bdcabf0d72fe80248f66befb89",
+    "identityHash": "918f212a8ca05b454b0e78c03a92054f",
     "entities": [
       {
         "tableName": "PersistentSetting",
@@ -64,7 +64,7 @@
       },
       {
         "tableName": "DictionaryBookmarkImport",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`ref` INTEGER NOT NULL, `seq` INTEGER NOT NULL, PRIMARY KEY(`ref`, `seq`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`ref` INTEGER NOT NULL, `seq` INTEGER NOT NULL, `memo` TEXT, PRIMARY KEY(`ref`, `seq`))",
         "fields": [
           {
             "fieldPath": "ref",
@@ -77,6 +77,12 @@
             "columnName": "seq",
             "affinity": "INTEGER",
             "notNull": true
+          },
+          {
+            "fieldPath": "memo",
+            "columnName": "memo",
+            "affinity": "TEXT",
+            "notNull": false
           }
         ],
         "primaryKey": {
@@ -509,7 +515,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '2c2419bdcabf0d72fe80248f66befb89')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '918f212a8ca05b454b0e78c03a92054f')"
     ]
   }
 }

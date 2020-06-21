@@ -18,17 +18,24 @@ package org.happypeng.sumatora.android.sumatoradictionary.db;
 
 import androidx.room.Entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+
+@JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonIgnoreProperties(ignoreUnknown = true)
 @Entity(primaryKeys = {"ref", "seq"})
 public class DictionaryBookmarkImport {
     public int ref;
     public long seq;
+    public String memo;
 
     public DictionaryBookmarkImport() { super(); }
 
-    public DictionaryBookmarkImport(int aRef, long aSeq) {
+    public DictionaryBookmarkImport(int aRef, long aSeq, String aMemo) {
         super();
 
         ref = aRef;
         seq = aSeq;
+        memo = aMemo;
     }
 }

@@ -219,6 +219,7 @@ public class DictionaryApplication extends Application {
             }
 
             database.execSQL("ALTER TABLE DictionaryBookmark ADD COLUMN memo TEXT");
+            database.execSQL("ALTER TABLE DictionaryBookmarkImport ADD COLUMN memo TEXT");
         }
     };
 

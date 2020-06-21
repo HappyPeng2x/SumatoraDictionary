@@ -46,6 +46,9 @@
                 <data
                     android:mimeType="text/xml"
                     android:scheme="content" />
+                <data
+                    android:mimeType="application/json"
+                    android:scheme="content" />
             </intent-filter>
         </activity>
         <activity

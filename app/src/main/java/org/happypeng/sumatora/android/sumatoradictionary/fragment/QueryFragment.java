@@ -37,6 +37,8 @@ import androidx.core.content.FileProvider;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.Observer;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import org.happypeng.sumatora.android.sumatoradictionary.DictionaryApplication;
 import org.happypeng.sumatora.android.sumatoradictionary.R;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
@@ -208,7 +210,7 @@ public abstract class QueryFragment extends BaseFragment<BaseFragmentModel> {
 
         try {
             File parentDir = new File(getContext().getFilesDir(), "bookmarks");
-            final File outputFile = new File(parentDir, "bookmarks.xml");
+            final File outputFile = new File(parentDir, "bookmarks.json");
 
             parentDir.mkdirs();
 
@@ -220,7 +222,8 @@ public abstract class QueryFragment extends BaseFragment<BaseFragmentModel> {
                     try {
                         List<DictionaryBookmark> bookmarks = db.dictionaryBookmarkDao().getAll();
 
-                        DictionaryBookmarkXML.writeXML(outputFile, bookmarks);
+                        ObjectMapper mapper = new ObjectMapper();
+                        mapper.writeValue(outputFile, bookmarks);
 
                         fileWritten = true;
                     } catch (Exception e) {

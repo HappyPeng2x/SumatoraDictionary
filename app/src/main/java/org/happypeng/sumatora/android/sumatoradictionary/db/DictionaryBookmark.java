@@ -17,8 +17,12 @@
 package org.happypeng.sumatora.android.sumatoradictionary.db;
 
 import androidx.room.Entity;
-import androidx.room.Query;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+
+@JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonIgnoreProperties(ignoreUnknown = true)
 @Entity(primaryKeys = {"seq"})
 public class DictionaryBookmark {
     public long seq;
