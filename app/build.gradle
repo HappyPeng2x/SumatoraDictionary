@@ -1,4 +1,5 @@
 apply plugin: 'com.android.application'
+apply plugin: 'dagger.hilt.android.plugin'
 
 def keystorePropertiesFile = rootProject.file("keystore.properties")
 def keystoreProperties = new Properties()
@@ -16,16 +17,24 @@ android {
 
     compileSdkVersion 29
 
+    ndkVersion "21.3.6528147"
+
     defaultConfig {
         applicationId "org.happypeng.sumatora.android.sumatoradictionary"
         minSdkVersion 14
         targetSdkVersion 29
         versionCode 27
         versionName "0.4.4"
+        multiDexEnabled true
+
+        compileOptions {
+            sourceCompatibility JavaVersion.VERSION_1_8
+            targetCompatibility JavaVersion.VERSION_1_8
+        }
 
         javaCompileOptions {
             annotationProcessorOptions {
-                arguments = ["room.schemaLocation":"$projectDir/schemas".toString()]
+                arguments += ["room.schemaLocation":"$projectDir/schemas".toString()]
             }
         }
 
@@ -59,8 +68,12 @@ android {
             buildConfigField("boolean", "DEBUG_BASE_FRAGMENT", "true");
         }
     }
-    buildToolsVersion '29.0.3'
+    buildToolsVersion '30.0.0'
     productFlavors {
+    }
+
+    buildFeatures {
+        viewBinding true
     }
 }
 
@@ -73,6 +86,7 @@ dependencies {
     testImplementation 'junit:junit:4.13'
     androidTestImplementation 'androidx.test:core:1.2.0'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
+    androidTestImplementation 'androidx.test.espresso:espresso-contrib:3.2.0'
     androidTestImplementation 'androidx.test.ext:junit:1.1.1'
     androidTestImplementation 'androidx.test.espresso:espresso-intents:3.2.0'
 
@@ -82,7 +96,7 @@ dependencies {
     implementation 'com.github.daniel-stoneuk:material-about-library:2.4.2'
 
     implementation "androidx.lifecycle:lifecycle-extensions:2.2.0"
-    annotationProcessor "androidx.lifecycle:lifecycle-compiler:2.2.0"
+    implementation "androidx.lifecycle:lifecycle-common-java8:2.2.0"
 
     implementation "androidx.room:room-runtime:2.2.5"
     annotationProcessor "androidx.room:room-compiler:2.2.5"
@@ -100,4 +114,14 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.11.0'
     implementation 'com.fasterxml.jackson.core:jackson-core:2.11.0'
     implementation 'com.fasterxml.jackson.core:jackson-annotations:2.11.0'
+
+    implementation "com.google.dagger:hilt-android:2.28-alpha"
+    annotationProcessor 'com.google.dagger:hilt-android-compiler:2.28-alpha'
+
+    implementation 'io.reactivex.rxjava3:rxandroid:3.0.0'
+    implementation 'io.reactivex.rxjava3:rxjava:3.0.4'
+
+    implementation "com.github.akarnokd:rxjava3-bridge:3.0.0"
+
+    implementation 'androidx.multidex:multidex:2.0.1'
 }

@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 8,
-    "identityHash": "918f212a8ca05b454b0e78c03a92054f",
+    "identityHash": "815cb0bd63a50c7141849264cb1f8a17",
     "entities": [
       {
         "tableName": "PersistentSetting",
@@ -96,8 +96,41 @@
         "foreignKeys": []
       },
       {
-        "tableName": "DictionaryDisplayElement",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`ref` INTEGER NOT NULL, `entryOrder` INTEGER NOT NULL, `seq` INTEGER NOT NULL, `readingsPrio` TEXT, `readings` TEXT, `writingsPrio` TEXT, `writings` TEXT, `pos` TEXT, `xref` TEXT, `ant` TEXT, `misc` TEXT, `lsource` TEXT, `dial` TEXT, `s_inf` TEXT, `field` TEXT, `lang` TEXT, `lang_setting` TEXT, `gloss` TEXT, `example_sentences` TEXT, `example_translations` TEXT, PRIMARY KEY(`ref`, `seq`))",
+        "tableName": "DictionaryElement",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`ref` INTEGER NOT NULL, `entryOrder` INTEGER NOT NULL, `seq` INTEGER NOT NULL, PRIMARY KEY(`ref`, `seq`))",
+        "fields": [
+          {
+            "fieldPath": "ref",
+            "columnName": "ref",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "entryOrder",
+            "columnName": "entryOrder",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "seq",
+            "columnName": "seq",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "columnNames": [
+            "ref",
+            "seq"
+          ],
+          "autoGenerate": false
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "DictionarySearchElement",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`ref` INTEGER NOT NULL, `entryOrder` INTEGER NOT NULL, `seq` INTEGER NOT NULL, `readingsPrio` TEXT, `readings` TEXT, `writingsPrio` TEXT, `writings` TEXT, `pos` TEXT, `xref` TEXT, `ant` TEXT, `misc` TEXT, `lsource` TEXT, `dial` TEXT, `s_inf` TEXT, `field` TEXT, `lang` TEXT, `lang_setting` TEXT, `gloss` TEXT, `example_sentences` TEXT, `example_translations` TEXT, `bookmark` INTEGER NOT NULL, `memo` TEXT, PRIMARY KEY(`ref`, `seq`))",
         "fields": [
           {
             "fieldPath": "ref",
@@ -218,39 +251,18 @@
             "columnName": "example_translations",
             "affinity": "TEXT",
             "notNull": false
-          }
-        ],
-        "primaryKey": {
-          "columnNames": [
-            "ref",
-            "seq"
-          ],
-          "autoGenerate": false
-        },
-        "indices": [],
-        "foreignKeys": []
-      },
-      {
-        "tableName": "DictionaryElement",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`ref` INTEGER NOT NULL, `entryOrder` INTEGER NOT NULL, `seq` INTEGER NOT NULL, PRIMARY KEY(`ref`, `seq`))",
-        "fields": [
+          },
           {
-            "fieldPath": "ref",
-            "columnName": "ref",
+            "fieldPath": "bookmark",
+            "columnName": "bookmark",
             "affinity": "INTEGER",
             "notNull": true
           },
           {
-            "fieldPath": "entryOrder",
-            "columnName": "entryOrder",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "seq",
-            "columnName": "seq",
-            "affinity": "INTEGER",
-            "notNull": true
+            "fieldPath": "memo",
+            "columnName": "memo",
+            "affinity": "TEXT",
+            "notNull": false
           }
         ],
         "primaryKey": {
@@ -515,7 +527,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '918f212a8ca05b454b0e78c03a92054f')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '815cb0bd63a50c7141849264cb1f8a17')"
     ]
   }
 }

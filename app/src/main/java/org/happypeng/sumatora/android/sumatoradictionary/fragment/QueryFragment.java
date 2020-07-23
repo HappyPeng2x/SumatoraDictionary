@@ -1,5 +1,5 @@
 /* Sumatora Dictionary
-        Copyright (C) 2019 Nicolas Centa
+        Copyright (C) 2020 Nicolas Centa
 
         This program is free software: you can redistribute it and/or modify
         it under the terms of the GNU General Public License as published by
@@ -17,252 +17,242 @@
 package org.happypeng.sumatora.android.sumatoradictionary.fragment;
 
 
-import android.app.SearchManager;
-import android.content.Context;
-import android.content.Intent;
-import android.net.Uri;
-import android.os.AsyncTask;
-import android.view.KeyEvent;
+import android.os.Bundle;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
-import android.view.MenuItem;
 import android.view.View;
-import android.widget.ImageView;
-import android.widget.TextView;
-import android.widget.Toast;
+import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.widget.SearchView;
-import androidx.core.content.FileProvider;
-import androidx.lifecycle.LiveData;
-import androidx.lifecycle.Observer;
+import androidx.appcompat.app.ActionBar;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
+import androidx.recyclerview.widget.DividerItemDecoration;
+import androidx.recyclerview.widget.LinearLayoutManager;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import org.happypeng.sumatora.android.sumatoradictionary.DictionaryApplication;
 import org.happypeng.sumatora.android.sumatoradictionary.R;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
-import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings;
-import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
-import org.happypeng.sumatora.android.sumatoradictionary.model.BaseFragmentModel;
-import org.happypeng.sumatora.android.sumatoradictionary.model.BaseFragmentModelFactory;
-import org.happypeng.sumatora.android.sumatoradictionary.xml.DictionaryBookmarkXML;
+import org.happypeng.sumatora.android.sumatoradictionary.component.BookmarkComponent;
+import org.happypeng.sumatora.android.sumatoradictionary.component.LanguageMenuComponent;
+import org.happypeng.sumatora.android.sumatoradictionary.component.LanguageSettingsComponent;
+import org.happypeng.sumatora.android.sumatoradictionary.component.PersistentDatabaseComponent;
+import org.happypeng.sumatora.android.sumatoradictionary.databinding.FragmentDictionaryQueryBinding;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
+import org.happypeng.sumatora.android.sumatoradictionary.db.tools.DictionarySearchQueryTool;
+import org.happypeng.sumatora.android.sumatoradictionary.model.QueryFragmentModel;
+import org.happypeng.sumatora.android.sumatoradictionary.model.viewbinding.QueryMenu;
+import org.happypeng.sumatora.android.sumatoradictionary.model.viewbinding.FragmentDictionaryQueryBindingUtil;
+import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionarySearchElementViewHolder;
 
-import java.io.File;
-import java.util.List;
+import javax.inject.Inject;
 
-public abstract class QueryFragment extends BaseFragment<BaseFragmentModel> {
-    private TextView m_languageText;
+import dagger.hilt.android.AndroidEntryPoint;
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
+import io.reactivex.rxjava3.core.Observable;
+import io.reactivex.rxjava3.disposables.CompositeDisposable;
 
-    @Override
-    protected Class<BaseFragmentModel> getViewModelClass() {
-        return BaseFragmentModel.class;
+@AndroidEntryPoint
+public class QueryFragment extends Fragment {
+    @Inject
+    BookmarkComponent bookmarkComponent;
+
+    @Inject
+    PersistentDatabaseComponent persistentDatabaseComponent;
+
+    @Inject
+    LanguageMenuComponent languageMenuComponent;
+
+    @Inject
+    LanguageSettingsComponent languageSettingsComponent;
+
+    protected QueryFragmentModel queryFragmentModel;
+
+    protected FragmentDictionaryQueryBinding viewBinding;
+    protected QueryMenu queryMenu;
+
+    private String currentTerm;
+
+    protected CompositeDisposable autoDisposable;
+
+    protected Bundle savedInstanceState;
+
+    /* Redefine on inheritance */
+    protected String getTitle() { return "Search"; }
+    protected int getKey() { return 1; }
+    protected boolean getSearchIconifiedByDefault() { return false; }
+    protected QueryFragmentModel getModel() {
+        // Provider needs to be attached to activity to survive configuration changes
+        ViewModelProvider viewModelProvider = new ViewModelProvider(getActivity(),
+                new QueryFragmentModel.Factory(getActivity().getApplication(),
+                        persistentDatabaseComponent, bookmarkComponent, languageSettingsComponent,
+                        (l) -> new DictionarySearchQueryTool(persistentDatabaseComponent, getKey(), null, l),
+                        getKey()));
+
+        return viewModelProvider.get(Integer.toString(getKey()), QueryFragmentModel.class);
+    }
+
+    public QueryFragment() {
+        autoDisposable = new CompositeDisposable();
+
+        currentTerm = "";
+        queryFragmentModel = null;
     }
 
     @Override
-    protected BaseFragmentModelFactory.Creator getViewModelCreator() {
-        return new BaseFragmentModelFactory.Creator() {
-            @Override
-            public BaseFragmentModel create() {
-                return new BaseFragmentModel(getActivity().getApplication(),
-                        getKey(), getSearchSet(), getAllowSearchAll(),
-                        getTableObserve((DictionaryApplication) getActivity().getApplication()));
+    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
+                             Bundle savedInstanceState) {
+        super.onCreateView(inflater, container, savedInstanceState);
+
+        if (autoDisposable == null) {
+            autoDisposable = new CompositeDisposable();
+        }
+
+        this.savedInstanceState = savedInstanceState;
+
+        viewBinding = FragmentDictionaryQueryBinding.inflate(inflater);
+
+        // Decoration
+        DividerItemDecoration itemDecor = new DividerItemDecoration(getContext(),
+                ((LinearLayoutManager) viewBinding.dictionaryBookmarkFragmentRecyclerview.getLayoutManager()).getOrientation());
+        viewBinding.dictionaryBookmarkFragmentRecyclerview.addItemDecoration(itemDecor);
+
+        queryFragmentModel = getModel();
+
+        // Toolbar configuration
+        viewBinding.dictionaryBookmarkFragmentToolbar.setTitle(getTitle());
+        ((AppCompatActivity) getActivity()).setSupportActionBar(viewBinding.dictionaryBookmarkFragmentToolbar);
+
+        setHasOptionsMenu(true);
+
+        final ActionBar actionBar = ((AppCompatActivity) getActivity()).getSupportActionBar();
+        actionBar.setHomeAsUpIndicator(R.drawable.ic_menu_white_24dp);
+        actionBar.setDisplayHomeAsUpEnabled(true);
+
+        final Observable<QueryFragmentModel.QueryEvent> queryEventObservable =
+                queryFragmentModel.getQueryEvent().observeOn(AndroidSchedulers.mainThread());
+
+        autoDisposable.add(queryEventObservable.subscribe(queryEvent -> {
+            currentTerm = queryEvent.term;
+
+            if (queryEvent.queryTool == null) {
+                FragmentDictionaryQueryBindingUtil.setInPreparation(viewBinding);
+            } else {
+                if (!"".equals(queryEvent.term)) {
+                    if (queryEvent.found) {
+                        FragmentDictionaryQueryBindingUtil.setResultsFound(viewBinding, queryEvent.term);
+                    } else {
+                        FragmentDictionaryQueryBindingUtil.setNoResultsFound(viewBinding, queryEvent.term);
+                    }
+                } else {
+                    FragmentDictionaryQueryBindingUtil.setReady(viewBinding);
+                }
             }
-        };
+        }));
+
+        autoDisposable.add(queryFragmentModel.getPagedListAdapter().subscribe(adapter -> {
+            viewBinding.dictionaryBookmarkFragmentRecyclerview.setAdapter(adapter);
+
+            adapter.setBookmarkClickListener(new DictionarySearchElementViewHolder.EventListener() {
+                @Override
+                public void onBookmarkClick(View aView, DictionarySearchElement aEntry) {
+                    queryFragmentModel.toggleBookmark(aEntry);
+                }
+
+                @Override
+                public void onMemoEdit(DictionarySearchElement aEntry, String aString) {
+                    queryFragmentModel.editMemo(aEntry, aString);
+                }
+            });
+        }));
+
+        focusSearchView();
+
+        return viewBinding.getRoot();
     }
 
-    protected abstract String getSearchSet();
-
-    protected abstract boolean getAllowSearchAll();
-
-    protected abstract LiveData<Long> getTableObserve(DictionaryApplication aApp);
-
-    protected abstract boolean getAllowExport();
-
-    protected abstract boolean getOpenSearchBox();
 
     @Override
-    View getLanguagePopupMenuAnchorView() {
-        return m_languageText;
+    public void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+
+        if (queryMenu != null) {
+            queryMenu.onSaveInstanceState(outState);
+        }
     }
 
     @Override
     public void onCreateOptionsMenu(@NonNull Menu menu, @NonNull MenuInflater inflater) {
         super.onCreateOptionsMenu(menu, inflater);
 
-        inflater.inflate(R.menu.bookmark_query_menu, menu);
+        queryMenu = new QueryMenu();
 
-        if (getAllowExport()) {
-            menu.findItem(R.id.share_bookmarks).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
-                @Override
-                public boolean onMenuItemClick(MenuItem item) {
-                    shareBookmarks();
+        autoDisposable.add(queryMenu.onCreateOptionsMenu(getActivity().getComponentName(),
+                menu, inflater, getContext(), languageMenuComponent));
 
-                    return false;
+        queryMenu.shareBookmarks.setVisible(false);
+
+        queryMenu.searchView.setIconifiedByDefault(getSearchIconifiedByDefault());
+
+        queryMenu.searchCloseButton.setOnClickListener(v -> {
+            if ("".equals(currentTerm)) {
+                queryMenu.searchView.setIconified(true);
+            } else {
+                queryMenu.searchView.setQuery("", true);
+
+                if (!"".equals(currentTerm)) {
+                    queryFragmentModel.setTerm("");
                 }
-            });
-        } else {
-            menu.findItem(R.id.share_bookmarks).setVisible(false);
-        }
+            }
+        });
 
-        SearchManager searchManager = (SearchManager) getActivity().getSystemService(Context.SEARCH_SERVICE);
-        MenuItem searchViewMenuItem = menu.findItem(R.id.bookmark_fragment_menu_search);
-
-        m_searchView = (SearchView) searchViewMenuItem.getActionView();
-        m_searchView.setSearchableInfo(searchManager.getSearchableInfo(getActivity().getComponentName()));
-
-        m_searchView.setQuery(m_term, false);
-
-        if (!getOpenSearchBox()) {
-            m_searchView.setIconifiedByDefault(true);
-            m_searchView.setIconified(!m_viewModel.getSearchViewOpenedState());
-        } else {
-            m_searchView.setIconifiedByDefault(false);
-        }
-
-        final SearchView.SearchAutoComplete mSearchSrcTextView =
-                m_searchView.findViewById(androidx.appcompat.R.id.search_src_text);
-
-        mSearchSrcTextView.setOnEditorActionListener(new TextView.OnEditorActionListener() {
-            @Override
-            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
-                if (m_log != null) {
-                    m_log.info("onEditorAction()");
+        queryMenu.searchAutoComplete.setOnEditorActionListener((v, actionId, event) -> {
+            if ("".equals(queryMenu.searchAutoComplete.getText().toString())) {
+                if (!"".equals(currentTerm)) {
+                    queryFragmentModel.setTerm("");
                 }
+            }
 
-                if (m_searchView.getQuery() != null) {
-                    m_term = m_searchView.getQuery().toString();
+            return false;
+        });
 
-                    if (!m_term.equals(m_viewModel.getTerm())) {
-                        m_viewModel.setTerm(m_term);
+        autoDisposable.add(queryFragmentModel.getQueryEvent().map(e -> e.term).distinctUntilChanged()
+                .observeOn(AndroidSchedulers.mainThread()).subscribe(s -> {
+                    if (!s.equals(queryMenu.searchView.getQuery().toString())) {
+                        queryMenu.searchView.setQuery(s, false);
                     }
-                }
+                }));
 
-                return true;
-            }
-        });
-
-        ImageView closeButton = m_searchView.findViewById(R.id.search_close_btn);
-
-        closeButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if ("".equals(m_viewModel.getTerm())) {
-                    m_searchView.setIconified(true);
-                } else {
-                    m_searchView.setQuery("", true);
-                    m_viewModel.setTerm("");
-                    m_term = "";
-                }
-            }
-        });
-
-        MenuItem languageMenuItem = menu.findItem(R.id.bookmark_fragment_menu_language_text);
-        m_languageText = languageMenuItem.getActionView().findViewById(R.id.menuitem_language_text);
-
-        if (m_viewModel.getInstalledDictionaries().getValue() != null) {
-            initLanguagePopupMenu(m_languageText, m_viewModel.getInstalledDictionaries().getValue());
+        if (savedInstanceState != null) {
+            queryMenu.restoreInstanceState(savedInstanceState);
         }
 
-        m_viewModel.getLanguageSettingsLive().observe(getViewLifecycleOwner(),
-                new Observer<PersistentLanguageSettings>() {
-                    @Override
-                    public void onChanged(PersistentLanguageSettings persistentLanguageSettings) {
-                        if (persistentLanguageSettings != null) {
-                            m_languageText.setText(persistentLanguageSettings.lang);
-                        }
-                    }
-                });
-
-        m_languageText.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (m_languagePopupMenu != null) {
-                    m_languagePopupMenu.show();
-                }
-            }
-        });
-
-        colorMenu(menu);
-
-        m_searchView.requestFocus();
+        focusSearchView();
     }
 
-    private void displayInitializationToast() {
-        Toast.makeText(getContext(), "Initialization still in progress...", Toast.LENGTH_LONG).show();
+    public void setIntentSearchTerm(@NonNull String aIntentSearchTerm) {
+        queryFragmentModel.setTerm(aIntentSearchTerm);
+
+        if (queryMenu != null && queryMenu.searchView != null && !aIntentSearchTerm.equals(queryMenu.searchView.getQuery().toString())) {
+            queryMenu.searchView.setQuery(aIntentSearchTerm, false);
+        }
     }
 
-    private void shareBookmarks() {
-        // return immediately if initialization is not finished
-        if (m_viewModel == null) {
-            displayInitializationToast();
-
-            return;
-        }
-
-        final PersistentDatabase db = m_viewModel.getDictionaryApplication().getPersistentDatabase().getValue();
-
-        if (db == null) {
-            displayInitializationToast();
-
-            return;
-        }
-
-        try {
-            File parentDir = new File(getContext().getFilesDir(), "bookmarks");
-            final File outputFile = new File(parentDir, "bookmarks.json");
-
-            parentDir.mkdirs();
-
-            new AsyncTask<Void, Void, Void>() {
-                private boolean fileWritten = false;
-
-                @Override
-                protected Void doInBackground(Void... voids) {
-                    try {
-                        List<DictionaryBookmark> bookmarks = db.dictionaryBookmarkDao().getAll();
-
-                        ObjectMapper mapper = new ObjectMapper();
-                        mapper.writeValue(outputFile, bookmarks);
-
-                        fileWritten = true;
-                    } catch (Exception e) {
-                        System.err.print(e.toString());
-                    }
-
-                    return null;
-                }
-
-                @Override
-                protected void onPostExecute(Void aVoid) {
-                    super.onPostExecute(aVoid);
-
-                    if (fileWritten) {
-                        Uri contentUri = FileProvider.getUriForFile
-                                (getActivity().getApplicationContext(),
-                                        AUTHORITY, outputFile);
-
-                        Intent sharingIntent = new Intent(Intent.ACTION_SEND);
-
-                        sharingIntent.setType("text/*");
-                        sharingIntent.putExtra(Intent.EXTRA_STREAM, contentUri);
-                        startActivity(Intent.createChooser(sharingIntent, "Share bookmarks"));
-                    }
-                }
-            }.execute();
-        } catch (Exception e) {
-            Toast.makeText(getContext(), "Bookmarks sharing failed...", Toast.LENGTH_LONG).show();
-
-            System.err.println(e.toString());
+    public void focusSearchView() {
+        if (queryMenu != null && queryMenu.searchView != null) {
+            queryMenu.searchView.requestFocus();
         }
     }
 
     @Override
-    public void setIntentSearchTerm(@NonNull String aIntentSearchTerm) {
-        super.setIntentSearchTerm(aIntentSearchTerm);
+    public void onDestroyView() {
+        super.onDestroyView();
 
-        if (m_searchView != null) {
-            m_searchView.setQuery(aIntentSearchTerm, false);
-        }
+        autoDisposable.dispose();
+
+        autoDisposable = null;
+
+        viewBinding = null;
+        queryMenu = null;
     }
 }

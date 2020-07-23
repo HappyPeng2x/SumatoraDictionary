@@ -1,5 +1,5 @@
 /* Sumatora Dictionary
-        Copyright (C) 2019 Nicolas Centa
+        Copyright (C) 2020 Nicolas Centa
 
         This program is free software: you can redistribute it and/or modify
         it under the terms of the GNU General Public License as published by
@@ -17,160 +17,185 @@
 package org.happypeng.sumatora.android.sumatoradictionary.model;
 
 import android.app.Application;
-import android.content.ContentResolver;
-import android.net.Uri;
-import android.os.AsyncTask;
 
 import androidx.annotation.NonNull;
+import androidx.core.util.Pair;
 import androidx.lifecycle.LiveData;
-import androidx.sqlite.db.SupportSQLiteDatabase;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModel;
+import androidx.lifecycle.ViewModelProvider;
+import androidx.paging.PagedList;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import org.happypeng.sumatora.android.sumatoradictionary.adapter.DictionaryPagedListAdapter;
+import org.happypeng.sumatora.android.sumatoradictionary.component.BookmarkImportComponent;
+import org.happypeng.sumatora.android.sumatoradictionary.component.LanguageSettingsComponent;
+import org.happypeng.sumatora.android.sumatoradictionary.component.PersistentDatabaseComponent;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
+import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
+import org.happypeng.sumatora.android.sumatoradictionary.db.tools.BookmarkImportQueryTool;
+import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionarySearchElementViewHolder;
 
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmarkImport;
-import org.happypeng.sumatora.android.sumatoradictionary.xml.DictionaryBookmarkXML;
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
+import io.reactivex.rxjava3.core.Observable;
+import io.reactivex.rxjava3.core.Single;
+import io.reactivex.rxjava3.disposables.CompositeDisposable;
+import io.reactivex.rxjava3.observers.DisposableSingleObserver;
+import io.reactivex.rxjava3.schedulers.Schedulers;
+import io.reactivex.rxjava3.subjects.BehaviorSubject;
+import io.reactivex.rxjava3.subjects.PublishSubject;
+import io.reactivex.rxjava3.subjects.Subject;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.List;
+public class BookmarkImportModel extends ViewModel {
+    public static class Factory extends ViewModelProvider.AndroidViewModelFactory{
+        private final PersistentDatabaseComponent persistentDatabaseComponent;
+        private final BookmarkImportComponent bookmarkComponent;
+        private final LanguageSettingsComponent languageSettingsComponent;
+        private final int key;
 
-public class BookmarkImportModel extends BaseFragmentModel {
-    private static String SQL_BOOKMARK_IMPORT_COMMIT = "INSERT OR IGNORE INTO DictionaryBookmark SELECT seq, 1 FROM DictionaryBookmarkImport";
+        public Factory(@NonNull final Application application,
+                       @NonNull final PersistentDatabaseComponent persistentDatabaseComponent,
+                       @NonNull final BookmarkImportComponent bookmarkComponent,
+                       @NonNull final LanguageSettingsComponent languageSettingsComponent,
+                       final int key) {
+            super(application);
 
-    private boolean m_UriImported;
-
-    public BookmarkImportModel(Application aApp,
-                               final int aKey, final String aSearchSet,
-                               final boolean aAllowSearchAll,
-                               final LiveData<Long> aTableObserve) {
-        super(aApp, aKey, aSearchSet, aAllowSearchAll, aTableObserve);
-
-        m_UriImported = false;
-    }
-
-    public boolean getUriImported() {
-        return m_UriImported;
-    }
-
-    public void cancelImport() {
-        if (mCurrentDatabase == null) {
-            return;
+            this.persistentDatabaseComponent = persistentDatabaseComponent;
+            this.bookmarkComponent = bookmarkComponent;
+            this.languageSettingsComponent = languageSettingsComponent;
+            this.key = key;
         }
 
-        new AsyncTask<Void, Void, Void>() {
-            @Override
-            protected Void doInBackground(Void... voids) {
-                mCurrentDatabase.dictionaryBookmarkImportDao().deleteAll();
+        @NonNull
+        @Override
+        public <T extends ViewModel> T create(@NonNull Class<T> modelClass) {
+            T ret = modelClass.cast(new BookmarkImportModel(persistentDatabaseComponent,
+                    bookmarkComponent, languageSettingsComponent, key));
 
-                return null;
+            if (ret != null) {
+                return ret;
             }
-        }.execute();
-    }
 
-    public void commitBookmarks() {
-        if (mCurrentDatabase == null) {
-            System.err.println("Trying to commit bookmarks without DB");
-
-            return;
+            throw new IllegalArgumentException("ViewModel cast failed");
         }
-
-        new AsyncTask<Void, Void, Void>() {
-            @Override
-            protected Void doInBackground(Void... voids) {
-                try {
-                    mCurrentDatabase.runInTransaction(new Runnable() {
-                        @Override
-                        public void run() {
-                            SupportSQLiteDatabase sqldb = mCurrentDatabase.getOpenHelper().getWritableDatabase();
-
-                            sqldb.execSQL(SQL_BOOKMARK_IMPORT_COMMIT);
-
-                            mCurrentDatabase.dictionaryBookmarkImportDao().deleteAll();
-                        }
-                    });
-
-                } catch(Exception e) {
-                    System.err.println(e.toString());
-                }
-
-                return null;
-            }
-        }.execute();
     }
 
-    public void processUri(final Uri aUri) {
-        new AsyncTask<Void, Void, Void>() {
-            @Override
-            protected Void doInBackground(Void... voids) {
-                try {
-                    final ContentResolver contentResolver = mApp.getContentResolver();
-                    final InputStream is = contentResolver.openInputStream(aUri);
-                    final String type = contentResolver.getType(aUri);
+    final protected CompositeDisposable compositeDisposable;
 
-                    if ("text/xml".equals(type)) {
-                        final List<Long> seqs = DictionaryBookmarkXML.readXML(is);
-                        is.close();
+    final private Subject<DictionaryPagedListAdapter> pagedListAdapterSubject;
+    final private Subject<DictionarySearchElement> itemAtEndSubject;
 
-                        if (seqs == null) {
-                            // TBD: error management
-                            // mStatus.postValue(STATUS_ERROR);
+    private Observer<PagedList<DictionarySearchElement>> pagedListObserver;
+    private LiveData<PagedList<DictionarySearchElement>> pagedList;
 
-                            return null;
-                        }
+    public static class QueryEvent {
+        final public int bookmarkId;
+        final public boolean executed;
+        final public BookmarkImportQueryTool queryTool;
+        final public int queryToolId;
 
-                        mCurrentDatabase.runInTransaction(new Runnable() {
-                            @Override
-                            public void run() {
-                                mCurrentDatabase.dictionaryBookmarkImportDao().deleteAll();
+        public QueryEvent(final int bookmarkId,
+                          final int queryToolId,
+                          final BookmarkImportQueryTool queryTool,
+                          final boolean executed) {
+            this.bookmarkId = bookmarkId;
+            this.executed = executed;
+            this.queryTool = queryTool;
+            this.queryToolId = queryToolId;
+        }
+    }
 
-                                for (Long seq : seqs) {
-                                    mCurrentDatabase.dictionaryBookmarkImportDao().insert(
-                                            new DictionaryBookmarkImport(mKey, seq, null));
-                                }
-                            }
-                        });
-                    } else if ("application/json".equals(type)) {
-                        final ObjectMapper mapper = new ObjectMapper();
-                        final List<DictionaryBookmarkImport> bookmarks = mapper.readValue(is, new TypeReference<List<DictionaryBookmarkImport>>() {});
-                        is.close();
+    final private Observable<QueryEvent> queryEventObservable;
 
-                        for (DictionaryBookmarkImport dictionaryBookmarkImport : bookmarks) {
-                            dictionaryBookmarkImport.ref = mKey;
-                        }
+    public Observable<QueryEvent> getQueryEvent() {
+        return queryEventObservable;
+    }
 
-                        if (bookmarks == null) {
-                            // TBD: error management
-                            // mStatus.postValue(STATUS_ERROR);
+    public Observable<DictionaryPagedListAdapter> getPagedListAdapter() {
+        return pagedListAdapterSubject;
+    }
 
-                            return null;
-                        }
+    public BookmarkImportModel(@NonNull final PersistentDatabaseComponent persistentDatabaseComponent,
+                               @NonNull final BookmarkImportComponent bookmarkImportComponent,
+                               @NonNull final LanguageSettingsComponent languageSettingsComponent,
+                               final int key) {
+        super();
 
-                        mCurrentDatabase.runInTransaction(new Runnable() {
-                            @Override
-                            public void run() {
-                                mCurrentDatabase.dictionaryBookmarkImportDao().deleteAll();
-                                mCurrentDatabase.dictionaryBookmarkImportDao().insertMany(bookmarks);
-                            }
-                        });
+        compositeDisposable = new CompositeDisposable();
+
+        pagedListAdapterSubject = BehaviorSubject.create();
+        itemAtEndSubject = PublishSubject.create();
+
+        compositeDisposable.add(Single.fromCallable(persistentDatabaseComponent::getEntities).map(entities -> new DictionaryPagedListAdapter(new DictionarySearchElementViewHolder.Status(entities),
+                false)).subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
+                .subscribeWith(new DisposableSingleObserver<DictionaryPagedListAdapter>() {
+                    @Override
+                    public void onSuccess(@io.reactivex.rxjava3.annotations.NonNull DictionaryPagedListAdapter dictionaryPagedListAdapter) {
+                        pagedList = persistentDatabaseComponent.getSearchElements(key,
+                                new PagedList.BoundaryCallback<DictionarySearchElement>() {
+                                    @Override
+                                    public void onItemAtEndLoaded(@NonNull DictionarySearchElement itemAtEnd) {
+                                        super.onItemAtEndLoaded(itemAtEnd);
+
+                                        itemAtEndSubject.onNext(itemAtEnd);
+                                    }
+                                });
+
+                        pagedListObserver = dictionaryPagedListAdapter::submitList;
+                        pagedList.observeForever(pagedListObserver);
+
+                        pagedListAdapterSubject.onNext(dictionaryPagedListAdapter);
                     }
 
-                    // TBD: status management
-                    // mStatus.postValue(STATUS_PROCESSED);
-                } catch (IOException e) {
-                    System.err.println(e.toString());
+                    @Override
+                    public void onError(@io.reactivex.rxjava3.annotations.NonNull Throwable e) {
+                        e.printStackTrace();
+                    }
+                }));
 
-                    // TBD: error management
-                    //mStatus.postValue(STATUS_ERROR);
-                }
+        final Observable<Integer> bookmarks =
+                bookmarkImportComponent.getImportBookmarksObservable()
+                        .filter(i -> i.second == key)
+                        .scan(0, (acc, val) -> acc + 1);
 
-                return null;
-            }
+        final Observable<Pair<Integer, BookmarkImportQueryTool>> queryTool =
+                languageSettingsComponent.getPersistentLanguageSettings()
+                        .observeOn(Schedulers.io())
+                        .scan(new Pair<>(0, null), (acc, value) ->
+                                new Pair<>(acc.first + 1, value.second ? new BookmarkImportQueryTool(persistentDatabaseComponent,
+                                        key, value.first) : null));
 
-            @Override
-            protected void onPostExecute(Void result) {
-                m_UriImported = true;
-            }
-        }.execute();
+        queryEventObservable = Observable.combineLatest(bookmarks, queryTool,
+                (b, q) -> new QueryEvent(b, q.first, q.second, false))
+                .observeOn(Schedulers.io())
+                .scan((acc, val) -> {
+                    // In the process of changing language
+                    if (val.queryTool == null) {
+                        return acc;
+                    }
+
+                    final PersistentDatabase persistentDatabase = persistentDatabaseComponent.getDatabase();
+
+                    // Query not yet executed
+                    if (!acc.executed) {
+                        persistentDatabase.runInTransaction(val.queryTool::delete);
+                        persistentDatabase.runInTransaction(val.queryTool::execute);
+
+                        return new QueryEvent(val.bookmarkId,
+                                val.queryToolId, val.queryTool, true);
+                    } else {
+                        // Changed bookmarks or language
+                        if (val.bookmarkId != acc.bookmarkId || val.queryToolId != acc.queryToolId) {
+                            persistentDatabase.runInTransaction(() -> {
+                                val.queryTool.delete();
+                                val.queryTool.execute();
+                            });
+
+                            return new QueryEvent(val.bookmarkId,
+                                    val.queryToolId, val.queryTool, true);
+                        }
+                    }
+
+                    return val;
+                }).share().replay(1).autoConnect();
     }
 }

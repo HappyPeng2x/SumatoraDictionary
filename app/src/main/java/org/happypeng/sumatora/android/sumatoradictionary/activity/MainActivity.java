@@ -28,29 +28,28 @@ import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
-import androidx.lifecycle.Observer;
 
 import com.google.android.material.navigation.NavigationView;
 
 import org.happypeng.sumatora.android.sumatoradictionary.BuildConfig;
 import org.happypeng.sumatora.android.sumatoradictionary.DictionaryApplication;
 import org.happypeng.sumatora.android.sumatoradictionary.R;
-import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Settings;
 import org.happypeng.sumatora.android.sumatoradictionary.fragment.BookmarkFragment;
 import org.happypeng.sumatora.android.sumatoradictionary.fragment.DebugFragment;
-import org.happypeng.sumatora.android.sumatoradictionary.fragment.DictionarySearchFragment;
 import org.happypeng.sumatora.android.sumatoradictionary.fragment.QueryFragment;
 import org.happypeng.sumatora.android.sumatoradictionary.fragment.SettingsFragment;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import dagger.hilt.android.AndroidEntryPoint;
+
+@AndroidEntryPoint
 public class MainActivity extends AppCompatActivity
         implements SettingsFragment.SettingsFragmentActions {
     private DrawerLayout m_drawer_layout;
 
     private BookmarkFragment m_dictionaryBookmarkFragment;
-    private DictionarySearchFragment m_dictionarySearchFragment;
+    private QueryFragment m_dictionarySearchFragment;
     private DebugFragment m_debugFragment;
     private SettingsFragment m_settingsFragment;
 
@@ -110,11 +109,11 @@ public class MainActivity extends AppCompatActivity
         setContentView(R.layout.activity_dictionary);
 
         if (savedInstanceState == null) {
-            m_dictionarySearchFragment = new DictionarySearchFragment();
+            m_dictionarySearchFragment = new QueryFragment();
             addFragmentToBackStack(m_dictionarySearchFragment, SEARCH_FRAGMENT_TAG);
         } else {
             FragmentManager fm = getSupportFragmentManager();
-            m_dictionarySearchFragment = (DictionarySearchFragment) fm.findFragmentByTag(SEARCH_FRAGMENT_TAG);
+            m_dictionarySearchFragment = (QueryFragment) fm.findFragmentByTag(SEARCH_FRAGMENT_TAG);
         }
 
         m_navigationView = findViewById(R.id.activity_main_navigation_view);
@@ -274,7 +273,7 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public void manageDictionaries() {
-        startActivityWithDelay(DictionariesManagementActivity.class);
+        //startActivityWithDelay(DictionariesManagementActivity.class);
     }
 
     @Override
@@ -283,7 +282,7 @@ public class MainActivity extends AppCompatActivity
             return;
         }
 
-        m_app.getSettings().setValue(Settings.REPOSITORY_URL, aUrl);
+        //m_app.getSettings().setValue(Settings.REPOSITORY_URL, aUrl);
     }
 
     @Override
@@ -304,5 +303,9 @@ public class MainActivity extends AppCompatActivity
         } else {
             finish();
         }
+    }
+
+    public void sayHello() {
+        System.out.println("HELLO");
     }
 }

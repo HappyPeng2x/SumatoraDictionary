@@ -16,7 +16,11 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.db;
 
+import androidx.room.Entity;
+
+@Entity(primaryKeys = {"ref", "seq"})
 public class DictionarySearchElement {
+    public int ref;
     public int entryOrder;
     public long seq;
     public String readingsPrio;

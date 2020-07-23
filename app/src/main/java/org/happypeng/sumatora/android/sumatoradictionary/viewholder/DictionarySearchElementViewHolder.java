@@ -45,6 +45,10 @@ import java.util.HashMap;
 public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
     public static class Status {
         public HashMap<String, String> entities;
+
+        public Status(final HashMap<String, String> entities) {
+            this.entities = entities;
+        }
     }
 
     private final Status m_status;

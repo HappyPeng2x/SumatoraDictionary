@@ -27,8 +27,8 @@ import androidx.room.Query;
 
 @Dao
 public interface DictionaryBookmarkImportDao {
-    @Query("DELETE FROM DictionaryBookmarkImport")
-    void deleteAll();
+    @Query("DELETE FROM DictionaryBookmarkImport WHERE ref=:ref")
+    void delete(int ref);
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void insert(DictionaryBookmarkImport aBookmark);

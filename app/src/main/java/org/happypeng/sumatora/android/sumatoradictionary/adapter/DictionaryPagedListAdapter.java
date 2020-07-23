@@ -31,7 +31,6 @@ import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionarySe
 import java.util.HashMap;
 
 public class DictionaryPagedListAdapter extends PagedListAdapter<DictionarySearchElement, DictionarySearchElementViewHolder> {
-    private HashMap<Long, Long> m_bookmarks;
     private final DictionarySearchElementViewHolder.Status m_status;
     private boolean m_disableBookmarkButton;
 
@@ -57,12 +56,6 @@ public class DictionaryPagedListAdapter extends PagedListAdapter<DictionarySearc
         m_bookmarkEventListener = aListener;
     }
 
-    public void setBookmarks(HashMap<Long, Long> aBookmarks) {
-        m_bookmarks = aBookmarks;
-
-        notifyDataSetChanged();
-    }
-
     @NonNull
     @Override
     public DictionarySearchElementViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
@@ -83,18 +76,6 @@ public class DictionaryPagedListAdapter extends PagedListAdapter<DictionarySearc
         DictionarySearchElement entry = getItem(position);
 
         if (entry != null) {
-            Long bookmark = null;
-
-            if (m_bookmarks != null) {
-                bookmark = m_bookmarks.get(entry.getSeq());
-
-                if (bookmark != null) {
-                    entry.bookmark = bookmark;
-                } else {
-                    entry.bookmark = 0;
-                }
-            }
-
             holder.bindTo(entry);
         }
     }

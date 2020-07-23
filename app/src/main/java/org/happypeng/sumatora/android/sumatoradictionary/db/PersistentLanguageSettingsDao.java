@@ -25,9 +25,6 @@ import androidx.room.Query;
 @Dao
 public interface PersistentLanguageSettingsDao {
     @Query("SELECT * FROM PersistentLanguageSettings WHERE ref = :ref")
-    LiveData<PersistentLanguageSettings> getLanguageSettings(int ref);
-
-    @Query("SELECT * FROM PersistentLanguageSettings WHERE ref = :ref")
     PersistentLanguageSettings getLanguageSettingsDirect(int ref);
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
