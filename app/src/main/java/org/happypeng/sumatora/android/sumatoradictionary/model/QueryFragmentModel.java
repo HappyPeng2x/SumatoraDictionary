@@ -161,7 +161,7 @@ public class QueryFragmentModel extends ViewModel {
         termSubject = BehaviorSubject.create();
 
         compositeDisposable.add(Single.fromCallable(persistentDatabaseComponent::getEntities).map(entities -> new DictionaryPagedListAdapter(new DictionarySearchElementViewHolder.Status(entities),
-                false)).subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
+                false, false)).subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
                 .subscribeWith(new DisposableSingleObserver<DictionaryPagedListAdapter>() {
                     @Override
                     public void onSuccess(@io.reactivex.rxjava3.annotations.NonNull DictionaryPagedListAdapter dictionaryPagedListAdapter) {
@@ -277,32 +277,21 @@ public class QueryFragmentModel extends ViewModel {
     }
 
     public void toggleBookmark(final DictionarySearchElement aEntry) {
-        compositeDisposable.add(Completable.fromAction(() -> {
-            DictionaryBookmark dictionaryBookmark = new DictionaryBookmark();
-            dictionaryBookmark.bookmark = aEntry.getBookmark() == 0 ? 1 : 0;
-            dictionaryBookmark.memo = aEntry.getMemo();
-            dictionaryBookmark.seq = aEntry.getSeq();
+        DictionaryBookmark dictionaryBookmark = new DictionaryBookmark();
+        dictionaryBookmark.bookmark = aEntry.getBookmark() == 0 ? 1 : 0;
+        dictionaryBookmark.memo = aEntry.getMemo();
+        dictionaryBookmark.seq = aEntry.getSeq();
 
-            final List<DictionaryBookmark> dictionaryBookmarks = new LinkedList<>();
-            dictionaryBookmarks.add(dictionaryBookmark);
-
-            bookmarkComponent.updateBookmarks(dictionaryBookmarks);
-        }).subscribeOn(Schedulers.io()).subscribeOn(AndroidSchedulers.mainThread()).subscribe());
+        bookmarkComponent.updateBookmark(dictionaryBookmark);
     }
 
     public void editMemo(final DictionarySearchElement aEntry, final String aMemo) {
-        compositeDisposable.add(Completable.fromAction(() -> {
-            DictionaryBookmark dictionaryBookmark = new DictionaryBookmark();
-            dictionaryBookmark.bookmark = aEntry.getBookmark();
-            dictionaryBookmark.memo = aMemo;
-            dictionaryBookmark.seq = aEntry.getSeq();
+        DictionaryBookmark dictionaryBookmark = new DictionaryBookmark();
+        dictionaryBookmark.bookmark = aEntry.getBookmark();
+        dictionaryBookmark.memo = aMemo;
+        dictionaryBookmark.seq = aEntry.getSeq();
 
-            final List<DictionaryBookmark> dictionaryBookmarks = new LinkedList<>();
-            dictionaryBookmarks.add(dictionaryBookmark);
-
-            bookmarkComponent.updateBookmarks(dictionaryBookmarks);
-        }).subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread()).subscribe());
-
+        bookmarkComponent.updateBookmark(dictionaryBookmark);
     }
 
     public Observable<QueryEvent> getQueryEvent() {

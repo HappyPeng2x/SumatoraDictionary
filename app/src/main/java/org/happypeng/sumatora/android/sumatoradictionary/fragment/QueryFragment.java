@@ -190,8 +190,6 @@ public class QueryFragment extends Fragment {
         autoDisposable.add(queryMenu.onCreateOptionsMenu(getActivity().getComponentName(),
                 menu, inflater, getContext(), languageMenuComponent));
 
-        queryMenu.shareBookmarks.setVisible(false);
-
         queryMenu.searchView.setIconifiedByDefault(getSearchIconifiedByDefault());
 
         queryMenu.searchCloseButton.setOnClickListener(v -> {

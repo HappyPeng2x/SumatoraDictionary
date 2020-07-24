@@ -18,6 +18,7 @@ package org.happypeng.sumatora.android.sumatoradictionary.model;
 
 import android.app.Application;
 
+import androidx.annotation.MainThread;
 import androidx.annotation.NonNull;
 import androidx.core.util.Pair;
 import androidx.lifecycle.LiveData;
@@ -101,11 +102,27 @@ public class BookmarkFragmentModel extends ViewModel {
     final private Subject<DictionaryPagedListAdapter> pagedListAdapterSubject;
     final private Subject<DictionarySearchElement> itemAtEndSubject;
     final private Subject<String> termSubject;
+    final private Subject<Boolean> filterBookmarksSubject;
+    final private Subject<Boolean> filterMemosSubject;
 
     final private Observable<QueryEvent> queryEventObservable;
 
     private Observer<PagedList<DictionarySearchElement>> pagedListObserver;
     private LiveData<PagedList<DictionarySearchElement>> pagedList;
+
+    public static class FilterEvent {
+        final public int filterId;
+        final public boolean filterMemos;
+        final public boolean filterBookmarks;
+
+        public FilterEvent(final int filterId,
+                           final boolean filterBookmarks,
+                           final boolean filterMemos) {
+            this.filterId = filterId;
+            this.filterMemos = filterMemos;
+            this.filterBookmarks = filterBookmarks;
+        }
+    }
 
     public static class QueryEvent {
         final public int scrollId;
@@ -116,6 +133,9 @@ public class BookmarkFragmentModel extends ViewModel {
         final public int termId;
         final public int queryToolId;
         final public boolean found;
+        final public int filterId;
+        final public boolean filterMemos;
+        final public boolean filterBookmarks;
 
         public QueryEvent(final int scrollId, final int bookmarkId,
                           final int termId,
@@ -123,7 +143,10 @@ public class BookmarkFragmentModel extends ViewModel {
                           final int queryToolId,
                           final BookmarkQueryTool queryTool,
                           final int lastQuery,
-                          final boolean found) {
+                          final boolean found,
+                          final int filterId,
+                          final boolean filterMemos,
+                          final boolean filterBookmarks) {
             this.scrollId = scrollId;
             this.bookmarkId = bookmarkId;
             this.term = term;
@@ -132,6 +155,9 @@ public class BookmarkFragmentModel extends ViewModel {
             this.termId = termId;
             this.queryToolId = queryToolId;
             this.found = found;
+            this.filterId = filterId;
+            this.filterMemos = filterMemos;
+            this.filterBookmarks = filterBookmarks;
         }
     }
 
@@ -159,9 +185,11 @@ public class BookmarkFragmentModel extends ViewModel {
 
         itemAtEndSubject = PublishSubject.create();
         termSubject = BehaviorSubject.create();
+        filterBookmarksSubject = BehaviorSubject.create();
+        filterMemosSubject = BehaviorSubject.create();
 
         compositeDisposable.add(Single.fromCallable(persistentDatabaseComponent::getEntities).map(entities -> new DictionaryPagedListAdapter(new DictionarySearchElementViewHolder.Status(entities),
-                false)).subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
+                false, false)).subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
                 .subscribeWith(new DisposableSingleObserver<DictionaryPagedListAdapter>() {
                     @Override
                     public void onSuccess(@io.reactivex.rxjava3.annotations.NonNull DictionaryPagedListAdapter dictionaryPagedListAdapter) {
@@ -203,8 +231,18 @@ public class BookmarkFragmentModel extends ViewModel {
                 termSubject.distinctUntilChanged().scan(new Pair<>(0, ""), (acc, value) ->
                         new Pair<>(acc.first + 1, value));
 
-        queryEventObservable = Observable.combineLatest(scroll, bookmarks, search, queryTool,
-                (s, b, t, q) -> new QueryEvent(s, b, t.first, t.second, q.first, q.second, 0, false))
+        final Observable<FilterEvent> filterEvent =
+                Observable.combineLatest(filterBookmarksSubject.startWithItem(true),
+                        filterMemosSubject.startWithItem(false), Pair::new)
+                        .scan(new FilterEvent(0, false, false),
+                                (acc, val) -> new FilterEvent(acc.filterId + 1,
+                                        val.first || val.second ? val.first : true,
+                                        val.second))
+                .filter(e -> e.filterBookmarks || e.filterMemos);
+
+        queryEventObservable = Observable.combineLatest(scroll, bookmarks, search, queryTool, filterEvent,
+                (s, b, t, q, f) -> new QueryEvent(s, b, t.first, t.second, q.first, q.second,
+                        0, false, f.filterId, f.filterMemos, f.filterBookmarks))
                 .observeOn(Schedulers.io())
                 .scan((acc, val) -> {
                     // In the process of changing language
@@ -226,7 +264,8 @@ public class BookmarkFragmentModel extends ViewModel {
                             final int queryCount = val.queryTool.getCount(val.term);
 
                             while (current < queryCount && !found) {
-                                found = val.queryTool.execute(val.term, current);
+                                found = val.queryTool.execute(val.term, current, val.filterBookmarks,
+                                        val.filterMemos);
 
                                 current++;
                             }
@@ -235,20 +274,24 @@ public class BookmarkFragmentModel extends ViewModel {
                         });
 
                         return new QueryEvent(val.scrollId, val.bookmarkId, val.termId, val.term,
-                                val.queryToolId, val.queryTool, result.getValue().first, result.getValue().second);
+                                val.queryToolId, val.queryTool, result.getValue().first, result.getValue().second,
+                                val.filterId, val.filterMemos, val.filterBookmarks);
                     } else {
-                        // Changed bookmarks or language
-                        if (val.bookmarkId != acc.bookmarkId || val.queryToolId != acc.queryToolId) {
+                        // Changed bookmarks or language or filters
+                        if (val.bookmarkId != acc.bookmarkId || val.queryToolId != acc.queryToolId ||
+                                val.filterId != acc.filterId) {
                             persistentDatabase.runInTransaction(() -> {
                                 val.queryTool.delete();
 
                                 for (int i = 0; i < acc.lastQuery; i++) {
-                                    val.queryTool.execute(acc.term, i);
+                                    val.queryTool.execute(acc.term, i, val.filterBookmarks,
+                                            val.filterMemos);
                                 }
                             });
 
                             return new QueryEvent(val.scrollId, val.bookmarkId, val.termId,
-                                    val.term, val.queryToolId, val.queryTool, acc.lastQuery, acc.found);
+                                    val.term, val.queryToolId, val.queryTool, acc.lastQuery, acc.found,
+                                    val.filterId, val.filterMemos, val.filterBookmarks);
                         } else if (val.scrollId != acc.scrollId) {
                             // Scrolled
                             final ValueHolder<Integer> result = new ValueHolder<>(acc.lastQuery);
@@ -259,7 +302,8 @@ public class BookmarkFragmentModel extends ViewModel {
                                 final int queryCount = val.queryTool.getCount(val.term);
 
                                 while (current < queryCount && !found) {
-                                    found = val.queryTool.execute(val.term, current);
+                                    found = val.queryTool.execute(val.term, current, val.filterBookmarks,
+                                            val.filterMemos);
 
                                     current++;
                                 }
@@ -268,7 +312,8 @@ public class BookmarkFragmentModel extends ViewModel {
                             });
 
                             return new QueryEvent(val.scrollId, val.bookmarkId, val.termId,
-                                    val.term, val.queryToolId, val.queryTool, result.getValue(), acc.found);
+                                    val.term, val.queryToolId, val.queryTool, result.getValue(), acc.found,
+                                    val.filterId, val.filterMemos, val.filterBookmarks);
                         }
                     }
 
@@ -277,32 +322,21 @@ public class BookmarkFragmentModel extends ViewModel {
     }
 
     public void toggleBookmark(final DictionarySearchElement aEntry) {
-        compositeDisposable.add(Completable.fromAction(() -> {
-            DictionaryBookmark dictionaryBookmark = new DictionaryBookmark();
-            dictionaryBookmark.bookmark = aEntry.getBookmark() == 0 ? 1 : 0;
-            dictionaryBookmark.memo = aEntry.getMemo();
-            dictionaryBookmark.seq = aEntry.getSeq();
+        DictionaryBookmark dictionaryBookmark = new DictionaryBookmark();
+        dictionaryBookmark.bookmark = aEntry.getBookmark() == 0 ? 1 : 0;
+        dictionaryBookmark.memo = aEntry.getMemo();
+        dictionaryBookmark.seq = aEntry.getSeq();
 
-            final List<DictionaryBookmark> dictionaryBookmarks = new LinkedList<>();
-            dictionaryBookmarks.add(dictionaryBookmark);
-
-            bookmarkComponent.updateBookmarks(dictionaryBookmarks);
-        }).subscribeOn(Schedulers.io()).subscribeOn(AndroidSchedulers.mainThread()).subscribe());
+        bookmarkComponent.updateBookmark(dictionaryBookmark);
     }
 
     public void editMemo(final DictionarySearchElement aEntry, final String aMemo) {
-        compositeDisposable.add(Completable.fromAction(() -> {
-            DictionaryBookmark dictionaryBookmark = new DictionaryBookmark();
-            dictionaryBookmark.bookmark = aEntry.getBookmark();
-            dictionaryBookmark.memo = aMemo;
-            dictionaryBookmark.seq = aEntry.getSeq();
+        DictionaryBookmark dictionaryBookmark = new DictionaryBookmark();
+        dictionaryBookmark.bookmark = aEntry.getBookmark();
+        dictionaryBookmark.memo = aMemo;
+        dictionaryBookmark.seq = aEntry.getSeq();
 
-            final List<DictionaryBookmark> dictionaryBookmarks = new LinkedList<>();
-            dictionaryBookmarks.add(dictionaryBookmark);
-
-            bookmarkComponent.updateBookmarks(dictionaryBookmarks);
-        }).subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread()).subscribe());
-
+        bookmarkComponent.updateBookmark(dictionaryBookmark);
     }
 
     public Observable<QueryEvent> getQueryEvent() {
@@ -318,5 +352,15 @@ public class BookmarkFragmentModel extends ViewModel {
         }
 
         compositeDisposable.dispose();
+    }
+
+    @MainThread
+    public void filterBookmarks(final boolean filter) {
+        filterBookmarksSubject.onNext(filter);
+    }
+
+    @MainThread
+    public void filterMemos(final boolean filter) {
+        filterMemosSubject.onNext(filter);
     }
 }

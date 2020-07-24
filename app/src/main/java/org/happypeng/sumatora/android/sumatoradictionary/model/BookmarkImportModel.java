@@ -126,7 +126,7 @@ public class BookmarkImportModel extends ViewModel {
         itemAtEndSubject = PublishSubject.create();
 
         compositeDisposable.add(Single.fromCallable(persistentDatabaseComponent::getEntities).map(entities -> new DictionaryPagedListAdapter(new DictionarySearchElementViewHolder.Status(entities),
-                false)).subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
+                false, true)).subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
                 .subscribeWith(new DisposableSingleObserver<DictionaryPagedListAdapter>() {
                     @Override
                     public void onSuccess(@io.reactivex.rxjava3.annotations.NonNull DictionaryPagedListAdapter dictionaryPagedListAdapter) {

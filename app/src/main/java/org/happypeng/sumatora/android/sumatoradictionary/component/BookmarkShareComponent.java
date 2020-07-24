@@ -33,7 +33,11 @@ import java.util.List;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
+import dagger.hilt.android.qualifiers.ActivityContext;
 import dagger.hilt.android.qualifiers.ApplicationContext;
+import dagger.hilt.android.scopes.ActivityRetainedScoped;
+import dagger.hilt.android.scopes.ActivityScoped;
+import dagger.hilt.android.scopes.FragmentScoped;
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.annotations.NonNull;
 import io.reactivex.rxjava3.core.Completable;
@@ -41,7 +45,7 @@ import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.observers.DisposableCompletableObserver;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 
-@Singleton
+@FragmentScoped
 public class BookmarkShareComponent {
     private static final String AUTHORITY = "org.happypeng.sumatora.android.sumatoradictionary.fileprovider";
 
@@ -49,8 +53,9 @@ public class BookmarkShareComponent {
     final PersistentDatabaseComponent persistentDatabaseComponent;
     final BookmarkComponent bookmarkComponent;
 
+
     @Inject
-    BookmarkShareComponent(@ApplicationContext final Context context,
+    BookmarkShareComponent(@ActivityContext final Context context,
                            final PersistentDatabaseComponent persistentDatabaseComponent,
                            final BookmarkComponent bookmarkComponent) {
         this.context = context;

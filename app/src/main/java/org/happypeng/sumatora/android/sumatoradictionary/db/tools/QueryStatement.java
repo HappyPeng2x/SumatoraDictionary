@@ -23,6 +23,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings;
 
 import java.io.IOException;
+import java.util.List;
 
 public abstract class QueryStatement {
     final int ref;
@@ -44,7 +45,7 @@ public abstract class QueryStatement {
     }
 
     @WorkerThread
-    abstract long execute(String term);
+    abstract long execute(String term, List<Object> parameters);
 
     @WorkerThread
     public void close() throws IOException {
@@ -52,6 +53,32 @@ public abstract class QueryStatement {
 
         if (backupStatement != null) {
             backupStatement.close();
+        }
+    }
+
+    protected static void bind(final SupportSQLiteStatement statement,
+                               final List<Object> parameters,
+                               final int start) {
+        if (parameters == null) {
+            return;
+        }
+
+        int i = start;
+
+        for (Object parameter : parameters) {
+            if (parameter == null) {
+              statement.bindNull(i);
+            } else if (parameter instanceof Long) {
+                statement.bindLong(i, (Long) parameter);
+            } else if (parameter instanceof Integer) {
+                statement.bindLong(i, (Integer) parameter);
+            } else if (parameter instanceof String) {
+                statement.bindString(i, (String) parameter);
+            } else if (parameter instanceof Boolean) {
+                statement.bindLong(i, (Boolean) parameter ? 1 : 0);
+            }
+
+            i++;
         }
     }
 }

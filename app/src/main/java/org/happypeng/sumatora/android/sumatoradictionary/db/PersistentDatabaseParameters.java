@@ -166,7 +166,7 @@ public abstract class PersistentDatabaseParameters {
             database.execSQL("ALTER TABLE DictionaryBookmark ADD COLUMN memo TEXT");
 
             database.execSQL("DROP TABLE IF EXISTS DictionaryBookmarkImport");
-            database.execSQL("CREATE TABLE IF NOT EXISTS DictionaryBookmarkImport (`ref` INTEGER NOT NULL, `seq` INTEGER NOT NULL, `memo` TEXT, PRIMARY KEY(`ref`, `seq`))");
+            database.execSQL("CREATE TABLE IF NOT EXISTS DictionaryBookmarkImport (`ref` INTEGER NOT NULL, `seq` INTEGER NOT NULL, `bookmark` INTEGER NOT NULL, `memo` TEXT, PRIMARY KEY(`ref`, `seq`))");
 
             database.execSQL("DROP TABLE IF EXISTS DictionarySearchElement");
             database.execSQL("CREATE TABLE IF NOT EXISTS DictionarySearchElement (`ref` INTEGER NOT NULL, `entryOrder` INTEGER NOT NULL, `seq` INTEGER NOT NULL, `readingsPrio` TEXT, `readings` TEXT, `writingsPrio` TEXT, `writings` TEXT, `pos` TEXT, `xref` TEXT, `ant` TEXT, `misc` TEXT, `lsource` TEXT, `dial` TEXT, `s_inf` TEXT, `field` TEXT, `lang` TEXT, `lang_setting` TEXT, `gloss` TEXT, `example_sentences` TEXT, `example_translations` TEXT, `bookmark` INTEGER NOT NULL, `memo` TEXT, PRIMARY KEY(`ref`, `seq`))");

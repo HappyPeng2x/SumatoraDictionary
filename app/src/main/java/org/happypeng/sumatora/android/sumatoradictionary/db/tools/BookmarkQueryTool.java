@@ -24,9 +24,12 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings;
 
 import java.io.IOException;
+import java.util.LinkedList;
 import java.util.List;
 
 public class BookmarkQueryTool extends DictionarySearchQueryTool {
+    private final static String WHERE_CLAUSE = "((? AND IFNULL(DictionaryBookmark.bookmark, 0) > 0) OR (? AND DictionaryBookmark.memo IS NOT NULL))";
+
     static final String SQL_QUERY_INSERT_DISPLAY_ELEMENT =
             "INSERT OR IGNORE INTO DictionarySearchElement "
                     + "SELECT ? AS ref, "
@@ -56,16 +59,15 @@ public class BookmarkQueryTool extends DictionarySearchQueryTool {
                     + "DictionaryBookmark "
                     + "WHERE DictionaryEntry.seq = DictionaryTranslation.seq AND "
                     + "DictionaryEntry.seq = DictionaryBookmark.seq "
+                    + "AND " + WHERE_CLAUSE + " "
                     + "GROUP BY DictionaryEntry.seq";
 
     private SupportSQLiteStatement queryStatement;
     private SupportSQLiteStatement queryStatementBackup;
 
-    private final static String SEARCH_SET = "SELECT seq FROM DictionaryBookmark";
-
     public BookmarkQueryTool(final PersistentDatabaseComponent persistentDatabaseComponent, final int key,
                              final PersistentLanguageSettings languageSettings) {
-        super(persistentDatabaseComponent, key, SEARCH_SET, languageSettings);
+        super(persistentDatabaseComponent, key, WHERE_CLAUSE, languageSettings);
 
         initialize();
     }
@@ -103,7 +105,16 @@ public class BookmarkQueryTool extends DictionarySearchQueryTool {
     }
 
     @Override
-    public boolean execute(String term, int number) {
+    public boolean execute(final String term, final int number) {
+        return execute(term, number, true, false);
+    }
+
+    public boolean execute(final String term, final int number, final boolean isBookmarked, final boolean hasMemo) {
+        final List<Object> parameters = new LinkedList<>();
+
+        parameters.add(isBookmarked);
+        parameters.add(hasMemo);
+
         if ("".equals(term)) {
             final ValueHolder<Boolean> result = new ValueHolder<>(false);
 
@@ -112,6 +123,8 @@ public class BookmarkQueryTool extends DictionarySearchQueryTool {
                 queryStatement.bindString(2, persistentLanguageSettings.lang);
                 queryStatement.bindString(3, persistentLanguageSettings.lang);
 
+                QueryStatement.bind(queryStatement, parameters, 4);
+
                 result.setValue(queryStatement.executeInsert() > -1);
 
                 if (queryStatementBackup != null) {
@@ -119,13 +132,15 @@ public class BookmarkQueryTool extends DictionarySearchQueryTool {
                     queryStatementBackup.bindString(2, persistentLanguageSettings.backupLang);
                     queryStatementBackup.bindString(3, persistentLanguageSettings.lang);
 
+                    QueryStatement.bind(queryStatementBackup, parameters, 4);
+
                     result.setValue(queryStatementBackup.executeInsert() > -1 || result.getValue());
                 }
             });
 
             return false;
         } else {
-            return super.execute(term, number);
+            return super.execute(term, number, parameters);
         }
     }
 

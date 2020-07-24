@@ -16,17 +16,22 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.component;
 
+import androidx.annotation.MainThread;
 import androidx.annotation.WorkerThread;
 
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmarkDao;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.core.Observable;
+import io.reactivex.rxjava3.schedulers.Schedulers;
 import io.reactivex.rxjava3.subjects.PublishSubject;
 import io.reactivex.rxjava3.subjects.Subject;
 
@@ -34,25 +39,47 @@ import io.reactivex.rxjava3.subjects.Subject;
 public class BookmarkComponent {
     private final PersistentDatabaseComponent persistentDatabaseComponent;
     private final Subject<List<DictionaryBookmark>> bookmarkChanges;
+    private final Observable<List<DictionaryBookmark>> bookmarkChangesObservable;
 
     @Inject
     BookmarkComponent(final PersistentDatabaseComponent persistentDatabaseComponent) {
         this.persistentDatabaseComponent = persistentDatabaseComponent;
 
-        final PublishSubject<List<DictionaryBookmark>> publishSubject = PublishSubject.create();
-        this.bookmarkChanges = publishSubject.toSerialized();
+        bookmarkChanges = PublishSubject.create();
+        bookmarkChangesObservable =
+                bookmarkChanges.observeOn(Schedulers.io()).map(l -> {
+                    final PersistentDatabase persistentDatabase = persistentDatabaseComponent.getDatabase();
+                    final DictionaryBookmarkDao dictionaryBookmarkDao = persistentDatabase.dictionaryBookmarkDao();
+
+                    persistentDatabase.runInTransaction(() ->
+                    {
+                        for (DictionaryBookmark b : l) {
+                            if (b.bookmark > 0 || (b.memo != null && !"".equals(b.memo))) {
+                                dictionaryBookmarkDao.insert(b);
+                            } else {
+                                dictionaryBookmarkDao.delete(b);
+                            }
+                        }
+                    });
+
+                    return l;
+                }).observeOn(AndroidSchedulers.mainThread()).publish().autoConnect();
     }
 
     public Observable<List<DictionaryBookmark>> getBookmarkChanges() {
-        return bookmarkChanges;
+        return bookmarkChangesObservable;
     }
 
-    @WorkerThread
+    @MainThread
     public void updateBookmarks(final List<DictionaryBookmark> bookmarks) {
-        final PersistentDatabase database = persistentDatabaseComponent.getDatabase();
-
-        database.runInTransaction(() -> database.dictionaryBookmarkDao().insertMany(bookmarks));
-
         bookmarkChanges.onNext(bookmarks);
+    }
+
+    @MainThread
+    public void updateBookmark(final DictionaryBookmark bookmark) {
+        final ArrayList<DictionaryBookmark> list = new ArrayList<>(1);
+        list.add(bookmark);
+
+        bookmarkChanges.onNext(list);
     }
 }

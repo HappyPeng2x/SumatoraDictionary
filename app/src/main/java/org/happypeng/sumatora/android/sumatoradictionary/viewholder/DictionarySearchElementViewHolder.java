@@ -65,20 +65,28 @@ public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
     private final FrameLayout m_cardView;
     private final EditText m_memoEditText;
 
+    private boolean m_disableMemoEdit;
+
     private TextWatcher m_textWatcher;
 
     private EventListener m_bookmarkEventListener;
 
     private void openMemo() {
         m_memoEditText.setVisibility(View.VISIBLE);
-        m_editMemoButton.setVisibility(View.GONE);
-        m_deleteMemoButton.setVisibility(View.VISIBLE);
+
+        if (!m_disableMemoEdit) {
+            m_editMemoButton.setVisibility(View.GONE);
+            m_deleteMemoButton.setVisibility(View.VISIBLE);
+        }
     }
 
     private void closeMemo() {
         m_memoEditText.setVisibility(View.GONE);
-        m_editMemoButton.setVisibility(View.VISIBLE);
-        m_deleteMemoButton.setVisibility(View.GONE);
+
+        if (!m_disableMemoEdit) {
+            m_editMemoButton.setVisibility(View.VISIBLE);
+            m_deleteMemoButton.setVisibility(View.GONE);
+        }
 
         m_memoEditText.setText("");
     }
@@ -147,6 +155,13 @@ public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
 
     public void disableBookmarkButton() {
         m_bookmarkStar.setVisibility(View.GONE);
+    }
+
+    public void disableMemoEdit() {
+        m_editMemoButton.setVisibility(View.GONE);
+        m_deleteMemoButton.setVisibility(View.GONE);
+
+        m_disableMemoEdit = true;
     }
 
     public void setBookmarkClickListener(EventListener aListener) {

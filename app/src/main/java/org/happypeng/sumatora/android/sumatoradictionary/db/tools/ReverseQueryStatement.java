@@ -22,6 +22,8 @@ import androidx.sqlite.db.SupportSQLiteStatement;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings;
 
+import java.util.List;
+
 public class ReverseQueryStatement extends QueryStatement {
     final SupportSQLiteStatement displayStatement;
     final SupportSQLiteStatement displayBackupStatement;
@@ -43,7 +45,8 @@ public class ReverseQueryStatement extends QueryStatement {
     }
 
     @WorkerThread
-    long execute(final String term) {
+    @Override
+    long execute(final String term, final List<Object> parameters) {
         long returnValue = -1;
 
         long insert = -1;
@@ -69,12 +72,16 @@ public class ReverseQueryStatement extends QueryStatement {
         displayStatement.bindString(2, languageSettings.lang);
         displayStatement.bindLong(3, ref);
 
+        bind(displayStatement, parameters, 4);
+
         displayStatement.executeInsert();
 
         if (displayBackupStatement != null) {
             displayBackupStatement.bindString(1, languageSettings.backupLang);
             displayBackupStatement.bindString(2, languageSettings.lang);
             displayBackupStatement.bindLong(3, ref);
+
+            bind(displayBackupStatement, parameters, 4);
 
             displayBackupStatement.executeInsert();
         }

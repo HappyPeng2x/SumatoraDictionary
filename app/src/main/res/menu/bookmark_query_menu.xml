@@ -8,10 +8,27 @@
         android:title="@string/default_lang" />
     <item
         android:id="@+id/share_bookmarks"
-        android:orderInCategory="100"
+        android:orderInCategory="200"
         android:title="Share"
         android:icon="@drawable/ic_outline_share_24px"
         app:showAsAction="always" />
+    <item
+        android:id="@+id/filter_bookmarks"
+        android:orderInCategory="100"
+        android:title="Filter"
+        android:icon="@drawable/ic_filter_alt_24px"
+        app:showAsAction="always">
+        <menu>
+            <item
+                android:id="@+id/bookmark_filter_bookmarks"
+                android:checkable="true"
+                android:title="Bookmarks" />
+            <item
+                android:id="@+id/bookmark_filter_memos"
+                android:checkable="true"
+                android:title="Memos" />
+        </menu>
+    </item>
     <item
         android:id="@+id/bookmark_fragment_menu_search"
         android:title="@string/action_search"

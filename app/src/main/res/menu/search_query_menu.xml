@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/search_query_menu_language_text"
+        app:showAsAction="always"
+        app:actionLayout="@layout/menuitem_language"
+        android:title="@string/default_lang" />
+    <item
+        android:id="@+id/search_query_menu_search"
+        android:title="@string/action_search"
+        app:showAsAction="always"
+        android:icon="@drawable/ic_outline_search_24px_white"
+        app:actionViewClass="androidx.appcompat.widget.SearchView"/>
+</menu>

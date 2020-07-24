@@ -34,17 +34,16 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 
 import org.happypeng.sumatora.android.sumatoradictionary.R;
 import org.happypeng.sumatora.android.sumatoradictionary.component.BookmarkComponent;
+import org.happypeng.sumatora.android.sumatoradictionary.component.BookmarkShareComponent;
 import org.happypeng.sumatora.android.sumatoradictionary.component.LanguageMenuComponent;
 import org.happypeng.sumatora.android.sumatoradictionary.component.LanguageSettingsComponent;
 import org.happypeng.sumatora.android.sumatoradictionary.component.PersistentDatabaseComponent;
 import org.happypeng.sumatora.android.sumatoradictionary.databinding.FragmentDictionaryQueryBinding;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.BookmarkQueryTool;
-import org.happypeng.sumatora.android.sumatoradictionary.db.tools.DictionarySearchQueryTool;
 import org.happypeng.sumatora.android.sumatoradictionary.model.BookmarkFragmentModel;
-import org.happypeng.sumatora.android.sumatoradictionary.model.QueryFragmentModel;
+import org.happypeng.sumatora.android.sumatoradictionary.model.viewbinding.BookmarkMenu;
 import org.happypeng.sumatora.android.sumatoradictionary.model.viewbinding.FragmentDictionaryQueryBindingUtil;
-import org.happypeng.sumatora.android.sumatoradictionary.model.viewbinding.QueryMenu;
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionarySearchElementViewHolder;
 
 import javax.inject.Inject;
@@ -68,10 +67,13 @@ public class BookmarkFragment extends Fragment {
     @Inject
     LanguageSettingsComponent languageSettingsComponent;
 
-    protected BookmarkFragmentModel queryFragmentModel;
+    @Inject
+    BookmarkShareComponent bookmarkShareComponent;
+
+    protected BookmarkFragmentModel bookmarkFragmentModel;
 
     protected FragmentDictionaryQueryBinding viewBinding;
-    protected QueryMenu queryMenu;
+    protected BookmarkMenu bookmarkMenu;
 
     private String currentTerm;
 
@@ -103,7 +105,7 @@ public class BookmarkFragment extends Fragment {
         autoDisposable = new CompositeDisposable();
 
         currentTerm = "";
-        queryFragmentModel = null;
+        bookmarkFragmentModel = null;
     }
 
     @Override
@@ -124,7 +126,7 @@ public class BookmarkFragment extends Fragment {
                 ((LinearLayoutManager) viewBinding.dictionaryBookmarkFragmentRecyclerview.getLayoutManager()).getOrientation());
         viewBinding.dictionaryBookmarkFragmentRecyclerview.addItemDecoration(itemDecor);
 
-        queryFragmentModel = getModel();
+        bookmarkFragmentModel = getModel();
 
         // Toolbar configuration
         viewBinding.dictionaryBookmarkFragmentToolbar.setTitle(getTitle());
@@ -137,7 +139,7 @@ public class BookmarkFragment extends Fragment {
         actionBar.setDisplayHomeAsUpEnabled(true);
 
         final Observable<BookmarkFragmentModel.QueryEvent> queryEventObservable =
-                queryFragmentModel.getQueryEvent().observeOn(AndroidSchedulers.mainThread());
+                bookmarkFragmentModel.getQueryEvent().observeOn(AndroidSchedulers.mainThread());
 
         autoDisposable.add(queryEventObservable.subscribe(queryEvent -> {
             currentTerm = queryEvent.term;
@@ -155,20 +157,25 @@ public class BookmarkFragment extends Fragment {
                     FragmentDictionaryQueryBindingUtil.setReady(viewBinding);
                 }
             }
+
+            if (bookmarkMenu != null) {
+                bookmarkMenu.filterMemos.setChecked(queryEvent.filterMemos);
+                bookmarkMenu.filterBookmarks.setChecked(queryEvent.filterBookmarks);
+            }
         }));
 
-        autoDisposable.add(queryFragmentModel.getPagedListAdapter().subscribe(adapter -> {
+        autoDisposable.add(bookmarkFragmentModel.getPagedListAdapter().subscribe(adapter -> {
             viewBinding.dictionaryBookmarkFragmentRecyclerview.setAdapter(adapter);
 
             adapter.setBookmarkClickListener(new DictionarySearchElementViewHolder.EventListener() {
                 @Override
                 public void onBookmarkClick(View aView, DictionarySearchElement aEntry) {
-                    queryFragmentModel.toggleBookmark(aEntry);
+                    bookmarkFragmentModel.toggleBookmark(aEntry);
                 }
 
                 @Override
                 public void onMemoEdit(DictionarySearchElement aEntry, String aString) {
-                    queryFragmentModel.editMemo(aEntry, aString);
+                    bookmarkFragmentModel.editMemo(aEntry, aString);
                 }
             });
         }));
@@ -183,8 +190,8 @@ public class BookmarkFragment extends Fragment {
     public void onSaveInstanceState(@NonNull Bundle outState) {
         super.onSaveInstanceState(outState);
 
-        if (queryMenu != null) {
-            queryMenu.onSaveInstanceState(outState);
+        if (bookmarkMenu != null) {
+            bookmarkMenu.onSaveInstanceState(outState);
         }
     }
 
@@ -192,62 +199,78 @@ public class BookmarkFragment extends Fragment {
     public void onCreateOptionsMenu(@NonNull Menu menu, @NonNull MenuInflater inflater) {
         super.onCreateOptionsMenu(menu, inflater);
 
-        queryMenu = new QueryMenu();
+        bookmarkMenu = new BookmarkMenu();
 
-        autoDisposable.add(queryMenu.onCreateOptionsMenu(getActivity().getComponentName(),
+        autoDisposable.add(bookmarkMenu.onCreateOptionsMenu(getActivity().getComponentName(),
                 menu, inflater, getContext(), languageMenuComponent));
 
-        queryMenu.shareBookmarks.setVisible(false);
+        bookmarkMenu.searchView.setIconifiedByDefault(getSearchIconifiedByDefault());
 
-        queryMenu.searchView.setIconifiedByDefault(getSearchIconifiedByDefault());
-
-        queryMenu.searchCloseButton.setOnClickListener(v -> {
+        bookmarkMenu.searchCloseButton.setOnClickListener(v -> {
             if ("".equals(currentTerm)) {
-                queryMenu.searchView.setIconified(true);
+                bookmarkMenu.searchView.setIconified(true);
             } else {
-                queryMenu.searchView.setQuery("", true);
+                bookmarkMenu.searchView.setQuery("", true);
 
                 if (!"".equals(currentTerm)) {
-                    queryFragmentModel.setTerm("");
+                    bookmarkFragmentModel.setTerm("");
                 }
             }
         });
 
-        queryMenu.searchAutoComplete.setOnEditorActionListener((v, actionId, event) -> {
-            if ("".equals(queryMenu.searchAutoComplete.getText().toString())) {
+        bookmarkMenu.searchAutoComplete.setOnEditorActionListener((v, actionId, event) -> {
+            if ("".equals(bookmarkMenu.searchAutoComplete.getText().toString())) {
                 if (!"".equals(currentTerm)) {
-                    queryFragmentModel.setTerm("");
+                    bookmarkFragmentModel.setTerm("");
                 }
             }
 
             return false;
         });
 
-        autoDisposable.add(queryFragmentModel.getQueryEvent().map(e -> e.term).distinctUntilChanged()
+        autoDisposable.add(bookmarkFragmentModel.getQueryEvent().map(e -> e.term).distinctUntilChanged()
                 .observeOn(AndroidSchedulers.mainThread()).subscribe(s -> {
-                    if (!s.equals(queryMenu.searchView.getQuery().toString())) {
-                        queryMenu.searchView.setQuery(s, false);
+                    if (!s.equals(bookmarkMenu.searchView.getQuery().toString())) {
+                        bookmarkMenu.searchView.setQuery(s, false);
                     }
                 }));
 
         if (savedInstanceState != null) {
-            queryMenu.restoreInstanceState(savedInstanceState);
+            bookmarkMenu.restoreInstanceState(savedInstanceState);
         }
+
+        bookmarkMenu.filterBookmarks.setOnMenuItemClickListener(item -> {
+            bookmarkFragmentModel.filterBookmarks(!item.isChecked());
+
+            return false;
+        });
+
+        bookmarkMenu.filterMemos.setOnMenuItemClickListener(item -> {
+            bookmarkFragmentModel.filterMemos(!item.isChecked());
+
+            return false;
+        });
+
+        bookmarkMenu.shareBookmarks.setOnMenuItemClickListener(item -> {
+            autoDisposable.add(bookmarkShareComponent.shareBookmarks());
+
+            return false;
+        });
 
         focusSearchView();
     }
 
     public void setIntentSearchTerm(@NonNull String aIntentSearchTerm) {
-        queryFragmentModel.setTerm(aIntentSearchTerm);
+        bookmarkFragmentModel.setTerm(aIntentSearchTerm);
 
-        if (queryMenu != null && queryMenu.searchView != null && !aIntentSearchTerm.equals(queryMenu.searchView.getQuery().toString())) {
-            queryMenu.searchView.setQuery(aIntentSearchTerm, false);
+        if (bookmarkMenu != null && bookmarkMenu.searchView != null && !aIntentSearchTerm.equals(bookmarkMenu.searchView.getQuery().toString())) {
+            bookmarkMenu.searchView.setQuery(aIntentSearchTerm, false);
         }
     }
 
     public void focusSearchView() {
-        if (queryMenu != null && queryMenu.searchView != null) {
-            queryMenu.searchView.requestFocus();
+        if (bookmarkMenu != null && bookmarkMenu.searchView != null) {
+            bookmarkMenu.searchView.requestFocus();
         }
     }
 
@@ -260,6 +283,6 @@ public class BookmarkFragment extends Fragment {
         autoDisposable = null;
 
         viewBinding = null;
-        queryMenu = null;
+        bookmarkMenu = null;
     }
 }

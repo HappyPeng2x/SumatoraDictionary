@@ -50,7 +50,7 @@ import io.reactivex.rxjava3.subjects.Subject;
 
 @Singleton
 public class BookmarkImportComponent {
-    private static String SQL_BOOKMARK_IMPORT_COMMIT = "INSERT OR IGNORE INTO DictionaryBookmark SELECT seq, 1, memo FROM DictionaryBookmarkImport WHERE ref = ?";
+    private static String SQL_BOOKMARK_IMPORT_COMMIT = "INSERT OR IGNORE INTO DictionaryBookmark SELECT seq, bookmark, memo FROM DictionaryBookmarkImport WHERE ref = ?";
 
     public static final int ACTION_PROCESS = 0;
     public static final int ACTION_IMPORT = 1;
@@ -169,7 +169,7 @@ public class BookmarkImportComponent {
 
                     for (Long seq : seqs) {
                         database.dictionaryBookmarkImportDao().insert(
-                                new DictionaryBookmarkImport(key, seq, null));
+                                new DictionaryBookmarkImport(key, seq, 1, null));
                     }
                 });
             } else if ("application/json".equals(type)) {

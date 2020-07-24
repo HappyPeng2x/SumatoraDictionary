@@ -78,7 +78,7 @@ public class DictionarySearchQueryTool {
                     + "%s.DictionaryTranslation, "
                     + "(%s) AS DictionaryTranslationSelect "
                     + "WHERE DictionaryEntry.seq = DictionaryTranslation.seq AND "
-                    + "DictionaryTranslation.rowid = DictionaryTranslationSelect.gloss_docid %s";
+                    + "DictionaryTranslation.rowid = DictionaryTranslationSelect.gloss_docid";
 
     static private final String SQL_REVERSE_QUERY_DELETE_ELEMENTS =
             "DELETE FROM DictionaryElement WHERE ref = ?";
@@ -118,7 +118,7 @@ public class DictionarySearchQueryTool {
                     + "%s.DictionaryTranslation "
                     + "WHERE DictionaryElement.seq = DictionaryEntry.seq AND "
                     + "DictionaryElement.seq = DictionaryTranslation.seq AND "
-                    + "DictionaryElement.ref = ? "
+                    + "DictionaryElement.ref = ? %s "
                     + "GROUP BY DictionaryEntry.seq";
 
     static final String SQL_QUERY_DELETE =
@@ -185,7 +185,7 @@ public class DictionarySearchQueryTool {
                     + "WHERE readingsKanaParts MATCH ? || '*'";
 
     protected final PersistentDatabaseComponent persistentDatabase;
-    private final String searchSet;
+    private final String whereClause;
 
     private QueryStatement[] statements;
     private SupportSQLiteStatement deleteStatement;
@@ -196,11 +196,11 @@ public class DictionarySearchQueryTool {
 
     public DictionarySearchQueryTool(final PersistentDatabaseComponent persistentDatabaseComponent,
                                      final int key,
-                                     final String searchSet,
+                                     final String whereClause,
                                      final PersistentLanguageSettings persistentLanguageSettings) {
 
         this.persistentDatabase = persistentDatabaseComponent;
-        this.searchSet = searchSet;
+        this.whereClause = whereClause;
         this.key = key;
         this.persistentLanguageSettings = persistentLanguageSettings;
 
@@ -213,7 +213,8 @@ public class DictionarySearchQueryTool {
 
         final Romkan romkan = persistentDatabase.getRomkan();
 
-        String searchSetQuery = searchSet == null ? "" : "AND DictionaryEntry.seq IN (" + searchSet + ")";
+        // "AND DictionaryEntry.seq IN ("
+        String whereClause = this.whereClause == null ? "" : "AND " + this.whereClause;
 
         List<InstalledDictionary> installedDictionaries = database.installedDictionaryDao().getAll();
 
@@ -237,50 +238,50 @@ public class DictionarySearchQueryTool {
 
         final SupportSQLiteStatement queryExactPrioWriting =
                 db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                        examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_EXACT_WRITING_PRIO, searchSetQuery));
+                        examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_EXACT_WRITING_PRIO, whereClause));
         final SupportSQLiteStatement queryExactPrioReading =
                 db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                        examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_EXACT_READING_PRIO, searchSetQuery));
+                        examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_EXACT_READING_PRIO, whereClause));
         final SupportSQLiteStatement queryExactNonPrioWriting =
                 db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                        examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_EXACT_WRITING_NONPRIO, searchSetQuery));
+                        examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_EXACT_WRITING_NONPRIO, whereClause));
         final SupportSQLiteStatement queryExactNonPrioReading =
                 db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                        examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_EXACT_READING_NONPRIO, searchSetQuery));
+                        examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_EXACT_READING_NONPRIO, whereClause));
         final SupportSQLiteStatement queryBeginPrioWriting =
                 db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                        examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_BEGIN_WRITING_PRIO, searchSetQuery));
+                        examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_BEGIN_WRITING_PRIO, whereClause));
         final SupportSQLiteStatement queryBeginPrioReading =
                 db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                        examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_BEGIN_READING_PRIO, searchSetQuery));
+                        examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_BEGIN_READING_PRIO, whereClause));
         final SupportSQLiteStatement queryBeginNonPrioWriting =
                 db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                        examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_BEGIN_WRITING_NONPRIO, searchSetQuery));
+                        examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_BEGIN_WRITING_NONPRIO, whereClause));
         final SupportSQLiteStatement queryBeginNonPrioReading =
                 db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                        examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_BEGIN_READING_NONPRIO, searchSetQuery));
+                        examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_BEGIN_READING_NONPRIO, whereClause));
         final SupportSQLiteStatement queryPartsPrioWriting =
                 db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                        examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_PARTS_WRITING_PRIO, searchSetQuery));
+                        examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_PARTS_WRITING_PRIO, whereClause));
         final SupportSQLiteStatement queryPartsPrioReading =
                 db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                        examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_PARTS_READING_PRIO, searchSetQuery));
+                        examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_PARTS_READING_PRIO, whereClause));
         final SupportSQLiteStatement queryPartsNonPrioWriting =
                 db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                        examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_PARTS_WRITING_NONPRIO, searchSetQuery));
+                        examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_PARTS_WRITING_NONPRIO, whereClause));
         final SupportSQLiteStatement queryPartsNonPrioReading =
                 db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                        examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_PARTS_READING_NONPRIO, searchSetQuery));
+                        examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_PARTS_READING_NONPRIO, whereClause));
         final SupportSQLiteStatement reverseQueryExact =
                 db.compileStatement(String.format(SQL_REVERSE_QUERY_INSERT_ELEMENT,
-                        persistentLanguageSettings.lang, String.format(SQL_REVERSE_QUERY_EXACT, persistentLanguageSettings.lang), searchSetQuery));
+                        persistentLanguageSettings.lang, String.format(SQL_REVERSE_QUERY_EXACT, persistentLanguageSettings.lang)));
         final SupportSQLiteStatement reverseQueryBegin =
                 db.compileStatement(String.format(SQL_REVERSE_QUERY_INSERT_ELEMENT,
-                        persistentLanguageSettings.lang, String.format(SQL_REVERSE_QUERY_BEGIN, persistentLanguageSettings.lang), searchSetQuery));
+                        persistentLanguageSettings.lang, String.format(SQL_REVERSE_QUERY_BEGIN, persistentLanguageSettings.lang)));
 
         final SupportSQLiteStatement reverseQueryDisplayElement =
                 db.compileStatement(String.format(SQL_QUERY_DICTIONARY_ELEMENT_DISPLAY,
-                        examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, persistentLanguageSettings.lang));
+                        examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, persistentLanguageSettings.lang, whereClause));
         final SupportSQLiteStatement reverseQueryDeleteElements =
                 db.compileStatement(SQL_REVERSE_QUERY_DELETE_ELEMENTS);
 
@@ -303,49 +304,49 @@ public class DictionarySearchQueryTool {
         if (persistentLanguageSettings.backupLang != null) {
             queryExactPrioWritingBackup =
                     db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_EXACT_WRITING_PRIO, searchSetQuery));
+                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_EXACT_WRITING_PRIO, whereClause));
             queryExactPrioReadingBackup =
                     db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_EXACT_READING_PRIO, searchSetQuery));
+                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_EXACT_READING_PRIO, whereClause));
             queryExactNonPrioWritingBackup =
                     db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_EXACT_WRITING_NONPRIO, searchSetQuery));
+                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_EXACT_WRITING_NONPRIO, whereClause));
             queryExactNonPrioReadingBackup =
                     db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_EXACT_READING_NONPRIO, searchSetQuery));
+                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_EXACT_READING_NONPRIO, whereClause));
             queryBeginPrioWritingBackup =
                     db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_BEGIN_WRITING_PRIO, searchSetQuery));
+                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_BEGIN_WRITING_PRIO, whereClause));
             queryBeginPrioReadingBackup =
                     db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_BEGIN_READING_PRIO, searchSetQuery));
+                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_BEGIN_READING_PRIO, whereClause));
             queryBeginNonPrioWritingBackup =
                     db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_BEGIN_READING_PRIO, searchSetQuery));
+                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_BEGIN_READING_PRIO, whereClause));
             queryBeginNonPrioReadingBackup =
                     db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_BEGIN_READING_NONPRIO, searchSetQuery));
+                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_BEGIN_READING_NONPRIO, whereClause));
             queryPartsPrioWritingBackup =
                     db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_PARTS_WRITING_PRIO, searchSetQuery));
+                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_PARTS_WRITING_PRIO, whereClause));
             queryPartsPrioReadingBackup =
                     db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_PARTS_READING_PRIO, searchSetQuery));
+                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_PARTS_READING_PRIO, whereClause));
             queryPartsNonPrioWritingBackup =
                     db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_PARTS_WRITING_NONPRIO, searchSetQuery));
+                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_PARTS_WRITING_NONPRIO, whereClause));
             queryPartsNonPrioReadingBackup =
                     db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_PARTS_READING_NONPRIO, searchSetQuery));
+                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_PARTS_READING_NONPRIO, whereClause));
             reverseQueryExactBackup =
                     db.compileStatement(String.format(SQL_REVERSE_QUERY_INSERT_ELEMENT,
-                            persistentLanguageSettings.backupLang, String.format(SQL_REVERSE_QUERY_EXACT, persistentLanguageSettings.backupLang), searchSetQuery));
+                            persistentLanguageSettings.backupLang, String.format(SQL_REVERSE_QUERY_EXACT, persistentLanguageSettings.backupLang)));
             reverseQueryBeginBackup =
                     db.compileStatement(String.format(SQL_REVERSE_QUERY_INSERT_ELEMENT,
-                            persistentLanguageSettings.backupLang, String.format(SQL_REVERSE_QUERY_BEGIN, persistentLanguageSettings.backupLang), searchSetQuery));
+                            persistentLanguageSettings.backupLang, String.format(SQL_REVERSE_QUERY_BEGIN, persistentLanguageSettings.backupLang)));
             reverseQueryDisplayBackupElement =
                     db.compileStatement(String.format(SQL_QUERY_DICTIONARY_ELEMENT_DISPLAY,
-                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, persistentLanguageSettings.backupLang));
+                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, whereClause));
         }
 
         statements = new QueryStatement[14];
@@ -371,8 +372,12 @@ public class DictionarySearchQueryTool {
         deleteStatement.execute();
     }
 
-    public boolean execute(String term, int number) {
-        return statements[number].execute(term) >= 0;
+    protected boolean execute(final String term, final int number, final List<Object> parameters) {
+        return statements[number].execute(term, parameters) >= 0;
+    }
+
+    public boolean execute(final String term, final int number) {
+        return execute(term, number, null);
     }
 
     public int getCount(String term) {

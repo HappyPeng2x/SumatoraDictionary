@@ -27,15 +27,17 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 public class DictionaryBookmarkImport {
     public int ref;
     public long seq;
+    public long bookmark;
     public String memo;
 
     public DictionaryBookmarkImport() { super(); }
 
-    public DictionaryBookmarkImport(int aRef, long aSeq, String aMemo) {
+    public DictionaryBookmarkImport(int aRef, long aSeq, long aBookmark, String aMemo) {
         super();
 
         ref = aRef;
         seq = aSeq;
         memo = aMemo;
+        bookmark = aBookmark;
     }
 }

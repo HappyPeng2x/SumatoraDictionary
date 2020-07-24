@@ -23,6 +23,9 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings;
 import org.happypeng.sumatora.jromkan.Romkan;
 
+import java.util.Iterator;
+import java.util.List;
+
 public class BasicQueryStatement extends QueryStatement {
     private final boolean kana;
     private final Romkan romkan;
@@ -42,7 +45,8 @@ public class BasicQueryStatement extends QueryStatement {
     }
 
     @WorkerThread
-    long execute(final String term) {
+    @Override
+    long execute(final String term, final List<Object> parameters) {
         final ValueHolder<Long> returnValue = new ValueHolder<>(Long.valueOf(-1));
 
         String bindTerm = term;
@@ -59,6 +63,8 @@ public class BasicQueryStatement extends QueryStatement {
         statement.bindString(4, languageSettings.lang);
         statement.bindString(5, bindTerm);
 
+        bind(statement, parameters, 6);
+
         insert = statement.executeInsert();
 
         if (backupStatement != null) {
@@ -67,6 +73,8 @@ public class BasicQueryStatement extends QueryStatement {
             backupStatement.bindString(3, languageSettings.backupLang);
             backupStatement.bindString(4, languageSettings.lang);
             backupStatement.bindString(5, bindTerm);
+
+            bind(backupStatement, parameters, 6);
 
             backupInsert = backupStatement.executeInsert();
 

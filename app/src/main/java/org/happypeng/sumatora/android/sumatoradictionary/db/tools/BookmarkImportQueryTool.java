@@ -50,7 +50,7 @@ public class BookmarkImportQueryTool {
                     + "json_group_array(DictionaryTranslation.gloss) AS gloss, "
                     + "%s as example_sentences, "
                     + "%s as example_translations, "
-                    + "0, "
+                    + "DictionaryBookmarkImport.bookmark, "
                     + "DictionaryBookmarkImport.memo "
                     + "FROM jmdict.DictionaryEntry %s, "
                     + "%s.DictionaryTranslation, "
