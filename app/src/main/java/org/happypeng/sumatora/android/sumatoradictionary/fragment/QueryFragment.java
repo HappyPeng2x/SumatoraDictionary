@@ -138,7 +138,7 @@ public class QueryFragment extends Fragment {
             if (event.queryTool == null) {
                 FragmentDictionaryQueryBindingUtil.setInPreparation(viewBinding);
             } else {
-                if (!"".equals(event.term)) {
+                if (event.term != null && !"".equals(event.term)) {
                     if (event.found) {
                         FragmentDictionaryQueryBindingUtil.setResultsFound(viewBinding, event.term);
                     } else {

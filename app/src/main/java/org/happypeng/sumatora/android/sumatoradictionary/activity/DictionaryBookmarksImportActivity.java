@@ -103,7 +103,7 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
         actionBar.setHomeAsUpIndicator(R.drawable.ic_menu_white_24dp);
         actionBar.setDisplayHomeAsUpEnabled(true);
 
-        final Observable<BookmarkImportModel.QueryEvent> queryEventObservable =
+        final Observable<BookmarkImportModel.Event> queryEventObservable =
                 bookmarkImportModel.getQueryEvent().observeOn(AndroidSchedulers.mainThread());
 
         autoDisposable.add(queryEventObservable.subscribe(queryEvent -> {

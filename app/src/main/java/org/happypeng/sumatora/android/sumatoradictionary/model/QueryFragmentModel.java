@@ -263,6 +263,8 @@ public class QueryFragmentModel extends ViewModel {
     protected void onCleared() {
         super.onCleared();
 
+        setTerm("");
+
         if (pagedList != null && pagedListObserver != null) {
             pagedList.removeObserver(pagedListObserver);
         }

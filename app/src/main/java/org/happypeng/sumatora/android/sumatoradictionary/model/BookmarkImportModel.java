@@ -87,31 +87,31 @@ public class BookmarkImportModel extends ViewModel {
     private Observer<PagedList<DictionarySearchElement>> pagedListObserver;
     private LiveData<PagedList<DictionarySearchElement>> pagedList;
 
-    public static class QueryEvent {
-        final public int bookmarkId;
-        final public boolean executed;
-        final public BookmarkImportQueryTool queryTool;
-        final public int queryToolId;
+    final private Observable<Event> queryEventObservable;
 
-        public QueryEvent(final int bookmarkId,
-                          final int queryToolId,
-                          final BookmarkImportQueryTool queryTool,
-                          final boolean executed) {
-            this.bookmarkId = bookmarkId;
-            this.executed = executed;
-            this.queryTool = queryTool;
-            this.queryToolId = queryToolId;
-        }
-    }
-
-    final private Observable<QueryEvent> queryEventObservable;
-
-    public Observable<QueryEvent> getQueryEvent() {
+    public Observable<Event> getQueryEvent() {
         return queryEventObservable;
     }
 
     public Observable<DictionaryPagedListAdapter> getPagedListAdapter() {
         return pagedListAdapterSubject;
+    }
+
+    public enum EventType {
+        LANGUAGE,
+        BOOKMARK
+    }
+
+    public static class Event {
+        public final EventType type;
+        public final BookmarkImportQueryTool queryTool;
+        public final boolean executed;
+
+        public Event(final EventType type, final BookmarkImportQueryTool queryTool, final boolean executed) {
+            this.type = type;
+            this.queryTool = queryTool;
+            this.executed = executed;
+        }
     }
 
     public BookmarkImportModel(@NonNull final PersistentDatabaseComponent persistentDatabaseComponent,
@@ -152,50 +152,40 @@ public class BookmarkImportModel extends ViewModel {
                     }
                 }));
 
-        final Observable<Integer> bookmarks =
+        final Observable<Event> bookmarks =
                 bookmarkImportComponent.getImportBookmarksObservable()
                         .filter(i -> i.second == key)
-                        .scan(0, (acc, val) -> acc + 1);
+                        .map(x -> new Event(EventType.BOOKMARK, null, false));
 
-        final Observable<Pair<Integer, BookmarkImportQueryTool>> queryTool =
+        final Observable<Event> queryTool =
                 languageSettingsComponent.getPersistentLanguageSettings()
                         .observeOn(Schedulers.io())
-                        .scan(new Pair<>(0, null), (acc, value) ->
-                                new Pair<>(acc.first + 1, value.second ? new BookmarkImportQueryTool(persistentDatabaseComponent,
-                                        key, value.first) : null));
+                        .map(p -> new Event(EventType.LANGUAGE,
+                                p.second ? new BookmarkImportQueryTool(persistentDatabaseComponent,
+                                        key, p.first) : null, false));
 
-        queryEventObservable = Observable.combineLatest(bookmarks, queryTool,
-                (b, q) -> new QueryEvent(b, q.first, q.second, false))
+        queryEventObservable = Observable.merge(bookmarks, queryTool)
                 .observeOn(Schedulers.io())
-                .scan((acc, val) -> {
-                    // In the process of changing language
-                    if (val.queryTool == null) {
-                        return acc;
+                .scan((status, event) -> {
+                    if (event.type == EventType.LANGUAGE && event.queryTool == null) {
+                        return new Event(event.type, null, status.executed);
                     }
 
                     final PersistentDatabase persistentDatabase = persistentDatabaseComponent.getDatabase();
+                    final BookmarkImportQueryTool bookmarkImportQueryTool =
+                            event.type == EventType.LANGUAGE ? event.queryTool : status.queryTool;
 
-                    // Query not yet executed
-                    if (!acc.executed) {
-                        persistentDatabase.runInTransaction(val.queryTool::delete);
-                        persistentDatabase.runInTransaction(val.queryTool::execute);
-
-                        return new QueryEvent(val.bookmarkId,
-                                val.queryToolId, val.queryTool, true);
+                    if (event.type == EventType.LANGUAGE) {
+                        persistentDatabase.runInTransaction(() -> {
+                            bookmarkImportQueryTool.delete();
+                            bookmarkImportQueryTool.execute();
+                        });
                     } else {
-                        // Changed bookmarks or language
-                        if (val.bookmarkId != acc.bookmarkId || val.queryToolId != acc.queryToolId) {
-                            persistentDatabase.runInTransaction(() -> {
-                                val.queryTool.delete();
-                                val.queryTool.execute();
-                            });
-
-                            return new QueryEvent(val.bookmarkId,
-                                    val.queryToolId, val.queryTool, true);
-                        }
+                        persistentDatabase.runInTransaction(bookmarkImportQueryTool::delete);
+                        persistentDatabase.runInTransaction(bookmarkImportQueryTool::execute);
                     }
 
-                    return val;
+                    return new Event(event.type, bookmarkImportQueryTool, true);
                 }).share().replay(1).autoConnect();
     }
 }
