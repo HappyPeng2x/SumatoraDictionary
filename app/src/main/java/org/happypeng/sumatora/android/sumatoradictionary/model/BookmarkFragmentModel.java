@@ -39,11 +39,9 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.tools.BookmarkQueryT
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.ValueHolder;
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionarySearchElementViewHolder;
 
-import java.util.LinkedList;
-import java.util.List;
+import java.util.ArrayList;
 
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
-import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.core.Single;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
@@ -105,59 +103,65 @@ public class BookmarkFragmentModel extends ViewModel {
     final private Subject<Boolean> filterBookmarksSubject;
     final private Subject<Boolean> filterMemosSubject;
 
-    final private Observable<QueryEvent> queryEventObservable;
+    final private Observable<Event> queryEventObservable;
 
     private Observer<PagedList<DictionarySearchElement>> pagedListObserver;
     private LiveData<PagedList<DictionarySearchElement>> pagedList;
 
+    public enum FilterEventType {
+        BOOKMARKS,
+        MEMOS
+    }
+
     public static class FilterEvent {
-        final public int filterId;
+        final public FilterEventType type;
         final public boolean filterMemos;
         final public boolean filterBookmarks;
 
-        public FilterEvent(final int filterId,
+        public FilterEvent(final FilterEventType type,
                            final boolean filterBookmarks,
                            final boolean filterMemos) {
-            this.filterId = filterId;
+            this.type = type;
             this.filterMemos = filterMemos;
             this.filterBookmarks = filterBookmarks;
         }
     }
 
-    public static class QueryEvent {
-        final public int scrollId;
-        final public int bookmarkId;
+    public enum EventType {
+        TERM,
+        SCROLL,
+        BOOKMARK,
+        LANGUAGE,
+        FILTER
+    }
+
+    public static class Event {
+        final public EventType type;
         final public String term;
         final public int lastQuery;
         final public BookmarkQueryTool queryTool;
-        final public int termId;
-        final public int queryToolId;
         final public boolean found;
-        final public int filterId;
         final public boolean filterMemos;
         final public boolean filterBookmarks;
 
-        public QueryEvent(final int scrollId, final int bookmarkId,
-                          final int termId,
-                          final String term,
-                          final int queryToolId,
-                          final BookmarkQueryTool queryTool,
-                          final int lastQuery,
-                          final boolean found,
-                          final int filterId,
-                          final boolean filterMemos,
-                          final boolean filterBookmarks) {
-            this.scrollId = scrollId;
-            this.bookmarkId = bookmarkId;
+        public Event(final EventType type,
+                     final String term,
+                     final BookmarkQueryTool queryTool,
+                     final int lastQuery,
+                     final boolean found,
+                     final boolean filterMemos,
+                     final boolean filterBookmarks) {
+            this.type = type;
             this.term = term;
             this.lastQuery = lastQuery;
             this.queryTool = queryTool;
-            this.termId = termId;
-            this.queryToolId = queryToolId;
             this.found = found;
-            this.filterId = filterId;
             this.filterMemos = filterMemos;
             this.filterBookmarks = filterBookmarks;
+        }
+
+        public Event(final EventType type) {
+            this(type, null, null, 0, false, false, false);
         }
     }
 
@@ -215,131 +219,106 @@ public class BookmarkFragmentModel extends ViewModel {
                     }
                 }));
 
-        final Observable<Integer> scroll =
-                itemAtEndSubject.scan(0, (acc, val) -> acc + 1);
+        final Observable<Event> scroll =
+                itemAtEndSubject.map(x -> new Event(EventType.SCROLL)).observeOn(Schedulers.io());
 
-        final Observable<Integer> bookmarks =
-                bookmarkComponent.getBookmarkChanges().scan(0, (acc, val) -> acc + 1);
+        final Observable<Event> bookmarks =
+                bookmarkComponent.getBookmarkChanges().map(x -> new Event(EventType.BOOKMARK)).observeOn(Schedulers.io());
 
-        final Observable<Pair<Integer, BookmarkQueryTool>> queryTool =
+        final Observable<Event> queryTool =
                 languageSettingsComponent.getPersistentLanguageSettings()
                         .observeOn(Schedulers.io())
-                        .scan(new Pair<>(0, null), (acc, value) ->
-                                new Pair<>(acc.first + 1, value.second ? queryToolConstructor.create(value.first) : null));
+                        .map(p -> new Event(EventType.LANGUAGE, null, p.second ? queryToolConstructor.create(p.first) : null,
+                                0, false, false, false));
 
-        final Observable<Pair<Integer, String>> search =
-                termSubject.distinctUntilChanged().scan(new Pair<>(0, ""), (acc, value) ->
-                        new Pair<>(acc.first + 1, value));
+        final Observable<Event> search =
+                termSubject.distinctUntilChanged().map(s -> new Event(EventType.TERM, s, null, 0, false, false, false))
+                        .observeOn(Schedulers.io());
 
-        final Observable<FilterEvent> filterEvent =
-                Observable.combineLatest(filterBookmarksSubject.startWithItem(true),
-                        filterMemosSubject.startWithItem(false), Pair::new)
-                        .scan(new FilterEvent(0, false, false),
-                                (acc, val) -> new FilterEvent(acc.filterId + 1,
-                                        val.first || val.second ? val.first : true,
-                                        val.second))
-                .filter(e -> e.filterBookmarks || e.filterMemos);
+        final Observable<Event> filterEvent =
+                Observable.merge(filterBookmarksSubject.startWithItem(true).map(b ->
+                                new FilterEvent(FilterEventType.BOOKMARKS, b, false)),
+                        filterMemosSubject.map(b ->
+                                new FilterEvent(FilterEventType.MEMOS, false, b)))
+                        .scan((status, event) -> {
+                            if (event.type == FilterEventType.BOOKMARKS) {
+                                return new FilterEvent(event.type, event.filterBookmarks, status.filterMemos);
+                            }
 
-        queryEventObservable = Observable.combineLatest(scroll, bookmarks, search, queryTool, filterEvent,
-                (s, b, t, q, f) -> new QueryEvent(s, b, t.first, t.second, q.first, q.second,
-                        0, false, f.filterId, f.filterMemos, f.filterBookmarks))
+                            return new FilterEvent(event.type, status.filterBookmarks, event.filterMemos);
+                        }).map(event -> new Event(EventType.FILTER, null, null, 0, false,
+                        event.filterMemos, event.filterBookmarks || !event.filterMemos))
+                        .observeOn(Schedulers.io());
+
+        final ArrayList<Observable<Event>> list = new ArrayList<>(5);
+
+        list.add(scroll);
+        list.add(bookmarks);
+        list.add(search);
+        list.add(queryTool);
+        list.add(filterEvent);
+
+        queryEventObservable = Observable.merge(list)
                 .observeOn(Schedulers.io())
-                .scan((acc, val) -> {
-                    // In the process of changing language
-                    if (val.queryTool == null) {
-                        return acc;
+                .scan((status, event) -> {
+                    final BookmarkQueryTool bookmarkQueryTool = event.type == EventType.LANGUAGE ? event.queryTool : status.queryTool;
+                    final String searchTerm = event.type == EventType.TERM ? event.term : (status.term == null ? "" : status.term);
+                    final int lastQuery = event.type == EventType.TERM ? 0 : status.lastQuery;
+                    final boolean filterMemos = event.type == EventType.FILTER ? event.filterMemos : status.filterMemos;
+                    final boolean filterBookmarks = event.type == EventType.FILTER ? event.filterBookmarks : status.filterBookmarks;
+                    final boolean foundInitially = event.type == EventType.SCROLL && status.found;
+
+                    if (bookmarkQueryTool == null) {
+                        return new Event(event.type, searchTerm, null, lastQuery, foundInitially, filterMemos, filterBookmarks);
                     }
 
                     final PersistentDatabase persistentDatabase = persistentDatabaseComponent.getDatabase();
+                    final ValueHolder<Pair<Integer, Boolean>> result = new ValueHolder<>(new Pair<>(0, foundInitially));
 
-                    // Changed search term or query not yet executed
-                    if (val.termId != acc.termId || acc.lastQuery == 0) {
-                        final ValueHolder<Pair<Integer, Boolean>> result = new ValueHolder<>(new Pair<>(0, false));
-
-                        persistentDatabase.runInTransaction(val.queryTool::delete);
-
-                        persistentDatabase.runInTransaction(() -> {
-                            int current = 0;
-                            boolean found = false;
-                            final int queryCount = val.queryTool.getCount(val.term);
-
-                            while (current < queryCount && !found) {
-                                found = val.queryTool.execute(val.term, current, val.filterBookmarks,
-                                        val.filterMemos);
-
-                                current++;
-                            }
-
-                            result.setValue(new Pair<>(current, found));
-                        });
-
-                        return new QueryEvent(val.scrollId, val.bookmarkId, val.termId, val.term,
-                                val.queryToolId, val.queryTool, result.getValue().first, result.getValue().second,
-                                val.filterId, val.filterMemos, val.filterBookmarks);
-                    } else {
-                        // Changed bookmarks or language or filters
-                        if (val.bookmarkId != acc.bookmarkId || val.queryToolId != acc.queryToolId ||
-                                val.filterId != acc.filterId) {
-                            persistentDatabase.runInTransaction(() -> {
-                                val.queryTool.delete();
-
-                                for (int i = 0; i < acc.lastQuery; i++) {
-                                    val.queryTool.execute(acc.term, i, val.filterBookmarks,
-                                            val.filterMemos);
-                                }
-                            });
-
-                            return new QueryEvent(val.scrollId, val.bookmarkId, val.termId,
-                                    val.term, val.queryToolId, val.queryTool, acc.lastQuery, acc.found,
-                                    val.filterId, val.filterMemos, val.filterBookmarks);
-                        } else if (val.scrollId != acc.scrollId) {
-                            // Scrolled
-                            final ValueHolder<Integer> result = new ValueHolder<>(acc.lastQuery);
-
-                            persistentDatabase.runInTransaction(() -> {
-                                int current = acc.lastQuery;
-                                boolean found = false;
-                                final int queryCount = val.queryTool.getCount(val.term);
-
-                                while (current < queryCount && !found) {
-                                    found = val.queryTool.execute(val.term, current, val.filterBookmarks,
-                                            val.filterMemos);
-
-                                    current++;
-                                }
-
-                                result.setValue(current);
-                            });
-
-                            return new QueryEvent(val.scrollId, val.bookmarkId, val.termId,
-                                    val.term, val.queryToolId, val.queryTool, result.getValue(), acc.found,
-                                    val.filterId, val.filterMemos, val.filterBookmarks);
-                        }
+                    if (event.type == EventType.TERM) {
+                        persistentDatabase.runInTransaction(bookmarkQueryTool::delete);
                     }
 
-                    return val;
+                    persistentDatabase.runInTransaction(() -> {
+                        int current = event.type == EventType.SCROLL ? status.lastQuery : 0;
+                        boolean found = false;
+                        final int queryCount = bookmarkQueryTool.getCount(searchTerm);
+
+                        if (event.type == EventType.BOOKMARK ||
+                                event.type == EventType.LANGUAGE ||
+                                event.type == EventType.FILTER) {
+                            bookmarkQueryTool.delete();
+                        }
+
+                        while (((lastQuery == 0 || event.type == EventType.SCROLL) && (current < queryCount && !found)) ||
+                                (current < lastQuery)) {
+                            found = bookmarkQueryTool.execute(searchTerm, current,
+                                    filterBookmarks, filterMemos);
+
+                            current++;
+                        }
+
+                        result.setValue(new Pair<>(current, found));
+                    });
+
+                    return new Event(event.type, searchTerm, bookmarkQueryTool, result.getValue().first,
+                            event.type == EventType.SCROLL ? foundInitially : result.getValue().second,
+                            filterMemos, filterBookmarks);
                 }).share().replay(1).autoConnect();
     }
 
-    public void toggleBookmark(final DictionarySearchElement aEntry) {
+    public void editBookmark(final DictionarySearchElement entry,
+                             final long bookmark,
+                             final String memo) {
         DictionaryBookmark dictionaryBookmark = new DictionaryBookmark();
-        dictionaryBookmark.bookmark = aEntry.getBookmark() == 0 ? 1 : 0;
-        dictionaryBookmark.memo = aEntry.getMemo();
-        dictionaryBookmark.seq = aEntry.getSeq();
+        dictionaryBookmark.bookmark = bookmark;
+        dictionaryBookmark.memo = memo;
+        dictionaryBookmark.seq = entry.getSeq();
 
         bookmarkComponent.updateBookmark(dictionaryBookmark);
     }
 
-    public void editMemo(final DictionarySearchElement aEntry, final String aMemo) {
-        DictionaryBookmark dictionaryBookmark = new DictionaryBookmark();
-        dictionaryBookmark.bookmark = aEntry.getBookmark();
-        dictionaryBookmark.memo = aMemo;
-        dictionaryBookmark.seq = aEntry.getSeq();
-
-        bookmarkComponent.updateBookmark(dictionaryBookmark);
-    }
-
-    public Observable<QueryEvent> getQueryEvent() {
+    public Observable<Event> getQueryEvent() {
         return queryEventObservable;
     }
 

@@ -39,12 +39,10 @@ import org.happypeng.sumatora.android.sumatoradictionary.component.LanguageMenuC
 import org.happypeng.sumatora.android.sumatoradictionary.component.LanguageSettingsComponent;
 import org.happypeng.sumatora.android.sumatoradictionary.component.PersistentDatabaseComponent;
 import org.happypeng.sumatora.android.sumatoradictionary.databinding.FragmentDictionaryQueryBinding;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.BookmarkQueryTool;
 import org.happypeng.sumatora.android.sumatoradictionary.model.BookmarkFragmentModel;
 import org.happypeng.sumatora.android.sumatoradictionary.model.viewbinding.BookmarkMenu;
 import org.happypeng.sumatora.android.sumatoradictionary.model.viewbinding.FragmentDictionaryQueryBindingUtil;
-import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionarySearchElementViewHolder;
 
 import javax.inject.Inject;
 
@@ -138,20 +136,20 @@ public class BookmarkFragment extends Fragment {
         actionBar.setHomeAsUpIndicator(R.drawable.ic_menu_white_24dp);
         actionBar.setDisplayHomeAsUpEnabled(true);
 
-        final Observable<BookmarkFragmentModel.QueryEvent> queryEventObservable =
+        final Observable<BookmarkFragmentModel.Event> queryEventObservable =
                 bookmarkFragmentModel.getQueryEvent().observeOn(AndroidSchedulers.mainThread());
 
-        autoDisposable.add(queryEventObservable.subscribe(queryEvent -> {
-            currentTerm = queryEvent.term;
+        autoDisposable.add(queryEventObservable.subscribe(event -> {
+            currentTerm = event.term;
 
-            if (queryEvent.queryTool == null) {
+            if (event.queryTool == null) {
                 FragmentDictionaryQueryBindingUtil.setInPreparation(viewBinding);
             } else {
-                if (!"".equals(queryEvent.term)) {
-                    if (queryEvent.found) {
-                        FragmentDictionaryQueryBindingUtil.setResultsFound(viewBinding, queryEvent.term);
+                if (!"".equals(event.term)) {
+                    if (event.found) {
+                        FragmentDictionaryQueryBindingUtil.setResultsFound(viewBinding, event.term);
                     } else {
-                        FragmentDictionaryQueryBindingUtil.setNoResultsFound(viewBinding, queryEvent.term);
+                        FragmentDictionaryQueryBindingUtil.setNoResultsFound(viewBinding, event.term);
                     }
                 } else {
                     FragmentDictionaryQueryBindingUtil.setReady(viewBinding);
@@ -159,25 +157,15 @@ public class BookmarkFragment extends Fragment {
             }
 
             if (bookmarkMenu != null) {
-                bookmarkMenu.filterMemos.setChecked(queryEvent.filterMemos);
-                bookmarkMenu.filterBookmarks.setChecked(queryEvent.filterBookmarks);
+                bookmarkMenu.filterMemos.setChecked(event.filterMemos);
+                bookmarkMenu.filterBookmarks.setChecked(event.filterBookmarks);
             }
         }));
 
         autoDisposable.add(bookmarkFragmentModel.getPagedListAdapter().subscribe(adapter -> {
             viewBinding.dictionaryBookmarkFragmentRecyclerview.setAdapter(adapter);
 
-            adapter.setBookmarkClickListener(new DictionarySearchElementViewHolder.EventListener() {
-                @Override
-                public void onBookmarkClick(View aView, DictionarySearchElement aEntry) {
-                    bookmarkFragmentModel.toggleBookmark(aEntry);
-                }
-
-                @Override
-                public void onMemoEdit(DictionarySearchElement aEntry, String aString) {
-                    bookmarkFragmentModel.editMemo(aEntry, aString);
-                }
-            });
+            adapter.setBookmarkClickListener((aEntry, bookmark, memo) -> bookmarkFragmentModel.editBookmark(aEntry, bookmark, memo));
         }));
 
         focusSearchView();
@@ -228,7 +216,9 @@ public class BookmarkFragment extends Fragment {
             return false;
         });
 
-        autoDisposable.add(bookmarkFragmentModel.getQueryEvent().map(e -> e.term).distinctUntilChanged()
+        autoDisposable.add(bookmarkFragmentModel.getQueryEvent()
+                .filter(e -> e.type == BookmarkFragmentModel.EventType.TERM)
+                .map(e -> e.term).distinctUntilChanged()
                 .observeOn(AndroidSchedulers.mainThread()).subscribe(s -> {
                     if (!s.equals(bookmarkMenu.searchView.getQuery().toString())) {
                         bookmarkMenu.searchView.setQuery(s, false);

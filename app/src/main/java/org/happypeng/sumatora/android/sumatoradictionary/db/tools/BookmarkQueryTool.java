@@ -28,7 +28,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 public class BookmarkQueryTool extends DictionarySearchQueryTool {
-    private final static String WHERE_CLAUSE = "((? AND IFNULL(DictionaryBookmark.bookmark, 0) > 0) OR (? AND DictionaryBookmark.memo IS NOT NULL))";
+    private final static String WHERE_CLAUSE = "((? AND IFNULL(DictionaryBookmark.bookmark, 0) > 0) OR (? AND DictionaryBookmark.memo IS NOT NULL AND DictionaryBookmark.memo != ''))";
 
     static final String SQL_QUERY_INSERT_DISPLAY_ELEMENT =
             "INSERT OR IGNORE INTO DictionarySearchElement "

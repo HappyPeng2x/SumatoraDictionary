@@ -54,8 +54,7 @@ public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
     private final Status m_status;
 
     public interface EventListener {
-        void onBookmarkClick(View aView, DictionarySearchElement aEntry);
-        void onMemoEdit(DictionarySearchElement aEntry, String aString);
+        void onBookmarkEdit(DictionarySearchElement aEntry, long bookmark, String memo);
     }
 
     private final TextView m_textViewView;
@@ -70,6 +69,8 @@ public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
     private TextWatcher m_textWatcher;
 
     private EventListener m_bookmarkEventListener;
+
+    private long m_bookmarkStatus;
 
     private void openMemo() {
         m_memoEditText.setVisibility(View.VISIBLE);
@@ -105,13 +106,6 @@ public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
             @Override
             public void onClick(View v) {
                 openMemo();
-            }
-        });
-
-        m_deleteMemoButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                closeMemo();
             }
         });
 
@@ -346,7 +340,12 @@ public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
             m_bookmarkStar.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    m_bookmarkEventListener.onBookmarkClick(v, entry);
+                    final String text = m_memoEditText.getEditableText().toString();
+
+                    m_bookmarkStatus = 1 - m_bookmarkStatus;
+
+                    m_bookmarkEventListener.onBookmarkEdit(entry, m_bookmarkStatus,
+                            text);
                 }
             });
         }
@@ -356,6 +355,8 @@ public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
         } else {
             m_bookmarkStar.setImageResource(R.drawable.ic_outline_bookmark_border_24px);
         }
+
+        m_bookmarkStatus = entry.getBookmark();
 
         final String memo = entry.getMemo();
 
@@ -367,25 +368,24 @@ public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
             closeMemo();
         }
 
-        m_textWatcher = new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+        m_memoEditText.setOnFocusChangeListener((v, hasFocus) -> {
+            if (!hasFocus) {
+                final String text = m_memoEditText.getEditableText().toString();
 
-            }
-
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-
-            }
-
-            @Override
-            public void afterTextChanged(Editable s) {
-                if (m_bookmarkEventListener != null) {
-                    m_bookmarkEventListener.onMemoEdit(entry, s.toString());
+                if (!text.equals(entry.memo)) {
+                    m_bookmarkEventListener.onBookmarkEdit(entry, m_bookmarkStatus,
+                            text);
                 }
             }
-        };
+        });
 
-        m_memoEditText.addTextChangedListener(m_textWatcher);
+        m_deleteMemoButton.setOnClickListener(v -> {
+            closeMemo();
+
+            m_bookmarkEventListener.onBookmarkEdit(entry, m_bookmarkStatus,
+                    null);
+        });
+
+        m_textViewView.requestFocus();
     }
 }

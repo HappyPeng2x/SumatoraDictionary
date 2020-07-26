@@ -129,20 +129,20 @@ public class QueryFragment extends Fragment {
         actionBar.setHomeAsUpIndicator(R.drawable.ic_menu_white_24dp);
         actionBar.setDisplayHomeAsUpEnabled(true);
 
-        final Observable<QueryFragmentModel.QueryEvent> queryEventObservable =
+        final Observable<QueryFragmentModel.Event> queryEventObservable =
                 queryFragmentModel.getQueryEvent().observeOn(AndroidSchedulers.mainThread());
 
-        autoDisposable.add(queryEventObservable.subscribe(queryEvent -> {
-            currentTerm = queryEvent.term;
+        autoDisposable.add(queryEventObservable.subscribe(event -> {
+            currentTerm = event.term;
 
-            if (queryEvent.queryTool == null) {
+            if (event.queryTool == null) {
                 FragmentDictionaryQueryBindingUtil.setInPreparation(viewBinding);
             } else {
-                if (!"".equals(queryEvent.term)) {
-                    if (queryEvent.found) {
-                        FragmentDictionaryQueryBindingUtil.setResultsFound(viewBinding, queryEvent.term);
+                if (!"".equals(event.term)) {
+                    if (event.found) {
+                        FragmentDictionaryQueryBindingUtil.setResultsFound(viewBinding, event.term);
                     } else {
-                        FragmentDictionaryQueryBindingUtil.setNoResultsFound(viewBinding, queryEvent.term);
+                        FragmentDictionaryQueryBindingUtil.setNoResultsFound(viewBinding, event.term);
                     }
                 } else {
                     FragmentDictionaryQueryBindingUtil.setReady(viewBinding);
@@ -153,17 +153,7 @@ public class QueryFragment extends Fragment {
         autoDisposable.add(queryFragmentModel.getPagedListAdapter().subscribe(adapter -> {
             viewBinding.dictionaryBookmarkFragmentRecyclerview.setAdapter(adapter);
 
-            adapter.setBookmarkClickListener(new DictionarySearchElementViewHolder.EventListener() {
-                @Override
-                public void onBookmarkClick(View aView, DictionarySearchElement aEntry) {
-                    queryFragmentModel.toggleBookmark(aEntry);
-                }
-
-                @Override
-                public void onMemoEdit(DictionarySearchElement aEntry, String aString) {
-                    queryFragmentModel.editMemo(aEntry, aString);
-                }
-            });
+            adapter.setBookmarkClickListener((aEntry, bookmark, memo) -> queryFragmentModel.editBookmark(aEntry, bookmark, memo));
         }));
 
         focusSearchView();
@@ -214,7 +204,9 @@ public class QueryFragment extends Fragment {
             return false;
         });
 
-        autoDisposable.add(queryFragmentModel.getQueryEvent().map(e -> e.term).distinctUntilChanged()
+        autoDisposable.add(queryFragmentModel.getQueryEvent()
+                .filter(e -> e.type == QueryFragmentModel.EventType.TERM)
+                .map(e -> e.term).distinctUntilChanged()
                 .observeOn(AndroidSchedulers.mainThread()).subscribe(s -> {
                     if (!s.equals(queryMenu.searchView.getQuery().toString())) {
                         queryMenu.searchView.setQuery(s, false);
