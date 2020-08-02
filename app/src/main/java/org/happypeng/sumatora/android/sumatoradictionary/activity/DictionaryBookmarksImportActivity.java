@@ -20,8 +20,9 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.Menu;
-import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.widget.PopupMenu;
+import android.widget.TextView;
 
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
@@ -31,19 +32,17 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 
 import org.happypeng.sumatora.android.sumatoradictionary.R;
 import org.happypeng.sumatora.android.sumatoradictionary.component.BookmarkImportComponent;
-import org.happypeng.sumatora.android.sumatoradictionary.component.LanguageMenuComponent;
-import org.happypeng.sumatora.android.sumatoradictionary.component.LanguageSettingsComponent;
-import org.happypeng.sumatora.android.sumatoradictionary.component.PersistentDatabaseComponent;
 import org.happypeng.sumatora.android.sumatoradictionary.databinding.FragmentDictionaryQueryBinding;
+import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary;
 import org.happypeng.sumatora.android.sumatoradictionary.model.BookmarkImportModel;
+import org.happypeng.sumatora.android.sumatoradictionary.model.status.BookmarkImportStatus;
+import org.happypeng.sumatora.android.sumatoradictionary.model.status.QueryViewStatus;
 import org.happypeng.sumatora.android.sumatoradictionary.model.viewbinding.QueryMenu;
 import org.happypeng.sumatora.android.sumatoradictionary.model.viewbinding.FragmentDictionaryQueryBindingUtil;
 
 import javax.inject.Inject;
 
 import dagger.hilt.android.AndroidEntryPoint;
-import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
-import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
 
 @AndroidEntryPoint
@@ -51,39 +50,26 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
     @Inject
     BookmarkImportComponent bookmarkImportComponent;
 
-    @Inject
-    PersistentDatabaseComponent persistentDatabaseComponent;
+    private FragmentDictionaryQueryBinding viewBinding;
 
-    @Inject
-    LanguageMenuComponent languageMenuComponent;
+    private CompositeDisposable autoDisposable;
 
-    @Inject
-    LanguageSettingsComponent languageSettingsComponent;
 
-    protected BookmarkImportModel bookmarkImportModel;
-
-    protected FragmentDictionaryQueryBinding viewBinding;
-    protected QueryMenu queryMenu;
-
-    protected CompositeDisposable autoDisposable;
-
-    protected int getKey() { return 3; }
-    protected BookmarkImportModel getModel() {
-        ViewModelProvider viewModelProvider = new ViewModelProvider(this,
-                new BookmarkImportModel.Factory(getApplication(),
-                        persistentDatabaseComponent, bookmarkImportComponent, languageSettingsComponent, getKey()));
-
-        return viewModelProvider.get(Integer.toString(getKey()), BookmarkImportModel.class);
+    private BookmarkImportModel getModel() {
+        return new ViewModelProvider(this).get(BookmarkImportModel.class);
     }
 
     public DictionaryBookmarksImportActivity() {
         autoDisposable = new CompositeDisposable();
-        bookmarkImportModel = null;
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        if (autoDisposable == null) {
+            autoDisposable = new CompositeDisposable();
+        }
 
         viewBinding = FragmentDictionaryQueryBinding.inflate(getLayoutInflater());
         setContentView(viewBinding.getRoot());
@@ -93,7 +79,7 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
                 ((LinearLayoutManager) viewBinding.dictionaryBookmarkFragmentRecyclerview.getLayoutManager()).getOrientation());
         viewBinding.dictionaryBookmarkFragmentRecyclerview.addItemDecoration(itemDecor);
 
-        bookmarkImportModel = getModel();
+        final BookmarkImportModel bookmarkImportModel = getModel();
 
         // Toolbar configuration
         viewBinding.dictionaryBookmarkFragmentToolbar.setTitle(getTitle());
@@ -103,12 +89,13 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
         actionBar.setHomeAsUpIndicator(R.drawable.ic_menu_white_24dp);
         actionBar.setDisplayHomeAsUpEnabled(true);
 
-        final Observable<BookmarkImportModel.Event> queryEventObservable =
-                bookmarkImportModel.getQueryEvent().observeOn(AndroidSchedulers.mainThread());
+        // Receive status
+        autoDisposable.add(bookmarkImportModel.getStatusObservable().subscribe(status -> {
+            if (status.getClose()) {
+                finish();
+            }
 
-        autoDisposable.add(queryEventObservable.subscribe(queryEvent -> {
-            // Update state
-            if (queryEvent.executed) {
+            if (status.getExecuted()) {
                 FragmentDictionaryQueryBindingUtil.setReady(viewBinding);
             } else {
                 FragmentDictionaryQueryBindingUtil.setInPreparation(viewBinding);
@@ -119,15 +106,7 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
                 viewBinding.dictionaryBookmarkFragmentRecyclerview.setAdapter(adapter)
         ));
 
-        autoDisposable.add(bookmarkImportComponent.getImportBookmarksObservable().subscribe(p ->
-        {
-            if (p.first == BookmarkImportComponent.ACTION_CANCEL ||
-                    p.first == BookmarkImportComponent.ACTION_IMPORT) {
-                finish();
-            }
-        }));
-
-        // Process received data
+        // Process received data as an intent
         Intent receivedIntent = getIntent();
         String receivedAction = getIntent().getAction();
 
@@ -143,11 +122,21 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
             return;
         }
 
-        bookmarkImportComponent.processURI(data, getKey());
+        bookmarkImportModel.bookmarkImportFileOpen(data);
+    }
+
+    @Override
+    protected void onDestroy() {
+        autoDisposable.dispose();
+        autoDisposable = null;
+
+        super.onDestroy();
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
+        final BookmarkImportModel bookmarkImportModel = getModel();
+
         final boolean ret = super.onCreateOptionsMenu(menu);
 
         getMenuInflater().inflate(R.menu.bookmark_import_toolbar_menu, menu);
@@ -155,7 +144,7 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
         menu.findItem(R.id.import_bookmarks).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
             @Override
             public boolean onMenuItemClick(MenuItem item) {
-                bookmarkImportComponent.commitBookmarks(getKey());
+                bookmarkImportModel.bookmarkImportCommit();
 
                 return false;
             }
@@ -164,14 +153,44 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
         menu.findItem(R.id.cancel_import).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
             @Override
             public boolean onMenuItemClick(MenuItem item) {
-                bookmarkImportComponent.cancelImport(getKey());
+                bookmarkImportModel.bookmarkImportCancel();
 
                 return false;
             }
         });
 
-        autoDisposable.add(languageMenuComponent.initLanguagePopupMenu(menu.findItem(R.id.bookmark_import_fragment_menu_language_text)
-                .getActionView().findViewById(R.id.menuitem_language_text)));
+        final TextView languageMenuText = menu.findItem(R.id.bookmark_import_fragment_menu_language_text).getActionView().findViewById(R.id.menuitem_language_text);
+        final PopupMenu languagePopupMenu = new PopupMenu(this, languageMenuText);
+
+        languageMenuText.setOnClickListener(v -> {
+            languagePopupMenu.show();
+        });
+
+        final Menu languagePopupMenuContent = languagePopupMenu.getMenu();
+
+        autoDisposable.add(bookmarkImportModel.getInstalledDictionaries()
+                .distinctUntilChanged()
+                .subscribe(list -> {
+                    for (int i = 0; i < languagePopupMenuContent.size(); i++) {
+                        languagePopupMenuContent.removeItem(i);
+                    }
+
+                    for (final InstalledDictionary l : list) {
+                        if ("jmdict_translation".equals(l.type)) {
+                            languagePopupMenuContent.add(l.description).setOnMenuItemClickListener(item -> {
+                                bookmarkImportModel.setLanguage(l.lang);
+
+                                return false;
+                            });
+                        }
+                    }
+                }));
+
+        autoDisposable.add(bookmarkImportModel.getStatusObservable()
+                .filter(s -> s.getPersistentLanguageSettings() != null)
+                .map(BookmarkImportStatus::getPersistentLanguageSettings)
+                .distinctUntilChanged()
+                .subscribe(l -> languageMenuText.setText(l.lang)));
 
         QueryMenu.colorMenu(menu, this);
 

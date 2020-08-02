@@ -29,19 +29,23 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.widget.ImageView;
+import android.widget.PopupMenu;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.widget.SearchView;
 
 import org.happypeng.sumatora.android.sumatoradictionary.R;
-import org.happypeng.sumatora.android.sumatoradictionary.component.LanguageMenuComponent;
+import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary;
 
-import io.reactivex.rxjava3.disposables.Disposable;
+import java.util.List;
 
 public class QueryMenu {
     public SearchView searchView;
     public ImageView searchCloseButton;
     public SearchView.SearchAutoComplete searchAutoComplete;
+    public MenuItem shareBookmarks;
+    public TextView languageMenuText;
 
     private static String SEARCH_VIEW_OPENED_STATE = "search_view_opened_state";
     private static String SEARCH_VIEW_ICONIFIED_BY_DEFAULT = "search_view_iconified_by_default";
@@ -56,10 +60,9 @@ public class QueryMenu {
         searchView.setIconified(inState.getBoolean(SEARCH_VIEW_OPENED_STATE));
     }
 
-    public Disposable onCreateOptionsMenu(final @NonNull ComponentName componentName,
-                                          final @NonNull Menu menu, final @NonNull MenuInflater inflater,
-                                          final @NonNull Context context,
-                                          final @NonNull LanguageMenuComponent languageMenuComponent) {
+    public void onCreateOptionsMenu(final @NonNull ComponentName componentName,
+                                    final @NonNull Menu menu, final @NonNull MenuInflater inflater,
+                                    final @NonNull Context context) {
         inflater.inflate(R.menu.search_query_menu, menu);
 
         SearchManager searchManager = (SearchManager) context.getSystemService(Context.SEARCH_SERVICE);
@@ -70,9 +73,12 @@ public class QueryMenu {
 
         searchCloseButton = searchView.findViewById(R.id.search_close_btn);
 
+        shareBookmarks = menu.findItem(R.id.search_query_menu_share_bookmarks);
+
         MenuItem languageMenuItem = menu.findItem(R.id.search_query_menu_language_text);
 
-        Disposable disposable = languageMenuComponent.initLanguagePopupMenu(languageMenuItem.getActionView().findViewById(R.id.menuitem_language_text));
+        languageMenuText = languageMenuItem.getActionView().findViewById(R.id.menuitem_language_text);
+        //Disposable disposable = languageMenuComponent.initLanguagePopupMenu(languageMenuItem.getActionView().findViewById(R.id.menuitem_language_text));
 
         searchView.requestFocus();
 
@@ -81,7 +87,7 @@ public class QueryMenu {
 
         colorMenu(menu, context);
 
-        return disposable;
+        //return disposable;
     }
 
     public static void colorMenu(@NonNull Menu aMenu, @NonNull Context context) {
@@ -97,6 +103,32 @@ public class QueryMenu {
             Drawable icon = item.getIcon();
             if (icon != null) {
                 icon.setColorFilter(new PorterDuffColorFilter(color, PorterDuff.Mode.SRC_IN));
+            }
+        }
+    }
+
+    public abstract static class LanguageChangeCallback {
+        public abstract void change(String language);
+    }
+
+    public void addLanguageMenu(final Context context,
+                                final List<InstalledDictionary> installedDictionaries,
+                                final LanguageChangeCallback consumer) {
+        PopupMenu languagePopupMenu = new PopupMenu(context, languageMenuText);
+
+        languageMenuText.setOnClickListener(v -> {
+            languagePopupMenu.show();
+        });
+
+        Menu menu = languagePopupMenu.getMenu();
+
+        for (final InstalledDictionary l : installedDictionaries) {
+            if ("jmdict_translation".equals(l.type)) {
+                menu.add(l.description).setOnMenuItemClickListener(item -> {
+                    consumer.change(l.lang);
+
+                    return false;
+                });
             }
         }
     }

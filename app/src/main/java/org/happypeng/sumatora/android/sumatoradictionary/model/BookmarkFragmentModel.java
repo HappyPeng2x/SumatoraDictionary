@@ -16,332 +16,43 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.model;
 
-import android.app.Application;
-
-import androidx.annotation.MainThread;
 import androidx.annotation.NonNull;
-import androidx.core.util.Pair;
+import androidx.hilt.Assisted;
+import androidx.hilt.lifecycle.ViewModelInject;
 import androidx.lifecycle.LiveData;
-import androidx.lifecycle.Observer;
-import androidx.lifecycle.ViewModel;
-import androidx.lifecycle.ViewModelProvider;
+import androidx.lifecycle.SavedStateHandle;
 import androidx.paging.PagedList;
 
-import org.happypeng.sumatora.android.sumatoradictionary.adapter.DictionaryPagedListAdapter;
 import org.happypeng.sumatora.android.sumatoradictionary.component.BookmarkComponent;
+import org.happypeng.sumatora.android.sumatoradictionary.component.BookmarkShareComponent;
 import org.happypeng.sumatora.android.sumatoradictionary.component.LanguageSettingsComponent;
 import org.happypeng.sumatora.android.sumatoradictionary.component.PersistentDatabaseComponent;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
-import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
-import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings;
-import org.happypeng.sumatora.android.sumatoradictionary.db.tools.BookmarkQueryTool;
-import org.happypeng.sumatora.android.sumatoradictionary.db.tools.ValueHolder;
-import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionarySearchElementViewHolder;
+import org.happypeng.sumatora.android.sumatoradictionary.model.status.QueryStatus;
 
-import java.util.ArrayList;
-
-import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
-import io.reactivex.rxjava3.core.Observable;
-import io.reactivex.rxjava3.core.Single;
-import io.reactivex.rxjava3.disposables.CompositeDisposable;
-import io.reactivex.rxjava3.observers.DisposableSingleObserver;
-import io.reactivex.rxjava3.schedulers.Schedulers;
-import io.reactivex.rxjava3.subjects.BehaviorSubject;
-import io.reactivex.rxjava3.subjects.PublishSubject;
-import io.reactivex.rxjava3.subjects.Subject;
-
-public class BookmarkFragmentModel extends ViewModel {
-    public static class Factory extends ViewModelProvider.AndroidViewModelFactory{
-        public interface QueryToolConstructor {
-            BookmarkQueryTool create(PersistentLanguageSettings persistentLanguageSettings);
-        }
-
-        private final QueryToolConstructor constructor;
-        private final PersistentDatabaseComponent persistentDatabaseComponent;
-        private final BookmarkComponent bookmarkComponent;
-        private final LanguageSettingsComponent languageSettingsComponent;
-        private final int key;
-
-        public Factory(@NonNull final Application application,
-                       @NonNull final PersistentDatabaseComponent persistentDatabaseComponent,
-                       @NonNull final BookmarkComponent bookmarkComponent,
-                       @NonNull final LanguageSettingsComponent languageSettingsComponent,
-                       @NonNull final QueryToolConstructor constructor,
-                       final int key) {
-            super(application);
-
-            this.constructor = constructor;
-            this.persistentDatabaseComponent = persistentDatabaseComponent;
-            this.bookmarkComponent = bookmarkComponent;
-            this.languageSettingsComponent = languageSettingsComponent;
-            this.key = key;
-        }
-
-        @NonNull
-        @Override
-        public <T extends ViewModel> T create(@NonNull Class<T> modelClass) {
-            T ret = modelClass.cast(new BookmarkFragmentModel(persistentDatabaseComponent,
-                    bookmarkComponent, languageSettingsComponent, constructor, key));
-
-            if (ret != null) {
-                return ret;
-            }
-
-            throw new IllegalArgumentException("ViewModel cast failed");
-        }
+public class BookmarkFragmentModel extends BaseQueryFragmentModel {
+    @ViewModelInject
+    public BookmarkFragmentModel(final BookmarkComponent bookmarkComponent,
+                              final PersistentDatabaseComponent persistentDatabaseComponent,
+                              final LanguageSettingsComponent languageSettingsComponent,
+                              final BookmarkShareComponent bookmarkShareComponent,
+                              @Assisted SavedStateHandle savedStateHandle) {
+        super(bookmarkComponent,
+                persistentDatabaseComponent,
+                languageSettingsComponent,
+                bookmarkShareComponent,
+                savedStateHandle);
     }
 
-    final protected PersistentDatabaseComponent persistentDatabaseComponent;
-    final protected BookmarkComponent bookmarkComponent;
-
-    final protected CompositeDisposable compositeDisposable;
-
-    final private Subject<DictionaryPagedListAdapter> pagedListAdapterSubject;
-    final private Subject<DictionarySearchElement> itemAtEndSubject;
-    final private Subject<String> termSubject;
-    final private Subject<Boolean> filterBookmarksSubject;
-    final private Subject<Boolean> filterMemosSubject;
-
-    final private Observable<Event> queryEventObservable;
-
-    private Observer<PagedList<DictionarySearchElement>> pagedListObserver;
-    private LiveData<PagedList<DictionarySearchElement>> pagedList;
-
-    public enum FilterEventType {
-        BOOKMARKS,
-        MEMOS
-    }
-
-    public static class FilterEvent {
-        final public FilterEventType type;
-        final public boolean filterMemos;
-        final public boolean filterBookmarks;
-
-        public FilterEvent(final FilterEventType type,
-                           final boolean filterBookmarks,
-                           final boolean filterMemos) {
-            this.type = type;
-            this.filterMemos = filterMemos;
-            this.filterBookmarks = filterBookmarks;
-        }
-    }
-
-    public enum EventType {
-        TERM,
-        SCROLL,
-        BOOKMARK,
-        LANGUAGE,
-        FILTER
-    }
-
-    public static class Event {
-        final public EventType type;
-        final public String term;
-        final public int lastQuery;
-        final public BookmarkQueryTool queryTool;
-        final public boolean found;
-        final public boolean filterMemos;
-        final public boolean filterBookmarks;
-
-        public Event(final EventType type,
-                     final String term,
-                     final BookmarkQueryTool queryTool,
-                     final int lastQuery,
-                     final boolean found,
-                     final boolean filterMemos,
-                     final boolean filterBookmarks) {
-            this.type = type;
-            this.term = term;
-            this.lastQuery = lastQuery;
-            this.queryTool = queryTool;
-            this.found = found;
-            this.filterMemos = filterMemos;
-            this.filterBookmarks = filterBookmarks;
-        }
-
-        public Event(final EventType type) {
-            this(type, null, null, 0, false, false, false);
-        }
-    }
-
-    public void setTerm(final String t) {
-        termSubject.onNext(t);
-    }
-
-    public Observable<DictionaryPagedListAdapter> getPagedListAdapter() {
-        return pagedListAdapterSubject;
-    }
-
-    public BookmarkFragmentModel(@NonNull final PersistentDatabaseComponent persistentDatabaseComponent,
-                                 @NonNull final BookmarkComponent bookmarkComponent,
-                                 @NonNull final LanguageSettingsComponent languageSettingsComponent,
-                                 @NonNull final Factory.QueryToolConstructor queryToolConstructor,
-                                 final int key) {
-        super();
-
-        this.persistentDatabaseComponent = persistentDatabaseComponent;
-        this.bookmarkComponent = bookmarkComponent;
-
-        this.compositeDisposable = new CompositeDisposable();
-
-        pagedListAdapterSubject = BehaviorSubject.create();
-
-        itemAtEndSubject = PublishSubject.create();
-        termSubject = BehaviorSubject.create();
-        filterBookmarksSubject = BehaviorSubject.create();
-        filterMemosSubject = BehaviorSubject.create();
-
-        compositeDisposable.add(Single.fromCallable(persistentDatabaseComponent::getEntities).map(entities -> new DictionaryPagedListAdapter(new DictionarySearchElementViewHolder.Status(entities),
-                false, false)).subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
-                .subscribeWith(new DisposableSingleObserver<DictionaryPagedListAdapter>() {
-                    @Override
-                    public void onSuccess(@io.reactivex.rxjava3.annotations.NonNull DictionaryPagedListAdapter dictionaryPagedListAdapter) {
-                        pagedList = persistentDatabaseComponent.getSearchElements(key,
-                                new PagedList.BoundaryCallback<DictionarySearchElement>() {
-                                    @Override
-                                    public void onItemAtEndLoaded(@NonNull DictionarySearchElement itemAtEnd) {
-                                        super.onItemAtEndLoaded(itemAtEnd);
-
-                                        itemAtEndSubject.onNext(itemAtEnd);
-                                    }
-                                });
-
-                        pagedListObserver = dictionaryPagedListAdapter::submitList;
-                        pagedList.observeForever(pagedListObserver);
-
-                        pagedListAdapterSubject.onNext(dictionaryPagedListAdapter);
-                    }
-
-                    @Override
-                    public void onError(@io.reactivex.rxjava3.annotations.NonNull Throwable e) {
-                        e.printStackTrace();
-                    }
-                }));
-
-        final Observable<Event> scroll =
-                itemAtEndSubject.map(x -> new Event(EventType.SCROLL)).observeOn(Schedulers.io());
-
-        final Observable<Event> bookmarks =
-                bookmarkComponent.getBookmarkChanges().map(x -> new Event(EventType.BOOKMARK)).observeOn(Schedulers.io());
-
-        final Observable<Event> queryTool =
-                languageSettingsComponent.getPersistentLanguageSettings()
-                        .observeOn(Schedulers.io())
-                        .map(p -> new Event(EventType.LANGUAGE, null, p.second ? queryToolConstructor.create(p.first) : null,
-                                0, false, false, false));
-
-        final Observable<Event> search =
-                termSubject.distinctUntilChanged().map(s -> new Event(EventType.TERM, s, null, 0, false, false, false))
-                        .observeOn(Schedulers.io());
-
-        final Observable<Event> filterEvent =
-                Observable.merge(filterBookmarksSubject.startWithItem(true).map(b ->
-                                new FilterEvent(FilterEventType.BOOKMARKS, b, false)),
-                        filterMemosSubject.map(b ->
-                                new FilterEvent(FilterEventType.MEMOS, false, b)))
-                        .scan((status, event) -> {
-                            if (event.type == FilterEventType.BOOKMARKS) {
-                                return new FilterEvent(event.type, event.filterBookmarks, status.filterMemos);
-                            }
-
-                            return new FilterEvent(event.type, status.filterBookmarks, event.filterMemos);
-                        }).map(event -> new Event(EventType.FILTER, null, null, 0, false,
-                        event.filterMemos, event.filterBookmarks || !event.filterMemos))
-                        .observeOn(Schedulers.io());
-
-        final ArrayList<Observable<Event>> list = new ArrayList<>(5);
-
-        list.add(scroll);
-        list.add(bookmarks);
-        list.add(search);
-        list.add(queryTool);
-        list.add(filterEvent);
-
-        queryEventObservable = Observable.merge(list)
-                .observeOn(Schedulers.io())
-                .scan((status, event) -> {
-                    final BookmarkQueryTool bookmarkQueryTool = event.type == EventType.LANGUAGE ? event.queryTool : status.queryTool;
-                    final String searchTerm = event.type == EventType.TERM ? event.term : (status.term == null ? "" : status.term);
-                    final int lastQuery = event.type == EventType.TERM ? 0 : status.lastQuery;
-                    final boolean filterMemos = event.type == EventType.FILTER ? event.filterMemos : status.filterMemos;
-                    final boolean filterBookmarks = event.type == EventType.FILTER ? event.filterBookmarks : status.filterBookmarks;
-                    final boolean foundInitially = event.type == EventType.SCROLL && status.found;
-
-                    if (bookmarkQueryTool == null) {
-                        return new Event(event.type, searchTerm, null, lastQuery, foundInitially, filterMemos, filterBookmarks);
-                    }
-
-                    final PersistentDatabase persistentDatabase = persistentDatabaseComponent.getDatabase();
-                    final ValueHolder<Pair<Integer, Boolean>> result = new ValueHolder<>(new Pair<>(0, foundInitially));
-
-                    if (event.type == EventType.TERM) {
-                        persistentDatabase.runInTransaction(bookmarkQueryTool::delete);
-                    }
-
-                    persistentDatabase.runInTransaction(() -> {
-                        int current = event.type == EventType.SCROLL ? status.lastQuery : 0;
-                        boolean found = false;
-                        final int queryCount = bookmarkQueryTool.getCount(searchTerm);
-
-                        if (event.type == EventType.BOOKMARK ||
-                                event.type == EventType.LANGUAGE ||
-                                event.type == EventType.FILTER) {
-                            bookmarkQueryTool.delete();
-                        }
-
-                        while (((lastQuery == 0 || event.type == EventType.SCROLL) && (current < queryCount && !found)) ||
-                                (current < lastQuery)) {
-                            found = bookmarkQueryTool.execute(searchTerm, current,
-                                    filterBookmarks, filterMemos);
-
-                            current++;
-                        }
-
-                        result.setValue(new Pair<>(current, found));
-                    });
-
-                    return new Event(event.type, searchTerm, bookmarkQueryTool, result.getValue().first,
-                            event.type == EventType.SCROLL ? foundInitially : result.getValue().second,
-                            filterMemos, filterBookmarks);
-                }).share().replay(1).autoConnect();
-    }
-
-    public void editBookmark(final DictionarySearchElement entry,
-                             final long bookmark,
-                             final String memo) {
-        DictionaryBookmark dictionaryBookmark = new DictionaryBookmark();
-        dictionaryBookmark.bookmark = bookmark;
-        dictionaryBookmark.memo = memo;
-        dictionaryBookmark.seq = entry.getSeq();
-
-        bookmarkComponent.updateBookmark(dictionaryBookmark);
-    }
-
-    public Observable<Event> getQueryEvent() {
-        return queryEventObservable;
+    @NonNull
+    @Override
+    public QueryStatus getInitialStatus() {
+        return new QueryStatus(2, "", 0, null, false,
+                false, true, "Bookmarks", true, true, null);
     }
 
     @Override
-    protected void onCleared() {
-        super.onCleared();
-
-        setTerm("");
-
-        if (pagedList != null && pagedListObserver != null) {
-            pagedList.removeObserver(pagedListObserver);
-        }
-
-        compositeDisposable.dispose();
-    }
-
-    @MainThread
-    public void filterBookmarks(final boolean filter) {
-        filterBookmarksSubject.onNext(filter);
-    }
-
-    @MainThread
-    public void filterMemos(final boolean filter) {
-        filterMemosSubject.onNext(filter);
+    protected LiveData<PagedList<DictionarySearchElement>> getPagedList(final PagedList.BoundaryCallback<DictionarySearchElement> boundaryCallback) {
+        return persistentDatabaseComponent.getSearchElements(getInitialStatus().getKey(), boundaryCallback);
     }
 }

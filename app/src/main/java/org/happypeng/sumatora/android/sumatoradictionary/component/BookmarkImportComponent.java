@@ -20,11 +20,7 @@ import android.content.ContentResolver;
 import android.content.Context;
 import android.net.Uri;
 
-import androidx.annotation.MainThread;
 import androidx.annotation.WorkerThread;
-import androidx.core.util.Pair;
-import androidx.sqlite.db.SupportSQLiteDatabase;
-import androidx.sqlite.db.SupportSQLiteQuery;
 import androidx.sqlite.db.SupportSQLiteStatement;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -42,28 +38,13 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 
 import dagger.hilt.android.qualifiers.ApplicationContext;
-import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
-import io.reactivex.rxjava3.core.Observable;
-import io.reactivex.rxjava3.schedulers.Schedulers;
-import io.reactivex.rxjava3.subjects.PublishSubject;
-import io.reactivex.rxjava3.subjects.Subject;
 
 @Singleton
 public class BookmarkImportComponent {
     private static String SQL_BOOKMARK_IMPORT_COMMIT = "INSERT OR IGNORE INTO DictionaryBookmark SELECT seq, bookmark, memo FROM DictionaryBookmarkImport WHERE ref = ?";
 
-    public static final int ACTION_PROCESS = 0;
-    public static final int ACTION_IMPORT = 1;
-    public static final int ACTION_CANCEL = 2;
-
     private final Context context;
     private final PersistentDatabaseComponent persistentDatabaseComponent;
-
-    private final Subject<Pair<Integer, Uri>> uriSubject;
-    private final Subject<Integer> commitSubject;
-    private final Subject<Integer> cancelSubject;
-
-    private final Observable<Pair<Integer, Integer>> importBookmarksObservable;
 
     private SupportSQLiteStatement commitQuery;
 
@@ -71,30 +52,6 @@ public class BookmarkImportComponent {
     BookmarkImportComponent(@ApplicationContext final Context context, final PersistentDatabaseComponent persistentDatabaseComponent) {
         this.context = context;
         this.persistentDatabaseComponent = persistentDatabaseComponent;
-
-        this.uriSubject = PublishSubject.create();
-        this.commitSubject = PublishSubject.create();
-        this.cancelSubject = PublishSubject.create();
-
-        this.importBookmarksObservable =
-                Observable.merge(this.uriSubject.observeOn(Schedulers.io())
-                                .map(p -> {
-                                    processURIImpl(p.second, p.first);
-
-                                    return new Pair<>(ACTION_PROCESS, p.first);
-                                }),
-                        commitSubject.observeOn(Schedulers.io())
-                                .map(r -> {
-                                    commitBookmarksImpl(r);
-
-                                    return new Pair<>(ACTION_IMPORT, r);
-                                }),
-                        cancelSubject.observeOn(Schedulers.io())
-                                .map(r -> {
-                                    cancelImportImpl(r);
-
-                                    return new Pair<>(ACTION_CANCEL, r);
-                                })).observeOn(AndroidSchedulers.mainThread()).publish().autoConnect();
     }
 
     private synchronized void initQuery() {
@@ -105,22 +62,8 @@ public class BookmarkImportComponent {
         }
     }
 
-    public Observable<Pair<Integer, Integer>> getImportBookmarksObservable() {
-        return importBookmarksObservable;
-    }
-
-    @MainThread
-    public void commitBookmarks(final int ref) {
-        commitSubject.onNext(ref);
-    }
-
-    @MainThread
-    public void processURI(final Uri uri, final int ref) {
-        uriSubject.onNext(new Pair<>(ref, uri));
-    }
-
     @WorkerThread
-    private void commitBookmarksImpl(final int ref) {
+    public void commitBookmarks(final int ref) {
         final PersistentDatabase database = persistentDatabaseComponent.getDatabase();
 
         initQuery();
@@ -133,20 +76,15 @@ public class BookmarkImportComponent {
         });
     }
 
-    @MainThread
-    public void cancelImport(final int ref) {
-        cancelSubject.onNext(ref);
-    }
-
     @WorkerThread
-    private void cancelImportImpl(final int ref) {
+    public void cancelImport(final int ref) {
         final PersistentDatabase database = persistentDatabaseComponent.getDatabase();
 
         database.dictionaryBookmarkImportDao().delete(ref);
     }
 
     @WorkerThread
-    private void processURIImpl(final Uri uri, final int key) {
+    public void processURI(final Uri uri, final int key) {
         final PersistentDatabase database = persistentDatabaseComponent.getDatabase();
 
         try {

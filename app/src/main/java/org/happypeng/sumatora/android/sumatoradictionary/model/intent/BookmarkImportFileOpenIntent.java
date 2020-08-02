@@ -14,21 +14,18 @@
         You should have received a copy of the GNU General Public License
         along with this program.  If not, see <http://www.gnu.org/licenses/>.*/
 
-package org.happypeng.sumatora.android.sumatoradictionary.fragment;
+package org.happypeng.sumatora.android.sumatoradictionary.model.intent;
 
+import android.net.Uri;
 
-import androidx.lifecycle.ViewModelProvider;
+public class BookmarkImportFileOpenIntent extends MVIIntent {
+    final Uri uri;
 
-import org.happypeng.sumatora.android.sumatoradictionary.model.BaseQueryFragmentModel;
-import org.happypeng.sumatora.android.sumatoradictionary.model.BookmarkFragmentModel;
-
-public class BookmarkFragment extends BaseFragment {
-    public BookmarkFragment() {
-        super();
+    public BookmarkImportFileOpenIntent(final Uri uri) {
+        this.uri = uri;
     }
 
-    @Override
-    protected BaseQueryFragmentModel getModel() {
-        return new ViewModelProvider(this).get(BookmarkFragmentModel.class);
+    public Uri getUri() {
+        return uri;
     }
 }

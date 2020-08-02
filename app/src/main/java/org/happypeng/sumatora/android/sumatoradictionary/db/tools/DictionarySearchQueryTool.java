@@ -26,6 +26,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSe
 import org.happypeng.sumatora.jromkan.Romkan;
 
 import java.io.IOException;
+import java.util.LinkedList;
 import java.util.List;
 
 public class DictionarySearchQueryTool {
@@ -57,6 +58,38 @@ public class DictionarySearchQueryTool {
                     + "%s.DictionaryTranslation "
                     + "WHERE DictionaryEntry.seq = DictionaryTranslation.seq AND "
                     + "DictionaryEntry.seq IN (%s) %s "
+                    + "GROUP BY DictionaryEntry.seq";
+
+    private final static String BOOKMARKS_WHERE_CLAUSE = "((? = 0 AND ? = 0) OR (((? AND IFNULL(DictionaryBookmark.bookmark, 0) > 0) OR (? AND DictionaryBookmark.memo IS NOT NULL AND DictionaryBookmark.memo != ''))))";
+
+    static final String SQL_QUERY_INSERT_BOOKMARK_DISPLAY_ELEMENT =
+            "INSERT OR IGNORE INTO DictionarySearchElement "
+                    + "SELECT ? AS ref, "
+                    + "? AS entryOrder, "
+                    + "DictionaryEntry.seq, "
+                    + "DictionaryEntry.readingsPrio, "
+                    + "DictionaryEntry.readings, "
+                    + "DictionaryEntry.writingsPrio, "
+                    + "DictionaryEntry.writings, "
+                    + "DictionaryEntry.pos, "
+                    + "DictionaryEntry.xref, "
+                    + "DictionaryEntry.ant, "
+                    + "DictionaryEntry.misc, "
+                    + "DictionaryEntry.lsource, "
+                    + "DictionaryEntry.dial, "
+                    + "DictionaryEntry.s_inf, "
+                    + "DictionaryEntry.field, "
+                    + "? AS lang, "
+                    + "? AS lang_setting, "
+                    + "json_group_array(DictionaryTranslation.gloss) AS gloss, "
+                    + "%s as example_sentences, "
+                    + "%s as example_translations, "
+                    + "DictionaryBookmark.bookmark, "
+                    + "DictionaryBookmark.memo "
+                    + "FROM (jmdict.DictionaryEntry %s) LEFT JOIN DictionaryBookmark ON DictionaryBookmark.seq = DictionaryEntry.seq, "
+                    + "%s.DictionaryTranslation "
+                    + "WHERE DictionaryEntry.seq = DictionaryTranslation.seq "
+                    + "AND ? = '' %s "
                     + "GROUP BY DictionaryEntry.seq";
 
     static final String SQL_QUERY_JOIN_EXAMPLES =
@@ -196,11 +229,10 @@ public class DictionarySearchQueryTool {
 
     public DictionarySearchQueryTool(final PersistentDatabaseComponent persistentDatabaseComponent,
                                      final int key,
-                                     final String whereClause,
                                      final PersistentLanguageSettings persistentLanguageSettings) {
 
         this.persistentDatabase = persistentDatabaseComponent;
-        this.whereClause = whereClause;
+        this.whereClause = BOOKMARKS_WHERE_CLAUSE;
         this.key = key;
         this.persistentLanguageSettings = persistentLanguageSettings;
 
@@ -236,6 +268,9 @@ public class DictionarySearchQueryTool {
 
         deleteStatement = db.compileStatement(SQL_QUERY_DELETE);
 
+        final SupportSQLiteStatement queryAllStatement =
+                db.compileStatement(String.format(SQL_QUERY_INSERT_BOOKMARK_DISPLAY_ELEMENT,
+                        examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, persistentLanguageSettings.lang, whereClause));
         final SupportSQLiteStatement queryExactPrioWriting =
                 db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
                         examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_EXACT_WRITING_PRIO, whereClause));
@@ -285,6 +320,7 @@ public class DictionarySearchQueryTool {
         final SupportSQLiteStatement reverseQueryDeleteElements =
                 db.compileStatement(SQL_REVERSE_QUERY_DELETE_ELEMENTS);
 
+        SupportSQLiteStatement queryAllStatementBackup = null;
         SupportSQLiteStatement queryExactPrioWritingBackup = null;
         SupportSQLiteStatement queryExactPrioReadingBackup = null;
         SupportSQLiteStatement queryExactNonPrioWritingBackup = null;
@@ -302,6 +338,9 @@ public class DictionarySearchQueryTool {
         SupportSQLiteStatement reverseQueryDisplayBackupElement = null;
 
         if (persistentLanguageSettings.backupLang != null) {
+            queryAllStatementBackup =
+                    db.compileStatement(String.format(SQL_QUERY_INSERT_BOOKMARK_DISPLAY_ELEMENT,
+                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, whereClause));
             queryExactPrioWritingBackup =
                     db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
                             backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_EXACT_WRITING_PRIO, whereClause));
@@ -349,22 +388,23 @@ public class DictionarySearchQueryTool {
                             backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, whereClause));
         }
 
-        statements = new QueryStatement[14];
+        statements = new QueryStatement[15];
 
-        statements[0] = new BasicQueryStatement(database, key, 1, persistentLanguageSettings, queryExactPrioWriting, queryExactPrioWritingBackup, false, romkan);
-        statements[1] = new BasicQueryStatement(database, key, 2, persistentLanguageSettings, queryExactPrioReading, queryExactPrioReadingBackup, true, romkan);
-        statements[2] = new BasicQueryStatement(database, key, 3, persistentLanguageSettings, queryExactNonPrioWriting, queryExactNonPrioWritingBackup, false, romkan);
-        statements[3] = new BasicQueryStatement(database, key, 4, persistentLanguageSettings, queryExactNonPrioReading, queryExactNonPrioReadingBackup, true, romkan);
-        statements[4] = new BasicQueryStatement(database, key, 5, persistentLanguageSettings, queryBeginPrioWriting, queryBeginPrioWritingBackup, false, romkan);
-        statements[5] = new BasicQueryStatement(database, key, 6, persistentLanguageSettings, queryBeginPrioReading, queryBeginPrioReadingBackup, true, romkan);
-        statements[6] = new BasicQueryStatement(database, key, 7, persistentLanguageSettings, queryBeginNonPrioWriting, queryBeginNonPrioWritingBackup, false, romkan);
-        statements[7] = new BasicQueryStatement(database, key, 8, persistentLanguageSettings, queryBeginNonPrioReading, queryBeginNonPrioReadingBackup, true, romkan);
-        statements[8] = new BasicQueryStatement(database, key, 9, persistentLanguageSettings, queryPartsPrioWriting, queryPartsPrioWritingBackup, false, romkan);
-        statements[9] = new BasicQueryStatement(database, key, 10, persistentLanguageSettings, queryPartsPrioReading, queryPartsPrioReadingBackup, true, romkan);
-        statements[10] = new BasicQueryStatement(database, key, 11, persistentLanguageSettings, queryPartsNonPrioWriting, queryPartsNonPrioWritingBackup, false, romkan);
-        statements[11] = new BasicQueryStatement(database, key, 12, persistentLanguageSettings, queryPartsNonPrioReading, queryPartsNonPrioReadingBackup, true, romkan);
-        statements[12] = new ReverseQueryStatement(database, key, persistentLanguageSettings, reverseQueryExact, reverseQueryExactBackup, reverseQueryDisplayElement, reverseQueryDisplayBackupElement, reverseQueryDeleteElements);
-        statements[13] = new ReverseQueryStatement(database, key, persistentLanguageSettings, reverseQueryBegin, reverseQueryBeginBackup, reverseQueryDisplayElement, reverseQueryDisplayBackupElement, reverseQueryDeleteElements);
+        statements[0] = new BasicQueryStatement(database, key, 1, persistentLanguageSettings, queryAllStatement, queryAllStatementBackup, false, romkan);
+        statements[1] = new BasicQueryStatement(database, key, 2, persistentLanguageSettings, queryExactPrioWriting, queryExactPrioWritingBackup, false, romkan);
+        statements[2] = new BasicQueryStatement(database, key, 3, persistentLanguageSettings, queryExactPrioReading, queryExactPrioReadingBackup, true, romkan);
+        statements[3] = new BasicQueryStatement(database, key, 4, persistentLanguageSettings, queryExactNonPrioWriting, queryExactNonPrioWritingBackup, false, romkan);
+        statements[4] = new BasicQueryStatement(database, key, 5, persistentLanguageSettings, queryExactNonPrioReading, queryExactNonPrioReadingBackup, true, romkan);
+        statements[5] = new BasicQueryStatement(database, key, 6, persistentLanguageSettings, queryBeginPrioWriting, queryBeginPrioWritingBackup, false, romkan);
+        statements[6] = new BasicQueryStatement(database, key, 7, persistentLanguageSettings, queryBeginPrioReading, queryBeginPrioReadingBackup, true, romkan);
+        statements[7] = new BasicQueryStatement(database, key, 8, persistentLanguageSettings, queryBeginNonPrioWriting, queryBeginNonPrioWritingBackup, false, romkan);
+        statements[8] = new BasicQueryStatement(database, key, 9, persistentLanguageSettings, queryBeginNonPrioReading, queryBeginNonPrioReadingBackup, true, romkan);
+        statements[9] = new BasicQueryStatement(database, key, 10, persistentLanguageSettings, queryPartsPrioWriting, queryPartsPrioWritingBackup, false, romkan);
+        statements[10] = new BasicQueryStatement(database, key, 11, persistentLanguageSettings, queryPartsPrioReading, queryPartsPrioReadingBackup, true, romkan);
+        statements[11] = new BasicQueryStatement(database, key, 12, persistentLanguageSettings, queryPartsNonPrioWriting, queryPartsNonPrioWritingBackup, false, romkan);
+        statements[12] = new BasicQueryStatement(database, key, 13, persistentLanguageSettings, queryPartsNonPrioReading, queryPartsNonPrioReadingBackup, true, romkan);
+        statements[13] = new ReverseQueryStatement(database, key, persistentLanguageSettings, reverseQueryExact, reverseQueryExactBackup, reverseQueryDisplayElement, reverseQueryDisplayBackupElement, reverseQueryDeleteElements);
+        statements[14] = new ReverseQueryStatement(database, key, persistentLanguageSettings, reverseQueryBegin, reverseQueryBeginBackup, reverseQueryDisplayElement, reverseQueryDisplayBackupElement, reverseQueryDeleteElements);
     }
 
     public void delete() {
@@ -376,12 +416,31 @@ public class DictionarySearchQueryTool {
         return statements[number].execute(term, parameters) >= 0;
     }
 
-    public boolean execute(final String term, final int number) {
-        return execute(term, number, null);
+    public boolean execute(String term, int number, boolean isBookmarked, boolean hasMemo) {
+        final List<Object> parameters = new LinkedList<>();
+
+        parameters.add(isBookmarked);
+        parameters.add(hasMemo);
+        parameters.add(isBookmarked);
+        parameters.add(hasMemo);
+
+        if ("".equals(term)) {
+            if (!(isBookmarked || hasMemo)) {
+                return false;
+            } else {
+                return execute(term, number, parameters);
+            }
+        } else {
+            return execute(term, number + 1, parameters);
+        }
     }
 
     public int getCount(String term) {
-        return statements.length;
+        if ("".equals(term)) {
+            return 1;
+        } else {
+            return statements.length - 1;
+        }
     }
 
     public void close() {

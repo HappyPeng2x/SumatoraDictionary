@@ -24,7 +24,7 @@ android {
         minSdkVersion 14
         targetSdkVersion 29
         versionCode 28
-        versionName "0.4.5rc2"
+        versionName "0.4.5rc3"
         multiDexEnabled true
 
         compileOptions {
@@ -55,8 +55,8 @@ android {
             buildConfigField("boolean", "DEBUG_DB_MIGRATION", "false");
             buildConfigField("boolean", "DEBUG_BASE_FRAGMENT", "false");
 
-            minifyEnabled true
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            //minifyEnabled true
+            //proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
         debug {
             buildConfigField("boolean", "DEBUG_MESSAGE", "true");
@@ -118,10 +118,13 @@ dependencies {
     implementation "com.google.dagger:hilt-android:2.28-alpha"
     annotationProcessor 'com.google.dagger:hilt-android-compiler:2.28-alpha'
 
+    implementation 'androidx.hilt:hilt-lifecycle-viewmodel:1.0.0-alpha02'
+    annotationProcessor 'androidx.hilt:hilt-compiler:1.0.0-alpha02'
+
     implementation 'io.reactivex.rxjava3:rxandroid:3.0.0'
     implementation 'io.reactivex.rxjava3:rxjava:3.0.4'
 
-    implementation "com.github.akarnokd:rxjava3-bridge:3.0.0"
+    //implementation "com.github.akarnokd:rxjava3-bridge:3.0.0"
 
     implementation 'androidx.multidex:multidex:2.0.1'
 }

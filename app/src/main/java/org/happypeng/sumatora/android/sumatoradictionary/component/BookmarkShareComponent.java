@@ -21,6 +21,8 @@ import android.content.Intent;
 import android.net.Uri;
 import android.widget.Toast;
 
+import androidx.annotation.MainThread;
+import androidx.annotation.WorkerThread;
 import androidx.core.content.FileProvider;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,6 +30,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.List;
 
 import javax.inject.Inject;
@@ -45,7 +48,7 @@ import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.observers.DisposableCompletableObserver;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 
-@FragmentScoped
+@ActivityScoped
 public class BookmarkShareComponent {
     private static final String AUTHORITY = "org.happypeng.sumatora.android.sumatoradictionary.fileprovider";
 
@@ -63,38 +66,33 @@ public class BookmarkShareComponent {
         this.bookmarkComponent = bookmarkComponent;
     }
 
-    public Disposable shareBookmarks() {
+    @WorkerThread
+    public File writeBookmarks() throws IOException {
         File parentDir = new File(context.getFilesDir(), "bookmarks");
         final File outputFile = new File(parentDir, "bookmarks.json");
 
         parentDir.mkdirs();
 
-        return Completable.fromAction(() -> {
-            List<DictionaryBookmark> bookmarks = persistentDatabaseComponent.getDatabase()
-                    .dictionaryBookmarkDao().getAll();
+        List<DictionaryBookmark> bookmarks = persistentDatabaseComponent.getDatabase()
+                .dictionaryBookmarkDao().getAll();
 
-            ObjectMapper mapper = new ObjectMapper();
-            mapper.writeValue(outputFile, bookmarks);
-        }).subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
-                .subscribeWith(new DisposableCompletableObserver() {
-                    @Override
-                    public void onComplete() {
-                        Uri contentUri = FileProvider.getUriForFile
-                                (context, AUTHORITY, outputFile);
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.writeValue(outputFile, bookmarks);
 
-                        Intent sharingIntent = new Intent(Intent.ACTION_SEND);
+        return outputFile;
+    }
 
-                        sharingIntent.setType("text/*");
-                        sharingIntent.putExtra(Intent.EXTRA_STREAM, contentUri);
-                        context.startActivity(Intent.createChooser(sharingIntent, "Share bookmarks"));
-                    }
+    @MainThread
+    public void shareBookmarks(final File outputFile) {
+        Uri contentUri = FileProvider.getUriForFile
+                (context, AUTHORITY, outputFile);
 
-                    @Override
-                    public void onError(@NonNull Throwable e) {
-                        Toast.makeText(context, "Bookmarks sharing failed...", Toast.LENGTH_LONG).show();
+        Intent sharingIntent = new Intent(Intent.ACTION_SEND);
 
-                        System.err.println(e.toString());
-                    }
-                });
+        sharingIntent.setType("text/*");
+        sharingIntent.putExtra(Intent.EXTRA_STREAM, contentUri);
+        sharingIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+        context.startActivity(Intent.createChooser(sharingIntent, "Share bookmarks"));
     }
 }

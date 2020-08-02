@@ -16,176 +16,175 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.model;
 
-import android.app.Application;
+import android.net.Uri;
 
 import androidx.annotation.NonNull;
-import androidx.core.util.Pair;
+import androidx.hilt.Assisted;
+import androidx.hilt.lifecycle.ViewModelInject;
 import androidx.lifecycle.LiveData;
-import androidx.lifecycle.Observer;
-import androidx.lifecycle.ViewModel;
-import androidx.lifecycle.ViewModelProvider;
+import androidx.lifecycle.SavedStateHandle;
 import androidx.paging.PagedList;
 
-import org.happypeng.sumatora.android.sumatoradictionary.adapter.DictionaryPagedListAdapter;
 import org.happypeng.sumatora.android.sumatoradictionary.component.BookmarkImportComponent;
 import org.happypeng.sumatora.android.sumatoradictionary.component.LanguageSettingsComponent;
 import org.happypeng.sumatora.android.sumatoradictionary.component.PersistentDatabaseComponent;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
-import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
+import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.BookmarkImportQueryTool;
-import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionarySearchElementViewHolder;
+import org.happypeng.sumatora.android.sumatoradictionary.model.intent.BookmarkImportCancelIntent;
+import org.happypeng.sumatora.android.sumatoradictionary.model.intent.BookmarkImportCommitIntent;
+import org.happypeng.sumatora.android.sumatoradictionary.model.intent.BookmarkImportFileOpenIntent;
+import org.happypeng.sumatora.android.sumatoradictionary.model.intent.LanguageSettingIntent;
+import org.happypeng.sumatora.android.sumatoradictionary.model.intent.MVIIntent;
+import org.happypeng.sumatora.android.sumatoradictionary.model.status.BookmarkImportStatus;
+
+import java.util.LinkedList;
+import java.util.List;
 
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.core.Observable;
-import io.reactivex.rxjava3.core.Single;
-import io.reactivex.rxjava3.disposables.CompositeDisposable;
-import io.reactivex.rxjava3.observers.DisposableSingleObserver;
-import io.reactivex.rxjava3.schedulers.Schedulers;
-import io.reactivex.rxjava3.subjects.BehaviorSubject;
-import io.reactivex.rxjava3.subjects.PublishSubject;
-import io.reactivex.rxjava3.subjects.Subject;
 
-public class BookmarkImportModel extends ViewModel {
-    public static class Factory extends ViewModelProvider.AndroidViewModelFactory{
-        private final PersistentDatabaseComponent persistentDatabaseComponent;
-        private final BookmarkImportComponent bookmarkComponent;
-        private final LanguageSettingsComponent languageSettingsComponent;
-        private final int key;
+public class BookmarkImportModel extends BaseFragmentModel<MVIIntent, BookmarkImportStatus, BookmarkImportStatus> {
+    final private BookmarkImportComponent bookmarkImportComponent;
 
-        public Factory(@NonNull final Application application,
-                       @NonNull final PersistentDatabaseComponent persistentDatabaseComponent,
-                       @NonNull final BookmarkImportComponent bookmarkComponent,
-                       @NonNull final LanguageSettingsComponent languageSettingsComponent,
-                       final int key) {
-            super(application);
+    @Override
+    protected boolean disableBookmarkButton() { return true; }
 
-            this.persistentDatabaseComponent = persistentDatabaseComponent;
-            this.bookmarkComponent = bookmarkComponent;
-            this.languageSettingsComponent = languageSettingsComponent;
-            this.key = key;
+    @Override
+    protected boolean disableMemoEdit() { return true; }
+
+    @ViewModelInject
+    public BookmarkImportModel(final PersistentDatabaseComponent persistentDatabaseComponent,
+                               final LanguageSettingsComponent languageSettingsComponent,
+                               final BookmarkImportComponent bookmarkImportComponent,
+                               @Assisted SavedStateHandle savedStateHandle) {
+        super(persistentDatabaseComponent, languageSettingsComponent);
+
+        this.bookmarkImportComponent = bookmarkImportComponent;
+
+        connectIntents();
+    }
+
+    public void bookmarkImportFileOpen(final Uri uri) {
+        intentSubject.onNext(new BookmarkImportFileOpenIntent(uri));
+    }
+
+    public void bookmarkImportCommit() {
+        intentSubject.onNext(new BookmarkImportCommitIntent());
+    }
+
+    public void bookmarkImportCancel() {
+        intentSubject.onNext(new BookmarkImportCancelIntent());
+    }
+
+    @NonNull
+    @Override
+    protected List<Observable<MVIIntent>> getIntentObservablesToMerge() {
+        final List<Observable<MVIIntent>> observables = new LinkedList<>();
+
+        observables.add(intentSubject);
+        observables.add(languageSettingsComponent.getPersistentLanguageSettings()
+                .observeOn(AndroidSchedulers.mainThread())
+                .map(p -> new LanguageSettingIntent(p.first, p.second)));
+
+        return observables;
+    }
+
+    @NonNull
+    @Override
+    public BookmarkImportStatus getInitialStatus() {
+        return new BookmarkImportStatus(3, null, false, null, false);
+    }
+
+    @NonNull
+    @Override
+    public BookmarkImportStatus transformStatus(BookmarkImportStatus previousStatus, MVIIntent intent) {
+        if (intent instanceof BookmarkImportFileOpenIntent) {
+            bookmarkImportComponent.processURI(((BookmarkImportFileOpenIntent) intent).getUri(),
+                    previousStatus.getKey());
+
+            final BookmarkImportStatus bookmarkImportStatus =  new BookmarkImportStatus(previousStatus.getKey(),
+                    previousStatus.getQueryTool(),
+                    false,
+                    previousStatus.getPersistentLanguageSettings(),
+                    false);
+
+            updateView(bookmarkImportStatus);
+
+            return bookmarkImportStatus;
         }
 
-        @NonNull
-        @Override
-        public <T extends ViewModel> T create(@NonNull Class<T> modelClass) {
-            T ret = modelClass.cast(new BookmarkImportModel(persistentDatabaseComponent,
-                    bookmarkComponent, languageSettingsComponent, key));
-
-            if (ret != null) {
-                return ret;
+        if (intent instanceof BookmarkImportCommitIntent) {
+            if (!previousStatus.getExecuted()) {
+                return previousStatus;
             }
 
-            throw new IllegalArgumentException("ViewModel cast failed");
+            bookmarkImportComponent.commitBookmarks(previousStatus.getKey());
+
+            final BookmarkImportStatus bookmarkImportStatus =  new BookmarkImportStatus(previousStatus.getKey(),
+                    previousStatus.getQueryTool(),
+                    previousStatus.getExecuted(),
+                    previousStatus.getPersistentLanguageSettings(),
+                    true);
+
+            updateView(bookmarkImportStatus);
+
+            return bookmarkImportStatus;
         }
-    }
 
-    final protected CompositeDisposable compositeDisposable;
+        if (intent instanceof BookmarkImportCancelIntent) {
+            bookmarkImportComponent.cancelImport(previousStatus.getKey());
 
-    final private Subject<DictionaryPagedListAdapter> pagedListAdapterSubject;
-    final private Subject<DictionarySearchElement> itemAtEndSubject;
+            final BookmarkImportStatus bookmarkImportStatus =  new BookmarkImportStatus(previousStatus.getKey(),
+                    previousStatus.getQueryTool(),
+                    previousStatus.getExecuted(),
+                    previousStatus.getPersistentLanguageSettings(),
+                    true);
 
-    private Observer<PagedList<DictionarySearchElement>> pagedListObserver;
-    private LiveData<PagedList<DictionarySearchElement>> pagedList;
+            updateView(bookmarkImportStatus);
 
-    final private Observable<Event> queryEventObservable;
-
-    public Observable<Event> getQueryEvent() {
-        return queryEventObservable;
-    }
-
-    public Observable<DictionaryPagedListAdapter> getPagedListAdapter() {
-        return pagedListAdapterSubject;
-    }
-
-    public enum EventType {
-        LANGUAGE,
-        BOOKMARK
-    }
-
-    public static class Event {
-        public final EventType type;
-        public final BookmarkImportQueryTool queryTool;
-        public final boolean executed;
-
-        public Event(final EventType type, final BookmarkImportQueryTool queryTool, final boolean executed) {
-            this.type = type;
-            this.queryTool = queryTool;
-            this.executed = executed;
+            return bookmarkImportStatus;
         }
+
+        final PersistentLanguageSettings persistentLanguageSettings = intent instanceof LanguageSettingIntent ? ((LanguageSettingIntent) intent).getLanguageSettings() : previousStatus.getPersistentLanguageSettings();
+        final BookmarkImportQueryTool queryTool = intent instanceof LanguageSettingIntent ? (((LanguageSettingIntent) intent).getAttached() ? new BookmarkImportQueryTool(persistentDatabaseComponent,
+                previousStatus.getKey(), persistentLanguageSettings) : null) : previousStatus.getQueryTool();
+        final boolean executed = !(intent instanceof LanguageSettingIntent) && previousStatus.getExecuted();
+
+        if (intent instanceof LanguageSettingIntent && previousStatus.getQueryTool() != null) {
+            previousStatus.getQueryTool().close();
+        }
+
+        if (!executed && queryTool != null) {
+            persistentDatabaseComponent.getDatabase().runInTransaction(() -> {
+                if (intent instanceof LanguageSettingIntent) {
+                    queryTool.delete();
+                }
+
+                queryTool.execute();
+            });
+
+            final BookmarkImportStatus bookmarkImportStatus = new BookmarkImportStatus(previousStatus.getKey(),
+                    queryTool, true,
+                    persistentLanguageSettings,
+                    false);
+
+            updateView(bookmarkImportStatus);
+
+            return bookmarkImportStatus;
+        }
+
+        final BookmarkImportStatus bookmarkImportStatus = new BookmarkImportStatus(previousStatus.getKey(),
+                queryTool, previousStatus.getExecuted(),
+                persistentLanguageSettings, false);
+
+        updateView(bookmarkImportStatus);
+
+        return bookmarkImportStatus;
     }
 
-    public BookmarkImportModel(@NonNull final PersistentDatabaseComponent persistentDatabaseComponent,
-                               @NonNull final BookmarkImportComponent bookmarkImportComponent,
-                               @NonNull final LanguageSettingsComponent languageSettingsComponent,
-                               final int key) {
-        super();
-
-        compositeDisposable = new CompositeDisposable();
-
-        pagedListAdapterSubject = BehaviorSubject.create();
-        itemAtEndSubject = PublishSubject.create();
-
-        compositeDisposable.add(Single.fromCallable(persistentDatabaseComponent::getEntities).map(entities -> new DictionaryPagedListAdapter(new DictionarySearchElementViewHolder.Status(entities),
-                false, true)).subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
-                .subscribeWith(new DisposableSingleObserver<DictionaryPagedListAdapter>() {
-                    @Override
-                    public void onSuccess(@io.reactivex.rxjava3.annotations.NonNull DictionaryPagedListAdapter dictionaryPagedListAdapter) {
-                        pagedList = persistentDatabaseComponent.getSearchElements(key,
-                                new PagedList.BoundaryCallback<DictionarySearchElement>() {
-                                    @Override
-                                    public void onItemAtEndLoaded(@NonNull DictionarySearchElement itemAtEnd) {
-                                        super.onItemAtEndLoaded(itemAtEnd);
-
-                                        itemAtEndSubject.onNext(itemAtEnd);
-                                    }
-                                });
-
-                        pagedListObserver = dictionaryPagedListAdapter::submitList;
-                        pagedList.observeForever(pagedListObserver);
-
-                        pagedListAdapterSubject.onNext(dictionaryPagedListAdapter);
-                    }
-
-                    @Override
-                    public void onError(@io.reactivex.rxjava3.annotations.NonNull Throwable e) {
-                        e.printStackTrace();
-                    }
-                }));
-
-        final Observable<Event> bookmarks =
-                bookmarkImportComponent.getImportBookmarksObservable()
-                        .filter(i -> i.second == key)
-                        .map(x -> new Event(EventType.BOOKMARK, null, false));
-
-        final Observable<Event> queryTool =
-                languageSettingsComponent.getPersistentLanguageSettings()
-                        .observeOn(Schedulers.io())
-                        .map(p -> new Event(EventType.LANGUAGE,
-                                p.second ? new BookmarkImportQueryTool(persistentDatabaseComponent,
-                                        key, p.first) : null, false));
-
-        queryEventObservable = Observable.merge(bookmarks, queryTool)
-                .observeOn(Schedulers.io())
-                .scan((status, event) -> {
-                    if (event.type == EventType.LANGUAGE && event.queryTool == null) {
-                        return new Event(event.type, null, status.executed);
-                    }
-
-                    final PersistentDatabase persistentDatabase = persistentDatabaseComponent.getDatabase();
-                    final BookmarkImportQueryTool bookmarkImportQueryTool =
-                            event.type == EventType.LANGUAGE ? event.queryTool : status.queryTool;
-
-                    if (event.type == EventType.LANGUAGE) {
-                        persistentDatabase.runInTransaction(() -> {
-                            bookmarkImportQueryTool.delete();
-                            bookmarkImportQueryTool.execute();
-                        });
-                    } else {
-                        persistentDatabase.runInTransaction(bookmarkImportQueryTool::delete);
-                        persistentDatabase.runInTransaction(bookmarkImportQueryTool::execute);
-                    }
-
-                    return new Event(event.type, bookmarkImportQueryTool, true);
-                }).share().replay(1).autoConnect();
+    @Override
+    protected LiveData<PagedList<DictionarySearchElement>> getPagedList(final PagedList.BoundaryCallback<DictionarySearchElement> boundaryCallback) {
+        return persistentDatabaseComponent.getSearchElements(getInitialStatus().getKey(), boundaryCallback);
     }
 }

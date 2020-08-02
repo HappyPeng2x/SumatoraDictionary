@@ -372,7 +372,7 @@ public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
             if (!hasFocus) {
                 final String text = m_memoEditText.getEditableText().toString();
 
-                if (!text.equals(entry.memo)) {
+                if (!text.equals(entry.memo) && m_bookmarkEventListener != null) {
                     m_bookmarkEventListener.onBookmarkEdit(entry, m_bookmarkStatus,
                             text);
                 }
@@ -382,8 +382,10 @@ public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
         m_deleteMemoButton.setOnClickListener(v -> {
             closeMemo();
 
-            m_bookmarkEventListener.onBookmarkEdit(entry, m_bookmarkStatus,
-                    null);
+            if (m_bookmarkEventListener != null) {
+                m_bookmarkEventListener.onBookmarkEdit(entry, m_bookmarkStatus,
+                        null);
+            }
         });
 
         m_textViewView.requestFocus();

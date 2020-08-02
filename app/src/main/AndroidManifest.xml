@@ -12,10 +12,10 @@
         android:icon="@drawable/ic_sumatora_icon"
         android:label="@string/app_name"
         android:supportsRtl="true">
-        <service
+<!--        <service
             android:name=".service.DictionaryDownloadService"
             android:enabled="true"
-            android:exported="true"></service>
+            android:exported="true"></service>-->
 
         <activity android:name=".activity.DictionaryLaunchActivity">
             <intent-filter>
@@ -51,9 +51,9 @@
                     android:scheme="content" />
             </intent-filter>
         </activity>
-        <activity
+<!--        <activity
             android:name=".activity.DictionariesManagementActivity"
-            android:theme="@style/AppTheme" />
+            android:theme="@style/AppTheme" />-->
         <activity
             android:name=".activity.MainActivity"
             android:label="@string/app_name"
