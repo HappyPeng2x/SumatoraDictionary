@@ -26,90 +26,117 @@ import android.text.style.ForegroundColorSpan;
 import android.text.style.RelativeSizeSpan;
 import android.text.style.StyleSpan;
 import android.view.View;
-import android.widget.EditText;
-import android.widget.FrameLayout;
-import android.widget.ImageButton;
-import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import org.happypeng.sumatora.android.sumatoradictionary.R;
+import org.happypeng.sumatora.android.sumatoradictionary.databinding.WordCardBinding;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
+import org.happypeng.sumatora.android.sumatoradictionary.operator.ScanConcatMap;
 import org.happypeng.sumatora.android.superrubyspan.tools.JapaneseText;
 import org.json.JSONArray;
 import org.json.JSONException;
 
 import java.util.HashMap;
+import java.util.concurrent.TimeUnit;
 
-public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
-    public static class Status {
-        public HashMap<String, String> entities;
+import io.reactivex.rxjava3.core.Observable;
+import io.reactivex.rxjava3.subjects.PublishSubject;
+import io.reactivex.rxjava3.subjects.Subject;
 
-        public Status(final HashMap<String, String> entities) {
-            this.entities = entities;
+public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder  {
+    private final HashMap<String, String> entities;
+
+    private TextWatcher textWatcher;
+
+    private static class CommitCommand {
+        final private long seq;
+        final private String memo;
+        final private boolean bookmark;
+
+        public CommitCommand(final long seq,
+                             final String memo,
+                             final boolean bookmark) {
+            this.seq = seq;
+            this.memo = memo;
+            this.bookmark = bookmark;
+        }
+
+        public long getSeq() { return seq; }
+        public String getMemo() { return memo; }
+        public boolean getBookmark() { return bookmark; }
+    }
+
+    private static class ImmediateCommitCommand  extends CommitCommand {
+        public ImmediateCommitCommand(long seq, String memo, boolean bookmark) {
+            super(seq, memo, bookmark);
         }
     }
 
-    private final Status m_status;
+    final Subject<CommitCommand> commitSubject = PublishSubject.create();
 
-    public interface EventListener {
-        void onBookmarkEdit(DictionarySearchElement aEntry, long bookmark, String memo);
+    public interface CommitConsumer {
+        void commit(long seq, long bookmark, String memo);
     }
 
-    private final TextView m_textViewView;
-    private final ImageButton m_bookmarkStar;
-    private final ImageButton m_editMemoButton;
-    private final ImageButton m_deleteMemoButton;
-    private final FrameLayout m_cardView;
-    private final EditText m_memoEditText;
-
-    private boolean m_disableMemoEdit;
-
-    private TextWatcher m_textWatcher;
-
-    private EventListener m_bookmarkEventListener;
-
-    private long m_bookmarkStatus;
+    private final WordCardBinding wordCardBinding;
 
     private void openMemo() {
-        m_memoEditText.setVisibility(View.VISIBLE);
+        wordCardBinding.wordCardMemo.setVisibility(View.VISIBLE);
 
-        if (!m_disableMemoEdit) {
-            m_editMemoButton.setVisibility(View.GONE);
-            m_deleteMemoButton.setVisibility(View.VISIBLE);
-        }
+        wordCardBinding.wordCardMemoIcon.setVisibility(View.GONE);
+        wordCardBinding.wordCardDeleteMemoIcon.setVisibility(View.VISIBLE);
     }
 
     private void closeMemo() {
-        m_memoEditText.setVisibility(View.GONE);
+        wordCardBinding.wordCardMemo.setVisibility(View.GONE);
 
-        if (!m_disableMemoEdit) {
-            m_editMemoButton.setVisibility(View.VISIBLE);
-            m_deleteMemoButton.setVisibility(View.GONE);
-        }
+        wordCardBinding.wordCardMemoIcon.setVisibility(View.VISIBLE);
+        wordCardBinding.wordCardDeleteMemoIcon.setVisibility(View.GONE);
 
-        m_memoEditText.setText("");
+        wordCardBinding.wordCardMemo.setText("");
     }
 
-    public DictionarySearchElementViewHolder(View itemView, final Status aStatus) {
-        super(itemView);
+    public DictionarySearchElementViewHolder(final @NonNull WordCardBinding wordCardBinding,
+                                             final @NonNull HashMap<String, String> entities,
+                                             final boolean disableBookmarkButton,
+                                             final boolean disableMemoEdit,
+                                             final @NonNull CommitConsumer commitConsumer) {
+        super(wordCardBinding.wordCardView);
 
-        m_textViewView = itemView.findViewById(R.id.word_card_text);
-        m_bookmarkStar = itemView.findViewById(R.id.word_card_bookmark_icon);
-        m_cardView = itemView.findViewById(R.id.word_card_view);
-        m_editMemoButton = itemView.findViewById(R.id.word_card_memo_icon);
-        m_deleteMemoButton = itemView.findViewById(R.id.word_card_delete_memo_icon);
-        m_memoEditText = itemView.findViewById(R.id.word_card_memo);
+        this.wordCardBinding = wordCardBinding;
+        this.entities = entities;
 
-        m_editMemoButton.setOnClickListener(new View.OnClickListener() {
+        if (disableBookmarkButton) {
+            wordCardBinding.wordCardBookmarkIcon.setVisibility(View.GONE);
+        }
+
+        if (disableMemoEdit) {
+            wordCardBinding.wordCardMemoIcon.setVisibility(View.GONE);
+        }
+
+        commitSubject.compose(new ScanConcatMap<>(new ScanConcatMap.ScanOperator<CommitCommand, CommitCommand>() {
             @Override
-            public void onClick(View v) {
-                openMemo();
-            }
-        });
+            public Observable<CommitCommand> apply(CommitCommand lastStatus, CommitCommand newUpstream) {
+                return Observable.create(emitter -> {
+                    if (lastStatus != null && newUpstream.seq != lastStatus.seq) {
+                        emitter.onNext(new ImmediateCommitCommand(lastStatus.seq,
+                                lastStatus.memo, lastStatus.bookmark));
+                    }
 
-        m_status = aStatus;
+                    emitter.onNext(newUpstream);
+                    emitter.onComplete();
+                });
+            }
+        })).debounce(command -> {
+            if (command instanceof ImmediateCommitCommand) {
+                return Observable.just(true);
+            } else {
+                return Observable.just(true).delay(500, TimeUnit.MILLISECONDS);
+            }
+        }).subscribe(command -> commitConsumer.commit(command.seq,
+                command.bookmark ? 1 : 0, command.memo));
     }
 
     @NonNull
@@ -130,9 +157,9 @@ public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
                 }
 
                 if (aResolveEntities) {
-                    if (m_status.entities != null &&
-                        m_status.entities.containsKey(s)) {
-                        sb.append(m_status.entities.get(s));
+                    if (entities != null &&
+                            entities.containsKey(s)) {
+                        sb.append(entities.get(s));
                     } else {
                         System.err.println("Could not resolve entity: " + s);
                     }
@@ -147,22 +174,7 @@ public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
         return sb.toString();
     }
 
-    public void disableBookmarkButton() {
-        m_bookmarkStar.setVisibility(View.GONE);
-    }
-
-    public void disableMemoEdit() {
-        m_editMemoButton.setVisibility(View.GONE);
-        m_deleteMemoButton.setVisibility(View.GONE);
-
-        m_disableMemoEdit = true;
-    }
-
-    public void setBookmarkClickListener(EventListener aListener) {
-        m_bookmarkEventListener = aListener;
-    }
-
-     private SpannableStringBuilder renderEntry(final DictionarySearchElement aEntry) {
+    private SpannableStringBuilder renderEntry(final DictionarySearchElement aEntry) {
         SpannableStringBuilder sb = new SpannableStringBuilder();
 
         int writingsCount = 0;
@@ -184,18 +196,18 @@ public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
             }
         }
 
-         for (String w : aEntry.getWritings().split(" ")) {
-             if (w.length() > 0) {
-                 if (writingsCount > 0) {
-                     sb.append("・");
-                     sb.setSpan(new ForegroundColorSpan(Color.GRAY), sb.length() - 1, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-                 }
+        for (String w : aEntry.getWritings().split(" ")) {
+            if (w.length() > 0) {
+                if (writingsCount > 0) {
+                    sb.append("・");
+                    sb.setSpan(new ForegroundColorSpan(Color.GRAY), sb.length() - 1, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                }
 
-                 sb.append(w);
+                sb.append(w);
 
-                 writingsCount = writingsCount + 1;
-             }
-         }
+                writingsCount = writingsCount + 1;
+            }
+        }
 
         if (writingsCount > 0) {
             sb.append(" ");
@@ -208,35 +220,35 @@ public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
 
         int readingsCount = 0;
 
-         for (String r : aEntry.getReadingsPrio().split(" ")) {
-             if (r.length() > 0) {
-                 if (readingsCount > 0) {
-                     sb.append("・");
-                     sb.setSpan(new ForegroundColorSpan(Color.GRAY), sb.length() - 1, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-                 }
+        for (String r : aEntry.getReadingsPrio().split(" ")) {
+            if (r.length() > 0) {
+                if (readingsCount > 0) {
+                    sb.append("・");
+                    sb.setSpan(new ForegroundColorSpan(Color.GRAY), sb.length() - 1, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                }
 
-                 sb.append(r);
+                sb.append(r);
 
-                 sb.setSpan(new BackgroundColorSpan(Color.parseColor("#ccffcc")),
-                         sb.length() - r.length(), sb.length(),
-                         Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                sb.setSpan(new BackgroundColorSpan(Color.parseColor("#ccffcc")),
+                        sb.length() - r.length(), sb.length(),
+                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
 
-                 readingsCount = readingsCount + 1;
-             }
-         }
+                readingsCount = readingsCount + 1;
+            }
+        }
 
-         for (String r : aEntry.getReadings().split(" ")) {
-             if (r.length() > 0) {
-                 if (readingsCount > 0) {
-                     sb.append("・");
-                     sb.setSpan(new ForegroundColorSpan(Color.GRAY), sb.length() - 1, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-                 }
+        for (String r : aEntry.getReadings().split(" ")) {
+            if (r.length() > 0) {
+                if (readingsCount > 0) {
+                    sb.append("・");
+                    sb.setSpan(new ForegroundColorSpan(Color.GRAY), sb.length() - 1, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                }
 
-                 sb.append(r);
+                sb.append(r);
 
-                 readingsCount = readingsCount + 1;
-             }
-         }
+                readingsCount = readingsCount + 1;
+            }
+        }
 
         sb.append("】");
         sb.setSpan(new ForegroundColorSpan(Color.GRAY), sb.length()-1, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
@@ -244,150 +256,151 @@ public class DictionarySearchElementViewHolder extends RecyclerView.ViewHolder {
 
         int glossCount = 0;
 
-         try {
-             JSONArray gloss = new JSONArray(aEntry.getGloss());
-             JSONArray pos = null;
+        try {
+            JSONArray gloss = new JSONArray(aEntry.getGloss());
+            JSONArray pos = null;
 
-             String posStr = aEntry.getPos();
+            String posStr = aEntry.getPos();
 
-             if (posStr != null) {
-                 pos = new JSONArray(posStr);
-             }
+            if (posStr != null) {
+                pos = new JSONArray(posStr);
+            }
 
-             for (int i = 0; i < gloss.length(); i++) {
-                 if (glossCount > 0) {
-                     sb.append("　");
-                 }
+            for (int i = 0; i < gloss.length(); i++) {
+                if (glossCount > 0) {
+                    sb.append("　");
+                }
 
-                 String prefix = Integer.toString(glossCount + 1) + ". ";
+                String prefix = Integer.toString(glossCount + 1) + ". ";
 
-                 sb.append(prefix);
+                sb.append(prefix);
 
-                 sb.setSpan(new StyleSpan(android.graphics.Typeface.BOLD),
-                         sb.length() - prefix.length(), sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                sb.setSpan(new StyleSpan(android.graphics.Typeface.BOLD),
+                        sb.length() - prefix.length(), sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
 
-                 if (pos != null && glossCount < pos.length()) {
-                     String p = renderJSONArray(pos.getJSONArray(glossCount), ", ", true);
+                if (pos != null && glossCount < pos.length()) {
+                    String p = renderJSONArray(pos.getJSONArray(glossCount), ", ", true);
 
-                     if (p.length() > 0) {
-                         sb.append(p);
+                    if (p.length() > 0) {
+                        sb.append(p);
 
-                         sb.setSpan(new ForegroundColorSpan(Color.parseColor("#3333aa")),
-                                 sb.length() - p.length(), sb.length(),
-                                 Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                        sb.setSpan(new ForegroundColorSpan(Color.parseColor("#3333aa")),
+                                sb.length() - p.length(), sb.length(),
+                                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
 
-                         sb.append(" ");
-                     }
-                 }
+                        sb.append(" ");
+                    }
+                }
 
-                 sb.append(gloss.getString(i));
+                sb.append(gloss.getString(i));
 
-                 glossCount = glossCount + 1;
-             }
-         } catch (JSONException e) {
-             e.printStackTrace();
-         }
+                glossCount = glossCount + 1;
+            }
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
 
-         try {
-             final String exampleSentences = aEntry.getExampleSentences();
-             final String exampleTranslations = aEntry.getExampleTranslations();
+        try {
+            final String exampleSentences = aEntry.getExampleSentences();
+            final String exampleTranslations = aEntry.getExampleTranslations();
 
-             if (exampleSentences != null &&
-                     exampleTranslations != null) {
-                 final JSONArray exampleSentencesArray = new JSONArray(aEntry.getExampleSentences());
-                 final JSONArray exampleTranslationsArray = new JSONArray(aEntry.getExampleTranslations());
+            if (exampleSentences != null &&
+                    exampleTranslations != null) {
+                final JSONArray exampleSentencesArray = new JSONArray(aEntry.getExampleSentences());
+                final JSONArray exampleTranslationsArray = new JSONArray(aEntry.getExampleTranslations());
 
-                 for (int i = 0; i < exampleSentencesArray.length(); i++) {
-                     if (i == 0) {
-                         sb.append("\n\n");
-                         sb.setSpan(new RelativeSizeSpan(0.3f), sb.length() - 2, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-                     }
+                for (int i = 0; i < exampleSentencesArray.length(); i++) {
+                    if (i == 0) {
+                        sb.append("\n\n");
+                        sb.setSpan(new RelativeSizeSpan(0.3f), sb.length() - 2, sb.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                    }
 
-                     if (i < exampleTranslationsArray.length()) {
-                         JapaneseText.spannifyWithFurigana(sb, "→ " + exampleSentencesArray.getString(i), 0.9f);
-                     }
+                    if (i < exampleTranslationsArray.length()) {
+                        JapaneseText.spannifyWithFurigana(sb, "→ " + exampleSentencesArray.getString(i), 0.9f);
+                    }
 
-                     sb.append(" ");
-                     sb.append(exampleTranslationsArray.getString(i));
+                    sb.append(" ");
+                    sb.append(exampleTranslationsArray.getString(i));
 
-                     if (i + 1 < exampleSentencesArray.length()) {
-                         sb.append("\n");
-                     }
-                 }
-             }
-         } catch (JSONException e) {
-             e.printStackTrace();
-         }
+                    if (i + 1 < exampleSentencesArray.length()) {
+                        sb.append("\n");
+                    }
+                }
+            }
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
 
         return sb;
     }
 
     public void bindTo(final DictionarySearchElement entry) {
-        if (m_textWatcher != null) {
-            m_memoEditText.removeTextChangedListener(m_textWatcher);
-            m_textWatcher = null;
+        if (textWatcher != null) {
+            wordCardBinding.wordCardMemo.removeTextChangedListener(textWatcher);
+            textWatcher = null;
         }
+
+        textWatcher = new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                commitSubject.onNext(new CommitCommand(entry.seq,
+                        s.toString(),
+                        entry.getBookmark() > 0));
+            }
+        };
 
         if (!entry.getLang().equals(entry.getLangSetting())) {
-            m_cardView.setBackgroundColor(Color.LTGRAY);
+            wordCardBinding.wordCardView.setBackgroundColor(Color.LTGRAY);
         } else {
-            m_cardView.setBackgroundColor(Color.WHITE);
+            wordCardBinding.wordCardView.setBackgroundColor(Color.WHITE);
         }
 
-        m_textViewView.setText(renderEntry(entry));
-
-        if (m_bookmarkEventListener != null) {
-            m_bookmarkStar.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    final String text = m_memoEditText.getEditableText().toString();
-
-                    m_bookmarkStatus = 1 - m_bookmarkStatus;
-
-                    m_bookmarkEventListener.onBookmarkEdit(entry, m_bookmarkStatus,
-                            text);
-                }
-            });
-        }
+        wordCardBinding.wordCardText.setText(renderEntry(entry));
 
         if (entry.getBookmark() != 0) {
-            m_bookmarkStar.setImageResource(R.drawable.ic_outline_bookmark_24px);
+            wordCardBinding.wordCardBookmarkIcon.setImageResource(R.drawable.ic_outline_bookmark_24px);
         } else {
-            m_bookmarkStar.setImageResource(R.drawable.ic_outline_bookmark_border_24px);
+            wordCardBinding.wordCardBookmarkIcon.setImageResource(R.drawable.ic_outline_bookmark_border_24px);
         }
 
-        m_bookmarkStatus = entry.getBookmark();
+        wordCardBinding.wordCardBookmarkIcon.setOnClickListener((View.OnClickListener) v -> {
+            commitSubject.onNext(new ImmediateCommitCommand(entry.seq,
+                    wordCardBinding.wordCardMemo.getEditableText().toString(),
+                    !(entry.getBookmark() > 0)));
+        });
 
         final String memo = entry.getMemo();
 
         if (memo != null && !"".equals(memo)) {
             openMemo();
 
-            m_memoEditText.setText(memo);
+            wordCardBinding.wordCardMemo.setText(memo);
         } else {
             closeMemo();
         }
 
-        m_memoEditText.setOnFocusChangeListener((v, hasFocus) -> {
-            if (!hasFocus) {
-                final String text = m_memoEditText.getEditableText().toString();
+        wordCardBinding.wordCardDeleteMemoIcon.setOnClickListener(v -> {
+            wordCardBinding.wordCardMemo.setText("");
 
-                if (!text.equals(entry.memo) && m_bookmarkEventListener != null) {
-                    m_bookmarkEventListener.onBookmarkEdit(entry, m_bookmarkStatus,
-                            text);
-                }
-            }
-        });
-
-        m_deleteMemoButton.setOnClickListener(v -> {
             closeMemo();
-
-            if (m_bookmarkEventListener != null) {
-                m_bookmarkEventListener.onBookmarkEdit(entry, m_bookmarkStatus,
-                        null);
-            }
         });
 
-        m_textViewView.requestFocus();
+        wordCardBinding.wordCardMemoIcon.setOnClickListener(v -> {
+            openMemo();
+        });
+
+        wordCardBinding.wordCardMemo.addTextChangedListener(textWatcher);
+
+        wordCardBinding.wordCardText.requestFocus();
     }
 }

@@ -16,13 +16,10 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.model.status;
 
-import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.DictionarySearchQueryTool;
 
-import java.util.List;
-
-public class QueryStatus {
+public class QueryStatus extends MVIStatus {
     final private String term;
     final private int lastQuery;
     final private DictionarySearchQueryTool queryTool;
@@ -34,6 +31,9 @@ public class QueryStatus {
     final private boolean searchIconifiedByDefault;
     final private boolean shareButtonVisible;
     final private PersistentLanguageSettings persistentLanguageSettings;
+    final private boolean searching;
+    final private boolean preparing;
+    final private boolean viewDestroyed;
 
     public QueryStatus(final int key,
                        final String term,
@@ -45,7 +45,13 @@ public class QueryStatus {
                        final String title,
                        final boolean searchIconifiedByDefault,
                        final boolean shareButtonVisible,
-                       final PersistentLanguageSettings persistentLanguageSettings) {
+                       final PersistentLanguageSettings persistentLanguageSettings,
+                       final boolean closed,
+                       final boolean searching,
+                       final boolean preparing,
+                       final boolean viewDestroyed) {
+        super(closed);
+
         this.term = term;
         this.lastQuery = lastQuery;
         this.queryTool = queryTool;
@@ -57,6 +63,9 @@ public class QueryStatus {
         this.searchIconifiedByDefault = searchIconifiedByDefault;
         this.shareButtonVisible = shareButtonVisible;
         this.persistentLanguageSettings = persistentLanguageSettings;
+        this.searching = searching;
+        this.preparing = preparing;
+        this.viewDestroyed = viewDestroyed;
     }
 
     public String getTerm() {
@@ -80,4 +89,7 @@ public class QueryStatus {
     public boolean getSearchIconifiedByDefault() { return searchIconifiedByDefault; }
     public boolean getShareButtonVisible() { return shareButtonVisible; }
     public PersistentLanguageSettings getPersistentLanguageSettings() { return persistentLanguageSettings; }
+    public boolean getSearching() { return searching; }
+    public boolean getPreparing() { return preparing; }
+    public boolean getViewDestroyed() { return viewDestroyed; }
 }

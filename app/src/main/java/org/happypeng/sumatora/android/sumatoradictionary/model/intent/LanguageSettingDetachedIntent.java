@@ -1,5 +1,5 @@
 /* Sumatora Dictionary
-        Copyright (C) 2020 Nicolas Centa
+        Copyright (C) 2019 Nicolas Centa
 
         This program is free software: you can redistribute it and/or modify
         it under the terms of the GNU General Public License as published by
@@ -17,16 +17,9 @@
 package org.happypeng.sumatora.android.sumatoradictionary.model.intent;
 
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings;
-import org.happypeng.sumatora.android.sumatoradictionary.db.tools.DictionarySearchQueryTool;
 
-public abstract class LanguageSettingIntent extends MVIIntent {
-    final private PersistentLanguageSettings languageSettings;
-
-    public LanguageSettingIntent(final PersistentLanguageSettings languageSettings) {
-        this.languageSettings = languageSettings;
-    }
-
-    public PersistentLanguageSettings getLanguageSettings() {
-        return languageSettings;
+public class LanguageSettingDetachedIntent extends LanguageSettingIntent {
+    public LanguageSettingDetachedIntent(PersistentLanguageSettings languageSettings) {
+        super(languageSettings);
     }
 }

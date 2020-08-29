@@ -36,7 +36,6 @@ import org.happypeng.sumatora.android.sumatoradictionary.databinding.FragmentDic
 import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary;
 import org.happypeng.sumatora.android.sumatoradictionary.model.BookmarkImportModel;
 import org.happypeng.sumatora.android.sumatoradictionary.model.status.BookmarkImportStatus;
-import org.happypeng.sumatora.android.sumatoradictionary.model.status.QueryViewStatus;
 import org.happypeng.sumatora.android.sumatoradictionary.model.viewbinding.QueryMenu;
 import org.happypeng.sumatora.android.sumatoradictionary.model.viewbinding.FragmentDictionaryQueryBindingUtil;
 
@@ -91,7 +90,7 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
 
         // Receive status
         autoDisposable.add(bookmarkImportModel.getStatusObservable().subscribe(status -> {
-            if (status.getClose()) {
+            if (status.getClosed()) {
                 finish();
             }
 

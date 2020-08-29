@@ -25,6 +25,7 @@ import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBar;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.DividerItemDecoration;
@@ -32,10 +33,12 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 
 import org.happypeng.sumatora.android.sumatoradictionary.R;
 import org.happypeng.sumatora.android.sumatoradictionary.databinding.FragmentDictionaryQueryBinding;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
 import org.happypeng.sumatora.android.sumatoradictionary.model.BaseQueryFragmentModel;
-import org.happypeng.sumatora.android.sumatoradictionary.model.status.QueryViewStatus;
+import org.happypeng.sumatora.android.sumatoradictionary.model.status.QueryStatus;
 import org.happypeng.sumatora.android.sumatoradictionary.model.viewbinding.FragmentDictionaryQueryBindingUtil;
 import org.happypeng.sumatora.android.sumatoradictionary.model.viewbinding.QueryMenu;
+import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionarySearchElementViewHolder;
 
 import dagger.hilt.android.AndroidEntryPoint;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
@@ -84,7 +87,7 @@ public abstract class BaseFragment extends Fragment {
         actionBar.setHomeAsUpIndicator(R.drawable.ic_menu_white_24dp);
         actionBar.setDisplayHomeAsUpEnabled(true);
 
-        autoDisposable.add(queryFragmentModel.getStatusObservable().map(QueryViewStatus::getTitle)
+        autoDisposable.add(queryFragmentModel.getStatusObservable().map(QueryStatus::getTitle)
                 .distinctUntilChanged()
                 .subscribe(viewBinding.dictionaryBookmarkFragmentToolbar::setTitle));
 
@@ -106,11 +109,37 @@ public abstract class BaseFragment extends Fragment {
             }
         }));
 
-        autoDisposable.add(queryFragmentModel.getPagedListAdapter().subscribe(adapter -> {
-            viewBinding.dictionaryBookmarkFragmentRecyclerview.setAdapter(adapter);
+        autoDisposable.add(queryFragmentModel.getPagedListAdapter().subscribe(adapter ->
+                viewBinding.dictionaryBookmarkFragmentRecyclerview.setAdapter(adapter)));
 
-            adapter.setBookmarkClickListener((aEntry, bookmark, memo) -> queryFragmentModel.editBookmark(aEntry, bookmark, memo));
-        }));
+        /*
+        autoDisposable.add(queryFragmentModel.getPagedListAdapter().subscribe(adapter -> {
+                    viewBinding.dictionaryBookmarkFragmentRecyclerview.setAdapter(adapter);
+
+                    adapter.setBookmarkClickListener(new DictionarySearchElementViewHolder.EventListener() {
+                        @Override
+                        public void checkBookmarkRemove(DictionarySearchElement entry, long bookmark, String memo) {
+                            if (!"".equals(memo)) {
+                                new AlertDialog.Builder(getActivity())
+                                        .setTitle(R.string.validate_bookmark_deletion)
+                                        .setPositiveButton(R.string.delete, (dialog, which) -> {
+                                            queryFragmentModel.editBookmark(entry, 0, null);
+                                        })
+                                        .setNegativeButton(android.R.string.cancel, (dialog, which) -> {
+                                            // do nothing
+                                        }).create().show();
+                            } else {
+                                queryFragmentModel.editBookmark(entry, 0, null);
+                            }
+                        }
+
+                        @Override
+                        public void onBookmarkEdit(DictionarySearchElement aEntry, long bookmark, String memo) {
+                            queryFragmentModel.editBookmark(aEntry, bookmark, memo);
+                        }
+                    });
+                }
+        ));*/
 
         focusSearchView();
 
@@ -151,17 +180,17 @@ public abstract class BaseFragment extends Fragment {
 
         autoDisposable.add(queryFragmentModel.getStatusObservable()
                 .filter(s -> s.getPersistentLanguageSettings() != null)
-                .map(QueryViewStatus::getPersistentLanguageSettings)
+                .map(QueryStatus::getPersistentLanguageSettings)
                 .distinctUntilChanged()
                 .subscribe(l -> queryMenu.languageMenuText.setText(l.lang)));
 
         autoDisposable.add(queryFragmentModel.getStatusObservable()
-                .map(QueryViewStatus::getSearchIconifiedByDefault)
+                .map(QueryStatus::getSearchIconifiedByDefault)
                 .distinctUntilChanged()
                 .subscribe(b -> queryMenu.searchView.setIconifiedByDefault(b)));
 
         autoDisposable.add(queryFragmentModel.getStatusObservable()
-                .map(QueryViewStatus::getShareButtonVisible)
+                .map(QueryStatus::getShareButtonVisible)
                 .distinctUntilChanged()
                 .subscribe(queryMenu.shareBookmarks::setVisible));
 
@@ -188,7 +217,7 @@ public abstract class BaseFragment extends Fragment {
         });
 
         autoDisposable.add(queryFragmentModel.getStatusObservable()
-                .map(QueryViewStatus::getTerm)
+                .map(QueryStatus::getTerm)
                 .distinctUntilChanged()
                 .subscribe(s -> {
                     if (!s.equals(queryMenu.searchView.getQuery().toString())) {
@@ -218,6 +247,9 @@ public abstract class BaseFragment extends Fragment {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
+
+        final BaseQueryFragmentModel queryFragmentModel = getModel();
+        queryFragmentModel.viewDestroyed();
 
         autoDisposable.dispose();
 

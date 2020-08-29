@@ -27,6 +27,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.component.BookmarkCompo
 import org.happypeng.sumatora.android.sumatoradictionary.component.BookmarkShareComponent;
 import org.happypeng.sumatora.android.sumatoradictionary.component.LanguageSettingsComponent;
 import org.happypeng.sumatora.android.sumatoradictionary.component.PersistentDatabaseComponent;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
 import org.happypeng.sumatora.android.sumatoradictionary.model.status.QueryStatus;
 
@@ -48,7 +49,8 @@ public class QueryFragmentModel extends BaseQueryFragmentModel {
     @Override
     public QueryStatus getInitialStatus() {
         return new QueryStatus(1, "", 0, null, false,
-                false, false, "Search", false, true, null);
+                false, false, "Search", false, true, null,
+                false, false, true, false);
     }
 
     @Override

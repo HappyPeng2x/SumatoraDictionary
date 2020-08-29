@@ -19,46 +19,57 @@ package org.happypeng.sumatora.android.sumatoradictionary.model;
 import androidx.annotation.NonNull;
 import androidx.lifecycle.ViewModel;
 
+import org.happypeng.sumatora.android.sumatoradictionary.model.intent.CloseIntent;
+import org.happypeng.sumatora.android.sumatoradictionary.model.intent.MVIIntent;
+import org.happypeng.sumatora.android.sumatoradictionary.model.status.MVIStatus;
+import org.happypeng.sumatora.android.sumatoradictionary.operator.ScanConcatMap;
+
 import java.util.List;
 
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.core.Observable;
-import io.reactivex.rxjava3.disposables.CompositeDisposable;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 import io.reactivex.rxjava3.subjects.BehaviorSubject;
+import io.reactivex.rxjava3.subjects.PublishSubject;
 import io.reactivex.rxjava3.subjects.Subject;
 
-public abstract class MVIViewModel<I, S, V> extends ViewModel {
-    final Subject<V> viewStatusSubject;
-
-    final CompositeDisposable compositeDisposable = new CompositeDisposable();
+public abstract class MVIViewModel<S extends MVIStatus> extends ViewModel {
+    final private Subject<MVIIntent> intentSubject = PublishSubject.create();
+    final private Subject<S> statusSubject = BehaviorSubject.create();
 
     public MVIViewModel() {
-        final Subject<V> statusSubjectUnsafe = BehaviorSubject.create();
-        viewStatusSubject = statusSubjectUnsafe.toSerialized();
     }
 
-    @NonNull protected abstract List<Observable<I>> getIntentObservablesToMerge();
+    @NonNull protected abstract List<Observable<MVIIntent>> getIntentObservablesToMerge();
     @NonNull public abstract S getInitialStatus();
-    @NonNull public abstract S transformStatus(S previousStatus, I intent);
+    @NonNull public abstract Observable<S> transformStatus(S previousStatus, MVIIntent intent);
 
     protected void connectIntents() {
-        compositeDisposable.add(Observable.merge(getIntentObservablesToMerge())
-                .observeOn(Schedulers.io())
-                .scan(getInitialStatus(), this::transformStatus)
-                .subscribe());
+        final List<Observable<MVIIntent>> observableList = getIntentObservablesToMerge();
+
+        observableList.add(intentSubject);
+
+        Observable.merge(observableList)
+                .compose(new ScanConcatMap<>(new ScanConcatMap.ScanOperator<MVIIntent, S>() {
+                    @Override
+                    public Observable<S> apply(S lastStatus, MVIIntent newUpstream) {
+                        return transformStatus(lastStatus == null ? getInitialStatus() : lastStatus,
+                                newUpstream);
+                    }
+                }))
+                .takeUntil(MVIStatus::getClosed)
+                .subscribeWith(statusSubject);
     }
 
-    public void updateView(final V viewStatus) {
-        viewStatusSubject.onNext(viewStatus);
-    }
+    public void sendIntent(final MVIIntent intent) { intentSubject.onNext(intent); }
 
     @Override
     protected void onCleared() {
-        compositeDisposable.dispose();
+        sendIntent(new CloseIntent());
+        intentSubject.onComplete();
     }
 
-    public Observable<V> getStatusObservable() {
-        return viewStatusSubject.observeOn(AndroidSchedulers.mainThread());
+    public Observable<S> getStatusObservable() {
+        return statusSubject;
     }
 }

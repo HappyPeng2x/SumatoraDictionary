@@ -317,6 +317,9 @@ public abstract class PersistentDatabaseInitialization {
         persistentDatabase.getOpenHelper().getWritableDatabase()
                 .execSQL("DELETE FROM DictionaryBookmark WHERE bookmark = 0 AND IFNULL(memo, '') = ''");
 
+        persistentDatabase.getOpenHelper().getWritableDatabase()
+                .execSQL("UPDATE DictionaryBookmark SET bookmark = 1 WHERE IFNULL(memo, '') != ''");
+
         // No persistence - clear display on initialization
         persistentDatabase.dictionarySearchElementDao().deleteAll();
         persistentDatabase.dictionaryElementDao().deleteAll();

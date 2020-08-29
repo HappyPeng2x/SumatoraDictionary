@@ -14,19 +14,16 @@
         You should have received a copy of the GNU General Public License
         along with this program.  If not, see <http://www.gnu.org/licenses/>.*/
 
-package org.happypeng.sumatora.android.sumatoradictionary.model.intent;
+package org.happypeng.sumatora.android.sumatoradictionary.model.status;
 
-import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings;
-import org.happypeng.sumatora.android.sumatoradictionary.db.tools.DictionarySearchQueryTool;
+public class MVIStatus {
+    private final boolean closed;
 
-public abstract class LanguageSettingIntent extends MVIIntent {
-    final private PersistentLanguageSettings languageSettings;
-
-    public LanguageSettingIntent(final PersistentLanguageSettings languageSettings) {
-        this.languageSettings = languageSettings;
+    protected MVIStatus(final boolean closed) {
+        this.closed = closed;
     }
 
-    public PersistentLanguageSettings getLanguageSettings() {
-        return languageSettings;
+    public boolean getClosed() {
+        return closed;
     }
 }

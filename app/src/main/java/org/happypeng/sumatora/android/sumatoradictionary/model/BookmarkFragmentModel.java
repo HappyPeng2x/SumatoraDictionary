@@ -48,7 +48,8 @@ public class BookmarkFragmentModel extends BaseQueryFragmentModel {
     @Override
     public QueryStatus getInitialStatus() {
         return new QueryStatus(2, "", 0, null, false,
-                false, true, "Bookmarks", true, true, null);
+                false, true, "Bookmarks", true, true, null,
+                false, false, true, false);
     }
 
     @Override

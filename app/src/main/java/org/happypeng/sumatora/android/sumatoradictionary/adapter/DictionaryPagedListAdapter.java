@@ -20,10 +20,9 @@ import androidx.annotation.NonNull;
 import androidx.paging.PagedListAdapter;
 
 import android.view.LayoutInflater;
-import android.view.View;
 import android.view.ViewGroup;
 
-import org.happypeng.sumatora.android.sumatoradictionary.R;
+import org.happypeng.sumatora.android.sumatoradictionary.databinding.WordCardBinding;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElementDiffUtil;
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionarySearchElementViewHolder;
@@ -31,22 +30,24 @@ import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionarySe
 import java.util.HashMap;
 
 public class DictionaryPagedListAdapter extends PagedListAdapter<DictionarySearchElement, DictionarySearchElementViewHolder> {
-    private final DictionarySearchElementViewHolder.Status m_status;
-    private final boolean m_disableBookmarkButton;
-    private final boolean m_disableMemoEdit;
+    private final HashMap<String, String> entities;
+    private final boolean disableBookmarkButton;
+    private final boolean disableMemoEdit;
 
-    private DictionarySearchElementViewHolder.EventListener m_bookmarkEventListener;
+    private final DictionarySearchElementViewHolder.CommitConsumer commitConsumer;
 
-    public DictionaryPagedListAdapter(@NonNull final DictionarySearchElementViewHolder.Status aStatus,
-                                      boolean aDisableBookmarkButton,
-                                      boolean aDisableMemoEdit) {
+    public DictionaryPagedListAdapter(@NonNull final HashMap<String, String> entities,
+                                      final boolean aDisableBookmarkButton,
+                                      final boolean aDisableMemoEdit,
+                                      final DictionarySearchElementViewHolder.CommitConsumer commitConsumer) {
         super(DictionarySearchElementDiffUtil.getDiffUtil());
 
         setHasStableIds(true);
 
-        m_status = aStatus;
-        m_disableBookmarkButton = aDisableBookmarkButton;
-        m_disableMemoEdit = aDisableMemoEdit;
+        this.entities = entities;
+        this.disableBookmarkButton = aDisableBookmarkButton;
+        this.disableMemoEdit = aDisableMemoEdit;
+        this.commitConsumer = commitConsumer;
     }
 
     // No placeholders = no null values
@@ -55,26 +56,20 @@ public class DictionaryPagedListAdapter extends PagedListAdapter<DictionarySearc
         return getItem(position).getSeq();
     }
 
-    public void setBookmarkClickListener(DictionarySearchElementViewHolder.EventListener aListener) {
-        m_bookmarkEventListener = aListener;
+    @Override
+    public void onViewDetachedFromWindow(@NonNull DictionarySearchElementViewHolder holder) {
+        super.onViewDetachedFromWindow(holder);
     }
 
     @NonNull
     @Override
     public DictionarySearchElementViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         LayoutInflater layoutInflater = LayoutInflater.from(parent.getContext());
-        View view = layoutInflater.inflate(R.layout.word_card, parent, false);
-        DictionarySearchElementViewHolder holder = new DictionarySearchElementViewHolder(view, m_status);
+        WordCardBinding wordCardBinding = WordCardBinding.inflate(layoutInflater);
+        DictionarySearchElementViewHolder holder = new DictionarySearchElementViewHolder(wordCardBinding,
+                entities, disableBookmarkButton, disableMemoEdit,
+                commitConsumer);
 
-        if (m_disableBookmarkButton) {
-            holder.disableBookmarkButton();
-        }
-
-        if (m_disableMemoEdit) {
-            holder.disableMemoEdit();
-        }
-
-        holder.setBookmarkClickListener(m_bookmarkEventListener);
         return holder;
     }
 

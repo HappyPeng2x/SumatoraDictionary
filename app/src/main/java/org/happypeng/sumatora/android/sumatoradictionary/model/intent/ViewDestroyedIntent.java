@@ -16,17 +16,5 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.model.intent;
 
-import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings;
-import org.happypeng.sumatora.android.sumatoradictionary.db.tools.DictionarySearchQueryTool;
-
-public abstract class LanguageSettingIntent extends MVIIntent {
-    final private PersistentLanguageSettings languageSettings;
-
-    public LanguageSettingIntent(final PersistentLanguageSettings languageSettings) {
-        this.languageSettings = languageSettings;
-    }
-
-    public PersistentLanguageSettings getLanguageSettings() {
-        return languageSettings;
-    }
+public class ViewDestroyedIntent extends MVIIntent {
 }

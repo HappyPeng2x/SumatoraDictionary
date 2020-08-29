@@ -20,13 +20,19 @@ import androidx.room.Entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @Entity(primaryKeys = {"seq"})
 public class DictionaryBookmark {
+    @JsonProperty("seq")
     public long seq;
+
+    @JsonProperty("bookmark")
     public long bookmark;
+
+    @JsonProperty("memo")
     public String memo;
 
     public DictionaryBookmark() {}

@@ -34,6 +34,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.tools.BookmarkImport
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.BookmarkImportCancelIntent;
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.BookmarkImportCommitIntent;
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.BookmarkImportFileOpenIntent;
+import org.happypeng.sumatora.android.sumatoradictionary.model.intent.LanguageSettingAttachedIntent;
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.LanguageSettingIntent;
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.MVIIntent;
 import org.happypeng.sumatora.android.sumatoradictionary.model.status.BookmarkImportStatus;
@@ -43,8 +44,10 @@ import java.util.List;
 
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.core.Observable;
+import io.reactivex.rxjava3.core.ObservableEmitter;
+import io.reactivex.rxjava3.core.ObservableOnSubscribe;
 
-public class BookmarkImportModel extends BaseFragmentModel<MVIIntent, BookmarkImportStatus, BookmarkImportStatus> {
+public class BookmarkImportModel extends BaseFragmentModel<BookmarkImportStatus> {
     final private BookmarkImportComponent bookmarkImportComponent;
 
     @Override
@@ -66,15 +69,15 @@ public class BookmarkImportModel extends BaseFragmentModel<MVIIntent, BookmarkIm
     }
 
     public void bookmarkImportFileOpen(final Uri uri) {
-        intentSubject.onNext(new BookmarkImportFileOpenIntent(uri));
+        sendIntent(new BookmarkImportFileOpenIntent(uri));
     }
 
     public void bookmarkImportCommit() {
-        intentSubject.onNext(new BookmarkImportCommitIntent());
+        sendIntent(new BookmarkImportCommitIntent());
     }
 
     public void bookmarkImportCancel() {
-        intentSubject.onNext(new BookmarkImportCancelIntent());
+        sendIntent(new BookmarkImportCancelIntent());
     }
 
     @NonNull
@@ -82,10 +85,7 @@ public class BookmarkImportModel extends BaseFragmentModel<MVIIntent, BookmarkIm
     protected List<Observable<MVIIntent>> getIntentObservablesToMerge() {
         final List<Observable<MVIIntent>> observables = new LinkedList<>();
 
-        observables.add(intentSubject);
-        observables.add(languageSettingsComponent.getPersistentLanguageSettings()
-                .observeOn(AndroidSchedulers.mainThread())
-                .map(p -> new LanguageSettingIntent(p.first, p.second)));
+        observables.add(languageSettingsComponent.getPersistentLanguageSettings().cast(MVIIntent.class));
 
         return observables;
     }
@@ -98,93 +98,103 @@ public class BookmarkImportModel extends BaseFragmentModel<MVIIntent, BookmarkIm
 
     @NonNull
     @Override
-    public BookmarkImportStatus transformStatus(BookmarkImportStatus previousStatus, MVIIntent intent) {
-        if (intent instanceof BookmarkImportFileOpenIntent) {
-            bookmarkImportComponent.processURI(((BookmarkImportFileOpenIntent) intent).getUri(),
-                    previousStatus.getKey());
+    public Observable<BookmarkImportStatus> transformStatus(BookmarkImportStatus previousStatus, MVIIntent intent) {
+        return Observable.create(new ObservableOnSubscribe<BookmarkImportStatus>() {
+            @Override
+            public void subscribe(@io.reactivex.rxjava3.annotations.NonNull ObservableEmitter<BookmarkImportStatus> emitter) throws Throwable {
+                if (intent instanceof BookmarkImportFileOpenIntent) {
+                    bookmarkImportComponent.processURI(((BookmarkImportFileOpenIntent) intent).getUri(),
+                            previousStatus.getKey());
 
-            final BookmarkImportStatus bookmarkImportStatus =  new BookmarkImportStatus(previousStatus.getKey(),
-                    previousStatus.getQueryTool(),
-                    false,
-                    previousStatus.getPersistentLanguageSettings(),
-                    false);
+                    emitter.onNext(new BookmarkImportStatus(previousStatus.getKey(),
+                            previousStatus.getQueryTool(),
+                            false,
+                            previousStatus.getPersistentLanguageSettings(),
+                            false));
+                    emitter.onComplete();
 
-            updateView(bookmarkImportStatus);
-
-            return bookmarkImportStatus;
-        }
-
-        if (intent instanceof BookmarkImportCommitIntent) {
-            if (!previousStatus.getExecuted()) {
-                return previousStatus;
-            }
-
-            bookmarkImportComponent.commitBookmarks(previousStatus.getKey());
-
-            final BookmarkImportStatus bookmarkImportStatus =  new BookmarkImportStatus(previousStatus.getKey(),
-                    previousStatus.getQueryTool(),
-                    previousStatus.getExecuted(),
-                    previousStatus.getPersistentLanguageSettings(),
-                    true);
-
-            updateView(bookmarkImportStatus);
-
-            return bookmarkImportStatus;
-        }
-
-        if (intent instanceof BookmarkImportCancelIntent) {
-            bookmarkImportComponent.cancelImport(previousStatus.getKey());
-
-            final BookmarkImportStatus bookmarkImportStatus =  new BookmarkImportStatus(previousStatus.getKey(),
-                    previousStatus.getQueryTool(),
-                    previousStatus.getExecuted(),
-                    previousStatus.getPersistentLanguageSettings(),
-                    true);
-
-            updateView(bookmarkImportStatus);
-
-            return bookmarkImportStatus;
-        }
-
-        final PersistentLanguageSettings persistentLanguageSettings = intent instanceof LanguageSettingIntent ? ((LanguageSettingIntent) intent).getLanguageSettings() : previousStatus.getPersistentLanguageSettings();
-        final BookmarkImportQueryTool queryTool = intent instanceof LanguageSettingIntent ? (((LanguageSettingIntent) intent).getAttached() ? new BookmarkImportQueryTool(persistentDatabaseComponent,
-                previousStatus.getKey(), persistentLanguageSettings) : null) : previousStatus.getQueryTool();
-        final boolean executed = !(intent instanceof LanguageSettingIntent) && previousStatus.getExecuted();
-
-        if (intent instanceof LanguageSettingIntent && previousStatus.getQueryTool() != null) {
-            previousStatus.getQueryTool().close();
-        }
-
-        if (!executed && queryTool != null) {
-            persistentDatabaseComponent.getDatabase().runInTransaction(() -> {
-                if (intent instanceof LanguageSettingIntent) {
-                    queryTool.delete();
+                    return;
                 }
 
-                queryTool.execute();
-            });
+                if (intent instanceof BookmarkImportCommitIntent) {
+                    if (!previousStatus.getExecuted()) {
+                        emitter.onNext(previousStatus);
+                        emitter.onComplete();
 
-            final BookmarkImportStatus bookmarkImportStatus = new BookmarkImportStatus(previousStatus.getKey(),
-                    queryTool, true,
-                    persistentLanguageSettings,
-                    false);
+                        return;
+                    }
 
-            updateView(bookmarkImportStatus);
+                    bookmarkImportComponent.commitBookmarks(previousStatus.getKey());
 
-            return bookmarkImportStatus;
-        }
+                    emitter.onNext(new BookmarkImportStatus(previousStatus.getKey(),
+                            previousStatus.getQueryTool(),
+                            previousStatus.getExecuted(),
+                            previousStatus.getPersistentLanguageSettings(),
+                            true));
+                    emitter.onComplete();
 
-        final BookmarkImportStatus bookmarkImportStatus = new BookmarkImportStatus(previousStatus.getKey(),
-                queryTool, previousStatus.getExecuted(),
-                persistentLanguageSettings, false);
+                    return;
+                }
 
-        updateView(bookmarkImportStatus);
+                if (intent instanceof BookmarkImportCancelIntent) {
+                    bookmarkImportComponent.cancelImport(previousStatus.getKey());
 
-        return bookmarkImportStatus;
+                    emitter.onNext(new BookmarkImportStatus(previousStatus.getKey(),
+                            previousStatus.getQueryTool(),
+                            previousStatus.getExecuted(),
+                            previousStatus.getPersistentLanguageSettings(),
+                            true));
+                    emitter.onComplete();
+
+                    return;
+                }
+
+                final PersistentLanguageSettings persistentLanguageSettings = intent instanceof LanguageSettingIntent ? ((LanguageSettingIntent) intent).getLanguageSettings() : previousStatus.getPersistentLanguageSettings();
+                final BookmarkImportQueryTool queryTool = intent instanceof LanguageSettingIntent ? ((intent instanceof LanguageSettingAttachedIntent ? new BookmarkImportQueryTool(persistentDatabaseComponent,
+                        previousStatus.getKey(), persistentLanguageSettings) : null)) : previousStatus.getQueryTool();
+                final boolean executed = !(intent instanceof LanguageSettingIntent) && previousStatus.getExecuted();
+
+                if (intent instanceof LanguageSettingIntent && previousStatus.getQueryTool() != null) {
+                    previousStatus.getQueryTool().close();
+                }
+
+                if (!executed && queryTool != null) {
+                    persistentDatabaseComponent.getDatabase().runInTransaction(() -> {
+                        if (intent instanceof LanguageSettingIntent) {
+                            queryTool.delete();
+                        }
+
+                        queryTool.execute();
+                    });
+
+                    emitter.onNext(new BookmarkImportStatus(previousStatus.getKey(),
+                            queryTool, true,
+                            persistentLanguageSettings,
+                            false));
+                    emitter.onComplete();
+
+                    return;
+                }
+
+                emitter.onNext(new BookmarkImportStatus(previousStatus.getKey(),
+                        queryTool, previousStatus.getExecuted(),
+                        persistentLanguageSettings, false));
+                emitter.onComplete();
+
+                return;
+            }
+        });
+
+
     }
 
     @Override
     protected LiveData<PagedList<DictionarySearchElement>> getPagedList(final PagedList.BoundaryCallback<DictionarySearchElement> boundaryCallback) {
         return persistentDatabaseComponent.getSearchElements(getInitialStatus().getKey(), boundaryCallback);
+    }
+
+    @Override
+    protected void commitBookmarks(long seq, long bookmark, String memo) {
+
     }
 }

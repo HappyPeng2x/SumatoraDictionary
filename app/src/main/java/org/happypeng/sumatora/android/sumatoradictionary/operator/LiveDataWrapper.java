@@ -14,19 +14,21 @@
         You should have received a copy of the GNU General Public License
         along with this program.  If not, see <http://www.gnu.org/licenses/>.*/
 
-package org.happypeng.sumatora.android.sumatoradictionary.model.intent;
+package org.happypeng.sumatora.android.sumatoradictionary.operator;
 
-import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings;
-import org.happypeng.sumatora.android.sumatoradictionary.db.tools.DictionarySearchQueryTool;
+import androidx.lifecycle.LiveData;
 
-public abstract class LanguageSettingIntent extends MVIIntent {
-    final private PersistentLanguageSettings languageSettings;
+import io.reactivex.rxjava3.core.Observable;
+import io.reactivex.rxjava3.subjects.PublishSubject;
+import io.reactivex.rxjava3.subjects.Subject;
 
-    public LanguageSettingIntent(final PersistentLanguageSettings languageSettings) {
-        this.languageSettings = languageSettings;
-    }
+public class LiveDataWrapper {
+    public static <T, C> Observable<T> wrap(final LiveData<T> liveData,
+                                            final Observable<C> close) {
+        final Subject<T> subject = PublishSubject.create();
 
-    public PersistentLanguageSettings getLanguageSettings() {
-        return languageSettings;
+        liveData.observeForever(subject::onNext);
+
+        return subject.takeUntil(close).doOnComplete(() -> liveData.removeObserver(subject::onNext));
     }
 }

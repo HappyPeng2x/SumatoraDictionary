@@ -22,6 +22,9 @@ import androidx.core.util.Pair;
 import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings;
+import org.happypeng.sumatora.android.sumatoradictionary.model.intent.LanguageSettingAttachedIntent;
+import org.happypeng.sumatora.android.sumatoradictionary.model.intent.LanguageSettingDetachedIntent;
+import org.happypeng.sumatora.android.sumatoradictionary.model.intent.LanguageSettingIntent;
 
 import java.util.List;
 
@@ -39,7 +42,7 @@ import io.reactivex.rxjava3.subjects.Subject;
 @Singleton
 public class LanguageSettingsComponent {
     private final Subject<PersistentLanguageSettings> persistentLanguageSettingsSubject;
-    private final Observable<Pair<PersistentLanguageSettings, Boolean>> persistentLanguageSettingsStatus;
+    private final Observable<LanguageSettingIntent> persistentLanguageSettingsStatus;
 
     @Inject
     LanguageSettingsComponent(final PersistentDatabaseComponent persistentDatabaseComponent) {
@@ -54,8 +57,8 @@ public class LanguageSettingsComponent {
         this.persistentLanguageSettingsStatus =
                 persistentLanguageSettingsWithInitial.observeOn(Schedulers.io())
                 .concatMap(s ->
-                    Observable.create((ObservableOnSubscribe<Pair<PersistentLanguageSettings, Boolean>>) emitter -> {
-                        emitter.onNext(new Pair<>(s, false));
+                    Observable.create((ObservableOnSubscribe<LanguageSettingIntent>) emitter -> {
+                        emitter.onNext(new LanguageSettingDetachedIntent(s));
 
                         final PersistentDatabase database = persistentDatabaseComponent.getDatabase();
                         final List<InstalledDictionary> dictionaries = database.installedDictionaryDao().getAll();
@@ -75,13 +78,13 @@ public class LanguageSettingsComponent {
                             database.persistentLanguageSettingsDao().update(s);
                         });
 
-                        emitter.onNext(new Pair<>(s, true));
+                        emitter.onNext(new LanguageSettingAttachedIntent(s));
                         emitter.onComplete();
                     })
-                ).share().replay(1).autoConnect();
+                ).observeOn(AndroidSchedulers.mainThread()).share().replay(1).autoConnect();
     }
 
-    public Observable<Pair<PersistentLanguageSettings, Boolean>> getPersistentLanguageSettings() {
+    public Observable<LanguageSettingIntent> getPersistentLanguageSettings() {
         return persistentLanguageSettingsStatus;
     }
 

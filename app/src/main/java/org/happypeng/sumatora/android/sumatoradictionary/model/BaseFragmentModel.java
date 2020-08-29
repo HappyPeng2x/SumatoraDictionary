@@ -18,7 +18,6 @@ package org.happypeng.sumatora.android.sumatoradictionary.model;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.LiveData;
-import androidx.lifecycle.Observer;
 import androidx.paging.PagedList;
 
 import org.happypeng.sumatora.android.sumatoradictionary.adapter.DictionaryPagedListAdapter;
@@ -27,8 +26,10 @@ import org.happypeng.sumatora.android.sumatoradictionary.component.PersistentDat
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
 import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings;
-import org.happypeng.sumatora.android.sumatoradictionary.model.intent.MVIIntent;
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.ScrollIntent;
+import org.happypeng.sumatora.android.sumatoradictionary.model.status.MVIStatus;
+import org.happypeng.sumatora.android.sumatoradictionary.model.status.QueryStatus;
+import org.happypeng.sumatora.android.sumatoradictionary.operator.LiveDataWrapper;
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionarySearchElementViewHolder;
 
 import java.util.List;
@@ -36,22 +37,15 @@ import java.util.List;
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.core.Single;
-import io.reactivex.rxjava3.observers.DisposableSingleObserver;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 import io.reactivex.rxjava3.subjects.BehaviorSubject;
-import io.reactivex.rxjava3.subjects.PublishSubject;
 import io.reactivex.rxjava3.subjects.Subject;
 
-public abstract class BaseFragmentModel<I, S, V> extends MVIViewModel<I, S, V> {
+public abstract class BaseFragmentModel<S extends MVIStatus> extends MVIViewModel<S> {
     final protected PersistentDatabaseComponent persistentDatabaseComponent;
     final protected LanguageSettingsComponent languageSettingsComponent;
 
-    final protected Subject<MVIIntent> intentSubject = PublishSubject.create();
-
-    final private Subject<DictionaryPagedListAdapter> pagedListAdapterSubject = BehaviorSubject.create();
-
-    private Observer<PagedList<DictionarySearchElement>> pagedListObserver;
-    private LiveData<PagedList<DictionarySearchElement>> pagedList;
+    final private Observable<DictionaryPagedListAdapter> pagedListAdapterObservable;
 
     public void setLanguage(final @NonNull String language) {
         final PersistentLanguageSettings newLanguageSettings = new PersistentLanguageSettings();
@@ -62,7 +56,7 @@ public abstract class BaseFragmentModel<I, S, V> extends MVIViewModel<I, S, V> {
     }
 
     public Observable<DictionaryPagedListAdapter> getPagedListAdapter() {
-        return pagedListAdapterSubject;
+        return pagedListAdapterObservable;
     }
 
     public Observable<List<InstalledDictionary>> getInstalledDictionaries() {
@@ -74,6 +68,8 @@ public abstract class BaseFragmentModel<I, S, V> extends MVIViewModel<I, S, V> {
 
     protected abstract LiveData<PagedList<DictionarySearchElement>> getPagedList(PagedList.BoundaryCallback<DictionarySearchElement> boundaryCallback);
 
+    protected abstract void commitBookmarks(long seq, long bookmark, String memo);
+
     protected boolean disableBookmarkButton() { return false; }
     protected boolean disableMemoEdit() { return false; }
 
@@ -82,42 +78,40 @@ public abstract class BaseFragmentModel<I, S, V> extends MVIViewModel<I, S, V> {
         this.persistentDatabaseComponent = persistentDatabaseComponent;
         this.languageSettingsComponent = languageSettingsComponent;
 
+        pagedListAdapterObservable =
+                Observable.fromCallable(persistentDatabaseComponent::getEntities)
+                        .subscribeOn(Schedulers.io())
+                        .map(entities -> new DictionaryPagedListAdapter(entities,
+                                disableBookmarkButton(), disableMemoEdit(),
+                                this::commitBookmarks))
+                        .observeOn(AndroidSchedulers.mainThread())
+                        .share()
+                        .takeUntil(getStatusObservable().filter(MVIStatus::getClosed))
+                        .replay(1).autoConnect();
 
-        compositeDisposable.add(Single.fromCallable(persistentDatabaseComponent::getEntities).map(entities -> new DictionaryPagedListAdapter(new DictionarySearchElementViewHolder.Status(entities),
-                disableBookmarkButton(), disableMemoEdit())).subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
-                .subscribeWith(new DisposableSingleObserver<DictionaryPagedListAdapter>() {
+        final LiveData<PagedList<DictionarySearchElement>> pagedList =
+                getPagedList(new PagedList.BoundaryCallback<DictionarySearchElement>() {
                     @Override
-                    public void onSuccess(@io.reactivex.rxjava3.annotations.NonNull DictionaryPagedListAdapter dictionaryPagedListAdapter) {
-                        pagedList = getPagedList(new PagedList.BoundaryCallback<DictionarySearchElement>() {
-                            @Override
-                            public void onItemAtEndLoaded(@NonNull DictionarySearchElement itemAtEnd) {
-                                super.onItemAtEndLoaded(itemAtEnd);
+                    public void onItemAtEndLoaded(@NonNull DictionarySearchElement itemAtEnd) {
+                        super.onItemAtEndLoaded(itemAtEnd);
 
-                                intentSubject.onNext(new ScrollIntent());
-                            }
-                        });
-
-                        pagedListObserver = dictionaryPagedListAdapter::submitList;
-                        pagedList.observeForever(pagedListObserver);
-
-                        pagedListAdapterSubject.onNext(dictionaryPagedListAdapter);
+                        sendIntent(new ScrollIntent());
                     }
+                });
 
-                    @Override
-                    public void onError(@io.reactivex.rxjava3.annotations.NonNull Throwable e) {
-                        e.printStackTrace();
-                    }
-                }));
+        final Observable<PagedList<DictionarySearchElement>> pagedListObservable =
+                LiveDataWrapper.wrap(pagedList, getStatusObservable().filter(MVIStatus::getClosed));
+
+        pagedListObservable.withLatestFrom(pagedListAdapterObservable,
+                (list, adapter) -> {
+                    adapter.submitList(list);
+
+                    return true;
+                }).subscribe();
     }
 
     @Override
     protected void onCleared() {
-        if (pagedList != null && pagedListObserver != null) {
-            pagedList.removeObserver(pagedListObserver);
-        }
-
-        compositeDisposable.dispose();
-
         super.onCleared();
     }
 }

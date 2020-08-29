@@ -10,6 +10,9 @@
     <string name="delete_icon_description">Delete</string>
     <string name="dictionary_card_description">Description</string>
 
+    <string name="validate_bookmark_deletion">Removing the bookmark will also delete the memo.</string>
+    <string name="delete">Delete</string>
+
     <!-- Navigation Drawer -->
     <string name="nav_drawer_item_home">Home</string>
     <string name="nav_drawer_item_bookmarks">Bookmarks</string>
