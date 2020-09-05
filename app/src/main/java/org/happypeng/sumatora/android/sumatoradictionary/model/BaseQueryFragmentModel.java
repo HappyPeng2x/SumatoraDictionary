@@ -61,9 +61,6 @@ public abstract class BaseQueryFragmentModel extends BaseFragmentModel<QueryStat
         sendIntent(new SearchIntent(t));
     }
 
-    public void setFilterMemos(final boolean filter) { sendIntent(new FilterMemosIntent(true)); }
-    public void setFilterBookmarks(final boolean filter) { sendIntent(new FilterBookmarksIntent(true)); }
-
     public void setLanguage(final @NonNull String language) {
         final PersistentLanguageSettings newLanguageSettings = new PersistentLanguageSettings();
         newLanguageSettings.lang = language;
@@ -86,17 +83,6 @@ public abstract class BaseQueryFragmentModel extends BaseFragmentModel<QueryStat
         connectIntents();
 
         this.compositeDisposable = new CompositeDisposable();
-    }
-
-    public void editBookmark(final DictionarySearchElement entry,
-                             final long bookmark,
-                             final String memo) {
-        DictionaryBookmark dictionaryBookmark = new DictionaryBookmark();
-        dictionaryBookmark.bookmark = bookmark;
-        dictionaryBookmark.memo = memo;
-        dictionaryBookmark.seq = entry.getSeq();
-
-        bookmarkComponent.updateBookmark(dictionaryBookmark);
     }
 
     public void shareBookmarks() {
