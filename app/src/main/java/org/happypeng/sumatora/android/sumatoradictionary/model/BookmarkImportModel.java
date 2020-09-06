@@ -50,6 +50,8 @@ import io.reactivex.rxjava3.core.ObservableOnSubscribe;
 public class BookmarkImportModel extends BaseFragmentModel<BookmarkImportStatus> {
     final private BookmarkImportComponent bookmarkImportComponent;
 
+    final static private int KEY = 3;
+
     @Override
     protected boolean disableBookmarkButton() { return true; }
 
@@ -61,7 +63,8 @@ public class BookmarkImportModel extends BaseFragmentModel<BookmarkImportStatus>
                                final LanguageSettingsComponent languageSettingsComponent,
                                final BookmarkImportComponent bookmarkImportComponent,
                                @Assisted SavedStateHandle savedStateHandle) {
-        super(persistentDatabaseComponent, languageSettingsComponent);
+        super(persistentDatabaseComponent, languageSettingsComponent,
+                (component, callback) -> component.getSearchElements(KEY, callback));
 
         this.bookmarkImportComponent = bookmarkImportComponent;
 
@@ -73,11 +76,11 @@ public class BookmarkImportModel extends BaseFragmentModel<BookmarkImportStatus>
     }
 
     public void bookmarkImportCommit() {
-        sendIntent(new BookmarkImportCommitIntent());
+        sendIntent(BookmarkImportCommitIntent.INSTANCE);
     }
 
     public void bookmarkImportCancel() {
-        sendIntent(new BookmarkImportCancelIntent());
+        sendIntent(BookmarkImportCancelIntent.INSTANCE);
     }
 
     @NonNull
@@ -85,7 +88,7 @@ public class BookmarkImportModel extends BaseFragmentModel<BookmarkImportStatus>
     protected List<Observable<MVIIntent>> getIntentObservablesToMerge() {
         final List<Observable<MVIIntent>> observables = new LinkedList<>();
 
-        observables.add(languageSettingsComponent.getPersistentLanguageSettings().cast(MVIIntent.class));
+        observables.add(getLanguageSettingsComponent().getPersistentLanguageSettings().cast(MVIIntent.class));
 
         return observables;
     }
@@ -150,7 +153,7 @@ public class BookmarkImportModel extends BaseFragmentModel<BookmarkImportStatus>
                 }
 
                 final PersistentLanguageSettings persistentLanguageSettings = intent instanceof LanguageSettingIntent ? ((LanguageSettingIntent) intent).getLanguageSettings() : previousStatus.getPersistentLanguageSettings();
-                final BookmarkImportQueryTool queryTool = intent instanceof LanguageSettingIntent ? ((intent instanceof LanguageSettingAttachedIntent ? new BookmarkImportQueryTool(persistentDatabaseComponent,
+                final BookmarkImportQueryTool queryTool = intent instanceof LanguageSettingIntent ? ((intent instanceof LanguageSettingAttachedIntent ? new BookmarkImportQueryTool(getPersistentDatabaseComponent(),
                         previousStatus.getKey(), persistentLanguageSettings) : null)) : previousStatus.getQueryTool();
                 final boolean executed = !(intent instanceof LanguageSettingIntent) && previousStatus.getExecuted();
 
@@ -159,7 +162,7 @@ public class BookmarkImportModel extends BaseFragmentModel<BookmarkImportStatus>
                 }
 
                 if (!executed && queryTool != null) {
-                    persistentDatabaseComponent.getDatabase().runInTransaction(() -> {
+                    getPersistentDatabaseComponent().getDatabase().runInTransaction(() -> {
                         if (intent instanceof LanguageSettingIntent) {
                             queryTool.delete();
                         }
@@ -180,17 +183,10 @@ public class BookmarkImportModel extends BaseFragmentModel<BookmarkImportStatus>
                         queryTool, previousStatus.getExecuted(),
                         persistentLanguageSettings, false));
                 emitter.onComplete();
-
-                return;
             }
         });
 
 
-    }
-
-    @Override
-    protected LiveData<PagedList<DictionarySearchElement>> getPagedList(final PagedList.BoundaryCallback<DictionarySearchElement> boundaryCallback) {
-        return persistentDatabaseComponent.getSearchElements(getInitialStatus().getKey(), boundaryCallback);
     }
 
     @Override

@@ -112,35 +112,6 @@ public abstract class BaseFragment extends Fragment {
         autoDisposable.add(queryFragmentModel.getPagedListAdapter().subscribe(adapter ->
                 viewBinding.dictionaryBookmarkFragmentRecyclerview.setAdapter(adapter)));
 
-        /*
-        autoDisposable.add(queryFragmentModel.getPagedListAdapter().subscribe(adapter -> {
-                    viewBinding.dictionaryBookmarkFragmentRecyclerview.setAdapter(adapter);
-
-                    adapter.setBookmarkClickListener(new DictionarySearchElementViewHolder.EventListener() {
-                        @Override
-                        public void checkBookmarkRemove(DictionarySearchElement entry, long bookmark, String memo) {
-                            if (!"".equals(memo)) {
-                                new AlertDialog.Builder(getActivity())
-                                        .setTitle(R.string.validate_bookmark_deletion)
-                                        .setPositiveButton(R.string.delete, (dialog, which) -> {
-                                            queryFragmentModel.editBookmark(entry, 0, null);
-                                        })
-                                        .setNegativeButton(android.R.string.cancel, (dialog, which) -> {
-                                            // do nothing
-                                        }).create().show();
-                            } else {
-                                queryFragmentModel.editBookmark(entry, 0, null);
-                            }
-                        }
-
-                        @Override
-                        public void onBookmarkEdit(DictionarySearchElement aEntry, long bookmark, String memo) {
-                            queryFragmentModel.editBookmark(aEntry, bookmark, memo);
-                        }
-                    });
-                }
-        ));*/
-
         focusSearchView();
 
         return viewBinding.getRoot();

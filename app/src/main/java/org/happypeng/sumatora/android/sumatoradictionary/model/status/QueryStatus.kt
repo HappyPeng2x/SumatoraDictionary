@@ -13,83 +13,23 @@
 
         You should have received a copy of the GNU General Public License
         along with this program.  If not, see <http://www.gnu.org/licenses/>.*/
+package org.happypeng.sumatora.android.sumatoradictionary.model.status
 
-package org.happypeng.sumatora.android.sumatoradictionary.model.status;
+import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings
+import org.happypeng.sumatora.android.sumatoradictionary.db.tools.DictionarySearchQueryTool
 
-import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings;
-import org.happypeng.sumatora.android.sumatoradictionary.db.tools.DictionarySearchQueryTool;
-
-public class QueryStatus extends MVIStatus {
-    final private String term;
-    final private int lastQuery;
-    final private DictionarySearchQueryTool queryTool;
-    final private boolean found;
-    final private int key;
-    final private boolean filterMemos;
-    final private boolean filterBookmarks;
-    final private String title;
-    final private boolean searchIconifiedByDefault;
-    final private boolean shareButtonVisible;
-    final private PersistentLanguageSettings persistentLanguageSettings;
-    final private boolean searching;
-    final private boolean preparing;
-    final private boolean viewDestroyed;
-
-    public QueryStatus(final int key,
-                       final String term,
-                       final int lastQuery,
-                       final DictionarySearchQueryTool queryTool,
-                       final boolean found,
-                       final boolean filterMemos,
-                       final boolean filterBookmarks,
-                       final String title,
-                       final boolean searchIconifiedByDefault,
-                       final boolean shareButtonVisible,
-                       final PersistentLanguageSettings persistentLanguageSettings,
-                       final boolean closed,
-                       final boolean searching,
-                       final boolean preparing,
-                       final boolean viewDestroyed) {
-        super(closed);
-
-        this.term = term;
-        this.lastQuery = lastQuery;
-        this.queryTool = queryTool;
-        this.found = found;
-        this.key = key;
-        this.filterMemos = filterMemos;
-        this.filterBookmarks = filterBookmarks;
-        this.title = title;
-        this.searchIconifiedByDefault = searchIconifiedByDefault;
-        this.shareButtonVisible = shareButtonVisible;
-        this.persistentLanguageSettings = persistentLanguageSettings;
-        this.searching = searching;
-        this.preparing = preparing;
-        this.viewDestroyed = viewDestroyed;
-    }
-
-    public String getTerm() {
-        return term;
-    }
-    public int getLastQuery() {
-        return lastQuery;
-    }
-    public DictionarySearchQueryTool getQueryTool() {
-        return queryTool;
-    }
-    public boolean getFound() {
-        return found;
-    }
-    public int getKey() {
-        return key;
-    }
-    public boolean getFilterMemos() { return filterMemos; }
-    public boolean getFilterBookmarks() { return filterBookmarks; }
-    public String getTitle() { return title; }
-    public boolean getSearchIconifiedByDefault() { return searchIconifiedByDefault; }
-    public boolean getShareButtonVisible() { return shareButtonVisible; }
-    public PersistentLanguageSettings getPersistentLanguageSettings() { return persistentLanguageSettings; }
-    public boolean getSearching() { return searching; }
-    public boolean getPreparing() { return preparing; }
-    public boolean getViewDestroyed() { return viewDestroyed; }
-}
+data class QueryStatus(val key: Int,
+                       val term: String,
+                       val lastQuery: Int,
+                       val queryTool: DictionarySearchQueryTool?,
+                       val found: Boolean,
+                       val filterMemos: Boolean,
+                       val filterBookmarks: Boolean,
+                       val title: String,
+                       val searchIconifiedByDefault: Boolean,
+                       val shareButtonVisible: Boolean,
+                       val persistentLanguageSettings: PersistentLanguageSettings?,
+                       val isClosed: Boolean,
+                       val searching: Boolean,
+                       val preparing: Boolean,
+                       val viewDestroyed: Boolean) : MVIStatus(isClosed)

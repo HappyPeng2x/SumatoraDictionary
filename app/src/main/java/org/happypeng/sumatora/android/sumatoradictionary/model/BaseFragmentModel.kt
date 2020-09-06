@@ -13,105 +13,77 @@
 
         You should have received a copy of the GNU General Public License
         along with this program.  If not, see <http://www.gnu.org/licenses/>.*/
+package org.happypeng.sumatora.android.sumatoradictionary.model
 
-package org.happypeng.sumatora.android.sumatoradictionary.model;
+import androidx.lifecycle.LiveData
+import androidx.paging.PagedList
+import androidx.paging.PagedList.BoundaryCallback
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
+import io.reactivex.rxjava3.core.Observable
+import io.reactivex.rxjava3.schedulers.Schedulers
+import org.happypeng.sumatora.android.sumatoradictionary.adapter.DictionaryPagedListAdapter
+import org.happypeng.sumatora.android.sumatoradictionary.component.LanguageSettingsComponent
+import org.happypeng.sumatora.android.sumatoradictionary.component.PersistentDatabaseComponent
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement
+import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary
+import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings
+import org.happypeng.sumatora.android.sumatoradictionary.model.intent.ScrollIntent
+import org.happypeng.sumatora.android.sumatoradictionary.model.status.MVIStatus
+import org.happypeng.sumatora.android.sumatoradictionary.operator.LiveDataWrapper
+import java.util.*
 
-import androidx.annotation.NonNull;
-import androidx.lifecycle.LiveData;
-import androidx.paging.PagedList;
+abstract class BaseFragmentModel<S : MVIStatus> protected constructor(protected val persistentDatabaseComponent: PersistentDatabaseComponent,
+                                                                       protected val languageSettingsComponent: LanguageSettingsComponent,
+                                                                       pagedListFactory: (PersistentDatabaseComponent, BoundaryCallback<DictionarySearchElement?>?) ->
+                                                                       LiveData<PagedList<DictionarySearchElement?>>) : MVIViewModel<S>() {
+    val pagedListAdapter: Observable<DictionaryPagedListAdapter>
 
-import org.happypeng.sumatora.android.sumatoradictionary.adapter.DictionaryPagedListAdapter;
-import org.happypeng.sumatora.android.sumatoradictionary.component.LanguageSettingsComponent;
-import org.happypeng.sumatora.android.sumatoradictionary.component.PersistentDatabaseComponent;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
-import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary;
-import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings;
-import org.happypeng.sumatora.android.sumatoradictionary.model.intent.ScrollIntent;
-import org.happypeng.sumatora.android.sumatoradictionary.model.status.MVIStatus;
-import org.happypeng.sumatora.android.sumatoradictionary.model.status.QueryStatus;
-import org.happypeng.sumatora.android.sumatoradictionary.operator.LiveDataWrapper;
-import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionarySearchElementViewHolder;
-
-import java.util.List;
-
-import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
-import io.reactivex.rxjava3.core.Observable;
-import io.reactivex.rxjava3.core.Single;
-import io.reactivex.rxjava3.schedulers.Schedulers;
-import io.reactivex.rxjava3.subjects.BehaviorSubject;
-import io.reactivex.rxjava3.subjects.Subject;
-
-public abstract class BaseFragmentModel<S extends MVIStatus> extends MVIViewModel<S> {
-    final protected PersistentDatabaseComponent persistentDatabaseComponent;
-    final protected LanguageSettingsComponent languageSettingsComponent;
-
-    final private Observable<DictionaryPagedListAdapter> pagedListAdapterObservable;
-
-    public void setLanguage(final @NonNull String language) {
-        final PersistentLanguageSettings newLanguageSettings = new PersistentLanguageSettings();
-        newLanguageSettings.lang = language;
-        newLanguageSettings.backupLang = language.equals("eng") ? null : "eng";
-
-        languageSettingsComponent.updatePersistentLanguageSettings(newLanguageSettings);
+    open fun setLanguage(language: String) {
+        val newLanguageSettings = PersistentLanguageSettings()
+        newLanguageSettings.lang = language
+        newLanguageSettings.backupLang = if (language == "eng") null else "eng"
+        languageSettingsComponent.updatePersistentLanguageSettings(newLanguageSettings)
     }
 
-    public Observable<DictionaryPagedListAdapter> getPagedListAdapter() {
-        return pagedListAdapterObservable;
-    }
-
-    public Observable<List<InstalledDictionary>> getInstalledDictionaries() {
-        return Observable.defer(() ->
-                Observable.just(persistentDatabaseComponent.getDatabase().installedDictionaryDao().getAll()))
+    val installedDictionaries: Observable<List<InstalledDictionary?>?>
+        get() = Observable.defer { Observable.just(persistentDatabaseComponent.database.installedDictionaryDao().all) }
                 .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread());
+                .observeOn(AndroidSchedulers.mainThread())
+
+    protected abstract fun commitBookmarks(seq: Long, bookmark: Long, memo: String?)
+
+    protected open fun disableBookmarkButton(): Boolean {
+        return false
     }
 
-    protected abstract LiveData<PagedList<DictionarySearchElement>> getPagedList(PagedList.BoundaryCallback<DictionarySearchElement> boundaryCallback);
-
-    protected abstract void commitBookmarks(long seq, long bookmark, String memo);
-
-    protected boolean disableBookmarkButton() { return false; }
-    protected boolean disableMemoEdit() { return false; }
-
-    protected BaseFragmentModel(final PersistentDatabaseComponent persistentDatabaseComponent,
-                                final LanguageSettingsComponent languageSettingsComponent) {
-        this.persistentDatabaseComponent = persistentDatabaseComponent;
-        this.languageSettingsComponent = languageSettingsComponent;
-
-        pagedListAdapterObservable =
-                Observable.fromCallable(persistentDatabaseComponent::getEntities)
-                        .subscribeOn(Schedulers.io())
-                        .map(entities -> new DictionaryPagedListAdapter(entities,
-                                disableBookmarkButton(), disableMemoEdit(),
-                                this::commitBookmarks))
-                        .observeOn(AndroidSchedulers.mainThread())
-                        .share()
-                        .takeUntil(getStatusObservable().filter(MVIStatus::getClosed))
-                        .replay(1).autoConnect();
-
-        final LiveData<PagedList<DictionarySearchElement>> pagedList =
-                getPagedList(new PagedList.BoundaryCallback<DictionarySearchElement>() {
-                    @Override
-                    public void onItemAtEndLoaded(@NonNull DictionarySearchElement itemAtEnd) {
-                        super.onItemAtEndLoaded(itemAtEnd);
-
-                        sendIntent(new ScrollIntent());
-                    }
-                });
-
-        final Observable<PagedList<DictionarySearchElement>> pagedListObservable =
-                LiveDataWrapper.wrap(pagedList, getStatusObservable().filter(MVIStatus::getClosed));
-
-        pagedListObservable.withLatestFrom(pagedListAdapterObservable,
-                (list, adapter) -> {
-                    adapter.submitList(list);
-
-                    return true;
-                }).subscribe();
+    protected open fun disableMemoEdit(): Boolean {
+        return false
     }
 
-    @Override
-    protected void onCleared() {
-        super.onCleared();
+    init {
+        pagedListAdapter = Observable.fromCallable { persistentDatabaseComponent.entities }
+                .subscribeOn(Schedulers.io())
+                .map { entities: HashMap<String, String>? ->
+                    DictionaryPagedListAdapter(entities!!,
+                            disableBookmarkButton(), disableMemoEdit()) { seq: Long, bookmark: Long, memo: String? -> commitBookmarks(seq, bookmark, memo) }
+                }
+                .observeOn(AndroidSchedulers.mainThread())
+                .share()
+                .takeUntil(statusObservable.filter { it != null && it.closed })
+                .replay(1).autoConnect()
+
+        val pagedList = pagedListFactory.invoke(persistentDatabaseComponent, object : BoundaryCallback<DictionarySearchElement?>() {
+            override fun onItemAtEndLoaded(itemAtEnd: DictionarySearchElement) {
+                super.onItemAtEndLoaded(itemAtEnd)
+                sendIntent(ScrollIntent)
+            }
+        })
+
+        val pagedListObservable: Observable<PagedList<DictionarySearchElement?>> = LiveDataWrapper.wrap(pagedList, statusObservable.filter { it != null && it.closed })
+        pagedListObservable.withLatestFrom(pagedListAdapter,
+                { list: PagedList<DictionarySearchElement?>, adapter: DictionaryPagedListAdapter ->
+                    adapter.submitList(list)
+                    true
+                }).subscribe()
     }
 }

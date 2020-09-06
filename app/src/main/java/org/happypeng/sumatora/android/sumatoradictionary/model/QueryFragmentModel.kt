@@ -13,48 +13,34 @@
 
         You should have received a copy of the GNU General Public License
         along with this program.  If not, see <http://www.gnu.org/licenses/>.*/
+package org.happypeng.sumatora.android.sumatoradictionary.model
 
-package org.happypeng.sumatora.android.sumatoradictionary.model;
+import androidx.hilt.Assisted
+import androidx.hilt.lifecycle.ViewModelInject
+import androidx.lifecycle.SavedStateHandle
+import androidx.paging.PagedList.BoundaryCallback
+import org.happypeng.sumatora.android.sumatoradictionary.component.BookmarkComponent
+import org.happypeng.sumatora.android.sumatoradictionary.component.BookmarkShareComponent
+import org.happypeng.sumatora.android.sumatoradictionary.component.LanguageSettingsComponent
+import org.happypeng.sumatora.android.sumatoradictionary.component.PersistentDatabaseComponent
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement
+import org.happypeng.sumatora.android.sumatoradictionary.model.status.QueryStatus
 
-import androidx.annotation.NonNull;
-import androidx.hilt.Assisted;
-import androidx.hilt.lifecycle.ViewModelInject;
-import androidx.lifecycle.LiveData;
-import androidx.lifecycle.SavedStateHandle;
-import androidx.paging.PagedList;
-
-import org.happypeng.sumatora.android.sumatoradictionary.component.BookmarkComponent;
-import org.happypeng.sumatora.android.sumatoradictionary.component.BookmarkShareComponent;
-import org.happypeng.sumatora.android.sumatoradictionary.component.LanguageSettingsComponent;
-import org.happypeng.sumatora.android.sumatoradictionary.component.PersistentDatabaseComponent;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
-import org.happypeng.sumatora.android.sumatoradictionary.model.status.QueryStatus;
-
-public class QueryFragmentModel extends BaseQueryFragmentModel {
-    @ViewModelInject
-    public QueryFragmentModel(final BookmarkComponent bookmarkComponent,
-                              final PersistentDatabaseComponent persistentDatabaseComponent,
-                              final LanguageSettingsComponent languageSettingsComponent,
-                              final BookmarkShareComponent bookmarkShareComponent,
-                              @Assisted SavedStateHandle savedStateHandle) {
-        super(bookmarkComponent,
-                persistentDatabaseComponent,
-                languageSettingsComponent,
-                bookmarkShareComponent,
-                savedStateHandle);
+class QueryFragmentModel @ViewModelInject constructor(bookmarkComponent: BookmarkComponent,
+                                                      persistentDatabaseComponent: PersistentDatabaseComponent,
+                                                      languageSettingsComponent: LanguageSettingsComponent,
+                                                      bookmarkShareComponent: BookmarkShareComponent,
+                                                      @Assisted savedStateHandle: SavedStateHandle?) : BaseQueryFragmentModel(bookmarkComponent!!,
+        persistentDatabaseComponent,
+        languageSettingsComponent,
+        bookmarkShareComponent,
+        { component: PersistentDatabaseComponent, callback: BoundaryCallback<DictionarySearchElement?>? -> component.getSearchElements(KEY, callback) }
+) {
+    companion object {
+        const val KEY = 1
     }
 
-    @NonNull
-    @Override
-    public QueryStatus getInitialStatus() {
-        return new QueryStatus(1, "", 0, null, false,
-                false, false, "Search", false, true, null,
-                false, false, true, false);
-    }
-
-    @Override
-    protected LiveData<PagedList<DictionarySearchElement>> getPagedList(final PagedList.BoundaryCallback<DictionarySearchElement> boundaryCallback) {
-        return persistentDatabaseComponent.getSearchElements(getInitialStatus().getKey(), boundaryCallback);
-    }
+    override val initialStatus = QueryStatus(KEY, "", 0, null, false,
+            filterMemos = false, filterBookmarks = false, title = "Search", searchIconifiedByDefault = false, shareButtonVisible = true, persistentLanguageSettings = null,
+            isClosed = false, searching = false, preparing = true, viewDestroyed = false)
 }

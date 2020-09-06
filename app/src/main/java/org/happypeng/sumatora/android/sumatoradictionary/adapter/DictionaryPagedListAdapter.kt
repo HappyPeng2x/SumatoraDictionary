@@ -13,72 +13,56 @@
 
         You should have received a copy of the GNU General Public License
         along with this program.  If not, see <http://www.gnu.org/licenses/>.*/
+package org.happypeng.sumatora.android.sumatoradictionary.adapter
 
-package org.happypeng.sumatora.android.sumatoradictionary.adapter;
+import android.view.LayoutInflater
+import android.view.ViewGroup
+import androidx.paging.PagedListAdapter
+import org.happypeng.sumatora.android.sumatoradictionary.databinding.WordCardBinding
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElementDiffUtil
+import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionarySearchElementViewHolder
+import java.util.*
 
-import androidx.annotation.NonNull;
-import androidx.paging.PagedListAdapter;
-
-import android.view.LayoutInflater;
-import android.view.ViewGroup;
-
-import org.happypeng.sumatora.android.sumatoradictionary.databinding.WordCardBinding;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElementDiffUtil;
-import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionarySearchElementViewHolder;
-
-import java.util.HashMap;
-
-public class DictionaryPagedListAdapter extends PagedListAdapter<DictionarySearchElement, DictionarySearchElementViewHolder> {
-    private final HashMap<String, String> entities;
-    private final boolean disableBookmarkButton;
-    private final boolean disableMemoEdit;
-
-    private final DictionarySearchElementViewHolder.CommitConsumer commitConsumer;
-
-    public DictionaryPagedListAdapter(@NonNull final HashMap<String, String> entities,
-                                      final boolean aDisableBookmarkButton,
-                                      final boolean aDisableMemoEdit,
-                                      final DictionarySearchElementViewHolder.CommitConsumer commitConsumer) {
-        super(DictionarySearchElementDiffUtil.getDiffUtil());
-
-        setHasStableIds(true);
-
-        this.entities = entities;
-        this.disableBookmarkButton = aDisableBookmarkButton;
-        this.disableMemoEdit = aDisableMemoEdit;
-        this.commitConsumer = commitConsumer;
-    }
+class DictionaryPagedListAdapter(entities: HashMap<String, String>,
+                                 aDisableBookmarkButton: Boolean,
+                                 aDisableMemoEdit: Boolean,
+                                 commitConsumer: (Long, Long, String?) -> Unit) :
+        PagedListAdapter<DictionarySearchElement?, DictionarySearchElementViewHolder>(DictionarySearchElementDiffUtil.getDiffUtil()) {
+    private val entities: HashMap<String, String>
+    private val disableBookmarkButton: Boolean
+    private val disableMemoEdit: Boolean
+    private val commitConsumer: (Long, Long, String?) -> Unit
 
     // No placeholders = no null values
-    @Override
-    public long getItemId(int position) {
-        return getItem(position).getSeq();
+    override fun getItemId(position: Int): Long {
+        return getItem(position)!!.getSeq()
     }
 
-    @Override
-    public void onViewDetachedFromWindow(@NonNull DictionarySearchElementViewHolder holder) {
-        super.onViewDetachedFromWindow(holder);
+    override fun onViewDetachedFromWindow(holder: DictionarySearchElementViewHolder) {
+        super.onViewDetachedFromWindow(holder)
     }
 
-    @NonNull
-    @Override
-    public DictionarySearchElementViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        LayoutInflater layoutInflater = LayoutInflater.from(parent.getContext());
-        WordCardBinding wordCardBinding = WordCardBinding.inflate(layoutInflater);
-        DictionarySearchElementViewHolder holder = new DictionarySearchElementViewHolder(wordCardBinding,
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): DictionarySearchElementViewHolder {
+        val layoutInflater = LayoutInflater.from(parent.context)
+        val wordCardBinding = WordCardBinding.inflate(layoutInflater)
+        return DictionarySearchElementViewHolder(wordCardBinding,
                 entities, disableBookmarkButton, disableMemoEdit,
-                commitConsumer);
-
-        return holder;
+                commitConsumer)
     }
 
-    @Override
-    public void onBindViewHolder(DictionarySearchElementViewHolder holder, int position) {
-        DictionarySearchElement entry = getItem(position);
-
+    override fun onBindViewHolder(holder: DictionarySearchElementViewHolder, position: Int) {
+        val entry = getItem(position)
         if (entry != null) {
-            holder.bindTo(entry);
+            holder.bindTo(entry)
         }
+    }
+
+    init {
+        setHasStableIds(true)
+        this.entities = entities
+        disableBookmarkButton = aDisableBookmarkButton
+        disableMemoEdit = aDisableMemoEdit
+        this.commitConsumer = commitConsumer
     }
 }

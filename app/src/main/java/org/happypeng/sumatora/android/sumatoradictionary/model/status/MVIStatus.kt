@@ -13,17 +13,6 @@
 
         You should have received a copy of the GNU General Public License
         along with this program.  If not, see <http://www.gnu.org/licenses/>.*/
+package org.happypeng.sumatora.android.sumatoradictionary.model.status
 
-package org.happypeng.sumatora.android.sumatoradictionary.model.status;
-
-public class MVIStatus {
-    private final boolean closed;
-
-    protected MVIStatus(final boolean closed) {
-        this.closed = closed;
-    }
-
-    public boolean getClosed() {
-        return closed;
-    }
-}
+open class MVIStatus protected constructor(val closed: Boolean)

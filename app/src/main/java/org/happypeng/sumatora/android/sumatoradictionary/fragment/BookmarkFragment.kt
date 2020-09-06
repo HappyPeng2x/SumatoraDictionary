@@ -13,22 +13,18 @@
 
         You should have received a copy of the GNU General Public License
         along with this program.  If not, see <http://www.gnu.org/licenses/>.*/
+package org.happypeng.sumatora.android.sumatoradictionary.fragment
 
-package org.happypeng.sumatora.android.sumatoradictionary.fragment;
+import androidx.fragment.app.viewModels
+import androidx.lifecycle.ViewModelProvider
+import org.happypeng.sumatora.android.sumatoradictionary.model.BaseQueryFragmentModel
+import org.happypeng.sumatora.android.sumatoradictionary.model.BookmarkFragmentModel
+import org.happypeng.sumatora.android.sumatoradictionary.model.QueryFragmentModel
 
+class BookmarkFragment : BaseFragment() {
+    private val viewModel: BookmarkFragmentModel by viewModels()
 
-import androidx.lifecycle.ViewModelProvider;
-
-import org.happypeng.sumatora.android.sumatoradictionary.model.BaseQueryFragmentModel;
-import org.happypeng.sumatora.android.sumatoradictionary.model.BookmarkFragmentModel;
-
-public class BookmarkFragment extends BaseFragment {
-    public BookmarkFragment() {
-        super();
-    }
-
-    @Override
-    protected BaseQueryFragmentModel getModel() {
-        return new ViewModelProvider(this).get(BookmarkFragmentModel.class);
+    override fun getModel(): BaseQueryFragmentModel {
+        return viewModel
     }
 }

@@ -13,63 +13,46 @@
 
         You should have received a copy of the GNU General Public License
         along with this program.  If not, see <http://www.gnu.org/licenses/>.*/
+package org.happypeng.sumatora.android.sumatoradictionary.model
 
-package org.happypeng.sumatora.android.sumatoradictionary.model;
+import androidx.lifecycle.ViewModel
+import io.reactivex.rxjava3.core.Observable
+import io.reactivex.rxjava3.subjects.BehaviorSubject
+import io.reactivex.rxjava3.subjects.PublishSubject
+import io.reactivex.rxjava3.subjects.Subject
+import org.happypeng.sumatora.android.sumatoradictionary.model.intent.CloseIntent
+import org.happypeng.sumatora.android.sumatoradictionary.model.intent.MVIIntent
+import org.happypeng.sumatora.android.sumatoradictionary.model.status.MVIStatus
+import org.happypeng.sumatora.android.sumatoradictionary.operator.ScanConcatMap
 
-import androidx.annotation.NonNull;
-import androidx.lifecycle.ViewModel;
+abstract class MVIViewModel<S : MVIStatus> : ViewModel() {
+    private val intentSubject: Subject<MVIIntent> = PublishSubject.create()
+    private val statusSubject: Subject<S> = BehaviorSubject.create()
+    protected abstract fun getIntentObservablesToMerge(): MutableList<Observable<MVIIntent>>
+    abstract val initialStatus: S
+    abstract fun transformStatus(previousStatus: S, intent: MVIIntent): Observable<S>
 
-import org.happypeng.sumatora.android.sumatoradictionary.model.intent.CloseIntent;
-import org.happypeng.sumatora.android.sumatoradictionary.model.intent.MVIIntent;
-import org.happypeng.sumatora.android.sumatoradictionary.model.status.MVIStatus;
-import org.happypeng.sumatora.android.sumatoradictionary.operator.ScanConcatMap;
-
-import java.util.List;
-
-import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
-import io.reactivex.rxjava3.core.Observable;
-import io.reactivex.rxjava3.schedulers.Schedulers;
-import io.reactivex.rxjava3.subjects.BehaviorSubject;
-import io.reactivex.rxjava3.subjects.PublishSubject;
-import io.reactivex.rxjava3.subjects.Subject;
-
-public abstract class MVIViewModel<S extends MVIStatus> extends ViewModel {
-    final private Subject<MVIIntent> intentSubject = PublishSubject.create();
-    final private Subject<S> statusSubject = BehaviorSubject.create();
-
-    public MVIViewModel() {
-    }
-
-    @NonNull protected abstract List<Observable<MVIIntent>> getIntentObservablesToMerge();
-    @NonNull public abstract S getInitialStatus();
-    @NonNull public abstract Observable<S> transformStatus(S previousStatus, MVIIntent intent);
-
-    protected void connectIntents() {
-        final List<Observable<MVIIntent>> observableList = getIntentObservablesToMerge();
-
-        observableList.add(intentSubject);
+    protected fun connectIntents() {
+        val observableList = getIntentObservablesToMerge()
+        observableList.add(intentSubject)
 
         Observable.merge(observableList)
-                .compose(new ScanConcatMap<>(new ScanConcatMap.ScanOperator<MVIIntent, S>() {
-                    @Override
-                    public Observable<S> apply(S lastStatus, MVIIntent newUpstream) {
-                        return transformStatus(lastStatus == null ? getInitialStatus() : lastStatus,
-                                newUpstream);
-                    }
-                }))
-                .takeUntil(MVIStatus::getClosed)
-                .subscribeWith(statusSubject);
+                .compose(ScanConcatMap<MVIIntent, S> { lastStatus: S?, newUpstream: MVIIntent ->
+                    transformStatus(lastStatus ?: initialStatus, newUpstream)
+                })
+                .takeUntil(MVIStatus::closed)
+                .subscribeWith(statusSubject)
     }
 
-    public void sendIntent(final MVIIntent intent) { intentSubject.onNext(intent); }
-
-    @Override
-    protected void onCleared() {
-        sendIntent(new CloseIntent());
-        intentSubject.onComplete();
+    fun sendIntent(intent: MVIIntent) {
+        intentSubject.onNext(intent)
     }
 
-    public Observable<S> getStatusObservable() {
-        return statusSubject;
+    override fun onCleared() {
+        sendIntent(CloseIntent)
+        intentSubject.onComplete()
     }
+
+    val statusObservable: Observable<S>
+        get() = statusSubject
 }
