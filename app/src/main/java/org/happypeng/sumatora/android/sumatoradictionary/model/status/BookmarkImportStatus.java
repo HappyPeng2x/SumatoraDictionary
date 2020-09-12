@@ -22,19 +22,19 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.tools.BookmarkImport
 
 import java.util.List;
 
-public class BookmarkImportStatus extends MVIStatus {
+public class BookmarkImportStatus implements MVIStatus {
     final private int key;
     final private BookmarkImportQueryTool queryTool;
     final private boolean executed;
     final private PersistentLanguageSettings persistentLanguageSettings;
+    final private boolean closed;
 
     public BookmarkImportStatus(final int key,
                                 final BookmarkImportQueryTool queryTool,
                                 final boolean executed,
                                 final PersistentLanguageSettings persistentLanguageSettings,
-                                final boolean close) {
-        super(close);
-
+                                final boolean closed) {
+        this.closed = closed;
         this.key = key;
         this.queryTool = queryTool;
         this.executed = executed;
@@ -45,4 +45,9 @@ public class BookmarkImportStatus extends MVIStatus {
     public BookmarkImportQueryTool getQueryTool() { return queryTool; }
     public boolean getExecuted() { return executed; }
     public PersistentLanguageSettings getPersistentLanguageSettings() { return persistentLanguageSettings; }
+
+    @Override
+    public boolean getClosed() {
+        return closed;
+    }
 }

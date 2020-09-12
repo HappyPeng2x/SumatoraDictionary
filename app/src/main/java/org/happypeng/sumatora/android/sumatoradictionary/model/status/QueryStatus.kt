@@ -29,7 +29,7 @@ data class QueryStatus(val key: Int,
                        val searchIconifiedByDefault: Boolean,
                        val shareButtonVisible: Boolean,
                        val persistentLanguageSettings: PersistentLanguageSettings?,
-                       val isClosed: Boolean,
+                       override val closed: Boolean,
                        val searching: Boolean,
                        val preparing: Boolean,
-                       val viewDestroyed: Boolean) : MVIStatus(isClosed)
+                       val viewDestroyed: Boolean) : MVIStatus

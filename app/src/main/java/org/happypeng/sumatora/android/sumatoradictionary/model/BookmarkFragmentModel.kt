@@ -39,7 +39,7 @@ class BookmarkFragmentModel @ViewModelInject constructor(bookmarkComponent: Book
         { component: PersistentDatabaseComponent, callback: BoundaryCallback<DictionarySearchElement?>? -> component.getSearchElements(KEY, callback) },
         QueryStatus(KEY, "", 0, null, false,
                 filterMemos = false, filterBookmarks = true, title = "Bookmarks", searchIconifiedByDefault = true, shareButtonVisible = true, persistentLanguageSettings = null,
-                isClosed = false, searching = false, preparing = true, viewDestroyed = false)) {
+                closed = false, searching = false, preparing = true, viewDestroyed = false)) {
     companion object {
         const val KEY = 2
     }

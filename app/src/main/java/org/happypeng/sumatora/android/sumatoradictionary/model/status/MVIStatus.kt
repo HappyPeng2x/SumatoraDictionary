@@ -15,4 +15,6 @@
         along with this program.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.happypeng.sumatora.android.sumatoradictionary.model.status
 
-open class MVIStatus protected constructor(val closed: Boolean)
+interface MVIStatus {
+    val closed: Boolean;
+}

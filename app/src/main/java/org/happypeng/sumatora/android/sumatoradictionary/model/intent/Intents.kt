@@ -23,20 +23,3 @@ sealed class LanguageSettingIntent(val languageSettings: PersistentLanguageSetti
 
 class LanguageSettingDetachedIntent(languageSettings: PersistentLanguageSettings) : LanguageSettingIntent(languageSettings)
 class LanguageSettingAttachedIntent(languageSettings: PersistentLanguageSettings) : LanguageSettingIntent(languageSettings)
-
-sealed class MainActivityIntent : MVIIntent()
-
-sealed class MainActivityNavigationIntent : MainActivityIntent()
-
-object MainActivityNavigateBookmarksIntent : MainActivityNavigationIntent()
-object MainActivityNavigateSearchIntent : MainActivityNavigationIntent()
-object MainActivityNavigateSettingsIntent : MainActivityNavigationIntent()
-object MainActivityNavigateAboutIntent : MainActivityNavigationIntent()
-
-object MainActivityBackPressedIntent : MainActivityIntent()
-object MainActivityHomePressedIntent : MainActivityIntent()
-
-object MainActivityNoOpIntent : MainActivityIntent()
-object MainActivityCloseIntent : MainActivityIntent()
-
-class MainActivitySearchIntent(val term: String) : MainActivityIntent()
