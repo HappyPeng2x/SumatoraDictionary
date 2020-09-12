@@ -42,8 +42,9 @@ abstract class BaseQueryFragmentModel protected constructor(private val bookmark
                                                             languageSettingsComponent: LanguageSettingsComponent,
                                                             private val bookmarkShareComponent: BookmarkShareComponent,
                                                             pagedListFactory: (PersistentDatabaseComponent, PagedList.BoundaryCallback<DictionarySearchElement?>?) ->
-                                                            LiveData<PagedList<DictionarySearchElement?>>
-) : BaseFragmentModel<QueryStatus>(persistentDatabaseComponent, languageSettingsComponent, pagedListFactory) {
+                                                            LiveData<PagedList<DictionarySearchElement?>>,
+                                                            initialStatus: QueryStatus
+) : BaseFragmentModel<QueryStatus>(persistentDatabaseComponent, languageSettingsComponent, pagedListFactory, initialStatus) {
     private val compositeDisposable: CompositeDisposable = CompositeDisposable()
 
     fun setTerm(t: String?) {
@@ -68,14 +69,14 @@ abstract class BaseQueryFragmentModel protected constructor(private val bookmark
         sendIntent(ViewDestroyedIntent)
     }
 
-    override fun getIntentObservablesToMerge(): MutableList<Observable<MVIIntent>> {
-        val observables: MutableList<Observable<MVIIntent>> = LinkedList()
+    override fun getIntentObservablesToMerge(): MutableList<Observable<BaseQueryIntent>> {
+        val observables: MutableList<Observable<BaseQueryIntent>> = LinkedList()
         observables.add(bookmarkComponent.bookmarkChanges.map { BookmarkIntent })
-        observables.add(languageSettingsComponent.persistentLanguageSettings.cast(MVIIntent::class.java))
+        observables.add(languageSettingsComponent.persistentLanguageSettings.cast(BaseQueryIntent::class.java))
         return observables
     }
 
-    override fun transformStatus(previousStatus: QueryStatus, intent: MVIIntent): Observable<QueryStatus> {
+    override fun transformStatus(previousStatus: QueryStatus, intent: BaseQueryIntent): Observable<QueryStatus> {
         return Observable.create(ObservableOnSubscribe { emitter: ObservableEmitter<QueryStatus> ->
             val persistentDatabase = persistentDatabaseComponent.database
             val key = previousStatus.key

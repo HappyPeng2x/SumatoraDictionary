@@ -21,30 +21,30 @@ import io.reactivex.rxjava3.subjects.BehaviorSubject
 import io.reactivex.rxjava3.subjects.PublishSubject
 import io.reactivex.rxjava3.subjects.Subject
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.CloseIntent
-import org.happypeng.sumatora.android.sumatoradictionary.model.intent.MVIIntent
+import org.happypeng.sumatora.android.sumatoradictionary.model.intent.BaseQueryIntent
 import org.happypeng.sumatora.android.sumatoradictionary.model.status.MVIStatus
 import org.happypeng.sumatora.android.sumatoradictionary.operator.ScanConcatMap
 
-abstract class MVIViewModel<S : MVIStatus> : ViewModel() {
-    private val intentSubject: Subject<MVIIntent> = PublishSubject.create()
+abstract class MVIViewModel<S : MVIStatus>
+    protected constructor (private val initialStatus: S) : ViewModel() {
+    private val intentSubject: Subject<BaseQueryIntent> = PublishSubject.create()
     private val statusSubject: Subject<S> = BehaviorSubject.create()
-    protected abstract fun getIntentObservablesToMerge(): MutableList<Observable<MVIIntent>>
-    abstract val initialStatus: S
-    abstract fun transformStatus(previousStatus: S, intent: MVIIntent): Observable<S>
+    protected abstract fun getIntentObservablesToMerge(): MutableList<Observable<BaseQueryIntent>>
+    abstract fun transformStatus(previousStatus: S, intent: BaseQueryIntent): Observable<S>
 
     protected fun connectIntents() {
         val observableList = getIntentObservablesToMerge()
         observableList.add(intentSubject)
 
         Observable.merge(observableList)
-                .compose(ScanConcatMap<MVIIntent, S> { lastStatus: S?, newUpstream: MVIIntent ->
+                .compose(ScanConcatMap<BaseQueryIntent, S> { lastStatus: S?, newUpstream: BaseQueryIntent ->
                     transformStatus(lastStatus ?: initialStatus, newUpstream)
                 })
                 .takeUntil(MVIStatus::closed)
                 .subscribeWith(statusSubject)
     }
 
-    fun sendIntent(intent: MVIIntent) {
+    fun sendIntent(intent: BaseQueryIntent) {
         intentSubject.onNext(intent)
     }
 

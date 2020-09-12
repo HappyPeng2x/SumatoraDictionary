@@ -16,7 +16,6 @@
 package org.happypeng.sumatora.android.sumatoradictionary.fragment
 
 import androidx.fragment.app.viewModels
-import androidx.lifecycle.ViewModelProvider
 import org.happypeng.sumatora.android.sumatoradictionary.model.BaseQueryFragmentModel
 import org.happypeng.sumatora.android.sumatoradictionary.model.QueryFragmentModel
 

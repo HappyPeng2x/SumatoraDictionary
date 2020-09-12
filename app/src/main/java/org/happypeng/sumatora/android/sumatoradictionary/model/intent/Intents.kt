@@ -5,19 +5,38 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSe
 
 sealed class MVIIntent
 
-object ViewDestroyedIntent : MVIIntent()
-object ScrollIntent : MVIIntent()
-object CloseIntent : MVIIntent()
-object BookmarkIntent : MVIIntent()
-object BookmarkImportCommitIntent : MVIIntent()
-object BookmarkImportCancelIntent : MVIIntent()
+sealed class BaseQueryIntent : MVIIntent()
 
-class SearchIntent(val term: String) : MVIIntent()
-class FilterMemosIntent(val filter: Boolean) : MVIIntent()
-class FilterBookmarksIntent(val filter: Boolean) : MVIIntent()
-class BookmarkImportFileOpenIntent(val uri: Uri) : MVIIntent()
+object ViewDestroyedIntent : BaseQueryIntent()
+object ScrollIntent : BaseQueryIntent()
+object CloseIntent : BaseQueryIntent()
+object BookmarkIntent : BaseQueryIntent()
+object BookmarkImportCommitIntent : BaseQueryIntent()
+object BookmarkImportCancelIntent : BaseQueryIntent()
 
-sealed class LanguageSettingIntent(val languageSettings: PersistentLanguageSettings) : MVIIntent()
+class SearchIntent(val term: String) : BaseQueryIntent()
+class FilterMemosIntent(val filter: Boolean) : BaseQueryIntent()
+class FilterBookmarksIntent(val filter: Boolean) : BaseQueryIntent()
+class BookmarkImportFileOpenIntent(val uri: Uri) : BaseQueryIntent()
+
+sealed class LanguageSettingIntent(val languageSettings: PersistentLanguageSettings) : BaseQueryIntent()
 
 class LanguageSettingDetachedIntent(languageSettings: PersistentLanguageSettings) : LanguageSettingIntent(languageSettings)
 class LanguageSettingAttachedIntent(languageSettings: PersistentLanguageSettings) : LanguageSettingIntent(languageSettings)
+
+sealed class MainActivityIntent : MVIIntent()
+
+sealed class MainActivityNavigationIntent : MainActivityIntent()
+
+object MainActivityNavigateBookmarksIntent : MainActivityNavigationIntent()
+object MainActivityNavigateSearchIntent : MainActivityNavigationIntent()
+object MainActivityNavigateSettingsIntent : MainActivityNavigationIntent()
+object MainActivityNavigateAboutIntent : MainActivityNavigationIntent()
+
+object MainActivityBackPressedIntent : MainActivityIntent()
+object MainActivityHomePressedIntent : MainActivityIntent()
+
+object MainActivityNoOpIntent : MainActivityIntent()
+object MainActivityCloseIntent : MainActivityIntent()
+
+class MainActivitySearchIntent(val term: String) : MainActivityIntent()

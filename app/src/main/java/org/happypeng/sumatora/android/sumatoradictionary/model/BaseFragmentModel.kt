@@ -29,13 +29,15 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.ScrollIntent
 import org.happypeng.sumatora.android.sumatoradictionary.model.status.MVIStatus
+import org.happypeng.sumatora.android.sumatoradictionary.model.status.QueryStatus
 import org.happypeng.sumatora.android.sumatoradictionary.operator.LiveDataWrapper
 import java.util.*
 
 abstract class BaseFragmentModel<S : MVIStatus> protected constructor(protected val persistentDatabaseComponent: PersistentDatabaseComponent,
                                                                        protected val languageSettingsComponent: LanguageSettingsComponent,
                                                                        pagedListFactory: (PersistentDatabaseComponent, BoundaryCallback<DictionarySearchElement?>?) ->
-                                                                       LiveData<PagedList<DictionarySearchElement?>>) : MVIViewModel<S>() {
+                                                                       LiveData<PagedList<DictionarySearchElement?>>,
+                                                                       initialStatus: S) : MVIViewModel<S>(initialStatus) {
     val pagedListAdapter: Observable<DictionaryPagedListAdapter>
 
     open fun setLanguage(language: String) {

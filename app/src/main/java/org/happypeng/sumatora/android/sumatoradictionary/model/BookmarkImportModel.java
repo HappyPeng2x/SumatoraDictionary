@@ -21,14 +21,11 @@ import android.net.Uri;
 import androidx.annotation.NonNull;
 import androidx.hilt.Assisted;
 import androidx.hilt.lifecycle.ViewModelInject;
-import androidx.lifecycle.LiveData;
 import androidx.lifecycle.SavedStateHandle;
-import androidx.paging.PagedList;
 
 import org.happypeng.sumatora.android.sumatoradictionary.component.BookmarkImportComponent;
 import org.happypeng.sumatora.android.sumatoradictionary.component.LanguageSettingsComponent;
 import org.happypeng.sumatora.android.sumatoradictionary.component.PersistentDatabaseComponent;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.BookmarkImportQueryTool;
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.BookmarkImportCancelIntent;
@@ -36,13 +33,12 @@ import org.happypeng.sumatora.android.sumatoradictionary.model.intent.BookmarkIm
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.BookmarkImportFileOpenIntent;
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.LanguageSettingAttachedIntent;
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.LanguageSettingIntent;
-import org.happypeng.sumatora.android.sumatoradictionary.model.intent.MVIIntent;
+import org.happypeng.sumatora.android.sumatoradictionary.model.intent.BaseQueryIntent;
 import org.happypeng.sumatora.android.sumatoradictionary.model.status.BookmarkImportStatus;
 
 import java.util.LinkedList;
 import java.util.List;
 
-import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.core.ObservableEmitter;
 import io.reactivex.rxjava3.core.ObservableOnSubscribe;
@@ -64,7 +60,8 @@ public class BookmarkImportModel extends BaseFragmentModel<BookmarkImportStatus>
                                final BookmarkImportComponent bookmarkImportComponent,
                                @Assisted SavedStateHandle savedStateHandle) {
         super(persistentDatabaseComponent, languageSettingsComponent,
-                (component, callback) -> component.getSearchElements(KEY, callback));
+                (component, callback) -> component.getSearchElements(KEY, callback),
+                new BookmarkImportStatus(3, null, false, null, false));
 
         this.bookmarkImportComponent = bookmarkImportComponent;
 
@@ -85,23 +82,17 @@ public class BookmarkImportModel extends BaseFragmentModel<BookmarkImportStatus>
 
     @NonNull
     @Override
-    protected List<Observable<MVIIntent>> getIntentObservablesToMerge() {
-        final List<Observable<MVIIntent>> observables = new LinkedList<>();
+    protected List<Observable<BaseQueryIntent>> getIntentObservablesToMerge() {
+        final List<Observable<BaseQueryIntent>> observables = new LinkedList<>();
 
-        observables.add(getLanguageSettingsComponent().getPersistentLanguageSettings().cast(MVIIntent.class));
+        observables.add(getLanguageSettingsComponent().getPersistentLanguageSettings().cast(BaseQueryIntent.class));
 
         return observables;
     }
 
     @NonNull
     @Override
-    public BookmarkImportStatus getInitialStatus() {
-        return new BookmarkImportStatus(3, null, false, null, false);
-    }
-
-    @NonNull
-    @Override
-    public Observable<BookmarkImportStatus> transformStatus(BookmarkImportStatus previousStatus, MVIIntent intent) {
+    public Observable<BookmarkImportStatus> transformStatus(BookmarkImportStatus previousStatus, BaseQueryIntent intent) {
         return Observable.create(new ObservableOnSubscribe<BookmarkImportStatus>() {
             @Override
             public void subscribe(@io.reactivex.rxjava3.annotations.NonNull ObservableEmitter<BookmarkImportStatus> emitter) throws Throwable {
