@@ -18,9 +18,13 @@ package org.happypeng.sumatora.android.sumatoradictionary.adapter
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.paging.PagedListAdapter
+import androidx.recyclerview.widget.RecyclerView
+import io.reactivex.rxjava3.subjects.PublishSubject
 import org.happypeng.sumatora.android.sumatoradictionary.databinding.WordCardBinding
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElementDiffUtil
+import org.happypeng.sumatora.android.sumatoradictionary.model.intent.DictionaryPagedListAdapterCloseIntent
+import org.happypeng.sumatora.android.sumatoradictionary.model.intent.DictionaryPagedListAdapterIntent
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionarySearchElementViewHolder
 import java.util.*
 
@@ -33,14 +37,15 @@ class DictionaryPagedListAdapter(entities: HashMap<String, String>,
     private val disableBookmarkButton: Boolean
     private val disableMemoEdit: Boolean
     private val commitConsumer: (Long, Long, String?) -> Unit
+    private val intentSubject: PublishSubject<DictionaryPagedListAdapterIntent> = PublishSubject.create()
+
+    fun close() {
+        intentSubject.onNext(DictionaryPagedListAdapterCloseIntent)
+    }
 
     // No placeholders = no null values
     override fun getItemId(position: Int): Long {
         return getItem(position)!!.getSeq()
-    }
-
-    override fun onViewDetachedFromWindow(holder: DictionarySearchElementViewHolder) {
-        super.onViewDetachedFromWindow(holder)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): DictionarySearchElementViewHolder {
@@ -48,7 +53,7 @@ class DictionaryPagedListAdapter(entities: HashMap<String, String>,
         val wordCardBinding = WordCardBinding.inflate(layoutInflater)
         return DictionarySearchElementViewHolder(wordCardBinding,
                 entities, disableBookmarkButton, disableMemoEdit,
-                commitConsumer)
+                commitConsumer, intentSubject)
     }
 
     override fun onBindViewHolder(holder: DictionarySearchElementViewHolder, position: Int) {
@@ -64,5 +69,11 @@ class DictionaryPagedListAdapter(entities: HashMap<String, String>,
         disableBookmarkButton = aDisableBookmarkButton
         disableMemoEdit = aDisableMemoEdit
         this.commitConsumer = commitConsumer
+    }
+
+    override fun onViewRecycled(holder: DictionarySearchElementViewHolder) {
+        super.onViewRecycled(holder)
+
+        holder.recycle()
     }
 }

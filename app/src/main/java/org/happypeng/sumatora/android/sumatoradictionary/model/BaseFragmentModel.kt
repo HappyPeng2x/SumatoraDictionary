@@ -21,6 +21,8 @@ import androidx.paging.PagedList.BoundaryCallback
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.schedulers.Schedulers
+import io.reactivex.rxjava3.subjects.BehaviorSubject
+import io.reactivex.rxjava3.subjects.Subject
 import org.happypeng.sumatora.android.sumatoradictionary.adapter.DictionaryPagedListAdapter
 import org.happypeng.sumatora.android.sumatoradictionary.component.LanguageSettingsComponent
 import org.happypeng.sumatora.android.sumatoradictionary.component.PersistentDatabaseComponent
@@ -29,16 +31,15 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.ScrollIntent
 import org.happypeng.sumatora.android.sumatoradictionary.model.status.MVIStatus
-import org.happypeng.sumatora.android.sumatoradictionary.model.status.QueryStatus
 import org.happypeng.sumatora.android.sumatoradictionary.operator.LiveDataWrapper
-import java.util.*
 
 abstract class BaseFragmentModel<S : MVIStatus> protected constructor(protected val persistentDatabaseComponent: PersistentDatabaseComponent,
-                                                                       protected val languageSettingsComponent: LanguageSettingsComponent,
-                                                                       pagedListFactory: (PersistentDatabaseComponent, BoundaryCallback<DictionarySearchElement?>?) ->
-                                                                       LiveData<PagedList<DictionarySearchElement?>>,
-                                                                       initialStatus: S) : MVIViewModel<S>(initialStatus) {
-    val pagedListAdapter: Observable<DictionaryPagedListAdapter>
+                                                                      protected val languageSettingsComponent: LanguageSettingsComponent,
+                                                                      pagedListFactory: (PersistentDatabaseComponent, BoundaryCallback<DictionarySearchElement?>?) ->
+                                                                      LiveData<PagedList<DictionarySearchElement?>>,
+                                                                      initialStatus: S) : MVIViewModel<S>(initialStatus) {
+    val pagedListAdapter: Subject<DictionaryPagedListAdapter> = BehaviorSubject.create()
+    private var latestPagedListAdapter: DictionaryPagedListAdapter? = null;
 
     open fun setLanguage(language: String) {
         val newLanguageSettings = PersistentLanguageSettings()
@@ -63,16 +64,14 @@ abstract class BaseFragmentModel<S : MVIStatus> protected constructor(protected 
     }
 
     init {
-        pagedListAdapter = Observable.fromCallable { persistentDatabaseComponent.entities }
+        pagedListAdapter.subscribe { latestPagedListAdapter = it }
+
+        Observable.fromCallable { persistentDatabaseComponent.entities }
                 .subscribeOn(Schedulers.io())
-                .map { entities: HashMap<String, String>? ->
-                    DictionaryPagedListAdapter(entities!!,
-                            disableBookmarkButton(), disableMemoEdit()) { seq: Long, bookmark: Long, memo: String? -> commitBookmarks(seq, bookmark, memo) }
-                }
                 .observeOn(AndroidSchedulers.mainThread())
-                .share()
-                .takeUntil(statusObservable.filter { it != null && it.closed })
-                .replay(1).autoConnect()
+                .map { DictionaryPagedListAdapter(it,
+                        disableBookmarkButton(), disableMemoEdit()) { seq: Long, bookmark: Long, memo: String? -> commitBookmarks(seq, bookmark, memo) }
+                }.subscribeWith(pagedListAdapter)
 
         val pagedList = pagedListFactory.invoke(persistentDatabaseComponent, object : BoundaryCallback<DictionarySearchElement?>() {
             override fun onItemAtEndLoaded(itemAtEnd: DictionarySearchElement) {
@@ -81,11 +80,17 @@ abstract class BaseFragmentModel<S : MVIStatus> protected constructor(protected 
             }
         })
 
-        val pagedListObservable: Observable<PagedList<DictionarySearchElement?>> = LiveDataWrapper.wrap(pagedList, statusObservable.filter { it != null && it.closed })
-        pagedListObservable.withLatestFrom(pagedListAdapter,
-                { list: PagedList<DictionarySearchElement?>, adapter: DictionaryPagedListAdapter ->
-                    adapter.submitList(list)
-                    true
-                }).subscribe()
+        LiveDataWrapper.wrap(pagedList, statusObservable.filter { it != null && it.closed })
+                .withLatestFrom(pagedListAdapter,
+                        { list: PagedList<DictionarySearchElement?>, adapter: DictionaryPagedListAdapter ->
+                            adapter.submitList(list)
+                            true
+                        }).subscribe()
+    }
+
+    override fun onCleared() {
+        latestPagedListAdapter?.close()
+
+        super.onCleared()
     }
 }

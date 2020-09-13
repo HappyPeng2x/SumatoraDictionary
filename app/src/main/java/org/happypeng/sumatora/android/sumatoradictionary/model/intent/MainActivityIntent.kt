@@ -12,7 +12,6 @@ object MainActivityNavigateAboutIntent : MainActivityNavigationIntent()
 object MainActivityBackPressedIntent : MainActivityIntent()
 object MainActivityHomePressedIntent : MainActivityIntent()
 
-object MainActivityNoOpIntent : MainActivityIntent()
 object MainActivityCloseIntent : MainActivityIntent()
 
 class MainActivitySearchIntent(val term: String) : MainActivityIntent()
