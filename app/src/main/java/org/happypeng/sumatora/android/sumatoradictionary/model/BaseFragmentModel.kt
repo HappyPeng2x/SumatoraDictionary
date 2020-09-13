@@ -70,8 +70,8 @@ abstract class BaseFragmentModel<S : MVIStatus> protected constructor(protected 
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .map { DictionaryPagedListAdapter(it,
-                        disableBookmarkButton(), disableMemoEdit()) { seq: Long, bookmark: Long, memo: String? -> commitBookmarks(seq, bookmark, memo) }
-                }.subscribeWith(pagedListAdapter)
+                        disableBookmarkButton(), disableMemoEdit()) { seq: Long, bookmark: Long, memo: String? -> commitBookmarks(seq, bookmark, memo) } }
+                .subscribe { pagedListAdapter.onNext(it) }
 
         val pagedList = pagedListFactory.invoke(persistentDatabaseComponent, object : BoundaryCallback<DictionarySearchElement?>() {
             override fun onItemAtEndLoaded(itemAtEnd: DictionarySearchElement) {

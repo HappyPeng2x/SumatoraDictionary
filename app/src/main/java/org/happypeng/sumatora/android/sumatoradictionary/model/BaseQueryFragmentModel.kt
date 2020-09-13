@@ -78,67 +78,102 @@ abstract class BaseQueryFragmentModel protected constructor(private val bookmark
 
     override fun transformStatus(previousStatus: QueryStatus, intent: BaseQueryIntent): Observable<QueryStatus> {
         return Observable.create(ObservableOnSubscribe { emitter: ObservableEmitter<QueryStatus> ->
-            val persistentDatabase = persistentDatabaseComponent.database
-            val key = previousStatus.key
-            val term = if (intent is SearchIntent) intent.term else previousStatus.term
-            val lastQuery = if (intent is SearchIntent) 0 else previousStatus.lastQuery
-            val persistentLanguageSettings = if (intent is LanguageSettingIntent) intent.languageSettings else previousStatus.persistentLanguageSettings
-            val found = intent !is SearchIntent && previousStatus.found
-            val filterBookmarks = intent is FilterBookmarksIntent && intent.filter || previousStatus.filterBookmarks
-            val filterMemos = intent is FilterMemosIntent && intent.filter || previousStatus.filterMemos
-            val title = previousStatus.title
-            val searchIconifiedByDefault = previousStatus.searchIconifiedByDefault
-            val shareButtonVisible = previousStatus.shareButtonVisible
-            val close = intent is CloseIntent
-            val viewDestroyed = intent is ViewDestroyedIntent
-            val searching = intent is SearchIntent
-            val preparing = intent is LanguageSettingDetachedIntent
+            val newStatus = QueryStatus(
+                    key = previousStatus.key,
+                    term = when(intent) {
+                        is SearchIntent -> intent.term
+                        else -> previousStatus.term
+                    },
+                    lastQuery = when(intent) {
+                        is SearchIntent -> 0
+                        else -> previousStatus.lastQuery
+                    },
+                    persistentLanguageSettings = when(intent) {
+                        is LanguageSettingIntent -> intent.languageSettings
+                        else -> previousStatus.persistentLanguageSettings
+                    },
+                    found = when(intent) {
+                        is SearchIntent -> false
+                        else -> previousStatus.found
+                    },
+                    filterBookmarks = when(intent) {
+                        is FilterBookmarksIntent -> !previousStatus.filterBookmarks
+                        else -> previousStatus.filterBookmarks
+                    },
+                    filterMemos = when(intent) {
+                        is FilterMemosIntent -> !previousStatus.filterMemos
+                        else -> previousStatus.filterMemos
+                    },
+                    title = previousStatus.title,
+                    searchIconifiedByDefault = previousStatus.searchIconifiedByDefault,
+                    shareButtonVisible = previousStatus.shareButtonVisible,
+                    closed = intent is CloseIntent,
+                    viewDestroyed = intent is ViewDestroyedIntent,
+                    searching = intent is SearchIntent,
+                    preparing = intent is LanguageSettingDetachedIntent,
+                    queryTool = when(intent) {
+                        is LanguageSettingDetachedIntent -> {
+                            previousStatus.queryTool?.close()
+                            null
+                        }
+                        is LanguageSettingAttachedIntent ->
+                            DictionarySearchQueryTool(persistentDatabaseComponent,
+                                    previousStatus.key, intent.languageSettings)
+                        else -> previousStatus.queryTool
+                    }
+            )
 
-            if (intent is LanguageSettingDetachedIntent || intent is CloseIntent) {
-                previousStatus.queryTool?.close()
-            }
-
-            val queryTool = if (intent is LanguageSettingAttachedIntent) DictionarySearchQueryTool(persistentDatabaseComponent,
-                    previousStatus.key, persistentLanguageSettings) else if (intent is LanguageSettingDetachedIntent || intent is CloseIntent) null else previousStatus.queryTool
-
+            // Not ready or closing
             if (intent is CloseIntent ||
                     intent is LanguageSettingDetachedIntent ||
-                    intent is ViewDestroyedIntent || queryTool == null) {
-                emitter.onNext(QueryStatus(key, term, lastQuery, queryTool, found, filterMemos, filterBookmarks,
-                        title, searchIconifiedByDefault, shareButtonVisible, persistentLanguageSettings, close, searching, preparing, viewDestroyed))
+                    intent is ViewDestroyedIntent || newStatus.queryTool == null) {
+                emitter.onNext(newStatus)
                 emitter.onComplete()
             } else {
                 val currentQuery = if (intent is ScrollIntent) previousStatus.lastQuery else 0
                 val clearResults = intent is BookmarkIntent || intent is LanguageSettingAttachedIntent
-                val executeUntilFound = lastQuery == 0 || intent is ScrollIntent
-                val resultLastQuery = ValueHolder(0)
-                val resultFound = ValueHolder(false)
-                val resultSearching = false
+                val executeUntilFound = newStatus.lastQuery == 0 || intent is ScrollIntent
 
                 if (intent is SearchIntent) {
-                    persistentDatabase.runInTransaction { queryTool.delete() }
-                    emitter.onNext(QueryStatus(key, term, lastQuery, queryTool, found, filterMemos, filterBookmarks,
-                            title, searchIconifiedByDefault, shareButtonVisible, persistentLanguageSettings, close, searching, preparing, viewDestroyed))
+                    persistentDatabaseComponent.database.runInTransaction { newStatus.queryTool.delete() }
+                    emitter.onNext(newStatus)
                 }
 
-                persistentDatabase.runInTransaction {
+                persistentDatabaseComponent.database.runInTransaction {
                     var current = currentQuery
                     var currentFound = false
-                    val queryCount = queryTool.getCount(term)
+                    val queryCount = newStatus.queryTool.getCount(newStatus.term)
+
                     if (clearResults) {
-                        queryTool.delete()
+                        newStatus.queryTool.delete()
                     }
 
                     while (executeUntilFound && current < queryCount && !currentFound ||
-                            current < lastQuery) {
-                        currentFound = queryTool.execute(term, current, filterBookmarks, filterMemos)
+                            current < newStatus.lastQuery) {
+                        currentFound = newStatus.queryTool.execute(newStatus.term,
+                                current, newStatus.filterBookmarks, newStatus.filterMemos)
                         current++
                     }
 
-                    resultFound.value = if (intent is SearchIntent) currentFound else found
-                    resultLastQuery.value = current
-                    emitter.onNext(QueryStatus(key, term, resultLastQuery.value, queryTool, resultFound.value, filterMemos, filterBookmarks,
-                            title, searchIconifiedByDefault, shareButtonVisible, persistentLanguageSettings, close, resultSearching, preparing, viewDestroyed))
+                    val finalStatus = QueryStatus(
+                            key = newStatus.key,
+                            term = newStatus.term,
+                            lastQuery = current,
+                            queryTool = newStatus.queryTool,
+                            found = if (intent is SearchIntent) currentFound else previousStatus.found,
+                            filterMemos = newStatus.filterMemos,
+                            filterBookmarks = newStatus.filterBookmarks,
+                            title = newStatus.title,
+                            searchIconifiedByDefault = newStatus.searchIconifiedByDefault,
+                            shareButtonVisible = newStatus.shareButtonVisible,
+                            persistentLanguageSettings = newStatus.persistentLanguageSettings,
+                            closed = false,
+                            searching = false,
+                            preparing = false,
+                            viewDestroyed = false
+                    )
+
+                    emitter.onNext(finalStatus)
                     emitter.onComplete()
                 }
             }
