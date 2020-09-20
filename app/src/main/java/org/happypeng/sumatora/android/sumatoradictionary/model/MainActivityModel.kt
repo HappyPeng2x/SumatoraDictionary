@@ -6,8 +6,8 @@ import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.subjects.BehaviorSubject
 import io.reactivex.rxjava3.subjects.Subject
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.*
-import org.happypeng.sumatora.android.sumatoradictionary.model.status.MainActivityNavigationStatus
-import org.happypeng.sumatora.android.sumatoradictionary.model.status.MainActivityStatus
+import org.happypeng.sumatora.android.sumatoradictionary.model.state.MainActivityNavigationStatus
+import org.happypeng.sumatora.android.sumatoradictionary.model.state.MainActivityState
 
 class MainActivityModel(private val state: SavedStateHandle) : ViewModel() {
     private val intentSubject: Subject<MainActivityIntent> = BehaviorSubject.create()
@@ -16,17 +16,17 @@ class MainActivityModel(private val state: SavedStateHandle) : ViewModel() {
         intentSubject.onNext(intent)
     }
 
-    val statusObservable: Observable<MainActivityStatus> =
+    val stateObservable: Observable<MainActivityState> =
             intentSubject.scan(state.get(STATUS_KEY) ?: initialStatus,
-                    { mainActivityStatus: MainActivityStatus,
+                    { mainActivityState: MainActivityState,
                       mainActivityIntent: MainActivityIntent ->
-                        mainActivityStatus.copy(
+                        mainActivityState.copy(
                                 navigationStatus = when(mainActivityIntent) {
                                     MainActivityNavigateBookmarksIntent -> MainActivityNavigationStatus.BOOKMARKS
                                     MainActivityNavigateSearchIntent -> MainActivityNavigationStatus.SEARCH
                                     MainActivityNavigateSettingsIntent -> MainActivityNavigationStatus.SETTINGS
                                     MainActivityBackPressedIntent -> MainActivityNavigationStatus.SEARCH
-                                    else -> mainActivityStatus.navigationStatus
+                                    else -> mainActivityState.navigationStatus
                                 },
                                 closed = when(mainActivityIntent) {
                                     MainActivityCloseIntent -> true
@@ -34,16 +34,16 @@ class MainActivityModel(private val state: SavedStateHandle) : ViewModel() {
                                 },
                                 searchTerm = when(mainActivityIntent) {
                                     is MainActivitySearchIntent -> mainActivityIntent.term
-                                    else -> mainActivityStatus.searchTerm
+                                    else -> mainActivityState.searchTerm
                                 },
                                 drawerOpen = when(mainActivityIntent) {
                                     MainActivityHomePressedIntent -> true
                                     is MainActivityNavigationIntent -> false
-                                    else -> mainActivityStatus.drawerOpen
+                                    else -> mainActivityState.drawerOpen
                                 },
                                 finished = when(mainActivityIntent) {
                                     MainActivityBackPressedIntent ->
-                                        when(mainActivityStatus.navigationStatus) {
+                                        when(mainActivityState.navigationStatus) {
                                             MainActivityNavigationStatus.SEARCH -> true
                                             else -> false
                                         }
@@ -53,13 +53,13 @@ class MainActivityModel(private val state: SavedStateHandle) : ViewModel() {
                     }).takeUntil { it.closed }
 
     init {
-        statusObservable.subscribe {
+        stateObservable.subscribe {
             state.set(STATUS_KEY, it)
         }
     }
 
     companion object {
-        val initialStatus = MainActivityStatus(closed = false,
+        val initialStatus = MainActivityState(closed = false,
                 navigationStatus = MainActivityNavigationStatus.SEARCH, searchTerm = null,
                 drawerOpen = false, finished = false)
 

@@ -17,16 +17,14 @@ package org.happypeng.sumatora.android.sumatoradictionary.model
 
 import androidx.hilt.Assisted
 import androidx.hilt.lifecycle.ViewModelInject
-import androidx.lifecycle.LiveData
 import androidx.lifecycle.SavedStateHandle
-import androidx.paging.PagedList
 import androidx.paging.PagedList.BoundaryCallback
 import org.happypeng.sumatora.android.sumatoradictionary.component.BookmarkComponent
 import org.happypeng.sumatora.android.sumatoradictionary.component.BookmarkShareComponent
 import org.happypeng.sumatora.android.sumatoradictionary.component.LanguageSettingsComponent
 import org.happypeng.sumatora.android.sumatoradictionary.component.PersistentDatabaseComponent
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement
-import org.happypeng.sumatora.android.sumatoradictionary.model.status.QueryStatus
+import org.happypeng.sumatora.android.sumatoradictionary.model.state.QueryState
 
 class BookmarkFragmentModel @ViewModelInject constructor(bookmarkComponent: BookmarkComponent,
                                                          persistentDatabaseComponent: PersistentDatabaseComponent,
@@ -37,10 +35,14 @@ class BookmarkFragmentModel @ViewModelInject constructor(bookmarkComponent: Book
         languageSettingsComponent,
         bookmarkShareComponent,
         { component: PersistentDatabaseComponent, callback: BoundaryCallback<DictionarySearchElement?>? -> component.getSearchElements(KEY, callback) },
-        QueryStatus(KEY, "", 0, null, false,
-                filterMemos = false, filterBookmarks = true, title = "Bookmarks", searchIconifiedByDefault = true, shareButtonVisible = true, persistentLanguageSettings = null,
-                closed = false, searching = false, preparing = true, viewDestroyed = false)) {
+        KEY,
+        true,
+        true,
+        TITLE,
+        true
+) {
     companion object {
         const val KEY = 2
+        const val TITLE = "Bookmarks"
     }
 }

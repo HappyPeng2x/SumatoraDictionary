@@ -35,7 +35,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.component.BookmarkImpor
 import org.happypeng.sumatora.android.sumatoradictionary.databinding.FragmentDictionaryQueryBinding;
 import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary;
 import org.happypeng.sumatora.android.sumatoradictionary.model.BookmarkImportModel;
-import org.happypeng.sumatora.android.sumatoradictionary.model.status.BookmarkImportStatus;
+import org.happypeng.sumatora.android.sumatoradictionary.model.state.ImportState;
 import org.happypeng.sumatora.android.sumatoradictionary.model.viewbinding.QueryMenu;
 import org.happypeng.sumatora.android.sumatoradictionary.model.viewbinding.FragmentDictionaryQueryBindingUtil;
 
@@ -52,7 +52,6 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
     private FragmentDictionaryQueryBinding viewBinding;
 
     private CompositeDisposable autoDisposable;
-
 
     private BookmarkImportModel getModel() {
         return new ViewModelProvider(this).get(BookmarkImportModel.class);
@@ -89,7 +88,7 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
         actionBar.setDisplayHomeAsUpEnabled(true);
 
         // Receive status
-        autoDisposable.add(bookmarkImportModel.getStatusObservable().subscribe(status -> {
+        autoDisposable.add(bookmarkImportModel.states().subscribe(status -> {
             if (status.getClosed()) {
                 finish();
             }
@@ -101,7 +100,7 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
             }
         }));
 
-        autoDisposable.add(bookmarkImportModel.getPagedListAdapter().subscribe(adapter ->
+        autoDisposable.add(bookmarkImportModel.getPagedListAdapterObservable().subscribe(adapter ->
                 viewBinding.dictionaryBookmarkFragmentRecyclerview.setAdapter(adapter)
         ));
 
@@ -185,9 +184,9 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
                     }
                 }));
 
-        autoDisposable.add(bookmarkImportModel.getStatusObservable()
+        autoDisposable.add(bookmarkImportModel.states()
                 .filter(s -> s.getPersistentLanguageSettings() != null)
-                .map(BookmarkImportStatus::getPersistentLanguageSettings)
+                .map(ImportState::getPersistentLanguageSettings)
                 .distinctUntilChanged()
                 .subscribe(l -> languageMenuText.setText(l.lang)));
 

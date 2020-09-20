@@ -24,22 +24,21 @@ import org.happypeng.sumatora.android.sumatoradictionary.component.BookmarkShare
 import org.happypeng.sumatora.android.sumatoradictionary.component.LanguageSettingsComponent
 import org.happypeng.sumatora.android.sumatoradictionary.component.PersistentDatabaseComponent
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement
-import org.happypeng.sumatora.android.sumatoradictionary.model.status.QueryStatus
+import org.happypeng.sumatora.android.sumatoradictionary.model.state.QueryState
 
 class QueryFragmentModel @ViewModelInject constructor(bookmarkComponent: BookmarkComponent,
                                                       persistentDatabaseComponent: PersistentDatabaseComponent,
                                                       languageSettingsComponent: LanguageSettingsComponent,
                                                       bookmarkShareComponent: BookmarkShareComponent,
-                                                      @Assisted savedStateHandle: SavedStateHandle?) : BaseQueryFragmentModel(bookmarkComponent!!,
+                                                      @Assisted savedStateHandle: SavedStateHandle?) : BaseQueryFragmentModel(bookmarkComponent,
         persistentDatabaseComponent,
         languageSettingsComponent,
         bookmarkShareComponent,
         { component: PersistentDatabaseComponent, callback: BoundaryCallback<DictionarySearchElement?>? -> component.getSearchElements(KEY, callback) },
-        QueryStatus(KEY, "", 0, null, false,
-                filterMemos = false, filterBookmarks = false, title = "Search", searchIconifiedByDefault = false, shareButtonVisible = true, persistentLanguageSettings = null,
-                closed = false, searching = false, preparing = true, viewDestroyed = false)
+        KEY, false, false, TITLE, false
 ) {
     companion object {
         const val KEY = 1
+        const val TITLE = "Sumatora"
     }
 }

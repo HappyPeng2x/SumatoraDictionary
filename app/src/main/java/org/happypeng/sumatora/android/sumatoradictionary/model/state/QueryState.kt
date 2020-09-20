@@ -13,23 +13,15 @@
 
         You should have received a copy of the GNU General Public License
         along with this program.  If not, see <http://www.gnu.org/licenses/>.*/
-package org.happypeng.sumatora.android.sumatoradictionary.model.status
+package org.happypeng.sumatora.android.sumatoradictionary.model.state
 
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.DictionarySearchQueryTool
+import org.happypeng.sumatora.android.sumatoradictionary.mvibase.MviViewState
 
-data class QueryStatus(val key: Int,
-                       val term: String,
-                       val lastQuery: Int,
-                       val queryTool: DictionarySearchQueryTool?,
-                       val found: Boolean,
-                       val filterMemos: Boolean,
-                       val filterBookmarks: Boolean,
-                       val title: String,
-                       val searchIconifiedByDefault: Boolean,
-                       val shareButtonVisible: Boolean,
-                       val persistentLanguageSettings: PersistentLanguageSettings?,
-                       override val closed: Boolean,
-                       val searching: Boolean,
-                       val preparing: Boolean,
-                       val viewDestroyed: Boolean) : MVIStatus
+data class QueryState(val term: String,
+                      val found: Boolean,
+                      val languageSettings: PersistentLanguageSettings?,
+                      val closed: Boolean,
+                      val searching: Boolean,
+                      val ready: Boolean): MviViewState

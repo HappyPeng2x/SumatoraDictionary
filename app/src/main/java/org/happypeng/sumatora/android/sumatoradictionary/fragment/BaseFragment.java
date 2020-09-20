@@ -25,7 +25,6 @@ import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBar;
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.DividerItemDecoration;
@@ -33,12 +32,10 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 
 import org.happypeng.sumatora.android.sumatoradictionary.R;
 import org.happypeng.sumatora.android.sumatoradictionary.databinding.FragmentDictionaryQueryBinding;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
 import org.happypeng.sumatora.android.sumatoradictionary.model.BaseQueryFragmentModel;
-import org.happypeng.sumatora.android.sumatoradictionary.model.status.QueryStatus;
+import org.happypeng.sumatora.android.sumatoradictionary.model.state.QueryState;
 import org.happypeng.sumatora.android.sumatoradictionary.model.viewbinding.FragmentDictionaryQueryBindingUtil;
 import org.happypeng.sumatora.android.sumatoradictionary.model.viewbinding.QueryMenu;
-import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionarySearchElementViewHolder;
 
 import dagger.hilt.android.AndroidEntryPoint;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
@@ -87,12 +84,10 @@ public abstract class BaseFragment extends Fragment {
         actionBar.setHomeAsUpIndicator(R.drawable.ic_menu_white_24dp);
         actionBar.setDisplayHomeAsUpEnabled(true);
 
-        autoDisposable.add(queryFragmentModel.getStatusObservable().map(QueryStatus::getTitle)
-                .distinctUntilChanged()
-                .subscribe(viewBinding.dictionaryBookmarkFragmentToolbar::setTitle));
+        viewBinding.dictionaryBookmarkFragmentToolbar.setTitle(queryFragmentModel.getTitle());
 
-        autoDisposable.add(queryFragmentModel.getStatusObservable().subscribe(status -> {
-            if (status.getPreparing()) {
+        autoDisposable.add(queryFragmentModel.states().subscribe(status -> {
+            if (!status.getReady()) {
                 FragmentDictionaryQueryBindingUtil.setInPreparation(viewBinding);
             } else {
                 if (!"".equals(status.getTerm())) {
@@ -109,7 +104,7 @@ public abstract class BaseFragment extends Fragment {
             }
         }));
 
-        autoDisposable.add(queryFragmentModel.getPagedListAdapter().subscribe(adapter ->
+        autoDisposable.add(queryFragmentModel.getPagedListAdapterObservable().subscribe(adapter ->
                 viewBinding.dictionaryBookmarkFragmentRecyclerview.setAdapter(adapter)));
 
         focusSearchView();
@@ -137,6 +132,9 @@ public abstract class BaseFragment extends Fragment {
 
         final BaseQueryFragmentModel queryFragmentModel = getModel();
 
+        queryMenu.searchView.setIconifiedByDefault(queryFragmentModel.getSearchIconifiedByDefault());
+        queryMenu.shareBookmarks.setVisible(queryFragmentModel.getShareButtonVisible());
+
         autoDisposable.add(queryFragmentModel.getInstalledDictionaries()
                 //.distinctUntilChanged()
                 .subscribe(l -> queryMenu.addLanguageMenu(getContext(), l,
@@ -147,21 +145,11 @@ public abstract class BaseFragment extends Fragment {
                             }
                         })));
 
-        autoDisposable.add(queryFragmentModel.getStatusObservable()
-                .filter(s -> s.getPersistentLanguageSettings() != null)
-                .map(QueryStatus::getPersistentLanguageSettings)
+        autoDisposable.add(queryFragmentModel.states()
+                .filter(s -> s.getLanguageSettings() != null)
+                .map(QueryState::getLanguageSettings)
                 .distinctUntilChanged()
                 .subscribe(l -> queryMenu.languageMenuText.setText(l.lang)));
-
-        autoDisposable.add(queryFragmentModel.getStatusObservable()
-                .map(QueryStatus::getSearchIconifiedByDefault)
-                .distinctUntilChanged()
-                .subscribe(b -> queryMenu.searchView.setIconifiedByDefault(b)));
-
-        autoDisposable.add(queryFragmentModel.getStatusObservable()
-                .map(QueryStatus::getShareButtonVisible)
-                .distinctUntilChanged()
-                .subscribe(queryMenu.shareBookmarks::setVisible));
 
         queryMenu.searchCloseButton.setOnClickListener(v -> {
             if ("".equals(queryMenu.searchView.getQuery().toString())) {
@@ -185,8 +173,8 @@ public abstract class BaseFragment extends Fragment {
             return false;
         });
 
-        autoDisposable.add(queryFragmentModel.getStatusObservable()
-                .map(QueryStatus::getTerm)
+        autoDisposable.add(queryFragmentModel.states()
+                .map(QueryState::getTerm)
                 .distinctUntilChanged()
                 .subscribe(s -> {
                     if (!s.equals(queryMenu.searchView.getQuery().toString())) {

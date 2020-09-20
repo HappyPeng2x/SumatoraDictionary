@@ -17,35 +17,17 @@
 package org.happypeng.sumatora.android.sumatoradictionary.viewholder
 
 import android.graphics.Color
-import android.graphics.Typeface
-import android.text.Editable
-import android.text.SpannableStringBuilder
-import android.text.Spanned
-import android.text.TextWatcher
-import android.text.style.BackgroundColorSpan
-import android.text.style.ForegroundColorSpan
-import android.text.style.RelativeSizeSpan
-import android.text.style.StyleSpan
 import android.view.View
 import androidx.recyclerview.widget.RecyclerView
-import io.reactivex.rxjava3.core.Observable
-import io.reactivex.rxjava3.core.ObservableEmitter
 import io.reactivex.rxjava3.disposables.Disposable
-import io.reactivex.rxjava3.subjects.PublishSubject
 import io.reactivex.rxjava3.subjects.Subject
 import org.happypeng.sumatora.android.sumatoradictionary.R
 import org.happypeng.sumatora.android.sumatoradictionary.databinding.WordCardBinding
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.DictionaryPagedListAdapterCloseIntent
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.DictionaryPagedListAdapterIntent
-import org.happypeng.sumatora.android.sumatoradictionary.operator.ScanConcatMap
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.renderEntry
-import org.happypeng.sumatora.android.superrubyspan.tools.JapaneseText
-import org.json.JSONArray
-import org.json.JSONException
-import org.reactivestreams.Subscription
 import java.util.*
-import java.util.concurrent.TimeUnit
 
 class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBinding,
                                         private val entities: HashMap<String, String>,

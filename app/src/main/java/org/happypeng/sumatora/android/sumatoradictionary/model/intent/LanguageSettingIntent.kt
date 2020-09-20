@@ -13,8 +13,12 @@
 
         You should have received a copy of the GNU General Public License
         along with this program.  If not, see <http://www.gnu.org/licenses/>.*/
-package org.happypeng.sumatora.android.sumatoradictionary.model.status
 
-interface MVIStatus {
-    val closed: Boolean;
-}
+package org.happypeng.sumatora.android.sumatoradictionary.model.intent
+
+import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings
+
+sealed class LanguageSettingIntent(val languageSettings: PersistentLanguageSettings)
+
+class LanguageSettingDetachedIntent(languageSettings: PersistentLanguageSettings) : LanguageSettingIntent(languageSettings)
+class LanguageSettingAttachedIntent(languageSettings: PersistentLanguageSettings) : LanguageSettingIntent(languageSettings)

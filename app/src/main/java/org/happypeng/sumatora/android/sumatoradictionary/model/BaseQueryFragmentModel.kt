@@ -19,10 +19,10 @@ import androidx.lifecycle.LiveData
 import androidx.paging.PagedList
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Observable
-import io.reactivex.rxjava3.core.ObservableEmitter
-import io.reactivex.rxjava3.core.ObservableOnSubscribe
+import io.reactivex.rxjava3.core.ObservableTransformer
 import io.reactivex.rxjava3.disposables.CompositeDisposable
 import io.reactivex.rxjava3.schedulers.Schedulers
+import io.reactivex.rxjava3.subjects.PublishSubject
 import org.happypeng.sumatora.android.sumatoradictionary.component.BookmarkComponent
 import org.happypeng.sumatora.android.sumatoradictionary.component.BookmarkShareComponent
 import org.happypeng.sumatora.android.sumatoradictionary.component.LanguageSettingsComponent
@@ -31,11 +31,14 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.DictionarySearchQueryTool
-import org.happypeng.sumatora.android.sumatoradictionary.db.tools.ValueHolder
+import org.happypeng.sumatora.android.sumatoradictionary.model.action.*
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.*
-import org.happypeng.sumatora.android.sumatoradictionary.model.status.QueryStatus
+import org.happypeng.sumatora.android.sumatoradictionary.model.processor.QueryActionProcessorHolder
+import org.happypeng.sumatora.android.sumatoradictionary.model.result.QueryResult
+import org.happypeng.sumatora.android.sumatoradictionary.model.state.QueryState
+import org.happypeng.sumatora.android.sumatoradictionary.mvibase.MviViewModel
+import org.happypeng.sumatora.android.sumatoradictionary.transformer.QueryIntentTransformer
 import java.io.File
-import java.util.*
 
 abstract class BaseQueryFragmentModel protected constructor(private val bookmarkComponent: BookmarkComponent,
                                                             persistentDatabaseComponent: PersistentDatabaseComponent,
@@ -43,146 +46,69 @@ abstract class BaseQueryFragmentModel protected constructor(private val bookmark
                                                             private val bookmarkShareComponent: BookmarkShareComponent,
                                                             pagedListFactory: (PersistentDatabaseComponent, PagedList.BoundaryCallback<DictionarySearchElement?>?) ->
                                                             LiveData<PagedList<DictionarySearchElement?>>,
-                                                            initialStatus: QueryStatus
-) : BaseFragmentModel<QueryStatus>(persistentDatabaseComponent, languageSettingsComponent, pagedListFactory, initialStatus) {
-    private val compositeDisposable: CompositeDisposable = CompositeDisposable()
+                                                            val key: Int,
+                                                            val searchIconifiedByDefault: Boolean,
+                                                            val shareButtonVisible: Boolean,
+                                                            val title: String,
+                                                            private val filterBookmarks: Boolean
+) : BaseFragmentModel(persistentDatabaseComponent, languageSettingsComponent, pagedListFactory), MviViewModel<QueryIntent, QueryState> {
+    private val intentsSubject: PublishSubject<QueryIntent> = PublishSubject.create()
+    private val statesObservable: Observable<QueryState> = compose()
+    private val disposables: CompositeDisposable = CompositeDisposable()
 
-    fun setTerm(t: String?) {
-        sendIntent(SearchIntent(t!!))
+    final override fun processIntents(intents: Observable<QueryIntent>) {
+        disposables.add(intents.subscribe(intentsSubject::onNext))
     }
 
-    override fun setLanguage(language: String) {
-        val newLanguageSettings = PersistentLanguageSettings()
-        newLanguageSettings.lang = language
-        newLanguageSettings.backupLang = if (language == "eng") null else "eng"
-        languageSettingsComponent.updatePersistentLanguageSettings(newLanguageSettings)
+    override fun states(): Observable<QueryState> = statesObservable
+
+    private fun compose(): Observable<QueryState> {
+        val actionProcessorHolder = QueryActionProcessorHolder(persistentDatabaseComponent, key, filterBookmarks)
+
+        return intentsSubject
+                .compose(QueryIntentTransformer())
+                .compose(actionProcessorHolder.actionProcessor)
+                .scan(QueryState("", false, null, false,
+                        searching = false, false), this::transformStatus)
+                .distinctUntilChanged()
+                .replay(1)
+                .autoConnect(0)
+    }
+
+    fun setTerm(t: String) {
+        processIntents(Observable.just(SearchIntent(t)))
     }
 
     fun shareBookmarks() {
-        compositeDisposable.add(Observable.defer { Observable.just(bookmarkShareComponent.writeBookmarks()) }
+        disposables.add(Observable.defer { Observable.just(bookmarkShareComponent.writeBookmarks()) }
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe { outputFile: File? -> bookmarkShareComponent.shareBookmarks(outputFile) })
     }
 
     fun viewDestroyed() {
-        sendIntent(ViewDestroyedIntent)
+        processIntents(Observable.just(ViewDestroyedIntent))
     }
 
-    override fun getIntentObservablesToMerge(): MutableList<Observable<BaseQueryIntent>> {
-        val observables: MutableList<Observable<BaseQueryIntent>> = LinkedList()
-        observables.add(bookmarkComponent.bookmarkChanges.map { BookmarkIntent })
-        observables.add(languageSettingsComponent.persistentLanguageSettings.cast(BaseQueryIntent::class.java))
-        return observables
+    init {
+        processIntents(bookmarkComponent.bookmarkChanges.map { BookmarkIntent })
+        processIntents(languageSettingsComponent.persistentLanguageSettings
+                .map { intent: LanguageSettingIntent ->
+                    when (intent) {
+                        is LanguageSettingDetachedIntent -> QueryLanguageSettingDetachedIntent(intent.languageSettings)
+                        is LanguageSettingAttachedIntent -> QueryLanguageSettingAttachedIntent(intent.languageSettings)
+                    }
+                })
+        processIntents(scrollObservable.map { ScrollIntent(it.entryOrder) })
     }
 
-    override fun transformStatus(previousStatus: QueryStatus, intent: BaseQueryIntent): Observable<QueryStatus> {
-        return Observable.create(ObservableOnSubscribe { emitter: ObservableEmitter<QueryStatus> ->
-            val newStatus = QueryStatus(
-                    key = previousStatus.key,
-                    term = when(intent) {
-                        is SearchIntent -> intent.term
-                        else -> previousStatus.term
-                    },
-                    lastQuery = when(intent) {
-                        is SearchIntent -> 0
-                        else -> previousStatus.lastQuery
-                    },
-                    persistentLanguageSettings = when(intent) {
-                        is LanguageSettingIntent -> intent.languageSettings
-                        else -> previousStatus.persistentLanguageSettings
-                    },
-                    found = when(intent) {
-                        is SearchIntent -> false
-                        else -> previousStatus.found
-                    },
-                    filterBookmarks = when(intent) {
-                        is FilterBookmarksIntent -> !previousStatus.filterBookmarks
-                        else -> previousStatus.filterBookmarks
-                    },
-                    filterMemos = when(intent) {
-                        is FilterMemosIntent -> !previousStatus.filterMemos
-                        else -> previousStatus.filterMemos
-                    },
-                    title = previousStatus.title,
-                    searchIconifiedByDefault = previousStatus.searchIconifiedByDefault,
-                    shareButtonVisible = previousStatus.shareButtonVisible,
-                    closed = intent is CloseIntent,
-                    viewDestroyed = intent is ViewDestroyedIntent,
-                    searching = intent is SearchIntent,
-                    preparing = intent is LanguageSettingDetachedIntent,
-                    queryTool = when(intent) {
-                        is LanguageSettingDetachedIntent -> {
-                            previousStatus.queryTool?.close()
-                            null
-                        }
-                        is LanguageSettingAttachedIntent ->
-                            DictionarySearchQueryTool(persistentDatabaseComponent,
-                                    previousStatus.key, intent.languageSettings)
-                        else -> previousStatus.queryTool
-                    }
-            )
-
-            // Not ready or closing
-            if (intent is CloseIntent ||
-                    intent is LanguageSettingDetachedIntent ||
-                    intent is ViewDestroyedIntent || newStatus.queryTool == null) {
-                emitter.onNext(newStatus)
-                emitter.onComplete()
-            } else {
-                val currentQuery = if (intent is ScrollIntent) previousStatus.lastQuery else 0
-                val clearResults = intent is BookmarkIntent || intent is LanguageSettingAttachedIntent
-                val executeUntilFound = newStatus.lastQuery == 0 || intent is ScrollIntent
-
-                if (intent is SearchIntent) {
-                    persistentDatabaseComponent.database.runInTransaction { newStatus.queryTool.delete() }
-                    emitter.onNext(newStatus)
-                }
-
-                persistentDatabaseComponent.database.runInTransaction {
-                    var current = currentQuery
-                    var currentFound = false
-                    val queryCount = newStatus.queryTool.getCount(newStatus.term)
-
-                    if (clearResults) {
-                        newStatus.queryTool.delete()
-                    }
-
-                    while (executeUntilFound && current < queryCount && !currentFound ||
-                            current < newStatus.lastQuery) {
-                        currentFound = newStatus.queryTool.execute(newStatus.term,
-                                current, newStatus.filterBookmarks, newStatus.filterMemos)
-                        current++
-                    }
-
-                    val finalStatus = QueryStatus(
-                            key = newStatus.key,
-                            term = newStatus.term,
-                            lastQuery = current,
-                            queryTool = newStatus.queryTool,
-                            found = if (intent is SearchIntent) currentFound else previousStatus.found,
-                            filterMemos = newStatus.filterMemos,
-                            filterBookmarks = newStatus.filterBookmarks,
-                            title = newStatus.title,
-                            searchIconifiedByDefault = newStatus.searchIconifiedByDefault,
-                            shareButtonVisible = newStatus.shareButtonVisible,
-                            persistentLanguageSettings = newStatus.persistentLanguageSettings,
-                            closed = false,
-                            searching = false,
-                            preparing = false,
-                            viewDestroyed = false
-                    )
-
-                    emitter.onNext(finalStatus)
-                    emitter.onComplete()
-                }
-            }
-        } as ObservableOnSubscribe<QueryStatus>).subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
+    private fun transformStatus(previousState: QueryState, result: QueryResult): QueryState {
+        return QueryState(term = result.term, found = result.found, searching = result.searching,
+                ready = result.ready, closed = false, languageSettings = result.languageSettings)
     }
 
     override fun onCleared() {
-        setTerm("")
-        compositeDisposable.dispose()
+        disposables.dispose()
         super.onCleared()
     }
 
@@ -192,9 +118,5 @@ abstract class BaseQueryFragmentModel protected constructor(private val bookmark
         dictionaryBookmark.bookmark = bookmark
         dictionaryBookmark.seq = seq
         bookmarkComponent.updateBookmark(dictionaryBookmark)
-    }
-
-    init {
-        connectIntents()
     }
 }

@@ -27,21 +27,15 @@ import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.Fragment
 import com.google.android.material.navigation.NavigationView
 import dagger.hilt.android.AndroidEntryPoint
-import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.disposables.CompositeDisposable
-import io.reactivex.rxjava3.subjects.PublishSubject
-import io.reactivex.rxjava3.subjects.Subject
 import org.happypeng.sumatora.android.sumatoradictionary.BuildConfig
-import org.happypeng.sumatora.android.sumatoradictionary.DictionaryApplication
 import org.happypeng.sumatora.android.sumatoradictionary.R
 import org.happypeng.sumatora.android.sumatoradictionary.fragment.BookmarkFragment
 import org.happypeng.sumatora.android.sumatoradictionary.fragment.QueryFragment
 import org.happypeng.sumatora.android.sumatoradictionary.fragment.SettingsFragment
-import org.happypeng.sumatora.android.sumatoradictionary.fragment.SettingsFragment.SettingsFragmentActions
 import org.happypeng.sumatora.android.sumatoradictionary.model.MainActivityModel
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.*
-import org.happypeng.sumatora.android.sumatoradictionary.model.status.MainActivityNavigationStatus
-import org.happypeng.sumatora.android.sumatoradictionary.model.status.MainActivityStatus
+import org.happypeng.sumatora.android.sumatoradictionary.model.state.MainActivityNavigationStatus
 import org.slf4j.LoggerFactory
 
 @AndroidEntryPoint
@@ -113,7 +107,7 @@ class MainActivity : AppCompatActivity() {
 
         val drawerLayout: DrawerLayout = findViewById(R.id.nav_drawer)
 
-        compositeDisposable.add(viewModel.statusObservable.map { it.drawerOpen }
+        compositeDisposable.add(viewModel.stateObservable.map { it.drawerOpen }
                 .distinctUntilChanged()
                 .subscribe {
                     if (it) {
@@ -123,7 +117,7 @@ class MainActivity : AppCompatActivity() {
                     }
                 })
 
-        compositeDisposable.add(viewModel.statusObservable.distinctUntilChanged { t1, t2 ->
+        compositeDisposable.add(viewModel.stateObservable.distinctUntilChanged { t1, t2 ->
             (t1.searchTerm == null && t2.searchTerm == null) ||
                     t1.searchTerm.equals(t2.searchTerm) }
                 .subscribe {
@@ -140,7 +134,7 @@ class MainActivity : AppCompatActivity() {
                     }
                 })
 
-        compositeDisposable.add(viewModel.statusObservable
+        compositeDisposable.add(viewModel.stateObservable
                 .map { it.navigationStatus }
                 .distinctUntilChanged()
                 .subscribe { it: MainActivityNavigationStatus ->
@@ -162,7 +156,7 @@ class MainActivity : AppCompatActivity() {
                     }
                 })
 
-        compositeDisposable.add(viewModel.statusObservable.filter { it.finished }
+        compositeDisposable.add(viewModel.stateObservable.filter { it.finished }
                 .subscribe { finish() })
     }
 
