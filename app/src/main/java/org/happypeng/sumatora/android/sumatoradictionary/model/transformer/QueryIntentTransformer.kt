@@ -14,7 +14,7 @@
         You should have received a copy of the GNU General Public License
         along with this program.  If not, see <http://www.gnu.org/licenses/>.*/
 
-package org.happypeng.sumatora.android.sumatoradictionary.transformer
+package org.happypeng.sumatora.android.sumatoradictionary.model.transformer
 
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.core.ObservableEmitter
@@ -33,6 +33,13 @@ class QueryIntentTransformer: ObservableTransformer<QueryIntent, QueryAction> {
                                     Observable.create { emitter: ObservableEmitter<QueryAction> ->
                                         emitter.onNext(SetTermAction(intent.term))
                                         emitter.onNext(SearchAction)
+                                        emitter.onComplete()
+                                    }
+                                },
+                                shared.filter { intent -> intent is QueryCloseIntent }.flatMap { _ ->
+                                    Observable.create { emitter: ObservableEmitter<QueryAction> ->
+                                        emitter.onNext(QueryClearAction)
+                                        emitter.onNext(QueryCloseAction)
                                         emitter.onComplete()
                                     }
                                 },

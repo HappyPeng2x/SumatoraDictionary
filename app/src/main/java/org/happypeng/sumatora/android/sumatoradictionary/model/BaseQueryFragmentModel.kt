@@ -19,7 +19,6 @@ import androidx.lifecycle.LiveData
 import androidx.paging.PagedList
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Observable
-import io.reactivex.rxjava3.disposables.CompositeDisposable
 import io.reactivex.rxjava3.schedulers.Schedulers
 import io.reactivex.rxjava3.subjects.PublishSubject
 import org.happypeng.sumatora.android.sumatoradictionary.component.BookmarkComponent
@@ -33,7 +32,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.model.processor.QueryAc
 import org.happypeng.sumatora.android.sumatoradictionary.model.result.QueryResult
 import org.happypeng.sumatora.android.sumatoradictionary.model.state.QueryState
 import org.happypeng.sumatora.android.sumatoradictionary.mvibase.MviViewModel
-import org.happypeng.sumatora.android.sumatoradictionary.transformer.QueryIntentTransformer
+import org.happypeng.sumatora.android.sumatoradictionary.model.transformer.QueryIntentTransformer
 import java.io.File
 
 abstract class BaseQueryFragmentModel protected constructor(private val bookmarkComponent: BookmarkComponent,
@@ -51,11 +50,11 @@ abstract class BaseQueryFragmentModel protected constructor(private val bookmark
                                                             disableMemoEdit: Boolean
 ) : BaseFragmentModel(persistentDatabaseComponent, languageSettingsComponent, pagedListFactory, disableBookmarkButton, disableMemoEdit), MviViewModel<QueryIntent, QueryState> {
     private val intentsSubject: PublishSubject<QueryIntent> = PublishSubject.create()
-    private val statesObservable: Observable<QueryState> = compose()
-    private val disposables: CompositeDisposable = CompositeDisposable()
+    private val statesObservable = compose()
+    private val closedObservable = statesObservable.filter { it.closed }.map { Unit }
 
     final override fun processIntents(intents: Observable<QueryIntent>) {
-        disposables.add(intents.subscribe(intentsSubject::onNext))
+        intents.takeUntil(closedObservable).subscribe(intentsSubject::onNext)
     }
 
     override fun states(): Observable<QueryState> = statesObservable
@@ -78,10 +77,10 @@ abstract class BaseQueryFragmentModel protected constructor(private val bookmark
     }
 
     fun shareBookmarks() {
-        disposables.add(Observable.defer { Observable.just(bookmarkShareComponent.writeBookmarks()) }
+        Observable.defer { Observable.just(bookmarkShareComponent.writeBookmarks()) }
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe { outputFile: File? -> bookmarkShareComponent.shareBookmarks(outputFile) })
+                .subscribe { outputFile: File? -> bookmarkShareComponent.shareBookmarks(outputFile) }
     }
 
     init {
@@ -94,16 +93,12 @@ abstract class BaseQueryFragmentModel protected constructor(private val bookmark
                     }
                 })
         processIntents(scrollObservable.map { ScrollIntent(it.entryOrder) })
+        processIntents(clearedObservable.map { QueryCloseIntent })
     }
 
     private fun transformStatus(previousState: QueryState, result: QueryResult): QueryState {
         return QueryState(term = result.term, found = result.found, searching = result.searching,
-                ready = result.ready, closed = false, languageSettings = result.languageSettings)
-    }
-
-    override fun onCleared() {
-        disposables.dispose()
-        super.onCleared()
+                ready = result.ready, closed = result.closed, languageSettings = result.languageSettings)
     }
 
     override fun commitBookmarks(seq: Long, bookmark: Long, memo: String?) {

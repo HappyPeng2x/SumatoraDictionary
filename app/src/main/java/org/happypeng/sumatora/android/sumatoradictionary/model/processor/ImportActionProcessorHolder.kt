@@ -90,6 +90,16 @@ class ImportActionProcessorHolder(private val databaseComponent: PersistentDatab
                                             previousState.copy(processing = false, executed = executed)
                                         }
                                         is ImportSetProcessingAction -> previousState.copy(processing = true)
+                                        is ImportClearAction -> run {
+                                            if (previousState.bookmarkImportQueryTool != null) {
+                                                databaseComponent.database.runInTransaction {
+                                                    previousState.bookmarkImportQueryTool.delete()
+                                                }
+                                            }
+
+                                            previousState
+                                        }
+                                        is ImportCloseAction -> previousState.copy(close = true)
                                     }
                                 })
                         .observeOn(AndroidSchedulers.mainThread())

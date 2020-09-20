@@ -35,17 +35,20 @@ class QueryActionProcessorHolder(private val databaseComponent: PersistentDataba
                      val ready: Boolean,
                      val searching: Boolean,
                      val persistentLanguageSettings: PersistentLanguageSettings?,
-                     val initial: Boolean) {
+                     val initial: Boolean,
+                     val closed: Boolean) {
         fun toResult(): QueryResult {
-            return QueryResult (currentQuery, term, found, ready, searching, persistentLanguageSettings)
+            return QueryResult (currentQuery, term, found, ready, searching, persistentLanguageSettings, closed)
         }
     }
 
     internal val actionProcessor =
             ObservableTransformer<QueryAction, QueryResult> {
                 it.observeOn(Schedulers.io())
-                        .scan(State(null, 0, "", false, ready = false, searching = false,
-                                persistentLanguageSettings = null, initial = true),
+                        .scan(State(null, 0, "",
+                                false, ready = false, searching = false,
+                                persistentLanguageSettings = null, initial = true,
+                                closed = false),
                                 { previousState, action ->
                                     when (action) {
                                         is QueryLanguageSettingDetachedAction -> run {
@@ -152,6 +155,20 @@ class QueryActionProcessorHolder(private val databaseComponent: PersistentDataba
                                             }
 
                                             previousState
+                                        }
+                                        is QueryClearAction -> run {
+                                            if (previousState.dictionarySearchQueryTool != null) {
+                                                databaseComponent.database.runInTransaction {
+                                                    previousState.dictionarySearchQueryTool.delete()
+                                                }
+                                            }
+
+                                            previousState
+                                        }
+                                        is QueryCloseAction -> run {
+                                            previousState.dictionarySearchQueryTool?.close()
+
+                                            previousState.copy(closed = true)
                                         }
                                         else -> previousState
                                     }

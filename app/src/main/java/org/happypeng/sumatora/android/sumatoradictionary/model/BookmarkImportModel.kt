@@ -12,14 +12,10 @@ import org.happypeng.sumatora.android.sumatoradictionary.component.*
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.*
 import org.happypeng.sumatora.android.sumatoradictionary.model.processor.ImportActionProcessorHolder
-import org.happypeng.sumatora.android.sumatoradictionary.model.processor.QueryActionProcessorHolder
 import org.happypeng.sumatora.android.sumatoradictionary.model.result.ImportResult
-import org.happypeng.sumatora.android.sumatoradictionary.model.result.QueryResult
 import org.happypeng.sumatora.android.sumatoradictionary.model.state.ImportState
-import org.happypeng.sumatora.android.sumatoradictionary.model.state.QueryState
 import org.happypeng.sumatora.android.sumatoradictionary.mvibase.MviViewModel
-import org.happypeng.sumatora.android.sumatoradictionary.transformer.ImportIntentTransformer
-import org.happypeng.sumatora.android.sumatoradictionary.transformer.QueryIntentTransformer
+import org.happypeng.sumatora.android.sumatoradictionary.model.transformer.ImportIntentTransformer
 
 class BookmarkImportModel @ViewModelInject constructor(bookmarkImportComponent: BookmarkImportComponent,
                                                        persistentDatabaseComponent: PersistentDatabaseComponent,
@@ -35,7 +31,7 @@ class BookmarkImportModel @ViewModelInject constructor(bookmarkImportComponent: 
 
     private val intentsSubject: PublishSubject<ImportIntent> = PublishSubject.create()
     private val statesObservable: Observable<ImportState> = compose()
-    private val disposables: CompositeDisposable = CompositeDisposable()
+    private val closedObservable = statesObservable.filter { it.closed }.map { Unit }
 
     private val actionProcessorHolder = ImportActionProcessorHolder(persistentDatabaseComponent, bookmarkImportComponent, KEY)
 
@@ -59,15 +55,10 @@ class BookmarkImportModel @ViewModelInject constructor(bookmarkImportComponent: 
     }
 
     override fun processIntents(intents: Observable<ImportIntent>) {
-        disposables.add(intents.subscribe(intentsSubject::onNext))
+        intents.takeUntil(closedObservable).subscribe(intentsSubject::onNext)
     }
 
     override fun states(): Observable<ImportState> = statesObservable
-
-    override fun onCleared() {
-        disposables.dispose()
-        super.onCleared()
-    }
 
     fun bookmarkImportFileOpen(uri: Uri) {
         processIntents(Observable.just(ImportFileIntent(uri)))

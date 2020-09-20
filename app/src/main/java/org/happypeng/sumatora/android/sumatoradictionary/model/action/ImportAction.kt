@@ -31,3 +31,6 @@ class ImportLanguageSettingAttachedAction(val persistentLanguageSettings: Persis
 
 object ImportSetProcessingAction : ImportAction()
 class ImportFileAction(val uri: Uri) : ImportAction()
+
+object ImportClearAction : ImportAction()
+object ImportCloseAction : ImportAction()

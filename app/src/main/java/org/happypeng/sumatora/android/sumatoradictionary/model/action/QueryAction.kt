@@ -31,4 +31,5 @@ object ScrollAction : QueryAction()
 object QueryLanguageSettingDetachedAction : QueryAction()
 class QueryLanguageSettingAttachedAction(val persistentLanguageSettings: PersistentLanguageSettings) : QueryAction()
 
-
+object QueryClearAction : QueryAction()
+object QueryCloseAction : QueryAction()

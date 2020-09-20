@@ -30,3 +30,5 @@ class ImportFileIntent(val uri: Uri) : ImportIntent()
 
 object ImportLanguageSettingDetachedIntent : ImportIntent()
 class ImportLanguageSettingAttachedIntent(val persistentLanguageSettings: PersistentLanguageSettings) : ImportIntent()
+
+object ImportCloseIntent : ImportIntent()
