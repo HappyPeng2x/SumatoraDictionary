@@ -40,6 +40,8 @@ import org.happypeng.sumatora.android.sumatoradictionary.model.viewbinding.Query
 
 import dagger.hilt.android.AndroidEntryPoint;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
+import io.reactivex.rxjava3.subjects.BehaviorSubject;
+import io.reactivex.rxjava3.subjects.Subject;
 
 @AndroidEntryPoint
 public abstract class BaseFragment extends Fragment {
@@ -57,6 +59,8 @@ public abstract class BaseFragment extends Fragment {
     protected BaseQueryFragmentModel getModel() { return null; }
 
     private DictionaryPagedListAdapter pagedListAdapter = null;
+
+    private Subject<String> intentSearchTerm = BehaviorSubject.create();
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
@@ -77,6 +81,8 @@ public abstract class BaseFragment extends Fragment {
         viewBinding.dictionaryBookmarkFragmentRecyclerview.addItemDecoration(itemDecor);
 
         final BaseQueryFragmentModel queryFragmentModel = getModel();
+
+        autoDisposable.add(intentSearchTerm.subscribe(queryFragmentModel::setTerm));
 
         // Toolbar configuration
         ((AppCompatActivity) getActivity()).setSupportActionBar(viewBinding.dictionaryBookmarkFragmentToolbar);
@@ -199,9 +205,7 @@ public abstract class BaseFragment extends Fragment {
     }
 
     public void setIntentSearchTerm(@NonNull String aIntentSearchTerm) {
-        final BaseQueryFragmentModel queryFragmentModel = getModel();
-
-        queryFragmentModel.setTerm(aIntentSearchTerm);
+        intentSearchTerm.onNext(aIntentSearchTerm);
     }
 
     public void focusSearchView() {
