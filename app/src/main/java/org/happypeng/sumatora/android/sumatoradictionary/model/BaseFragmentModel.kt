@@ -37,15 +37,18 @@ import org.happypeng.sumatora.android.sumatoradictionary.operator.LiveDataWrappe
 abstract class BaseFragmentModel protected constructor(protected val persistentDatabaseComponent: PersistentDatabaseComponent,
                                                        protected val languageSettingsComponent: LanguageSettingsComponent,
                                                        pagedListFactory: (PersistentDatabaseComponent, BoundaryCallback<DictionarySearchElement?>?) ->
-                                                       LiveData<PagedList<DictionarySearchElement?>>): ViewModel() {
+                                                       LiveData<PagedList<DictionarySearchElement?>>,
+                                                       val disableBookmarkButton: Boolean,
+                                                       val disableMemoEdit: Boolean): ViewModel() {
     class ScrolledEvent(val entryOrder: Int)
 
-    private val pagedListAdapterSubject: Subject<DictionaryPagedListAdapter> = BehaviorSubject.create()
-    val pagedListAdapterObservable = pagedListAdapterSubject as Observable<DictionaryPagedListAdapter>
-    private var latestPagedListAdapter: DictionaryPagedListAdapter? = null
+    val commitBookmarksFun = { seq: Long, bookmark: Long, memo: String? -> commitBookmarks(seq, bookmark, memo) }
 
     private val clearedSubject: Subject<Unit> = PublishSubject.create()
-    private val clearedObservable = clearedSubject as Observable<Unit>
+    val clearedObservable = clearedSubject as Observable<Unit>
+
+    private val pagedListSubject: Subject<PagedList<DictionarySearchElement?>> = BehaviorSubject.create()
+    val pagedListObservable = pagedListSubject as Observable<PagedList<DictionarySearchElement?>>
 
     private val scrollSubject: Subject<ScrolledEvent> = PublishSubject.create()
     val scrollObservable = scrollSubject as Observable<ScrolledEvent>
@@ -62,26 +65,16 @@ abstract class BaseFragmentModel protected constructor(protected val persistentD
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
 
-    protected abstract fun commitBookmarks(seq: Long, bookmark: Long, memo: String?)
+    abstract fun commitBookmarks(seq: Long, bookmark: Long, memo: String?)
 
-    protected open fun disableBookmarkButton(): Boolean {
-        return false
-    }
+    override fun onCleared() {
+        clearedSubject.onNext(Unit)
+        clearedSubject.onComplete()
 
-    protected open fun disableMemoEdit(): Boolean {
-        return false
+        super.onCleared()
     }
 
     init {
-        pagedListAdapterObservable.subscribe { latestPagedListAdapter = it }
-
-        Observable.fromCallable { persistentDatabaseComponent.entities }
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .map { DictionaryPagedListAdapter(it,
-                        disableBookmarkButton(), disableMemoEdit()) { seq: Long, bookmark: Long, memo: String? -> commitBookmarks(seq, bookmark, memo) } }
-                .subscribe { pagedListAdapterSubject.onNext(it) }
-
         val pagedList = pagedListFactory.invoke(persistentDatabaseComponent, object: BoundaryCallback<DictionarySearchElement?>() {
             override fun onItemAtEndLoaded(itemAtEnd: DictionarySearchElement) {
                 super.onItemAtEndLoaded(itemAtEnd)
@@ -89,17 +82,6 @@ abstract class BaseFragmentModel protected constructor(protected val persistentD
             }
         })
 
-        LiveDataWrapper.wrap(pagedList, clearedObservable)
-                .withLatestFrom(pagedListAdapterObservable,
-                        { list: PagedList<DictionarySearchElement?>, adapter: DictionaryPagedListAdapter ->
-                            adapter.submitList(list)
-                            true
-                        }).subscribe()
-    }
-
-    override fun onCleared() {
-        latestPagedListAdapter?.close()
-
-        super.onCleared()
+        LiveDataWrapper.wrap(pagedList, clearedSubject).subscribe(pagedListSubject)
     }
 }

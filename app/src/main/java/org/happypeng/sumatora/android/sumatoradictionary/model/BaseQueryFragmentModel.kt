@@ -19,7 +19,6 @@ import androidx.lifecycle.LiveData
 import androidx.paging.PagedList
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Observable
-import io.reactivex.rxjava3.core.ObservableTransformer
 import io.reactivex.rxjava3.disposables.CompositeDisposable
 import io.reactivex.rxjava3.schedulers.Schedulers
 import io.reactivex.rxjava3.subjects.PublishSubject
@@ -29,9 +28,6 @@ import org.happypeng.sumatora.android.sumatoradictionary.component.LanguageSetti
 import org.happypeng.sumatora.android.sumatoradictionary.component.PersistentDatabaseComponent
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement
-import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings
-import org.happypeng.sumatora.android.sumatoradictionary.db.tools.DictionarySearchQueryTool
-import org.happypeng.sumatora.android.sumatoradictionary.model.action.*
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.*
 import org.happypeng.sumatora.android.sumatoradictionary.model.processor.QueryActionProcessorHolder
 import org.happypeng.sumatora.android.sumatoradictionary.model.result.QueryResult
@@ -50,8 +46,10 @@ abstract class BaseQueryFragmentModel protected constructor(private val bookmark
                                                             val searchIconifiedByDefault: Boolean,
                                                             val shareButtonVisible: Boolean,
                                                             val title: String,
-                                                            private val filterBookmarks: Boolean
-) : BaseFragmentModel(persistentDatabaseComponent, languageSettingsComponent, pagedListFactory), MviViewModel<QueryIntent, QueryState> {
+                                                            private val filterBookmarks: Boolean,
+                                                            disableBookmarkButton: Boolean,
+                                                            disableMemoEdit: Boolean
+) : BaseFragmentModel(persistentDatabaseComponent, languageSettingsComponent, pagedListFactory, disableBookmarkButton, disableMemoEdit), MviViewModel<QueryIntent, QueryState> {
     private val intentsSubject: PublishSubject<QueryIntent> = PublishSubject.create()
     private val statesObservable: Observable<QueryState> = compose()
     private val disposables: CompositeDisposable = CompositeDisposable()
@@ -84,10 +82,6 @@ abstract class BaseQueryFragmentModel protected constructor(private val bookmark
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe { outputFile: File? -> bookmarkShareComponent.shareBookmarks(outputFile) })
-    }
-
-    fun viewDestroyed() {
-        processIntents(Observable.just(ViewDestroyedIntent))
     }
 
     init {

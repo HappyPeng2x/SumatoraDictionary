@@ -39,7 +39,9 @@ class BookmarkFragmentModel @ViewModelInject constructor(bookmarkComponent: Book
         true,
         true,
         TITLE,
-        true
+        true,
+        false,
+        false
 ) {
     companion object {
         const val KEY = 2

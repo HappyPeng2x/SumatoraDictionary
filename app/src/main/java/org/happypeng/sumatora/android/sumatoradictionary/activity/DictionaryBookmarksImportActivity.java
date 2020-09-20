@@ -31,6 +31,7 @@ import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
 import org.happypeng.sumatora.android.sumatoradictionary.R;
+import org.happypeng.sumatora.android.sumatoradictionary.adapter.DictionaryPagedListAdapter;
 import org.happypeng.sumatora.android.sumatoradictionary.component.BookmarkImportComponent;
 import org.happypeng.sumatora.android.sumatoradictionary.databinding.FragmentDictionaryQueryBinding;
 import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary;
@@ -52,6 +53,8 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
     private FragmentDictionaryQueryBinding viewBinding;
 
     private CompositeDisposable autoDisposable;
+
+    private DictionaryPagedListAdapter pagedListAdapter = null;
 
     private BookmarkImportModel getModel() {
         return new ViewModelProvider(this).get(BookmarkImportModel.class);
@@ -100,9 +103,14 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
             }
         }));
 
-        autoDisposable.add(bookmarkImportModel.getPagedListAdapterObservable().subscribe(adapter ->
-                viewBinding.dictionaryBookmarkFragmentRecyclerview.setAdapter(adapter)
-        ));
+        pagedListAdapter =
+                new DictionaryPagedListAdapter(bookmarkImportModel.getDisableBookmarkButton(),
+                        bookmarkImportModel.getDisableMemoEdit(), bookmarkImportModel.getCommitBookmarksFun());
+
+        autoDisposable.add(bookmarkImportModel.getPagedListObservable().subscribe(l ->
+                pagedListAdapter.submitList(l)));
+
+        viewBinding.dictionaryBookmarkFragmentRecyclerview.setAdapter(pagedListAdapter);
 
         // Process received data as an intent
         Intent receivedIntent = getIntent();
@@ -125,6 +133,11 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        if (pagedListAdapter != null) {
+            pagedListAdapter.close();
+            pagedListAdapter = null;
+        }
+
         autoDisposable.dispose();
         autoDisposable = null;
 

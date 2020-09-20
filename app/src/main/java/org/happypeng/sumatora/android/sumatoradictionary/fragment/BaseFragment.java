@@ -31,6 +31,7 @@ import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
 import org.happypeng.sumatora.android.sumatoradictionary.R;
+import org.happypeng.sumatora.android.sumatoradictionary.adapter.DictionaryPagedListAdapter;
 import org.happypeng.sumatora.android.sumatoradictionary.databinding.FragmentDictionaryQueryBinding;
 import org.happypeng.sumatora.android.sumatoradictionary.model.BaseQueryFragmentModel;
 import org.happypeng.sumatora.android.sumatoradictionary.model.state.QueryState;
@@ -54,6 +55,8 @@ public abstract class BaseFragment extends Fragment {
     }
 
     protected BaseQueryFragmentModel getModel() { return null; }
+
+    private DictionaryPagedListAdapter pagedListAdapter = null;
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
@@ -104,8 +107,14 @@ public abstract class BaseFragment extends Fragment {
             }
         }));
 
-        autoDisposable.add(queryFragmentModel.getPagedListAdapterObservable().subscribe(adapter ->
-                viewBinding.dictionaryBookmarkFragmentRecyclerview.setAdapter(adapter)));
+        pagedListAdapter =
+                new DictionaryPagedListAdapter(queryFragmentModel.getDisableBookmarkButton(),
+                        queryFragmentModel.getDisableMemoEdit(), queryFragmentModel.getCommitBookmarksFun());
+
+        autoDisposable.add(queryFragmentModel.getPagedListObservable().subscribe(l ->
+                        pagedListAdapter.submitList(l)));
+
+        viewBinding.dictionaryBookmarkFragmentRecyclerview.setAdapter(pagedListAdapter);
 
         focusSearchView();
 
@@ -205,8 +214,10 @@ public abstract class BaseFragment extends Fragment {
     public void onDestroyView() {
         super.onDestroyView();
 
-        final BaseQueryFragmentModel queryFragmentModel = getModel();
-        queryFragmentModel.viewDestroyed();
+        if (pagedListAdapter != null) {
+            pagedListAdapter.close();
+            pagedListAdapter = null;
+        }
 
         autoDisposable.dispose();
 

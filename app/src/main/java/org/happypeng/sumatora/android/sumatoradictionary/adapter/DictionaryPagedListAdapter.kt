@@ -23,17 +23,17 @@ import io.reactivex.rxjava3.subjects.PublishSubject
 import org.happypeng.sumatora.android.sumatoradictionary.databinding.WordCardBinding
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElementDiffUtil
+import org.happypeng.sumatora.android.sumatoradictionary.db.tools.JMDICT_ENTITIES
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.DictionaryPagedListAdapterCloseIntent
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.DictionaryPagedListAdapterIntent
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionarySearchElementViewHolder
 import java.util.*
 
-class DictionaryPagedListAdapter(entities: HashMap<String, String>,
-                                 aDisableBookmarkButton: Boolean,
+class DictionaryPagedListAdapter(aDisableBookmarkButton: Boolean,
                                  aDisableMemoEdit: Boolean,
                                  commitConsumer: (Long, Long, String?) -> Unit) :
         PagedListAdapter<DictionarySearchElement?, DictionarySearchElementViewHolder>(DictionarySearchElementDiffUtil.getDiffUtil()) {
-    private val entities: HashMap<String, String>
+    private val entities = JMDICT_ENTITIES
     private val disableBookmarkButton: Boolean
     private val disableMemoEdit: Boolean
     private val commitConsumer: (Long, Long, String?) -> Unit
@@ -65,7 +65,6 @@ class DictionaryPagedListAdapter(entities: HashMap<String, String>,
 
     init {
         setHasStableIds(true)
-        this.entities = entities
         disableBookmarkButton = aDisableBookmarkButton
         disableMemoEdit = aDisableMemoEdit
         this.commitConsumer = commitConsumer
