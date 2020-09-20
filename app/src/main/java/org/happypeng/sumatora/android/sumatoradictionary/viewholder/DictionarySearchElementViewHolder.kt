@@ -102,7 +102,7 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
             closeMemo()
         }
         wordCardBinding.wordCardMemoIcon.setOnClickListener { _ -> openMemo() }
-        wordCardBinding.wordCardText.requestFocus()
+        // wordCardBinding.wordCardText.requestFocus()
     }
 
     init {

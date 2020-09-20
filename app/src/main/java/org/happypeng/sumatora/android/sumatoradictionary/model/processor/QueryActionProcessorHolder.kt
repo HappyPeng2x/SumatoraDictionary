@@ -131,7 +131,7 @@ class QueryActionProcessorHolder(private val databaseComponent: PersistentDataba
                                                 }
 
                                                 previousState.copy(dictionarySearchQueryTool = queryTool,
-                                                        currentQuery = current, found = found, searching = false,
+                                                        currentQuery = current, searching = false,
                                                         initial = false)
                                             } else {
                                                 previousState

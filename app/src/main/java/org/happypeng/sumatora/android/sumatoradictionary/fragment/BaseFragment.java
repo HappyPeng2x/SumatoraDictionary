@@ -118,7 +118,7 @@ public abstract class BaseFragment extends Fragment {
                         queryFragmentModel.getDisableMemoEdit(), queryFragmentModel.getCommitBookmarksFun());
 
         autoDisposable.add(queryFragmentModel.getPagedListObservable().subscribe(l ->
-                        pagedListAdapter.submitList(l)));
+                pagedListAdapter.submitList(l)));
 
         viewBinding.dictionaryBookmarkFragmentRecyclerview.setAdapter(pagedListAdapter);
 
