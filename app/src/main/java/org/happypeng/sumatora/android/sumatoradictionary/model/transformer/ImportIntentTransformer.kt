@@ -30,7 +30,6 @@ class ImportIntentTransformer: ObservableTransformer<ImportIntent, ImportAction>
                 Observable.merge(
                         listOf(
                                 shared.filter { intent -> intent is ImportCommitIntent }.map { ImportCommitAction },
-                                shared.filter { intent -> intent is ImportCancelIntent }.map { ImportCancelAction },
                                 shared.filter { intent -> intent is ImportLanguageSettingDetachedIntent }.map { ImportLanguageSettingDetachedAction },
                                 shared.ofType(ImportLanguageSettingAttachedIntent::class.java).map { intent ->
                                     ImportLanguageSettingAttachedAction(intent.persistentLanguageSettings)
@@ -42,13 +41,8 @@ class ImportIntentTransformer: ObservableTransformer<ImportIntent, ImportAction>
                                         emitter.onComplete()
                                     }
                                 },
-                                shared.filter { intent -> intent is ImportCloseIntent }.flatMap {
-                                    Observable.create { emitter: ObservableEmitter<ImportAction> ->
-                                        emitter.onNext(ImportClearAction)
-                                        emitter.onNext(ImportCloseAction)
-                                        emitter.onComplete()
-                                    }
-                                }
+                                shared.filter { intent -> intent is ImportCancelIntent }.map { ImportClearAction },
+                                shared.filter { intent -> intent is ImportCloseIntent }.map { ImportClearAction }
                         ))
             }
         }

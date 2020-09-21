@@ -35,39 +35,50 @@ class ImportActionProcessorHolder(private val databaseComponent: PersistentDatab
                      val close: Boolean,
                      val processing: Boolean) {
         fun toResult(): ImportResult {
-            return ImportResult(executed, persistentLanguageSettings, close, false)
+            return ImportResult(executed, persistentLanguageSettings, close, processing)
         }
     }
 
     internal val actionProcessor =
             ObservableTransformer<ImportAction, ImportResult> {
                 it.observeOn(Schedulers.io())
-                        .scan(State(null, false, null, close = false, processing = false),
+                        .scan(State(null, false, null, close = false, processing = true),
                                 { previousState: State, action: ImportAction ->
                                     when (action) {
                                         is ImportLanguageSettingDetachedAction -> run {
                                             previousState.bookmarkImportQueryTool?.close()
-                                            previousState.copy(bookmarkImportQueryTool = null, executed = false,
+                                            previousState.copy(bookmarkImportQueryTool = null,
                                                     persistentLanguageSettings = null)
                                         }
                                         is ImportLanguageSettingAttachedAction -> run {
                                             val queryTool = BookmarkImportQueryTool(databaseComponent, key, action.persistentLanguageSettings)
+                                            var executed = false
+
+                                            if (previousState.processing) {
+                                                bookmarkImportComponent.cancelImport(key)
+                                            }
 
                                             databaseComponent.database.runInTransaction {
                                                 queryTool.delete()
-                                                queryTool.execute()
+
+                                                if (!previousState.processing) {
+                                                    queryTool.execute()
+
+                                                    executed = true
+                                                }
                                             }
 
-                                            previousState.copy(bookmarkImportQueryTool = queryTool, executed = true,
-                                                    persistentLanguageSettings = action.persistentLanguageSettings)
+                                            previousState.copy(bookmarkImportQueryTool = queryTool, executed = executed,
+                                                    processing = !executed, persistentLanguageSettings = action.persistentLanguageSettings)
                                         }
                                         is ImportCommitAction -> run {
                                             bookmarkImportComponent.commitBookmarks(key)
 
-                                            previousState.copy(close = true)
-                                        }
-                                        is ImportCancelAction -> run {
-                                            bookmarkImportComponent.cancelImport(key)
+                                            if (previousState.bookmarkImportQueryTool != null) {
+                                                databaseComponent.database.runInTransaction {
+                                                    previousState.bookmarkImportQueryTool.delete()
+                                                }
+                                            }
 
                                             previousState.copy(close = true)
                                         }
@@ -91,15 +102,16 @@ class ImportActionProcessorHolder(private val databaseComponent: PersistentDatab
                                         }
                                         is ImportSetProcessingAction -> previousState.copy(processing = true)
                                         is ImportClearAction -> run {
+                                            bookmarkImportComponent.cancelImport(key)
+
                                             if (previousState.bookmarkImportQueryTool != null) {
                                                 databaseComponent.database.runInTransaction {
                                                     previousState.bookmarkImportQueryTool.delete()
                                                 }
                                             }
 
-                                            previousState
+                                            previousState.copy(close = true)
                                         }
-                                        is ImportCloseAction -> previousState.copy(close = true)
                                     }
                                 })
                         .observeOn(AndroidSchedulers.mainThread())

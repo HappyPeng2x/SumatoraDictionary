@@ -17,7 +17,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.model.state.ImportState
 import org.happypeng.sumatora.android.sumatoradictionary.mvibase.MviViewModel
 import org.happypeng.sumatora.android.sumatoradictionary.model.transformer.ImportIntentTransformer
 
-class BookmarkImportModel @ViewModelInject constructor(bookmarkImportComponent: BookmarkImportComponent,
+class BookmarkImportModel @ViewModelInject constructor(private val bookmarkImportComponent: BookmarkImportComponent,
                                                        persistentDatabaseComponent: PersistentDatabaseComponent,
                                                        languageSettingsComponent: LanguageSettingsComponent,
                                                        bookmarkShareComponent: BookmarkShareComponent,
@@ -33,9 +33,9 @@ class BookmarkImportModel @ViewModelInject constructor(bookmarkImportComponent: 
     private val statesObservable: Observable<ImportState> = compose()
     private val closedObservable = statesObservable.filter { it.closed }.map { Unit }
 
-    private val actionProcessorHolder = ImportActionProcessorHolder(persistentDatabaseComponent, bookmarkImportComponent, KEY)
-
     private fun compose(): Observable<ImportState> {
+        val actionProcessorHolder = ImportActionProcessorHolder(persistentDatabaseComponent, bookmarkImportComponent, KEY)
+
         return intentsSubject
                 .compose(ImportIntentTransformer())
                 .compose(actionProcessorHolder.actionProcessor)
@@ -79,6 +79,7 @@ class BookmarkImportModel @ViewModelInject constructor(bookmarkImportComponent: 
                 is LanguageSettingAttachedIntent -> ImportLanguageSettingAttachedIntent(it.languageSettings)
             }
         })
+        processIntents(clearedObservable.map { ImportCloseIntent })
     }
 }
 

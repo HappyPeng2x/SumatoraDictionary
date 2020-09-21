@@ -24,7 +24,6 @@ import org.happypeng.sumatora.android.sumatoradictionary.mvibase.MviAction
 sealed class ImportAction : MviAction
 
 object ImportCommitAction : ImportAction()
-object ImportCancelAction : ImportAction()
 
 object ImportLanguageSettingDetachedAction : ImportAction()
 class ImportLanguageSettingAttachedAction(val persistentLanguageSettings: PersistentLanguageSettings) : ImportAction()
@@ -33,4 +32,3 @@ object ImportSetProcessingAction : ImportAction()
 class ImportFileAction(val uri: Uri) : ImportAction()
 
 object ImportClearAction : ImportAction()
-object ImportCloseAction : ImportAction()

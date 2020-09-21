@@ -41,6 +41,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.model.viewbinding.Query
 import dagger.hilt.android.AndroidEntryPoint;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
 import io.reactivex.rxjava3.subjects.BehaviorSubject;
+import io.reactivex.rxjava3.subjects.PublishSubject;
 import io.reactivex.rxjava3.subjects.Subject;
 
 @AndroidEntryPoint
@@ -60,7 +61,7 @@ public abstract class BaseFragment extends Fragment {
 
     private DictionaryPagedListAdapter pagedListAdapter = null;
 
-    private Subject<String> intentSearchTerm = BehaviorSubject.create();
+    private Subject<String> intentSearchTerm = PublishSubject.create();
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,

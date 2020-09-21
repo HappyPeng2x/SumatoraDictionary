@@ -20,6 +20,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.PersistableBundle
 import android.view.MenuItem
+import android.view.View
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.GravityCompat
@@ -55,7 +56,7 @@ class MainActivity : AppCompatActivity() {
         Handler().postDelayed({ startActivity(Intent(this@MainActivity, activity)) }, DELAY_MILLIS.toLong())
     }
 
-    private fun switchToFragment(newFragment: Fragment, tag: String) {
+    private fun switchToFragment(newFragment: () -> Fragment, tag: String) {
         val fragmentTransaction = supportFragmentManager.beginTransaction()
 
         for (f in supportFragmentManager.fragments) {
@@ -65,7 +66,7 @@ class MainActivity : AppCompatActivity() {
         val attachFragment = supportFragmentManager.findFragmentByTag(tag)
 
         if (attachFragment == null) {
-            fragmentTransaction.add(R.id.dictionary_fragment_container, newFragment, tag)
+            fragmentTransaction.add(R.id.dictionary_fragment_container, newFragment.invoke(), tag)
         } else {
             fragmentTransaction.attach(attachFragment)
         }
@@ -79,10 +80,6 @@ class MainActivity : AppCompatActivity() {
         if (BuildConfig.DEBUG_DICTIONARY_ACTIVITY) {
             logger?.info("onCreate()")
         }
-
-        val dictionarySearchFragment = QueryFragment()
-        val bookmarkFragment = BookmarkFragment()
-        val settingsFragment = SettingsFragment()
 
         setContentView(R.layout.activity_dictionary)
 
@@ -107,6 +104,21 @@ class MainActivity : AppCompatActivity() {
 
         val drawerLayout: DrawerLayout = findViewById(R.id.nav_drawer)
 
+        drawerLayout.addDrawerListener(object: DrawerLayout.DrawerListener {
+            override fun onDrawerSlide(drawerView: View, slideOffset: Float) {
+            }
+
+            override fun onDrawerOpened(drawerView: View) {
+            }
+
+            override fun onDrawerClosed(drawerView: View) {
+                viewModel.sendIntent(MainActivityDrawerClosedIntent)
+            }
+
+            override fun onDrawerStateChanged(newState: Int) {
+            }
+        })
+
         compositeDisposable.add(viewModel.stateObservable.map { it.drawerOpen }
                 .distinctUntilChanged()
                 .subscribe {
@@ -123,12 +135,20 @@ class MainActivity : AppCompatActivity() {
                 .subscribe {
                     if (it.searchTerm != null) {
                         when (it.navigationStatus) {
-                            MainActivityNavigationStatus.SEARCH ->
-                                dictionarySearchFragment.setIntentSearchTerm(it.searchTerm)
+                            MainActivityNavigationStatus.SEARCH -> run {
+                                val fragment = supportFragmentManager.findFragmentByTag(SEARCH_FRAGMENT_TAG)
 
-                            MainActivityNavigationStatus.BOOKMARKS ->
-                                bookmarkFragment.setIntentSearchTerm(it.searchTerm)
+                                if (fragment is QueryFragment) {
+                                    fragment.setIntentSearchTerm(it.searchTerm)
+                                }
+                            }
+                            MainActivityNavigationStatus.BOOKMARKS -> run {
+                                val fragment = supportFragmentManager.findFragmentByTag(SEARCH_FRAGMENT_TAG)
 
+                                if (fragment is BookmarkFragment) {
+                                    fragment.setIntentSearchTerm(it.searchTerm)
+                                }
+                            }
                             MainActivityNavigationStatus.SETTINGS -> { }
                         }
                     }
@@ -140,17 +160,17 @@ class MainActivity : AppCompatActivity() {
                 .subscribe { it: MainActivityNavigationStatus ->
                     when (it) {
                         MainActivityNavigationStatus.SEARCH -> {
-                            switchToFragment(dictionarySearchFragment, SEARCH_FRAGMENT_TAG)
+                            switchToFragment({ QueryFragment() }, SEARCH_FRAGMENT_TAG)
                             navigationView.setCheckedItem(R.id.navigation_view_item_search)
                         }
 
                         MainActivityNavigationStatus.BOOKMARKS -> {
-                            switchToFragment(bookmarkFragment, BOOKMARK_FRAGMENT_TAG)
+                            switchToFragment({ BookmarkFragment() }, BOOKMARK_FRAGMENT_TAG)
                             navigationView.setCheckedItem(R.id.navigation_view_item_bookmarks)
                         }
 
                         MainActivityNavigationStatus.SETTINGS -> {
-                            switchToFragment(settingsFragment, SETTINGS_FRAGMENT_TAG)
+                            switchToFragment({ SettingsFragment() }, SETTINGS_FRAGMENT_TAG)
                             navigationView.setCheckedItem(R.id.navigation_view_item_settings)
                         }
                     }

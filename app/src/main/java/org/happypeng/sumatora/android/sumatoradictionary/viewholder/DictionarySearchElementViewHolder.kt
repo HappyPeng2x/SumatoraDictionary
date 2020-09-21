@@ -32,7 +32,7 @@ import java.util.*
 class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBinding,
                                         private val entities: HashMap<String, String>,
                                         disableBookmarkButton: Boolean,
-                                        disableMemoEdit: Boolean,
+                                        private val disableMemoEdit: Boolean,
                                         private val commitConsumer: (Long, Long, String?) -> Unit,
                                         private val intentSubject: Subject<DictionaryPagedListAdapterIntent>) : RecyclerView.ViewHolder(wordCardBinding.wordCardView) {
     private var subscription: Disposable? = null
@@ -45,7 +45,11 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
 
     private fun closeMemo() {
         wordCardBinding.wordCardMemo.visibility = View.GONE
-        wordCardBinding.wordCardMemoIcon.visibility = View.VISIBLE
+
+        if (!disableMemoEdit) {
+            wordCardBinding.wordCardMemoIcon.visibility = View.VISIBLE
+        }
+
         wordCardBinding.wordCardDeleteMemoIcon.visibility = View.GONE
         wordCardBinding.wordCardMemo.setText("")
     }

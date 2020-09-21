@@ -37,8 +37,9 @@ class MainActivityModel(private val state: SavedStateHandle) : ViewModel() {
                                     else -> mainActivityState.searchTerm
                                 },
                                 drawerOpen = when(mainActivityIntent) {
-                                    MainActivityHomePressedIntent -> true
+                                    is MainActivityHomePressedIntent -> true
                                     is MainActivityNavigationIntent -> false
+                                    is MainActivityDrawerClosedIntent -> false
                                     else -> mainActivityState.drawerOpen
                                 },
                                 finished = when(mainActivityIntent) {
