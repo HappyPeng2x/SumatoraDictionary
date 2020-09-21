@@ -17,6 +17,7 @@
 package org.happypeng.sumatora.android.sumatoradictionary.viewholder
 
 import android.graphics.Color
+import android.text.InputType
 import android.view.View
 import androidx.recyclerview.widget.RecyclerView
 import io.reactivex.rxjava3.disposables.Disposable
@@ -40,7 +41,10 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
     private fun openMemo() {
         wordCardBinding.wordCardMemo.visibility = View.VISIBLE
         wordCardBinding.wordCardMemoIcon.visibility = View.GONE
-        wordCardBinding.wordCardDeleteMemoIcon.visibility = View.VISIBLE
+
+        if (!disableMemoEdit) {
+            wordCardBinding.wordCardDeleteMemoIcon.visibility = View.VISIBLE
+        }
     }
 
     private fun closeMemo() {
@@ -104,9 +108,14 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
         wordCardBinding.wordCardDeleteMemoIcon.setOnClickListener { _ ->
             wordCardBinding.wordCardMemo.setText("")
             closeMemo()
+
+            if ("" != entry.memo && entry.memo != null) {
+                commitConsumer.invoke(entry.seq,
+                        entry.bookmark,
+                        "")
+            }
         }
         wordCardBinding.wordCardMemoIcon.setOnClickListener { _ -> openMemo() }
-        // wordCardBinding.wordCardText.requestFocus()
     }
 
     init {
@@ -116,6 +125,7 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
 
         if (disableMemoEdit) {
             wordCardBinding.wordCardMemoIcon.visibility = View.GONE
+            wordCardBinding.wordCardMemo.inputType = InputType.TYPE_NULL
         }
     }
 }

@@ -40,6 +40,7 @@ class BookmarkFragmentModel @ViewModelInject constructor(bookmarkComponent: Book
         true,
         TITLE,
         true,
+        true,
         false,
         false
 ) {

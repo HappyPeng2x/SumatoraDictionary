@@ -42,8 +42,6 @@ abstract class BaseFragmentModel protected constructor(protected val persistentD
                                                        val disableMemoEdit: Boolean): ViewModel() {
     class ScrolledEvent(val entryOrder: Int)
 
-    val commitBookmarksFun = { seq: Long, bookmark: Long, memo: String? -> commitBookmarks(seq, bookmark, memo) }
-
     private val clearedSubject: Subject<Unit> = PublishSubject.create()
     val clearedObservable = clearedSubject as Observable<Unit>
 
@@ -64,8 +62,6 @@ abstract class BaseFragmentModel protected constructor(protected val persistentD
         get() = Observable.defer { Observable.just(persistentDatabaseComponent.database.installedDictionaryDao().all) }
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-
-    abstract fun commitBookmarks(seq: Long, bookmark: Long, memo: String?)
 
     override fun onCleared() {
         clearedSubject.onNext(Unit)

@@ -24,7 +24,7 @@ class BookmarkImportModel @ViewModelInject constructor(private val bookmarkImpor
                                                        @Assisted savedStateHandle: SavedStateHandle?) :
         BaseFragmentModel(persistentDatabaseComponent, languageSettingsComponent,
                 { component: PersistentDatabaseComponent, callback: PagedList.BoundaryCallback<DictionarySearchElement?>? ->
-                    component.getSearchElements(KEY, callback) }, true, true), MviViewModel<ImportIntent, ImportState> {
+                    component.getSearchElements(KEY, callback) }, false, true), MviViewModel<ImportIntent, ImportState> {
     companion object {
         const val KEY = 3
     }
@@ -48,10 +48,6 @@ class BookmarkImportModel @ViewModelInject constructor(private val bookmarkImpor
 
     private fun transformStatus(previousState: ImportState, result: ImportResult): ImportState {
         return ImportState(result.executed, result.persistentLanguageSettings, result.close, result.processing)
-    }
-
-    override fun commitBookmarks(seq: Long, bookmark: Long, memo: String?) {
-        TODO("Not yet implemented")
     }
 
     override fun processIntents(intents: Observable<ImportIntent>) {

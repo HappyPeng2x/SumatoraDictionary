@@ -46,6 +46,7 @@ abstract class BaseQueryFragmentModel protected constructor(private val bookmark
                                                             val shareButtonVisible: Boolean,
                                                             val title: String,
                                                             private val filterBookmarks: Boolean,
+                                                            private val filterMemos: Boolean,
                                                             disableBookmarkButton: Boolean,
                                                             disableMemoEdit: Boolean
 ) : BaseFragmentModel(persistentDatabaseComponent, languageSettingsComponent, pagedListFactory, disableBookmarkButton, disableMemoEdit), MviViewModel<QueryIntent, QueryState> {
@@ -60,7 +61,7 @@ abstract class BaseQueryFragmentModel protected constructor(private val bookmark
     override fun states(): Observable<QueryState> = statesObservable
 
     private fun compose(): Observable<QueryState> {
-        val actionProcessorHolder = QueryActionProcessorHolder(persistentDatabaseComponent, key, filterBookmarks)
+        val actionProcessorHolder = QueryActionProcessorHolder(persistentDatabaseComponent, key, filterBookmarks, filterMemos)
 
         return intentsSubject
                 .compose(QueryIntentTransformer())
@@ -101,11 +102,13 @@ abstract class BaseQueryFragmentModel protected constructor(private val bookmark
                 ready = result.ready, closed = result.closed, languageSettings = result.languageSettings)
     }
 
-    override fun commitBookmarks(seq: Long, bookmark: Long, memo: String?) {
+    private fun commitBookmarks(seq: Long, bookmark: Long, memo: String?) {
         val dictionaryBookmark = DictionaryBookmark()
         dictionaryBookmark.memo = memo
         dictionaryBookmark.bookmark = bookmark
         dictionaryBookmark.seq = seq
         bookmarkComponent.updateBookmark(dictionaryBookmark)
     }
+
+    val commitBookmarksFun = { seq: Long, bookmark: Long, memo: String? -> commitBookmarks(seq, bookmark, memo) }
 }

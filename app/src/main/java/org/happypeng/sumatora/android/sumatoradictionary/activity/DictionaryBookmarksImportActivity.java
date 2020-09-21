@@ -44,6 +44,7 @@ import javax.inject.Inject;
 
 import dagger.hilt.android.AndroidEntryPoint;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
+import kotlin.Unit;
 
 @AndroidEntryPoint
 public class DictionaryBookmarksImportActivity extends AppCompatActivity {
@@ -105,7 +106,7 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
 
         pagedListAdapter =
                 new DictionaryPagedListAdapter(bookmarkImportModel.getDisableBookmarkButton(),
-                        bookmarkImportModel.getDisableMemoEdit(), bookmarkImportModel.getCommitBookmarksFun());
+                        bookmarkImportModel.getDisableMemoEdit(), (seq, bookmark, memo) -> Unit.INSTANCE );
 
         autoDisposable.add(bookmarkImportModel.getPagedListObservable().subscribe(l ->
                 pagedListAdapter.submitList(l)));

@@ -36,7 +36,7 @@ class QueryFragmentModel @ViewModelInject constructor(bookmarkComponent: Bookmar
         bookmarkShareComponent,
         { component: PersistentDatabaseComponent, callback: BoundaryCallback<DictionarySearchElement?>? -> component.getSearchElements(KEY, callback) },
         KEY, false, false, TITLE, false,
-        false, false
+        false, false, false
 ) {
     companion object {
         const val KEY = 1

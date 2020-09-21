@@ -27,7 +27,8 @@ import org.happypeng.sumatora.android.sumatoradictionary.model.result.QueryResul
 
 class QueryActionProcessorHolder(private val databaseComponent: PersistentDatabaseComponent,
                                  private val key: Int,
-                                 private val filterBookmarks: Boolean) {
+                                 private val filterBookmarks: Boolean,
+                                 private val filterMemos: Boolean) {
     data class State(val dictionarySearchQueryTool: DictionarySearchQueryTool?,
                      val currentQuery: Int,
                      val term: String,
@@ -71,7 +72,7 @@ class QueryActionProcessorHolder(private val databaseComponent: PersistentDataba
                                                 { queryTool.getCount(previousState.term) } else { previousState.currentQuery }
 
                                                 while (current < maxTransaction && ((runUntilFound && !found) || !runUntilFound)) {
-                                                    found = queryTool.execute(previousState.term, current, filterBookmarks, false)
+                                                    found = queryTool.execute(previousState.term, current, filterBookmarks, filterMemos)
                                                     current++
                                                 }
                                             }
@@ -105,7 +106,7 @@ class QueryActionProcessorHolder(private val databaseComponent: PersistentDataba
 
                                                 databaseComponent.database.runInTransaction {
                                                     while (current < maxTransaction && !found) {
-                                                        found = queryTool.execute(previousState.term, current, filterBookmarks, false)
+                                                        found = queryTool.execute(previousState.term, current, filterBookmarks, filterMemos)
                                                         current++
                                                     }
                                                 }
@@ -125,7 +126,7 @@ class QueryActionProcessorHolder(private val databaseComponent: PersistentDataba
 
                                                 databaseComponent.database.runInTransaction {
                                                     while (current < maxTransaction && !found) {
-                                                        found = queryTool.execute(previousState.term, current, filterBookmarks, false)
+                                                        found = queryTool.execute(previousState.term, current, filterBookmarks, filterMemos)
                                                         current++
                                                     }
                                                 }
@@ -148,7 +149,7 @@ class QueryActionProcessorHolder(private val databaseComponent: PersistentDataba
                                                     queryTool.delete()
 
                                                     while (current < maxTransaction) {
-                                                        queryTool.execute(previousState.term, current, filterBookmarks, false)
+                                                        queryTool.execute(previousState.term, current, filterBookmarks, filterMemos)
                                                         current++
                                                     }
                                                 }
