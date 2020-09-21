@@ -73,7 +73,7 @@ abstract class BaseQueryFragmentModel protected constructor(private val bookmark
     }
 
     fun setTerm(t: String) {
-        processIntents(Observable.just(SearchIntent(t)))
+        processIntents(Observable.just(SearchIntent(t.replace("\"", ""))))
     }
 
     fun shareBookmarks() {
