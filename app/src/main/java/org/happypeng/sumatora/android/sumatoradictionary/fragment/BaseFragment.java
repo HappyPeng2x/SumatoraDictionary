@@ -16,10 +16,13 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.fragment;
 
+import android.app.Activity;
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 
@@ -31,6 +34,7 @@ import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
 import org.happypeng.sumatora.android.sumatoradictionary.R;
+import org.happypeng.sumatora.android.sumatoradictionary.activity.MainActivity;
 import org.happypeng.sumatora.android.sumatoradictionary.adapter.DictionaryPagedListAdapter;
 import org.happypeng.sumatora.android.sumatoradictionary.databinding.FragmentDictionaryQueryBinding;
 import org.happypeng.sumatora.android.sumatoradictionary.model.BaseQueryFragmentModel;
@@ -82,6 +86,9 @@ public abstract class BaseFragment extends Fragment {
         viewBinding.dictionaryBookmarkFragmentRecyclerview.addItemDecoration(itemDecor);
 
         final BaseQueryFragmentModel queryFragmentModel = getModel();
+
+        autoDisposable.add(queryFragmentModel.states().filter(QueryState::getSetIntent)
+                .subscribe(s -> setActivityIntentSearchTerm(s.getTerm())));
 
         autoDisposable.add(intentSearchTerm.subscribe(queryFragmentModel::setTerm));
 
@@ -152,7 +159,6 @@ public abstract class BaseFragment extends Fragment {
         queryMenu.shareBookmarks.setVisible(queryFragmentModel.getShareButtonVisible());
 
         autoDisposable.add(queryFragmentModel.getInstalledDictionaries()
-                //.distinctUntilChanged()
                 .subscribe(l -> queryMenu.addLanguageMenu(getContext(), l,
                         new QueryMenu.LanguageChangeCallback() {
                             @Override
@@ -167,13 +173,15 @@ public abstract class BaseFragment extends Fragment {
                 .distinctUntilChanged()
                 .subscribe(l -> queryMenu.languageMenuText.setText(l.lang)));
 
-        queryMenu.searchCloseButton.setOnClickListener(v -> {
-            if ("".equals(queryMenu.searchView.getQuery().toString())) {
-                queryMenu.searchView.setIconified(true);
-            } else {
-                queryFragmentModel.setTerm("");
-            }
-        });
+        autoDisposable.add(queryFragmentModel.states().map(QueryState::getSearchBoxClosed)
+                .distinctUntilChanged()
+                .subscribe(b -> queryMenu.searchView.setIconified(b)));
+
+        queryMenu.searchCloseButton.setOnClickListener(v ->
+                queryFragmentModel.closeSearchBox());
+
+        queryMenu.searchView.setOnSearchClickListener(v ->
+                queryFragmentModel.openSearchBox());
 
         queryMenu.shareBookmarks.setOnMenuItemClickListener(v -> {
             queryFragmentModel.shareBookmarks();
@@ -183,7 +191,7 @@ public abstract class BaseFragment extends Fragment {
 
         queryMenu.searchAutoComplete.setOnEditorActionListener((v, actionId, event) -> {
             if ("".equals(queryMenu.searchAutoComplete.getText().toString())) {
-                queryFragmentModel.setTerm("");
+                setActivityIntentSearchTerm("");
             }
 
             return false;
@@ -205,8 +213,24 @@ public abstract class BaseFragment extends Fragment {
         focusSearchView();
     }
 
+    // This is only to be called by the activity
     public void setIntentSearchTerm(@NonNull String aIntentSearchTerm) {
         intentSearchTerm.onNext(aIntentSearchTerm);
+    }
+
+    // This can be called here
+    void setActivityIntentSearchTerm(@NonNull String intentSearchTerm) {
+        final MainActivity activity = (MainActivity) getActivity();
+
+        if (activity == null) {
+            return;
+        }
+
+        final Intent intent = getActivity().getIntent();
+        intent.removeExtra("query");
+        intent.putExtra("SEARCH_TERM", intentSearchTerm);
+
+        activity.processIntent(intent);
     }
 
     public void focusSearchView() {

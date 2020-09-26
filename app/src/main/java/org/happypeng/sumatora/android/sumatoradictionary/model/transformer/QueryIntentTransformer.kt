@@ -36,6 +36,8 @@ class QueryIntentTransformer: ObservableTransformer<QueryIntent, QueryAction> {
                                         emitter.onComplete()
                                     }
                                 },
+                                shared.filter { intent -> intent is CloseSearchBoxIntent }.map { CloseSearchBoxAction },
+                                shared.filter { intent -> intent is OpenSearchBoxIntent }.map { OpenSearchBoxAction },
                                 shared.filter { intent -> intent is QueryCloseIntent }.flatMap { _ ->
                                     Observable.create { emitter: ObservableEmitter<QueryAction> ->
                                         emitter.onNext(QueryClearAction)

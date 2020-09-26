@@ -25,4 +25,6 @@ class QueryResult(val currentQuery: Int,
                   val ready: Boolean,
                   val searching: Boolean,
                   val languageSettings: PersistentLanguageSettings?,
-                  val closed: Boolean) : MviResult
+                  val closed: Boolean,
+                  val searchBoxClosed: Boolean,
+                  val setIntent: Boolean) : MviResult

@@ -27,7 +27,7 @@ android {
         minSdkVersion 14
         targetSdkVersion 29
         versionCode 28
-        versionName "0.4.5rc4"
+        versionName "0.4.5rc5"
         multiDexEnabled true
 
         compileOptions {

@@ -28,7 +28,8 @@ import org.happypeng.sumatora.android.sumatoradictionary.model.result.QueryResul
 class QueryActionProcessorHolder(private val databaseComponent: PersistentDatabaseComponent,
                                  private val key: Int,
                                  private val filterBookmarks: Boolean,
-                                 private val filterMemos: Boolean) {
+                                 private val filterMemos: Boolean,
+                                 private val searchBoxClosed: Boolean) {
     data class State(val dictionarySearchQueryTool: DictionarySearchQueryTool?,
                      val currentQuery: Int,
                      val term: String,
@@ -37,9 +38,12 @@ class QueryActionProcessorHolder(private val databaseComponent: PersistentDataba
                      val searching: Boolean,
                      val persistentLanguageSettings: PersistentLanguageSettings?,
                      val initial: Boolean,
-                     val closed: Boolean) {
+                     val closed: Boolean,
+                     val searchBoxClosed: Boolean,
+                     val setIntent: Boolean) {
         fun toResult(): QueryResult {
-            return QueryResult (currentQuery, term, found, ready, searching, persistentLanguageSettings, closed)
+            return QueryResult (currentQuery, term, found, ready, searching,
+                    persistentLanguageSettings, closed, searchBoxClosed, setIntent)
         }
     }
 
@@ -49,13 +53,15 @@ class QueryActionProcessorHolder(private val databaseComponent: PersistentDataba
                         .scan(State(null, 0, "",
                                 false, ready = false, searching = false,
                                 persistentLanguageSettings = null, initial = true,
-                                closed = false),
+                                closed = false, searchBoxClosed = searchBoxClosed,
+                                setIntent = false),
                                 { previousState, action ->
                                     when (action) {
                                         is QueryLanguageSettingDetachedAction -> run {
                                             previousState.dictionarySearchQueryTool?.close()
                                             previousState.copy(dictionarySearchQueryTool = null, ready = false,
-                                                    persistentLanguageSettings = null, initial = false)
+                                                    persistentLanguageSettings = null, initial = false,
+                                                    setIntent = false)
                                         }
                                         is QueryLanguageSettingAttachedAction -> run {
                                             val queryTool =  DictionarySearchQueryTool(databaseComponent, key,
@@ -80,7 +86,7 @@ class QueryActionProcessorHolder(private val databaseComponent: PersistentDataba
                                             previousState.copy(dictionarySearchQueryTool = queryTool,
                                                     currentQuery = current, found = found, searching = false,
                                                     persistentLanguageSettings = action.persistentLanguageSettings,
-                                                    ready = true, initial = false)
+                                                    ready = true, initial = false, setIntent = false)
                                         }
                                         is SetTermAction -> run {
                                             if (previousState.dictionarySearchQueryTool != null) {
@@ -90,8 +96,13 @@ class QueryActionProcessorHolder(private val databaseComponent: PersistentDataba
                                             }
 
                                             previousState.copy(term = action.term, searching = true, found = false, currentQuery = 0,
-                                                    initial = false)
+                                                    initial = false, setIntent = false)
                                         }
+                                        CloseSearchBoxAction ->
+                                            previousState.copy(term = "", searching = true, found = false, currentQuery = 0,
+                                                    initial = false, searchBoxClosed = previousState.term == "" && searchBoxClosed,
+                                                    setIntent = previousState.term != "")
+                                        OpenSearchBoxAction -> previousState.copy(searchBoxClosed = false)
                                         is SearchAction -> run {
                                             if (previousState.dictionarySearchQueryTool != null) {
                                                 val queryTool = previousState.dictionarySearchQueryTool
@@ -113,7 +124,7 @@ class QueryActionProcessorHolder(private val databaseComponent: PersistentDataba
 
                                                 previousState.copy(dictionarySearchQueryTool = queryTool,
                                                         currentQuery = current, found = found, searching = false,
-                                                        initial = false)
+                                                        initial = false, setIntent = false)
                                             } else { previousState }
                                         }
                                         is ScrollAction -> run {
@@ -133,7 +144,7 @@ class QueryActionProcessorHolder(private val databaseComponent: PersistentDataba
 
                                                 previousState.copy(dictionarySearchQueryTool = queryTool,
                                                         currentQuery = current, searching = false,
-                                                        initial = false)
+                                                        initial = false, setIntent = false)
                                             } else {
                                                 previousState
                                             }
@@ -169,9 +180,8 @@ class QueryActionProcessorHolder(private val databaseComponent: PersistentDataba
                                         is QueryCloseAction -> run {
                                             previousState.dictionarySearchQueryTool?.close()
 
-                                            previousState.copy(closed = true)
+                                            previousState.copy(closed = true, setIntent = false)
                                         }
-                                        else -> previousState
                                     }
                                 })
                         .filter { state -> !state.initial }

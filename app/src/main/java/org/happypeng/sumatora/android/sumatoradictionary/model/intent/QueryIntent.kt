@@ -22,14 +22,13 @@ import org.happypeng.sumatora.android.sumatoradictionary.mvibase.MviIntent
 
 sealed class QueryIntent : MviIntent
 
-object ViewDestroyedIntent : QueryIntent()
 class ScrollIntent(val entryOrder: Int) : QueryIntent()
 object QueryCloseIntent : QueryIntent()
 object BookmarkIntent : QueryIntent()
 
-
 class SearchIntent(val term: String) : QueryIntent()
-class BookmarkImportFileOpenIntent(val uri: Uri) : QueryIntent()
+object CloseSearchBoxIntent : QueryIntent()
+object OpenSearchBoxIntent : QueryIntent()
 
 sealed class QueryLanguageSettingIntent(val languageSettings: PersistentLanguageSettings) : QueryIntent()
 

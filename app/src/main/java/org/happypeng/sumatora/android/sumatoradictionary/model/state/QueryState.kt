@@ -24,4 +24,6 @@ data class QueryState(val term: String,
                       val languageSettings: PersistentLanguageSettings?,
                       val closed: Boolean,
                       val searching: Boolean,
-                      val ready: Boolean): MviViewState
+                      val ready: Boolean,
+                      val searchBoxClosed: Boolean,
+                      val setIntent: Boolean): MviViewState

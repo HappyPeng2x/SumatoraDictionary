@@ -61,13 +61,15 @@ abstract class BaseQueryFragmentModel protected constructor(private val bookmark
     override fun states(): Observable<QueryState> = statesObservable
 
     private fun compose(): Observable<QueryState> {
-        val actionProcessorHolder = QueryActionProcessorHolder(persistentDatabaseComponent, key, filterBookmarks, filterMemos)
+        val actionProcessorHolder = QueryActionProcessorHolder(persistentDatabaseComponent, key,
+                filterBookmarks, filterMemos, searchIconifiedByDefault)
 
         return intentsSubject
                 .compose(QueryIntentTransformer())
                 .compose(actionProcessorHolder.actionProcessor)
                 .scan(QueryState("", false, null, false,
-                        searching = false, false), this::transformStatus)
+                        searching = false, false, searchIconifiedByDefault, setIntent = false),
+                        this::transformStatus)
                 .distinctUntilChanged()
                 .replay(1)
                 .autoConnect(0)
@@ -75,6 +77,14 @@ abstract class BaseQueryFragmentModel protected constructor(private val bookmark
 
     fun setTerm(t: String) {
         processIntents(Observable.just(SearchIntent(t.replace("\"", ""))))
+    }
+
+    fun closeSearchBox() {
+        processIntents(Observable.just(CloseSearchBoxIntent))
+    }
+
+    fun openSearchBox() {
+        processIntents(Observable.just(OpenSearchBoxIntent))
     }
 
     fun shareBookmarks() {
@@ -99,7 +109,8 @@ abstract class BaseQueryFragmentModel protected constructor(private val bookmark
 
     private fun transformStatus(previousState: QueryState, result: QueryResult): QueryState {
         return QueryState(term = result.term, found = result.found, searching = result.searching,
-                ready = result.ready, closed = result.closed, languageSettings = result.languageSettings)
+                ready = result.ready, closed = result.closed, languageSettings = result.languageSettings,
+                searchBoxClosed = result.searchBoxClosed, setIntent = result.setIntent)
     }
 
     private fun commitBookmarks(seq: Long, bookmark: Long, memo: String?) {

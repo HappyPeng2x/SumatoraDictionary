@@ -143,7 +143,7 @@ class MainActivity : AppCompatActivity() {
                                 }
                             }
                             MainActivityNavigationStatus.BOOKMARKS -> run {
-                                val fragment = supportFragmentManager.findFragmentByTag(SEARCH_FRAGMENT_TAG)
+                                val fragment = supportFragmentManager.findFragmentByTag(BOOKMARK_FRAGMENT_TAG)
 
                                 if (fragment is BookmarkFragment) {
                                     fragment.setIntentSearchTerm(it.searchTerm)
@@ -211,7 +211,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun processIntent(aIntent: Intent?) {
+    fun processIntent(aIntent: Intent?) {
         if (BuildConfig.DEBUG_DICTIONARY_ACTIVITY) {
             displayIntent(aIntent)
         }
