@@ -20,6 +20,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.subjects.BehaviorSubject
+import io.reactivex.rxjava3.subjects.PublishSubject
 import io.reactivex.rxjava3.subjects.Subject
 import org.happypeng.sumatora.android.sumatoradictionary.activity.MainActivity
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.*
@@ -27,7 +28,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.model.state.MainActivit
 import org.happypeng.sumatora.android.sumatoradictionary.model.state.MainActivityState
 
 class MainActivityModel(private val state: SavedStateHandle) : ViewModel() {
-    private val intentSubject: Subject<MainActivityIntent> = BehaviorSubject.create()
+    private val intentSubject: Subject<MainActivityIntent> = PublishSubject.create()
 
     fun sendIntent(intent: MainActivityIntent) {
         intentSubject.onNext(intent)
@@ -71,7 +72,10 @@ class MainActivityModel(private val state: SavedStateHandle) : ViewModel() {
                                         navigationStatus = MainActivityNavigationStatus.SEARCH,
                                         searchTerm = mainActivityState.searchTerms[MainActivityNavigationStatus.SEARCH] ?: "")
                         }
-                    }).takeUntil { it.closed }
+                    })
+                    .takeUntil { it.closed }
+                    .replay(1)
+                    .autoConnect(0)
 
     init {
         stateObservable.subscribe {

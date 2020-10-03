@@ -67,7 +67,7 @@ abstract class BaseQueryFragmentModel protected constructor(private val bookmark
         return intentsSubject
                 .compose(QueryIntentTransformer())
                 .compose(actionProcessorHolder.actionProcessor)
-                .scan(QueryState("", false, null, false,
+                .scan(QueryState("", false, null, null, false,
                         searching = false, false, searchIconifiedByDefault, setIntent = false),
                         this::transformStatus)
                 .distinctUntilChanged()
@@ -109,7 +109,8 @@ abstract class BaseQueryFragmentModel protected constructor(private val bookmark
 
     private fun transformStatus(previousState: QueryState, result: QueryResult): QueryState {
         return QueryState(term = result.term, found = result.found, searching = result.searching,
-                ready = result.ready, closed = result.closed, languageSettings = result.languageSettings,
+                ready = result.ready, closed = result.closed, language = result.languageSettings?.lang,
+                backupLanguage = result.languageSettings?.backupLang,
                 searchBoxClosed = result.searchBoxClosed, setIntent = result.setIntent)
     }
 

@@ -168,10 +168,10 @@ public abstract class BaseFragment extends Fragment {
                         })));
 
         autoDisposable.add(queryFragmentModel.states()
-                .filter(s -> s.getLanguageSettings() != null)
-                .map(QueryState::getLanguageSettings)
+                .filter(s -> s.getLanguage() != null)
+                .map(QueryState::getLanguage)
                 .distinctUntilChanged()
-                .subscribe(l -> queryMenu.languageMenuText.setText(l.lang)));
+                .subscribe(l -> queryMenu.languageMenuText.setText(l)));
 
         autoDisposable.add(queryFragmentModel.states().map(QueryState::getSearchBoxClosed)
                 .distinctUntilChanged()

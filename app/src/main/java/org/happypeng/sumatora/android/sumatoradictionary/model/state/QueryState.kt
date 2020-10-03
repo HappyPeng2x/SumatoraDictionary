@@ -15,15 +15,19 @@
         along with this program.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.happypeng.sumatora.android.sumatoradictionary.model.state
 
+import android.os.Parcelable
+import kotlinx.android.parcel.Parcelize
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.DictionarySearchQueryTool
 import org.happypeng.sumatora.android.sumatoradictionary.mvibase.MviViewState
 
+@Parcelize
 data class QueryState(val term: String,
                       val found: Boolean,
-                      val languageSettings: PersistentLanguageSettings?,
+                      val language: String?,
+                      val backupLanguage: String?,
                       val closed: Boolean,
                       val searching: Boolean,
                       val ready: Boolean,
                       val searchBoxClosed: Boolean,
-                      val setIntent: Boolean): MviViewState
+                      val setIntent: Boolean): MviViewState, Parcelable

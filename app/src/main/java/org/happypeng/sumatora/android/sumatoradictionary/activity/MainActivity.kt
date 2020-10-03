@@ -130,27 +130,24 @@ class MainActivity : AppCompatActivity() {
                 })
 
         compositeDisposable.add(viewModel.stateObservable.distinctUntilChanged { t1, t2 ->
-            (t1.searchTerm == null && t2.searchTerm == null) ||
-                    t1.searchTerm.equals(t2.searchTerm) }
+            t1.searchTerm == t2.searchTerm }
                 .subscribe {
-                    if (it.searchTerm != null) {
-                        when (it.navigationStatus) {
-                            MainActivityNavigationStatus.SEARCH -> run {
-                                val fragment = supportFragmentManager.findFragmentByTag(SEARCH_FRAGMENT_TAG)
+                    when (it.navigationStatus) {
+                        MainActivityNavigationStatus.SEARCH -> run {
+                            val fragment = supportFragmentManager.findFragmentByTag(SEARCH_FRAGMENT_TAG)
 
-                                if (fragment is QueryFragment) {
-                                    fragment.setIntentSearchTerm(it.searchTerm)
-                                }
+                            if (fragment is QueryFragment) {
+                                fragment.setIntentSearchTerm(it.searchTerm)
                             }
-                            MainActivityNavigationStatus.BOOKMARKS -> run {
-                                val fragment = supportFragmentManager.findFragmentByTag(BOOKMARK_FRAGMENT_TAG)
-
-                                if (fragment is BookmarkFragment) {
-                                    fragment.setIntentSearchTerm(it.searchTerm)
-                                }
-                            }
-                            MainActivityNavigationStatus.SETTINGS -> { }
                         }
+                        MainActivityNavigationStatus.BOOKMARKS -> run {
+                            val fragment = supportFragmentManager.findFragmentByTag(BOOKMARK_FRAGMENT_TAG)
+
+                            if (fragment is BookmarkFragment) {
+                                fragment.setIntentSearchTerm(it.searchTerm)
+                            }
+                        }
+                        MainActivityNavigationStatus.SETTINGS -> { }
                     }
                 })
 
