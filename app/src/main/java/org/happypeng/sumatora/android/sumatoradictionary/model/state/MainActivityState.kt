@@ -26,7 +26,9 @@ enum class MainActivityNavigationStatus {
 
 @Parcelize
 data class MainActivityState(val closed: Boolean,
+                             val navigate: Boolean,
                              val navigationStatus: MainActivityNavigationStatus,
+                             val changeTerm: Boolean,
                              val searchTerm: String,
                              val drawerOpen: Boolean,
                              val finished: Boolean,

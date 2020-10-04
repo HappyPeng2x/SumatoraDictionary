@@ -16,17 +16,16 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.fragment;
 
-import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
@@ -44,7 +43,6 @@ import org.happypeng.sumatora.android.sumatoradictionary.model.viewbinding.Query
 
 import dagger.hilt.android.AndroidEntryPoint;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
-import io.reactivex.rxjava3.subjects.BehaviorSubject;
 import io.reactivex.rxjava3.subjects.PublishSubject;
 import io.reactivex.rxjava3.subjects.Subject;
 
@@ -53,27 +51,37 @@ public abstract class BaseFragment extends Fragment {
     protected FragmentDictionaryQueryBinding viewBinding;
     protected QueryMenu queryMenu;
 
-    protected CompositeDisposable autoDisposable;
+    protected CompositeDisposable viewAutoDisposable = new CompositeDisposable();
+    protected CompositeDisposable fragmentAutoDisposable = new CompositeDisposable();
+
+    private Subject<String> intentSearchTerm = PublishSubject.create();
 
     protected Bundle savedInstanceState;
 
-    protected BaseFragment() {
-        autoDisposable = new CompositeDisposable();
-    }
-
     protected BaseQueryFragmentModel getModel() { return null; }
 
-    private DictionaryPagedListAdapter pagedListAdapter = null;
+    protected BaseFragment() { }
 
-    private Subject<String> intentSearchTerm = PublishSubject.create();
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        final BaseQueryFragmentModel model = getModel();
+
+        if (model != null) {
+            fragmentAutoDisposable.add(intentSearchTerm.subscribe(model::setTerm));
+        }
+    }
+
+    private DictionaryPagedListAdapter pagedListAdapter = null;
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         super.onCreateView(inflater, container, savedInstanceState);
 
-        if (autoDisposable == null) {
-            autoDisposable = new CompositeDisposable();
+        if (viewAutoDisposable == null) {
+            viewAutoDisposable = new CompositeDisposable();
         }
 
         this.savedInstanceState = savedInstanceState;
@@ -87,10 +95,8 @@ public abstract class BaseFragment extends Fragment {
 
         final BaseQueryFragmentModel queryFragmentModel = getModel();
 
-        autoDisposable.add(queryFragmentModel.states().filter(QueryState::getSetIntent)
+        viewAutoDisposable.add(queryFragmentModel.states().filter(QueryState::getSetIntent)
                 .subscribe(s -> setActivityIntentSearchTerm(s.getTerm())));
-
-        autoDisposable.add(intentSearchTerm.subscribe(queryFragmentModel::setTerm));
 
         // Toolbar configuration
         ((AppCompatActivity) getActivity()).setSupportActionBar(viewBinding.dictionaryBookmarkFragmentToolbar);
@@ -103,7 +109,7 @@ public abstract class BaseFragment extends Fragment {
 
         viewBinding.dictionaryBookmarkFragmentToolbar.setTitle(queryFragmentModel.getTitle());
 
-        autoDisposable.add(queryFragmentModel.states().subscribe(status -> {
+        viewAutoDisposable.add(queryFragmentModel.states().subscribe(status -> {
             if (!status.getReady()) {
                 FragmentDictionaryQueryBindingUtil.setInPreparation(viewBinding);
             } else {
@@ -125,7 +131,7 @@ public abstract class BaseFragment extends Fragment {
                 new DictionaryPagedListAdapter(queryFragmentModel.getDisableBookmarkButton(),
                         queryFragmentModel.getDisableMemoEdit(), queryFragmentModel.getCommitBookmarksFun());
 
-        autoDisposable.add(queryFragmentModel.getPagedListObservable().subscribe(l ->
+        viewAutoDisposable.add(queryFragmentModel.getPagedListObservable().subscribe(l ->
                 pagedListAdapter.submitList(l)));
 
         viewBinding.dictionaryBookmarkFragmentRecyclerview.setAdapter(pagedListAdapter);
@@ -158,7 +164,7 @@ public abstract class BaseFragment extends Fragment {
         queryMenu.searchView.setIconifiedByDefault(queryFragmentModel.getSearchIconifiedByDefault());
         queryMenu.shareBookmarks.setVisible(queryFragmentModel.getShareButtonVisible());
 
-        autoDisposable.add(queryFragmentModel.getInstalledDictionaries()
+        viewAutoDisposable.add(queryFragmentModel.getInstalledDictionaries()
                 .subscribe(l -> queryMenu.addLanguageMenu(getContext(), l,
                         new QueryMenu.LanguageChangeCallback() {
                             @Override
@@ -167,13 +173,13 @@ public abstract class BaseFragment extends Fragment {
                             }
                         })));
 
-        autoDisposable.add(queryFragmentModel.states()
+        viewAutoDisposable.add(queryFragmentModel.states()
                 .filter(s -> s.getLanguage() != null)
                 .map(QueryState::getLanguage)
                 .distinctUntilChanged()
                 .subscribe(l -> queryMenu.languageMenuText.setText(l)));
 
-        autoDisposable.add(queryFragmentModel.states().map(QueryState::getSearchBoxClosed)
+        viewAutoDisposable.add(queryFragmentModel.states().map(QueryState::getSearchBoxClosed)
                 .distinctUntilChanged()
                 .subscribe(b -> queryMenu.searchView.setIconified(b)));
 
@@ -197,7 +203,7 @@ public abstract class BaseFragment extends Fragment {
             return false;
         });
 
-        autoDisposable.add(queryFragmentModel.states()
+        viewAutoDisposable.add(queryFragmentModel.states()
                 .map(QueryState::getTerm)
                 .distinctUntilChanged()
                 .subscribe(s -> {
@@ -248,11 +254,18 @@ public abstract class BaseFragment extends Fragment {
             pagedListAdapter = null;
         }
 
-        autoDisposable.dispose();
-
-        autoDisposable = null;
+        viewAutoDisposable.dispose();
+        viewAutoDisposable = null;
 
         viewBinding = null;
         queryMenu = null;
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+
+        fragmentAutoDisposable.dispose();
+        fragmentAutoDisposable = null;
     }
 }

@@ -33,3 +33,4 @@ object MainActivityDrawerClosedIntent : MainActivityIntent()
 object MainActivityCloseIntent : MainActivityIntent()
 
 class MainActivitySearchIntent(val term: String) : MainActivityIntent()
+class MainActivitySetSearchFragmentSearchIntent(val term: String): MainActivityIntent()

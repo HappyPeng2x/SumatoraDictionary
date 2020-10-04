@@ -83,6 +83,7 @@ public class DictionaryLaunchActivity extends AppCompatActivity {
 
         if (searchTerm != null) {
             notificationIntent.putExtra("SEARCH_TERM", searchTerm);
+            notificationIntent.putExtra("SET_SEARCH_FRAGMENT", true);
         }
 
         startActivity(notificationIntent);

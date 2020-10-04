@@ -19,10 +19,8 @@ package org.happypeng.sumatora.android.sumatoradictionary.model
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import io.reactivex.rxjava3.core.Observable
-import io.reactivex.rxjava3.subjects.BehaviorSubject
 import io.reactivex.rxjava3.subjects.PublishSubject
 import io.reactivex.rxjava3.subjects.Subject
-import org.happypeng.sumatora.android.sumatoradictionary.activity.MainActivity
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.*
 import org.happypeng.sumatora.android.sumatoradictionary.model.state.MainActivityNavigationStatus
 import org.happypeng.sumatora.android.sumatoradictionary.model.state.MainActivityState
@@ -42,33 +40,58 @@ class MainActivityModel(private val state: SavedStateHandle) : ViewModel() {
                             is MainActivityNavigateBookmarksIntent ->
                                 mainActivityState.copy(navigationStatus = MainActivityNavigationStatus.BOOKMARKS,
                                         searchTerm = mainActivityState.searchTerms[MainActivityNavigationStatus.BOOKMARKS] ?: "",
-                                        drawerOpen = false)
+                                        drawerOpen = false,
+                                        navigate = true,
+                                        changeTerm = false)
                             is MainActivityNavigateSearchIntent ->
                                 mainActivityState.copy(navigationStatus = MainActivityNavigationStatus.SEARCH,
                                         searchTerm = mainActivityState.searchTerms[MainActivityNavigationStatus.SEARCH] ?: "",
-                                        drawerOpen = false)
+                                        drawerOpen = false,
+                                        navigate = true,
+                                        changeTerm = false)
                             is MainActivityNavigateSettingsIntent ->
                                 mainActivityState.copy(navigationStatus = MainActivityNavigationStatus.SETTINGS,
-                                        drawerOpen = false)
+                                        drawerOpen = false,
+                                        navigate = true,
+                                        changeTerm = false)
                             is MainActivityNavigateAboutIntent ->
-                                mainActivityState.copy(drawerOpen = false)
+                                mainActivityState.copy(drawerOpen = false,
+                                        navigate = false,
+                                        changeTerm = false)
                             is MainActivityCloseIntent ->
-                                mainActivityState.copy(closed = true)
+                                mainActivityState.copy(closed = true,
+                                        navigate = false,
+                                        changeTerm = false)
                             is MainActivitySearchIntent ->
                                 mainActivityState.copy(searchTerm = mainActivityIntent.term,
+                                        changeTerm = true,
+                                        navigate = true,
                                         searchTerms = mapOf(MainActivityNavigationStatus.BOOKMARKS to
                                                 if (mainActivityState.navigationStatus == MainActivityNavigationStatus.BOOKMARKS)
                                                 { mainActivityIntent.term } else { mainActivityState.searchTerms[MainActivityNavigationStatus.BOOKMARKS] ?: "" },
                                                 MainActivityNavigationStatus.SEARCH to
                                                         if (mainActivityState.navigationStatus == MainActivityNavigationStatus.SEARCH)
                                                         { mainActivityIntent.term } else { mainActivityState.searchTerms[MainActivityNavigationStatus.SEARCH] ?: "" }))
+                            is MainActivitySetSearchFragmentSearchIntent ->
+                                mainActivityState.copy(searchTerm = mainActivityIntent.term,
+                                        navigate = mainActivityState.navigationStatus != MainActivityNavigationStatus.SEARCH,
+                                        changeTerm = true,
+                                        navigationStatus = MainActivityNavigationStatus.SEARCH,
+                                        searchTerms = mapOf(MainActivityNavigationStatus.BOOKMARKS to
+                                                run { mainActivityState.searchTerms[MainActivityNavigationStatus.BOOKMARKS] ?: "" },
+                                                MainActivityNavigationStatus.SEARCH to run { mainActivityIntent.term }))
                             is MainActivityHomePressedIntent ->
-                                mainActivityState.copy(drawerOpen = true)
+                                mainActivityState.copy(drawerOpen = true,
+                                        changeTerm = false, navigate = false)
                             is MainActivityDrawerClosedIntent ->
-                                mainActivityState.copy(drawerOpen = false)
+                                mainActivityState.copy(drawerOpen = false,
+                                        changeTerm = false, navigate = false)
                             is MainActivityBackPressedIntent ->
-                                mainActivityState.copy(finished =
-                                mainActivityState.navigationStatus == MainActivityNavigationStatus.SEARCH,
+                                mainActivityState.copy(
+                                        navigate = mainActivityState.navigationStatus != MainActivityNavigationStatus.SEARCH,
+                                        changeTerm = false,
+                                        finished =
+                                        mainActivityState.navigationStatus == MainActivityNavigationStatus.SEARCH,
                                         navigationStatus = MainActivityNavigationStatus.SEARCH,
                                         searchTerm = mainActivityState.searchTerms[MainActivityNavigationStatus.SEARCH] ?: "")
                         }
@@ -85,10 +108,12 @@ class MainActivityModel(private val state: SavedStateHandle) : ViewModel() {
 
     companion object {
         val initialStatus = MainActivityState(closed = false,
+                navigate = true,
                 navigationStatus = MainActivityNavigationStatus.SEARCH, searchTerm = "",
                 drawerOpen = false, finished = false,
                 searchTerms = mapOf(MainActivityNavigationStatus.SEARCH to "",
-                        MainActivityNavigationStatus.BOOKMARKS to ""))
+                        MainActivityNavigationStatus.BOOKMARKS to ""),
+                changeTerm = false)
 
         const val STATUS_KEY = "STATUS"
     }

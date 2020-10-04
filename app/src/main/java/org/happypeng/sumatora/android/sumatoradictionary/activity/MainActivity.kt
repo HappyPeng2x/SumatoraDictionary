@@ -31,6 +31,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import io.reactivex.rxjava3.disposables.CompositeDisposable
 import org.happypeng.sumatora.android.sumatoradictionary.BuildConfig
 import org.happypeng.sumatora.android.sumatoradictionary.R
+import org.happypeng.sumatora.android.sumatoradictionary.fragment.BaseFragment
 import org.happypeng.sumatora.android.sumatoradictionary.fragment.BookmarkFragment
 import org.happypeng.sumatora.android.sumatoradictionary.fragment.QueryFragment
 import org.happypeng.sumatora.android.sumatoradictionary.fragment.SettingsFragment
@@ -56,22 +57,39 @@ class MainActivity : AppCompatActivity() {
         Handler().postDelayed({ startActivity(Intent(this@MainActivity, activity)) }, DELAY_MILLIS.toLong())
     }
 
-    private fun switchToFragment(newFragment: () -> Fragment, tag: String) {
-        val fragmentTransaction = supportFragmentManager.beginTransaction()
-
-        for (f in supportFragmentManager.fragments) {
-            fragmentTransaction.detach(f)
+    private fun switchToFragment(navigate: Boolean,
+                                 newFragment: MainActivityNavigationStatus): Fragment {
+        val tag = when (newFragment) {
+            MainActivityNavigationStatus.SEARCH -> SEARCH_FRAGMENT_TAG
+            MainActivityNavigationStatus.BOOKMARKS -> BOOKMARK_FRAGMENT_TAG
+            MainActivityNavigationStatus.SETTINGS -> SETTINGS_FRAGMENT_TAG
         }
 
-        val attachFragment = supportFragmentManager.findFragmentByTag(tag)
+        val existingFragment = supportFragmentManager.findFragmentByTag(tag)
 
-        if (attachFragment == null) {
-            fragmentTransaction.add(R.id.dictionary_fragment_container, newFragment.invoke(), tag)
-        } else {
-            fragmentTransaction.attach(attachFragment)
+        val attachFragment = existingFragment ?: when (newFragment) {
+            MainActivityNavigationStatus.SEARCH -> QueryFragment()
+            MainActivityNavigationStatus.BOOKMARKS -> BookmarkFragment()
+            MainActivityNavigationStatus.SETTINGS -> SettingsFragment()
         }
 
-        fragmentTransaction.commit()
+        if (existingFragment == null || navigate) {
+            val fragmentTransaction = supportFragmentManager.beginTransaction()
+
+            for (f in supportFragmentManager.fragments) {
+                fragmentTransaction.detach(f)
+            }
+
+            if (existingFragment == null) {
+                fragmentTransaction.add(R.id.dictionary_fragment_container, attachFragment, tag)
+            } else {
+                fragmentTransaction.attach(attachFragment)
+            }
+
+            fragmentTransaction.commit()
+        }
+
+        return attachFragment
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -86,18 +104,18 @@ class MainActivity : AppCompatActivity() {
         val navigationView: NavigationView = findViewById(R.id.activity_main_navigation_view)
 
         navigationView.setNavigationItemSelectedListener { pMenuItem ->
-                when (pMenuItem.itemId) {
-                    R.id.navigation_view_item_search ->
-                        viewModel.sendIntent(MainActivityNavigateSearchIntent)
-                    R.id.navigation_view_item_bookmarks ->
-                        viewModel.sendIntent(MainActivityNavigateBookmarksIntent)
-                    R.id.navigation_view_item_settings ->
-                        viewModel.sendIntent(MainActivityNavigateSettingsIntent)
-                    R.id.navigation_view_item_about -> {
-                        viewModel.sendIntent(MainActivityNavigateAboutIntent)
-                        startActivityWithDelay(AboutActivity::class.java)
-                    }
+            when (pMenuItem.itemId) {
+                R.id.navigation_view_item_search ->
+                    viewModel.sendIntent(MainActivityNavigateSearchIntent)
+                R.id.navigation_view_item_bookmarks ->
+                    viewModel.sendIntent(MainActivityNavigateBookmarksIntent)
+                R.id.navigation_view_item_settings ->
+                    viewModel.sendIntent(MainActivityNavigateSettingsIntent)
+                R.id.navigation_view_item_about -> {
+                    viewModel.sendIntent(MainActivityNavigateAboutIntent)
+                    startActivityWithDelay(AboutActivity::class.java)
                 }
+            }
 
             true
         }
@@ -129,46 +147,24 @@ class MainActivity : AppCompatActivity() {
                     }
                 })
 
-        compositeDisposable.add(viewModel.stateObservable.distinctUntilChanged { t1, t2 ->
-            t1.searchTerm == t2.searchTerm }
-                .subscribe {
-                    when (it.navigationStatus) {
-                        MainActivityNavigationStatus.SEARCH -> run {
-                            val fragment = supportFragmentManager.findFragmentByTag(SEARCH_FRAGMENT_TAG)
-
-                            if (fragment is QueryFragment) {
-                                fragment.setIntentSearchTerm(it.searchTerm)
-                            }
-                        }
-                        MainActivityNavigationStatus.BOOKMARKS -> run {
-                            val fragment = supportFragmentManager.findFragmentByTag(BOOKMARK_FRAGMENT_TAG)
-
-                            if (fragment is BookmarkFragment) {
-                                fragment.setIntentSearchTerm(it.searchTerm)
-                            }
-                        }
-                        MainActivityNavigationStatus.SETTINGS -> { }
-                    }
-                })
-
         compositeDisposable.add(viewModel.stateObservable
-                .map { it.navigationStatus }
-                .distinctUntilChanged()
-                .subscribe { it: MainActivityNavigationStatus ->
-                    when (it) {
-                        MainActivityNavigationStatus.SEARCH -> {
-                            switchToFragment({ QueryFragment() }, SEARCH_FRAGMENT_TAG)
-                            navigationView.setCheckedItem(R.id.navigation_view_item_search)
-                        }
+                .filter { it.navigate || it.changeTerm }
+                .subscribe
+                { intent ->
+                    val fragment = switchToFragment(intent.navigate, intent.navigationStatus)
 
-                        MainActivityNavigationStatus.BOOKMARKS -> {
-                            switchToFragment({ BookmarkFragment() }, BOOKMARK_FRAGMENT_TAG)
-                            navigationView.setCheckedItem(R.id.navigation_view_item_bookmarks)
-                        }
+                    if (fragment is BaseFragment && intent.changeTerm) {
+                        fragment.setIntentSearchTerm(intent.searchTerm)
+                    }
 
-                        MainActivityNavigationStatus.SETTINGS -> {
-                            switchToFragment({ SettingsFragment() }, SETTINGS_FRAGMENT_TAG)
-                            navigationView.setCheckedItem(R.id.navigation_view_item_settings)
+                    if (intent.navigate) {
+                        when (intent.navigationStatus) {
+                            MainActivityNavigationStatus.SEARCH ->
+                                navigationView.setCheckedItem(R.id.navigation_view_item_search)
+                            MainActivityNavigationStatus.BOOKMARKS ->
+                                navigationView.setCheckedItem(R.id.navigation_view_item_bookmarks)
+                            MainActivityNavigationStatus.SETTINGS ->
+                                navigationView.setCheckedItem(R.id.navigation_view_item_settings)
                         }
                     }
                 })
@@ -180,6 +176,7 @@ class MainActivity : AppCompatActivity() {
     private fun transformSearchIntent(aIntent: Intent) {
         if (aIntent.hasExtra("query")) {
             aIntent.putExtra("SEARCH_TERM", aIntent.getStringExtra("query"))
+            aIntent.removeExtra("query")
         }
     }
 
@@ -212,20 +209,28 @@ class MainActivity : AppCompatActivity() {
         if (BuildConfig.DEBUG_DICTIONARY_ACTIVITY) {
             displayIntent(aIntent)
         }
+
         if (aIntent != null && aIntent.hasExtra("SEARCH_TERM")) {
             if (BuildConfig.DEBUG_DICTIONARY_ACTIVITY) {
                 logger?.info("setting search term to " + aIntent.getStringExtra("SEARCH_TERM"))
             }
+
             if ((Intent.ACTION_SEARCH == aIntent.action || Intent.ACTION_MAIN == aIntent.action) &&
                     aIntent.hasExtra("SEARCH_TERM")) {
 
                 val term = aIntent.getStringExtra("SEARCH_TERM")
+                val setSearchFragment = aIntent.getBooleanExtra("SET_SEARCH_FRAGMENT", false)
 
                 if (term != null) {
-                    viewModel.sendIntent(MainActivitySearchIntent(term))
+                    if (!setSearchFragment) {
+                        viewModel.sendIntent(MainActivitySearchIntent(term))
+                    } else {
+                        viewModel.sendIntent(MainActivitySetSearchFragmentSearchIntent(term))
+                    }
                 }
 
                 aIntent.removeExtra("SEARCH_TERM")
+                aIntent.removeExtra("SET_SEARCH_FRAGMENT")
             }
         }
     }
