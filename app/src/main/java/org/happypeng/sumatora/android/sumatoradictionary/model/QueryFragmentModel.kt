@@ -30,16 +30,24 @@ class QueryFragmentModel @ViewModelInject constructor(bookmarkComponent: Bookmar
                                                       persistentDatabaseComponent: PersistentDatabaseComponent,
                                                       languageSettingsComponent: LanguageSettingsComponent,
                                                       bookmarkShareComponent: BookmarkShareComponent,
-                                                      @Assisted savedStateHandle: SavedStateHandle?) : BaseQueryFragmentModel(bookmarkComponent,
+                                                      @Assisted savedStateHandle: SavedStateHandle) : BaseQueryFragmentModel(bookmarkComponent,
         persistentDatabaseComponent,
         languageSettingsComponent,
         bookmarkShareComponent,
         { component: PersistentDatabaseComponent, callback: BoundaryCallback<DictionarySearchElement?>? -> component.getSearchElements(KEY, callback) },
         KEY, false, false, TITLE, false,
-        false, false, false
+        false, false, false,
+        savedStateHandle.get(STATUS_KEY)
 ) {
     companion object {
         const val KEY = 1
         const val TITLE = "Sumatora"
+        const val STATUS_KEY = "STATUS"
+    }
+
+    init {
+        states().subscribe {
+            savedStateHandle.set(STATUS_KEY, it)
+        }
     }
 }

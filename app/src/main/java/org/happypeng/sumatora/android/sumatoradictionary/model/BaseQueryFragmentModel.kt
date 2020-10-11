@@ -48,7 +48,8 @@ abstract class BaseQueryFragmentModel protected constructor(private val bookmark
                                                             private val filterBookmarks: Boolean,
                                                             private val filterMemos: Boolean,
                                                             disableBookmarkButton: Boolean,
-                                                            disableMemoEdit: Boolean
+                                                            disableMemoEdit: Boolean,
+                                                            private val savedState: QueryState?
 ) : BaseFragmentModel(persistentDatabaseComponent, languageSettingsComponent, pagedListFactory, disableBookmarkButton, disableMemoEdit), MviViewModel<QueryIntent, QueryState> {
     private val intentsSubject: PublishSubject<QueryIntent> = PublishSubject.create()
     private val statesObservable = compose()
@@ -67,7 +68,7 @@ abstract class BaseQueryFragmentModel protected constructor(private val bookmark
         return intentsSubject
                 .compose(QueryIntentTransformer())
                 .compose(actionProcessorHolder.actionProcessor)
-                .scan(QueryState("", false, null, null, false,
+                .scan(savedState ?: QueryState("", false, null, null, false,
                         searching = false, false, searchIconifiedByDefault, setIntent = false),
                         this::transformStatus)
                 .distinctUntilChanged()

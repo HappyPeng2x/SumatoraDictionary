@@ -18,7 +18,7 @@ android {
         }
     }
 
-    compileSdkVersion 29
+    compileSdkVersion 30
 
     ndkVersion "21.3.6528147"
 
@@ -77,7 +77,7 @@ android {
             buildConfigField("boolean", "DEBUG_BASE_FRAGMENT", "true");
         }
     }
-    buildToolsVersion '30.0.0'
+    buildToolsVersion '30.0.2'
     productFlavors {
     }
 

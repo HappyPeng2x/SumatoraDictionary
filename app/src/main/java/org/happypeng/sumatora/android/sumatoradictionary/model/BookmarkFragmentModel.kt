@@ -30,7 +30,7 @@ class BookmarkFragmentModel @ViewModelInject constructor(bookmarkComponent: Book
                                                          persistentDatabaseComponent: PersistentDatabaseComponent,
                                                          languageSettingsComponent: LanguageSettingsComponent,
                                                          bookmarkShareComponent: BookmarkShareComponent,
-                                                         @Assisted savedStateHandle: SavedStateHandle?) : BaseQueryFragmentModel(bookmarkComponent,
+                                                         @Assisted savedStateHandle: SavedStateHandle) : BaseQueryFragmentModel(bookmarkComponent,
         persistentDatabaseComponent,
         languageSettingsComponent,
         bookmarkShareComponent,
@@ -42,10 +42,18 @@ class BookmarkFragmentModel @ViewModelInject constructor(bookmarkComponent: Book
         true,
         true,
         false,
-        false
+        false,
+        savedStateHandle.get(QueryFragmentModel.STATUS_KEY)
 ) {
     companion object {
         const val KEY = 2
         const val TITLE = "Bookmarks"
+        const val STATUS_KEY = "STATUS"
+    }
+
+    init {
+        states().subscribe {
+            savedStateHandle.set(QueryFragmentModel.STATUS_KEY, it)
+        }
     }
 }
