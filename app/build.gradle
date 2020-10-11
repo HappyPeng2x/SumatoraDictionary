@@ -25,9 +25,9 @@ android {
     defaultConfig {
         applicationId "org.happypeng.sumatora.android.sumatoradictionary"
         minSdkVersion 14
-        targetSdkVersion 29
+        targetSdkVersion 30
         versionCode 28
-        versionName "0.4.5rc5"
+        versionName "0.4.5rc6"
         multiDexEnabled true
 
         compileOptions {
