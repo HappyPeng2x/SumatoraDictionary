@@ -20,7 +20,8 @@
             android:id="@+id/navigation_view_item_settings"
             android:checked="false"
             android:icon="@drawable/ic_outline_settings_24px"
-            android:title="@string/nav_drawer_settings" />
+            android:title="@string/nav_drawer_settings"
+            android:visible="false" />
     </group>
 
     <group

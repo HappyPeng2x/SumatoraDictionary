@@ -16,7 +16,11 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.db;
 
+import androidx.room.Entity;
+
+@Entity(primaryKeys = {"ref", "seq"})
 public class DictionarySearchElement {
+    public int ref;
     public int entryOrder;
     public long seq;
     public String readingsPrio;
@@ -37,6 +41,7 @@ public class DictionarySearchElement {
     public String example_sentences;
     public String example_translations;
     public long bookmark;
+    public String memo;
 
     public DictionarySearchElement() { }
 
@@ -75,6 +80,7 @@ public class DictionarySearchElement {
     }
 
     public long getBookmark() { return bookmark; }
+    public String getMemo() { return memo; }
 
     public String getPos() { return pos; }
     public String getXref() { return xref; }

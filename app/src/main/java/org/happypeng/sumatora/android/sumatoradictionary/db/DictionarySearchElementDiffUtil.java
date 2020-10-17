@@ -20,6 +20,18 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.DiffUtil;
 
 public class DictionarySearchElementDiffUtil {
+    private static boolean compareStrings(final String str1, final String str2) {
+        if ((str1 == null && str2 != null) || (str1 != null && str2 == null)) {
+            return false;
+        }
+
+        if (str1 == null && str2 == null) {
+            return true;
+        }
+
+        return str1.equals(str2);
+    }
+
     private final static DiffUtil.ItemCallback<DictionarySearchElement> DIFF_UTIL =
             new DiffUtil.ItemCallback<DictionarySearchElement>() {
                 @Override
@@ -31,7 +43,8 @@ public class DictionarySearchElementDiffUtil {
                 public boolean areContentsTheSame(@NonNull DictionarySearchElement oldItem, @NonNull DictionarySearchElement newItem) {
                     return oldItem.getSeq() == newItem.getSeq() && oldItem.getLang().equals(newItem.getLang()) &&
                             oldItem.getLangSetting().equals(newItem.getLangSetting()) &&
-                            oldItem.getBookmark() == newItem.getBookmark();
+                            oldItem.getBookmark() == newItem.getBookmark() &&
+                            compareStrings(oldItem.memo, newItem.memo);
                 }
             };
 
