@@ -13,8 +13,8 @@ android {
         applicationId "org.happypeng.sumatora.android.sumatoradictionary"
         minSdkVersion 14
         targetSdkVersion 30
-        versionCode 28
-        versionName "0.4.5"
+        versionCode 29
+        versionName "0.4.5.1"
         multiDexEnabled true
 
         compileOptions {

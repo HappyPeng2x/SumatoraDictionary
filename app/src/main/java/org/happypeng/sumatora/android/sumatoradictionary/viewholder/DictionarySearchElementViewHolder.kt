@@ -99,12 +99,14 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
         }
 
         val memo = entry.getMemo()
+
         if (memo != null && "" != memo) {
             openMemo()
             wordCardBinding.wordCardMemo.setText(memo)
         } else {
             closeMemo()
         }
+
         wordCardBinding.wordCardDeleteMemoIcon.setOnClickListener { _ ->
             wordCardBinding.wordCardMemo.setText("")
             closeMemo()
@@ -115,7 +117,25 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
                         "")
             }
         }
-        wordCardBinding.wordCardMemoIcon.setOnClickListener { _ -> openMemo() }
+
+        wordCardBinding.wordCardMemoIcon.setOnClickListener { _ ->
+            run {
+                openMemo()
+                wordCardBinding.wordCardMemo.requestFocus()
+            }
+        }
+
+        wordCardBinding.wordCardMemo.setOnFocusChangeListener { _, hasFocus ->
+            if (!hasFocus && wordCardBinding.wordCardMemo.editableText.toString() == "") {
+                closeMemo()
+
+                if ("" != entry.memo && entry.memo != null) {
+                    commitConsumer.invoke(entry.seq,
+                            entry.bookmark,
+                            "")
+                }
+            }
+        }
     }
 
     init {
