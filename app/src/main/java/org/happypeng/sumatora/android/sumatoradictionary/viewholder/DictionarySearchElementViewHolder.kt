@@ -19,6 +19,8 @@ package org.happypeng.sumatora.android.sumatoradictionary.viewholder
 import android.graphics.Color
 import android.text.InputType
 import android.view.View
+import android.widget.ArrayAdapter
+import android.widget.MultiAutoCompleteTextView
 import androidx.recyclerview.widget.RecyclerView
 import io.reactivex.rxjava3.disposables.Disposable
 import io.reactivex.rxjava3.subjects.Subject
@@ -27,6 +29,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.databinding.WordCardBin
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.DictionaryPagedListAdapterCloseIntent
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.DictionaryPagedListAdapterIntent
+import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.SpaceTokenizer
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.renderEntry
 import java.util.*
 
@@ -35,7 +38,8 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
                                         disableBookmarkButton: Boolean,
                                         private val disableMemoEdit: Boolean,
                                         private val commitConsumer: (Long, Long, String?) -> Unit,
-                                        private val intentSubject: Subject<DictionaryPagedListAdapterIntent>) : RecyclerView.ViewHolder(wordCardBinding.wordCardView) {
+                                        private val intentSubject: Subject<DictionaryPagedListAdapterIntent>,
+                                        private val completionAdapter: ArrayAdapter<String>) : RecyclerView.ViewHolder(wordCardBinding.wordCardView) {
     private var subscription: Disposable? = null
 
     private fun openMemo() {
@@ -147,5 +151,8 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
             wordCardBinding.wordCardMemoIcon.visibility = View.GONE
             wordCardBinding.wordCardMemo.inputType = InputType.TYPE_NULL
         }
+
+        wordCardBinding.wordCardMemo.setTokenizer(SpaceTokenizer())
+        wordCardBinding.wordCardMemo.setAdapter(completionAdapter)
     }
 }

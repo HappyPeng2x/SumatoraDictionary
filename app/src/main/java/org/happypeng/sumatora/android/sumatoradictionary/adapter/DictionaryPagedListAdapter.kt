@@ -17,6 +17,8 @@ package org.happypeng.sumatora.android.sumatoradictionary.adapter
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import android.widget.Adapter
+import android.widget.ArrayAdapter
 import androidx.paging.PagedListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import io.reactivex.rxjava3.subjects.PublishSubject
@@ -31,7 +33,8 @@ import java.util.*
 
 class DictionaryPagedListAdapter(aDisableBookmarkButton: Boolean,
                                  aDisableMemoEdit: Boolean,
-                                 commitConsumer: (Long, Long, String?) -> Unit) :
+                                 commitConsumer: (Long, Long, String?) -> Unit,
+                                 private val completionAdapter: ArrayAdapter<String>) :
         PagedListAdapter<DictionarySearchElement?, DictionarySearchElementViewHolder>(DictionarySearchElementDiffUtil.getDiffUtil()) {
     private val entities = JMDICT_ENTITIES
     private val disableBookmarkButton: Boolean
@@ -53,7 +56,7 @@ class DictionaryPagedListAdapter(aDisableBookmarkButton: Boolean,
         val wordCardBinding = WordCardBinding.inflate(layoutInflater)
         return DictionarySearchElementViewHolder(wordCardBinding,
                 entities, disableBookmarkButton, disableMemoEdit,
-                commitConsumer, intentSubject)
+                commitConsumer, intentSubject, completionAdapter)
     }
 
     override fun onBindViewHolder(holder: DictionarySearchElementViewHolder, position: Int) {

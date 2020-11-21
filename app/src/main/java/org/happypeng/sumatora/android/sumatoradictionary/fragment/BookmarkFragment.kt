@@ -24,7 +24,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.model.QueryFragmentMode
 class BookmarkFragment : BaseFragment() {
     private val viewModel: BookmarkFragmentModel by viewModels()
 
-    override fun getModel(): BaseQueryFragmentModel {
+    override fun getModel(): BaseQueryFragmentModel? {
         return viewModel
     }
 }

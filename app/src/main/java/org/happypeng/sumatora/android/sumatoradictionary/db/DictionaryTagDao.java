@@ -13,16 +13,31 @@
 
         You should have received a copy of the GNU General Public License
         along with this program.  If not, see <http://www.gnu.org/licenses/>.*/
-package org.happypeng.sumatora.android.sumatoradictionary.fragment
 
-import androidx.fragment.app.viewModels
-import org.happypeng.sumatora.android.sumatoradictionary.model.BaseQueryFragmentModel
-import org.happypeng.sumatora.android.sumatoradictionary.model.QueryFragmentModel
+package org.happypeng.sumatora.android.sumatoradictionary.db;
 
-class QueryFragment : BaseFragment() {
-    private val viewModel: QueryFragmentModel by viewModels()
+import androidx.room.Dao;
+import androidx.room.Delete;
+import androidx.room.Insert;
+import androidx.room.OnConflictStrategy;
+import androidx.room.Query;
 
-    override fun getModel(): BaseQueryFragmentModel? {
-        return viewModel
-    }
+import java.util.List;
+
+@Dao
+public interface DictionaryTagDao {
+    @Query("SELECT tagId FROM DictionaryTag WHERE seq = :seq")
+    List<Integer> getTagIds(long seq);
+
+    @Query("SELECT * FROM DictionaryTag WHERE seq = :seq")
+    List<DictionaryTag> getBySeq(long seq);
+
+    @Query("SELECT * FROM DictionaryTag WHERE tagId = :tagId")
+    List<DictionaryTag> getById(int tagId);
+
+    @Delete
+    void delete(DictionaryTag tag);
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    void insert(DictionaryTag tag);
 }

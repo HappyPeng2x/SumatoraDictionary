@@ -124,4 +124,11 @@ abstract class BaseQueryFragmentModel protected constructor(private val bookmark
     }
 
     val commitBookmarksFun = { seq: Long, bookmark: Long, memo: String? -> commitBookmarks(seq, bookmark, memo) }
+
+    val tagNames = bookmarkComponent.bookmarkChanges
+            .observeOn(Schedulers.io())
+            .map {
+                persistentDatabaseComponent.database.dictionaryTagNameDao().tagNames
+            }
+            .observeOn(AndroidSchedulers.mainThread())
 }

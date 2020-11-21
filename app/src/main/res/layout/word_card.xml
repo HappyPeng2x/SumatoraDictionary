@@ -29,7 +29,7 @@
                 android:textSize="14sp"
                 tools:text="Text 1" />
 
-            <EditText
+            <MultiAutoCompleteTextView
                 android:id="@+id/word_card_memo"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
