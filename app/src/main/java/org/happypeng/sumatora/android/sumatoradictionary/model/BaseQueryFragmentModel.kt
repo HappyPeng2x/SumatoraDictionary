@@ -77,7 +77,7 @@ abstract class BaseQueryFragmentModel protected constructor(private val bookmark
     }
 
     fun setTerm(t: String) {
-        processIntents(Observable.just(SearchIntent(t.replace("\"", ""))))
+        processIntents(Observable.just(SearchIntent(t)))
     }
 
     fun closeSearchBox() {

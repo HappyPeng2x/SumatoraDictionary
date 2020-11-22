@@ -49,12 +49,12 @@ public class BasicQueryStatement extends QueryStatement {
     long execute(final String term, final List<Object> parameters) {
         final ValueHolder<Long> returnValue = new ValueHolder<>(Long.valueOf(-1));
 
-        String bindTerm = term;
+        String bindTerm = escapeTerm(term);
         long insert = -1;
         long backupInsert = -1;
 
         if (kana) {
-            bindTerm = romkan.to_katakana(romkan.to_hepburn(term));
+            bindTerm = romkan.to_katakana(romkan.to_hepburn(bindTerm));
         }
 
         statement.bindLong(1, ref);

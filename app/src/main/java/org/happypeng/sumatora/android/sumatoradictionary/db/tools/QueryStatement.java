@@ -81,4 +81,8 @@ public abstract class QueryStatement {
             i++;
         }
     }
+
+    protected static String escapeTerm(final String term) {
+        return term.replaceAll("[\"()]", "");
+    }
 }
