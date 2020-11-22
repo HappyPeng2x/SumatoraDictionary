@@ -52,14 +52,16 @@ public class ReverseQueryStatement extends QueryStatement {
         long insert = -1;
         long backupInsert = -1;
 
+        final String bindTerm = escapeTerm(term);
+
         statement.bindLong(1, ref);
-        statement.bindString(2, term);
+        statement.bindString(2, bindTerm);
 
         insert = statement.executeInsert();
 
         if (backupStatement != null) {
             backupStatement.bindLong(1, ref);
-            backupStatement.bindString(2, term);
+            backupStatement.bindString(2, bindTerm);
 
             backupInsert = backupStatement.executeInsert();
 
