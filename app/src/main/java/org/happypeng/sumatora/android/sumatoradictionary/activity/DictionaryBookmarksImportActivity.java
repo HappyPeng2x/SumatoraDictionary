@@ -26,6 +26,7 @@ import android.widget.TextView;
 
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -39,6 +40,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.model.BookmarkImportMod
 import org.happypeng.sumatora.android.sumatoradictionary.model.state.ImportState;
 import org.happypeng.sumatora.android.sumatoradictionary.model.viewbinding.QueryMenu;
 import org.happypeng.sumatora.android.sumatoradictionary.model.viewbinding.FragmentDictionaryQueryBindingUtil;
+import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionarySearchElementViewHolder;
 
 import javax.inject.Inject;
 
@@ -106,7 +108,13 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
 
         pagedListAdapter =
                 new DictionaryPagedListAdapter(bookmarkImportModel.getDisableBookmarkButton(),
-                        bookmarkImportModel.getDisableMemoEdit(), (seq, bookmark, memo) -> Unit.INSTANCE );
+                        bookmarkImportModel.getDisableMemoEdit(), (seq, bookmark, memo) -> Unit.INSTANCE,
+                        new DictionarySearchElementViewHolder.Colors(ContextCompat.getColor(this, R.color.text_background_primary),
+                                ContextCompat.getColor(this, R.color.text_background_primary_backup),
+                                ContextCompat.getColor(this,
+                                        R.color.render_highlight),
+                                ContextCompat.getColor(this,
+                                        R.color.render_pos)));
 
         autoDisposable.add(bookmarkImportModel.getPagedListObservable().subscribe(l ->
                 pagedListAdapter.submitList(l)));

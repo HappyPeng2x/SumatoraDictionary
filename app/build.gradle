@@ -102,7 +102,7 @@ dependencies {
     implementation 'androidx.recyclerview:recyclerview:1.1.0'
     implementation 'androidx.percentlayout:percentlayout:1.0.0'
     implementation 'com.google.android.material:material:1.2.1'
-    implementation 'com.github.daniel-stoneuk:material-about-library:2.4.2'
+    implementation 'com.github.daniel-stoneuk:material-about-library:3.1.2'
 
     implementation "androidx.lifecycle:lifecycle-extensions:2.2.0"
     implementation "androidx.lifecycle:lifecycle-common-java8:2.2.0"

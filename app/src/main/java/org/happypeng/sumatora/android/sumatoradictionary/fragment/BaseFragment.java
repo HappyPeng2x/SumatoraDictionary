@@ -28,6 +28,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -40,6 +41,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.model.BaseQueryFragment
 import org.happypeng.sumatora.android.sumatoradictionary.model.state.QueryState;
 import org.happypeng.sumatora.android.sumatoradictionary.model.viewbinding.FragmentDictionaryQueryBindingUtil;
 import org.happypeng.sumatora.android.sumatoradictionary.model.viewbinding.QueryMenu;
+import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionarySearchElementViewHolder;
 
 import dagger.hilt.android.AndroidEntryPoint;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
@@ -129,7 +131,15 @@ public abstract class BaseFragment extends Fragment {
 
         pagedListAdapter =
                 new DictionaryPagedListAdapter(queryFragmentModel.getDisableBookmarkButton(),
-                        queryFragmentModel.getDisableMemoEdit(), queryFragmentModel.getCommitBookmarksFun());
+                        queryFragmentModel.getDisableMemoEdit(), queryFragmentModel.getCommitBookmarksFun(),
+                        new DictionarySearchElementViewHolder.Colors(ContextCompat.getColor(getContext(),
+                                R.color.text_background_primary),
+                                ContextCompat.getColor(getContext(),
+                                        R.color.text_background_primary_backup),
+                                ContextCompat.getColor(getContext(),
+                                        R.color.render_highlight),
+                                ContextCompat.getColor(getContext(),
+                                        R.color.render_pos)));
 
         viewAutoDisposable.add(queryFragmentModel.getPagedListObservable().subscribe(l ->
                 pagedListAdapter.submitList(l)));
