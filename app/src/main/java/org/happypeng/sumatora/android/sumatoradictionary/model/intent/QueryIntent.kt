@@ -27,7 +27,7 @@ object QueryCloseIntent : QueryIntent()
 object BookmarkIntent : QueryIntent()
 
 class SearchIntent(val term: String) : QueryIntent()
-object CloseSearchBoxIntent : QueryIntent()
+class CloseSearchBoxIntent(val input: String) : QueryIntent()
 object OpenSearchBoxIntent : QueryIntent()
 
 sealed class QueryLanguageSettingIntent(val languageSettings: PersistentLanguageSettings) : QueryIntent()

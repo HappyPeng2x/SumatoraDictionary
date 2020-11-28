@@ -194,7 +194,7 @@ public abstract class BaseFragment extends Fragment {
                 .subscribe(b -> queryMenu.searchView.setIconified(b)));
 
         queryMenu.searchCloseButton.setOnClickListener(v ->
-                queryFragmentModel.closeSearchBox());
+                queryFragmentModel.closeSearchBox(queryMenu.searchAutoComplete.getText().toString()));
 
         queryMenu.searchView.setOnSearchClickListener(v ->
                 queryFragmentModel.openSearchBox());
@@ -212,6 +212,11 @@ public abstract class BaseFragment extends Fragment {
 
             return false;
         });
+
+        viewAutoDisposable.add(queryFragmentModel.states()
+                .map(QueryState::getClearSearchBox)
+                .filter(x -> x)
+                .subscribe(x -> queryMenu.searchView.setQuery("", false)));
 
         viewAutoDisposable.add(queryFragmentModel.states()
                 .map(QueryState::getTerm)
