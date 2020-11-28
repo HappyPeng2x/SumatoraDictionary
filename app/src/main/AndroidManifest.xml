@@ -2,6 +2,51 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="org.happypeng.sumatora.android.sumatoradictionary">
 
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.SEND" />
+
+            <data
+                android:mimeType="application/json"
+                android:scheme="content" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SEND" />
+
+            <data
+                android:mimeType="text/xml"
+                android:scheme="content" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+
+            <data
+                android:mimeType="application/json"
+                android:scheme="content" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+
+            <data
+                android:mimeType="text/xml"
+                android:scheme="content" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.EDIT" />
+
+            <data
+                android:mimeType="application/json"
+                android:scheme="content" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.EDIT" />
+
+            <data
+                android:mimeType="text/xml"
+                android:scheme="content" />
+        </intent>
+    </queries>
+
 <!--
     <uses-permission android:name="android.permission.INTERNET" />
 -->
