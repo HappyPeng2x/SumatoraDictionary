@@ -33,7 +33,7 @@
                 android:id="@+id/word_card_memo"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="@color/text_background_primary"
+                android:background="@color/text_background_memo"
                 app:fontFamily="sans-serif"
                 android:padding="6dp"
                 android:textColor="@color/text_foreground_primary"

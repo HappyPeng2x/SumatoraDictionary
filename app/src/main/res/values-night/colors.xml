@@ -19,6 +19,8 @@
     <color name="text_background_primary">#333333</color>
     <color name="text_background_primary_backup">#222222</color>
 
+    <color name="text_background_memo">#222266</color>
+
     <color name="text_navigation">@color/white</color>
 
     <!-- Blue -->

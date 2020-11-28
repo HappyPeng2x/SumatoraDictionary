@@ -16,6 +16,8 @@
     <color name="text_background_primary">@color/white</color>
     <color name="text_background_primary_backup">#aaaaaa</color>
 
+    <color name="text_background_memo">#ffffcc</color>
+
     <color name="text_navigation">@color/white</color>
 
     <color name="render_highlight">#ccffcc</color>
