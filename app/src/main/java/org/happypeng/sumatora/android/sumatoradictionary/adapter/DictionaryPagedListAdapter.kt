@@ -31,7 +31,8 @@ import java.util.*
 
 class DictionaryPagedListAdapter(aDisableBookmarkButton: Boolean,
                                  aDisableMemoEdit: Boolean,
-                                 commitConsumer: (Long, Long, String?) -> Unit) :
+                                 commitConsumer: (Long, Long, String?) -> Unit,
+                                 private val holderColors: DictionarySearchElementViewHolder.Colors) :
         PagedListAdapter<DictionarySearchElement?, DictionarySearchElementViewHolder>(DictionarySearchElementDiffUtil.getDiffUtil()) {
     private val entities = JMDICT_ENTITIES
     private val disableBookmarkButton: Boolean
@@ -53,7 +54,7 @@ class DictionaryPagedListAdapter(aDisableBookmarkButton: Boolean,
         val wordCardBinding = WordCardBinding.inflate(layoutInflater)
         return DictionarySearchElementViewHolder(wordCardBinding,
                 entities, disableBookmarkButton, disableMemoEdit,
-                commitConsumer, intentSubject)
+                commitConsumer, intentSubject, holderColors)
     }
 
     override fun onBindViewHolder(holder: DictionarySearchElementViewHolder, position: Int) {

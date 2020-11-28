@@ -20,7 +20,9 @@ Sumatora has the following distinctive features:
 - reverse search from the translation in any of the supported languages
 - search in romaji, hiragana and katakana
 - bookmarks and bookmark export/import
-- search selected text in applications using contextual menu (or sharing).
+- search selected text in applications using contextual menu (or sharing)
+- enables the user to add memos to dictionary entries
+- a dark mode.
 
 ## License
 

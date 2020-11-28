@@ -73,6 +73,14 @@ public class AboutActivity extends MaterialAboutActivity {
                                     }
                                 })
                                 .build())
+                        .addItem(ConvenienceBuilder.createWebsiteActionItem(activity_context,
+                                ContextCompat.getDrawable(activity_context, R.drawable.ic_outline_public_24px), "Visit Website",
+                                true,
+                                Uri.parse("https://sumatora.happypeng.org/")))
+                        .addItem(ConvenienceBuilder.createWebsiteActionItem(activity_context,
+                                ContextCompat.getDrawable(activity_context, R.drawable.ic_outline_public_24px), "GitHub",
+                                true,
+                                Uri.parse("https://github.com/HappyPeng2x/SumatoraDictionary")))
                         .addItem(new MaterialAboutActionItem.Builder()
                                 .text("Please refer to the items below for other credits.")
                                 .build())

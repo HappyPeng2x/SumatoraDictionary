@@ -25,7 +25,7 @@ sealed class QueryAction : MviAction
 class SetTermAction(val term: String) : QueryAction()
 object SearchAction : QueryAction()
 
-object CloseSearchBoxAction : QueryAction()
+class CloseSearchBoxAction(val input: String) : QueryAction()
 object OpenSearchBoxAction : QueryAction()
 
 object BookmarkAction : QueryAction()

@@ -1,16 +1,16 @@
 <resources>
 
     <!-- Base application theme. -->
-    <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
+    <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
         <item name="colorAccent">@color/colorAccent</item>
     </style>
 
     <style name="DictionariesManagementToolbarTheme" parent="">
-        <item name="android:textColorPrimary">#000</item>
-        <item name="colorControlNormal">#000</item>
-        <item name="colorPrimary">#ccc</item>
+        <item name="android:textColorPrimary">@color/text_navigation</item>
+        <item name="colorControlNormal">@color/text_navigation</item>
+        <item name="colorPrimary">@color/text_navigation</item>
     </style>
 
     <!-- Text -->
@@ -31,11 +31,11 @@
     <style name="Body2.Black" />
 
     <style name="Body1.White.Primary">
-        <item name="android:textColor">@color/text_white_primary</item>
+        <item name="android:textColor">@color/text_navigation</item>
     </style>
 
     <style name="Body2.White.Primary">
-        <item name="android:textColor">@color/text_white_primary</item>
+        <item name="android:textColor">@color/text_navigation</item>
     </style>
 
 </resources>
