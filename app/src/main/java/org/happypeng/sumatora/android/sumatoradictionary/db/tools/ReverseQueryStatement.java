@@ -57,17 +57,13 @@ public class ReverseQueryStatement extends QueryStatement {
         statement.bindLong(1, ref);
         statement.bindString(2, bindTerm);
 
-        insert = statement.executeInsert();
+        statement.executeInsert();
 
         if (backupStatement != null) {
             backupStatement.bindLong(1, ref);
             backupStatement.bindString(2, bindTerm);
 
-            backupInsert = backupStatement.executeInsert();
-
-            returnValue = Math.max(backupInsert, insert);
-        } else {
-            returnValue = insert;
+            backupStatement.executeInsert();
         }
 
         displayStatement.bindString(1, languageSettings.lang);
@@ -76,7 +72,7 @@ public class ReverseQueryStatement extends QueryStatement {
 
         bind(displayStatement, parameters, 4);
 
-        displayStatement.executeInsert();
+        insert = displayStatement.executeInsert();
 
         if (displayBackupStatement != null) {
             displayBackupStatement.bindString(1, languageSettings.backupLang);
@@ -85,7 +81,11 @@ public class ReverseQueryStatement extends QueryStatement {
 
             bind(displayBackupStatement, parameters, 4);
 
-            displayBackupStatement.executeInsert();
+            backupInsert = displayBackupStatement.executeInsert();
+
+            returnValue = Math.max(backupInsert, insert);
+        } else {
+            returnValue = insert;
         }
 
         deleteElementsStatement.bindLong(1, ref);
