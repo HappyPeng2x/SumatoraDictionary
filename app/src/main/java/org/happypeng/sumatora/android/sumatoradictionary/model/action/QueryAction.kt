@@ -26,6 +26,7 @@ class SetTermAction(val term: String) : QueryAction()
 object SearchAction : QueryAction()
 
 class CloseSearchBoxAction(val input: String) : QueryAction()
+object ClosedSearchBoxAction : QueryAction()
 object OpenSearchBoxAction : QueryAction()
 
 object BookmarkAction : QueryAction()
