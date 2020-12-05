@@ -30,4 +30,5 @@ data class QueryState(val term: String,
                       val searching: Boolean,
                       val ready: Boolean,
                       val searchBoxClosed: Boolean,
-                      val setIntent: Boolean): MviViewState, Parcelable
+                      val setIntent: Boolean,
+                      val clearSearchBox: Boolean): MviViewState, Parcelable

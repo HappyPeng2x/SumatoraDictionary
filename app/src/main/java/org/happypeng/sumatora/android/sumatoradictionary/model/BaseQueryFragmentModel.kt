@@ -69,7 +69,8 @@ abstract class BaseQueryFragmentModel protected constructor(private val bookmark
                 .compose(QueryIntentTransformer())
                 .compose(actionProcessorHolder.actionProcessor)
                 .scan(savedState ?: QueryState("", false, null, null, false,
-                        searching = false, false, searchIconifiedByDefault, setIntent = false),
+                        searching = false, false, searchIconifiedByDefault, setIntent = false,
+                        clearSearchBox = false),
                         this::transformStatus)
                 .distinctUntilChanged()
                 .replay(1)
@@ -77,11 +78,11 @@ abstract class BaseQueryFragmentModel protected constructor(private val bookmark
     }
 
     fun setTerm(t: String) {
-        processIntents(Observable.just(SearchIntent(t.replace("\"", ""))))
+        processIntents(Observable.just(SearchIntent(t)))
     }
 
-    fun closeSearchBox() {
-        processIntents(Observable.just(CloseSearchBoxIntent))
+    fun closeSearchBox(input: String) {
+        processIntents(Observable.just(CloseSearchBoxIntent(input)))
     }
 
     fun openSearchBox() {
@@ -112,7 +113,8 @@ abstract class BaseQueryFragmentModel protected constructor(private val bookmark
         return QueryState(term = result.term, found = result.found, searching = result.searching,
                 ready = result.ready, closed = result.closed, language = result.languageSettings?.lang,
                 backupLanguage = result.languageSettings?.backupLang,
-                searchBoxClosed = result.searchBoxClosed, setIntent = result.setIntent)
+                searchBoxClosed = result.searchBoxClosed, setIntent = result.setIntent,
+                clearSearchBox = result.clearSearchBox)
     }
 
     private fun commitBookmarks(seq: Long, bookmark: Long, memo: String?) {

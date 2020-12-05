@@ -25,7 +25,7 @@
                 android:background="?android:selectableItemBackground"
                 app:fontFamily="sans-serif"
                 android:padding="6dp"
-                android:textColor="#000"
+                android:textColor="@color/text_foreground_primary"
                 android:textSize="14sp"
                 tools:text="Text 1" />
 
@@ -33,10 +33,10 @@
                 android:id="@+id/word_card_memo"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="#ffffdd"
+                android:background="@color/text_background_memo"
                 app:fontFamily="sans-serif"
                 android:padding="6dp"
-                android:textColor="#000"
+                android:textColor="@color/text_foreground_primary"
                 android:textSize="14sp"
                 tools:text="Text 1"
                 android:importantForAutofill="no"
@@ -59,6 +59,7 @@
                 android:paddingRight="5dp"
                 android:paddingLeft="5dp"
                 android:contentDescription="@string/bookmark_icon_description"
+                android:tint="@color/text_foreground_primary"
                 android:src="@drawable/ic_outline_bookmark_border_24px"/>
 
             <ImageButton
@@ -70,6 +71,7 @@
                 android:paddingRight="5dp"
                 android:paddingLeft="5dp"
                 android:contentDescription="@string/bookmark_icon_description"
+                android:tint="@color/text_foreground_primary"
                 android:src="@drawable/ic_edit_24px"/>
 
             <ImageButton
@@ -81,6 +83,7 @@
                 android:paddingRight="5dp"
                 android:paddingLeft="5dp"
                 android:contentDescription="@string/bookmark_icon_description"
+                android:tint="@color/text_foreground_primary"
                 android:src="@drawable/ic_delete_24px"
                 android:visibility="gone" />
 

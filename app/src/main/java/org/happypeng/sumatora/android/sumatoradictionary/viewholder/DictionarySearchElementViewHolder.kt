@@ -39,7 +39,13 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
                                         private val disableMemoEdit: Boolean,
                                         private val commitConsumer: (Long, Long, String?) -> Unit,
                                         private val intentSubject: Subject<DictionaryPagedListAdapterIntent>,
-                                        private val completionAdapter: ArrayAdapter<String>) : RecyclerView.ViewHolder(wordCardBinding.wordCardView) {
+                                        private val completionAdapter: ArrayAdapter<String>,
+                                        private val colors: Colors) : RecyclerView.ViewHolder(wordCardBinding.wordCardView) {
+    class Colors(val activeLang: Int,
+                 val backupLang: Int,
+                 val highlight: Int,
+                 val pos: Int)
+
     private var subscription: Disposable? = null
 
     private fun openMemo() {
@@ -84,12 +90,12 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
         }.subscribe()
 
         if (entry.getLang() != entry.langSetting) {
-            wordCardBinding.wordCardView.setBackgroundColor(Color.LTGRAY)
+            wordCardBinding.wordCardView.setBackgroundColor(colors.backupLang)
         } else {
-            wordCardBinding.wordCardView.setBackgroundColor(Color.WHITE)
+            wordCardBinding.wordCardView.setBackgroundColor(colors.activeLang)
         }
 
-        wordCardBinding.wordCardText.text = renderEntry(entry, entities)
+        wordCardBinding.wordCardText.text = renderEntry(entry, entities, colors)
         if (entry.getBookmark() != 0L) {
             wordCardBinding.wordCardBookmarkIcon.setImageResource(R.drawable.ic_outline_bookmark_24px)
         } else {

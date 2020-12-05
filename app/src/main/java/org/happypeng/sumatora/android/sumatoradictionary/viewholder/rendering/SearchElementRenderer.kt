@@ -25,6 +25,7 @@ import android.text.style.ForegroundColorSpan
 import android.text.style.RelativeSizeSpan
 import android.text.style.StyleSpan
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement
+import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionarySearchElementViewHolder
 import org.happypeng.sumatora.android.superrubyspan.tools.JapaneseText
 import org.json.JSONArray
 import org.json.JSONException
@@ -32,7 +33,8 @@ import java.util.HashMap
 
 private fun renderJSONArray(aArray: JSONArray?, aSeparator: String,
                             aResolveEntities: Boolean,
-                            entities: HashMap<String, String>): String {
+                            entities: HashMap<String, String>,
+                            colors: DictionarySearchElementViewHolder.Colors): String {
     if (aArray == null) {
         return ""
     }
@@ -61,7 +63,7 @@ private fun renderJSONArray(aArray: JSONArray?, aSeparator: String,
 }
 
 public fun renderEntry(aEntry: DictionarySearchElement,
-    entities: HashMap<String, String>): SpannableStringBuilder {
+    entities: HashMap<String, String>, colors: DictionarySearchElementViewHolder.Colors): SpannableStringBuilder {
     val sb = SpannableStringBuilder()
     var writingsCount = 0
     for (w in aEntry.getWritingsPrio().split(" ".toRegex()).toTypedArray()) {
@@ -71,7 +73,7 @@ public fun renderEntry(aEntry: DictionarySearchElement,
                 sb.setSpan(ForegroundColorSpan(Color.GRAY), sb.length - 1, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
             }
             sb.append(w)
-            sb.setSpan(BackgroundColorSpan(Color.parseColor("#ccffcc")),
+            sb.setSpan(BackgroundColorSpan(colors.highlight),
                     sb.length - w.length, sb.length,
                     Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
             writingsCount = writingsCount + 1
@@ -101,7 +103,7 @@ public fun renderEntry(aEntry: DictionarySearchElement,
                 sb.setSpan(ForegroundColorSpan(Color.GRAY), sb.length - 1, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
             }
             sb.append(r)
-            sb.setSpan(BackgroundColorSpan(Color.parseColor("#ccffcc")),
+            sb.setSpan(BackgroundColorSpan(colors.highlight),
                     sb.length - r.length, sb.length,
                     Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
             readingsCount = readingsCount + 1
@@ -137,10 +139,10 @@ public fun renderEntry(aEntry: DictionarySearchElement,
             sb.setSpan(StyleSpan(Typeface.BOLD),
                     sb.length - prefix.length, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
             if (pos != null && glossCount < pos.length()) {
-                val p = renderJSONArray(pos.getJSONArray(glossCount), ", ", true, entities)
+                val p = renderJSONArray(pos.getJSONArray(glossCount), ", ", true, entities, colors)
                 if (p.length > 0) {
                     sb.append(p)
-                    sb.setSpan(ForegroundColorSpan(Color.parseColor("#3333aa")),
+                    sb.setSpan(ForegroundColorSpan(colors.pos),
                             sb.length - p.length, sb.length,
                             Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
                     sb.append(" ")

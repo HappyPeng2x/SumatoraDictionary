@@ -39,3 +39,10 @@
 
 ![](/screenshots/Screenshot_1551520652.png)
 
+## Memos
+
+![](/screenshots/Screenshot_1606555939.png)
+
+## Dark mode
+
+![](/screenshots/Screenshot_1606555631.png)

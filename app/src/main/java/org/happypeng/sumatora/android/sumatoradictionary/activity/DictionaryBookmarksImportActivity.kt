@@ -23,6 +23,7 @@ import android.widget.ArrayAdapter
 import android.widget.PopupMenu
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
 import androidx.paging.PagedList
 import androidx.recyclerview.widget.DividerItemDecoration
@@ -41,6 +42,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.model.BookmarkImportMod
 import org.happypeng.sumatora.android.sumatoradictionary.model.state.ImportState
 import org.happypeng.sumatora.android.sumatoradictionary.model.viewbinding.FragmentDictionaryQueryBindingUtil
 import org.happypeng.sumatora.android.sumatoradictionary.model.viewbinding.QueryMenu
+import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionarySearchElementViewHolder
 import javax.inject.Inject
 import kotlin.reflect.KParameter
 
@@ -93,7 +95,13 @@ class DictionaryBookmarksImportActivity : AppCompatActivity() {
                 listOf("#france", "#belgium", "#england"))
 
         pagedListAdapter = DictionaryPagedListAdapter(bookmarkImportModel.disableBookmarkButton,
-                bookmarkImportModel.disableMemoEdit, { _, _, _ -> Unit }, completionAdapter)
+                bookmarkImportModel.disableMemoEdit, { _, _, _ -> Unit }, completionAdapter,
+                DictionarySearchElementViewHolder.Colors(ContextCompat.getColor(this, R.color.text_background_primary),
+                        ContextCompat.getColor(this, R.color.text_background_primary_backup),
+                        ContextCompat.getColor(this,
+                                R.color.render_highlight),
+                        ContextCompat.getColor(this,
+                                R.color.render_pos)))
 
         autoDisposable!!.add(bookmarkImportModel.pagedListObservable.subscribe { l: PagedList<DictionarySearchElement?> -> pagedListAdapter!!.submitList(l) })
         viewBinding!!.dictionaryBookmarkFragmentRecyclerview.adapter = pagedListAdapter

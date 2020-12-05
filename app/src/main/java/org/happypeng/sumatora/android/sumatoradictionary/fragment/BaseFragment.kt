@@ -15,11 +15,13 @@
         along with this program.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.happypeng.sumatora.android.sumatoradictionary.fragment
 
+import android.content.Context
 import android.os.Bundle
 import android.view.*
 import android.widget.ArrayAdapter
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.paging.PagedList
 import androidx.recyclerview.widget.DividerItemDecoration
@@ -40,6 +42,8 @@ import org.happypeng.sumatora.android.sumatoradictionary.model.state.QueryState
 import org.happypeng.sumatora.android.sumatoradictionary.model.viewbinding.FragmentDictionaryQueryBindingUtil
 import org.happypeng.sumatora.android.sumatoradictionary.model.viewbinding.QueryMenu
 import org.happypeng.sumatora.android.sumatoradictionary.model.viewbinding.QueryMenu.LanguageChangeCallback
+import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionarySearchElementViewHolder
+
 
 @AndroidEntryPoint
 abstract class BaseFragment protected constructor() : Fragment() {
@@ -116,7 +120,14 @@ abstract class BaseFragment protected constructor() : Fragment() {
         }
 
         pagedListAdapter = DictionaryPagedListAdapter(queryFragmentModel.disableBookmarkButton,
-                queryFragmentModel.disableMemoEdit, queryFragmentModel.commitBookmarksFun, completionAdapter)
+                queryFragmentModel.disableMemoEdit, queryFragmentModel.commitBookmarksFun, completionAdapter,
+                DictionarySearchElementViewHolder.Colors(ContextCompat.getColor(activity as Context, R.color.text_background_primary),
+                        ContextCompat.getColor(activity as Context, R.color.text_background_primary_backup),
+                        ContextCompat.getColor(activity as Context,
+                                R.color.render_highlight),
+                        ContextCompat.getColor(activity as Context,
+                                R.color.render_pos)))
+
         viewAutoDisposable!!.add(queryFragmentModel.pagedListObservable.subscribe { l: PagedList<DictionarySearchElement?> -> pagedListAdapter!!.submitList(l) })
         viewBinding!!.dictionaryBookmarkFragmentRecyclerview.adapter = pagedListAdapter
         focusSearchView()
@@ -155,7 +166,7 @@ abstract class BaseFragment protected constructor() : Fragment() {
         viewAutoDisposable!!.add(queryFragmentModel.states().map(QueryState::searchBoxClosed)
                 .distinctUntilChanged()
                 .subscribe { b: Boolean? -> queryMenu!!.searchView.isIconified = b!! })
-        queryMenu!!.searchCloseButton.setOnClickListener { v: View? -> queryFragmentModel.closeSearchBox() }
+        queryMenu!!.searchCloseButton.setOnClickListener { v: View? -> queryFragmentModel.closeSearchBox(queryMenu!!.searchAutoComplete.text.toString()) }
         queryMenu!!.searchView.setOnSearchClickListener { v: View? -> queryFragmentModel.openSearchBox() }
         queryMenu!!.shareBookmarks.setOnMenuItemClickListener { v: MenuItem? ->
             queryFragmentModel.shareBookmarks()
@@ -175,6 +186,12 @@ abstract class BaseFragment protected constructor() : Fragment() {
                         queryMenu!!.searchView.setQuery(s, false)
                     }
                 })
+
+        viewAutoDisposable!!.add(queryFragmentModel.states()
+                .map(QueryState::clearSearchBox)
+                .filter { x: Boolean? -> x!! }
+                .subscribe { x: Boolean? -> queryMenu!!.searchView.setQuery("", false) })
+
         if (savedInstanceState != null) {
             queryMenu!!.restoreInstanceState(savedInstanceState!!)
         }
