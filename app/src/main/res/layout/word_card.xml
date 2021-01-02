@@ -29,7 +29,7 @@
                 android:textSize="14sp"
                 tools:text="Text 1" />
 
-            <MultiAutoCompleteTextView
+            <EditText
                 android:id="@+id/word_card_memo"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -43,6 +43,11 @@
                 android:hint="Memo"
                 android:inputType="textAutoCorrect|textMultiLine"
                 android:visibility="gone" />
+
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/word_card_tag_list"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
         </LinearLayout>
 
         <LinearLayout
@@ -86,6 +91,18 @@
                 android:tint="@color/text_foreground_primary"
                 android:src="@drawable/ic_delete_24px"
                 android:visibility="gone" />
+
+            <ImageButton
+                android:id="@+id/word_card_list_icon"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@null"
+                android:paddingTop="5dp"
+                android:paddingRight="5dp"
+                android:paddingLeft="5dp"
+                android:contentDescription="@string/bookmark_icon_description"
+                android:tint="@color/text_foreground_primary"
+                android:src="@drawable/ic_list_24px"/>
 
         </LinearLayout>
 

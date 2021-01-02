@@ -17,10 +17,8 @@ package org.happypeng.sumatora.android.sumatoradictionary.adapter
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
-import android.widget.Adapter
 import android.widget.ArrayAdapter
 import androidx.paging.PagedListAdapter
-import androidx.recyclerview.widget.RecyclerView
 import io.reactivex.rxjava3.subjects.PublishSubject
 import org.happypeng.sumatora.android.sumatoradictionary.databinding.WordCardBinding
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement
@@ -29,13 +27,13 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.tools.JMDICT_ENTITIE
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.DictionaryPagedListAdapterCloseIntent
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.DictionaryPagedListAdapterIntent
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionarySearchElementViewHolder
-import java.util.*
 
 class DictionaryPagedListAdapter(aDisableBookmarkButton: Boolean,
                                  aDisableMemoEdit: Boolean,
                                  commitConsumer: (Long, Long, String?) -> Unit,
                                  private val completionAdapter: ArrayAdapter<String>,
-                                 private val holderColors: DictionarySearchElementViewHolder.Colors) :
+                                 private val holderColors: DictionarySearchElementViewHolder.Colors,
+                                 private val launchTags: () -> Unit) :
         PagedListAdapter<DictionarySearchElement?, DictionarySearchElementViewHolder>(DictionarySearchElementDiffUtil.getDiffUtil()) {
     private val entities = JMDICT_ENTITIES
     private val disableBookmarkButton: Boolean
@@ -57,7 +55,8 @@ class DictionaryPagedListAdapter(aDisableBookmarkButton: Boolean,
         val wordCardBinding = WordCardBinding.inflate(layoutInflater)
         return DictionarySearchElementViewHolder(wordCardBinding,
                 entities, disableBookmarkButton, disableMemoEdit,
-                commitConsumer, intentSubject, completionAdapter, holderColors)
+                commitConsumer, intentSubject, completionAdapter, holderColors,
+                launchTags)
     }
 
     override fun onBindViewHolder(holder: DictionarySearchElementViewHolder, position: Int) {

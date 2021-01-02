@@ -13,29 +13,11 @@
 
         You should have received a copy of the GNU General Public License
         along with this program.  If not, see <http://www.gnu.org/licenses/>.*/
+package org.happypeng.sumatora.android.sumatoradictionary.model.state
 
-package org.happypeng.sumatora.android.sumatoradictionary.db;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryTagName
+import org.happypeng.sumatora.android.sumatoradictionary.mvibase.MviViewState
 
-import androidx.room.Entity;
-import androidx.room.Ignore;
-import androidx.room.Index;
-import androidx.room.PrimaryKey;
-
-@Entity(indices = {@Index(value = {"tagName"}, unique = true)})
-public class DictionaryTagName {
-    @PrimaryKey(autoGenerate = true)
-    public int tagId;
-
-    public String tagName;
-
-    @Ignore
-    public DictionaryTagName(final String tagName) {
-        this.tagId = 0;
-        this.tagName = tagName;
-    }
-
-    public DictionaryTagName() {
-        this.tagId = 0;
-        this.tagName = null;
-    }
-}
+data class DictionaryTagsActivityState(val closed: Boolean,
+                                       val dictionaryTagNames: List<DictionaryTagName>?,
+                                       val add: Boolean) : MviViewState

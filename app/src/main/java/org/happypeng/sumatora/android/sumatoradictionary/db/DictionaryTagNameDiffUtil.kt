@@ -13,29 +13,20 @@
 
         You should have received a copy of the GNU General Public License
         along with this program.  If not, see <http://www.gnu.org/licenses/>.*/
+package org.happypeng.sumatora.android.sumatoradictionary.db
 
-package org.happypeng.sumatora.android.sumatoradictionary.db;
+import androidx.recyclerview.widget.DiffUtil
 
-import androidx.room.Entity;
-import androidx.room.Ignore;
-import androidx.room.Index;
-import androidx.room.PrimaryKey;
-
-@Entity(indices = {@Index(value = {"tagName"}, unique = true)})
-public class DictionaryTagName {
-    @PrimaryKey(autoGenerate = true)
-    public int tagId;
-
-    public String tagName;
-
-    @Ignore
-    public DictionaryTagName(final String tagName) {
-        this.tagId = 0;
-        this.tagName = tagName;
+class DictionaryTagNameDiffUtil: DiffUtil.ItemCallback<DictionaryTagName>() {
+    override fun areItemsTheSame(oldItem: DictionaryTagName, newItem: DictionaryTagName): Boolean {
+        return oldItem.tagId == newItem.tagId
     }
 
-    public DictionaryTagName() {
-        this.tagId = 0;
-        this.tagName = null;
+    override fun areContentsTheSame(oldItem: DictionaryTagName, newItem: DictionaryTagName): Boolean {
+        return (oldItem.tagId == newItem.tagId) && (oldItem.tagName == newItem.tagName)
+    }
+
+    companion object {
+        val DIFF_UTIL = DictionaryTagNameDiffUtil()
     }
 }

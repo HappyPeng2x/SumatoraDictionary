@@ -16,6 +16,7 @@
 package org.happypeng.sumatora.android.sumatoradictionary.fragment
 
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import android.view.*
 import android.widget.ArrayAdapter
@@ -32,6 +33,7 @@ import io.reactivex.rxjava3.functions.Consumer
 import io.reactivex.rxjava3.subjects.PublishSubject
 import io.reactivex.rxjava3.subjects.Subject
 import org.happypeng.sumatora.android.sumatoradictionary.R
+import org.happypeng.sumatora.android.sumatoradictionary.activity.DictionaryTagsActivity
 import org.happypeng.sumatora.android.sumatoradictionary.activity.MainActivity
 import org.happypeng.sumatora.android.sumatoradictionary.adapter.DictionaryPagedListAdapter
 import org.happypeng.sumatora.android.sumatoradictionary.databinding.FragmentDictionaryQueryBinding
@@ -43,7 +45,6 @@ import org.happypeng.sumatora.android.sumatoradictionary.model.viewbinding.Fragm
 import org.happypeng.sumatora.android.sumatoradictionary.model.viewbinding.QueryMenu
 import org.happypeng.sumatora.android.sumatoradictionary.model.viewbinding.QueryMenu.LanguageChangeCallback
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionarySearchElementViewHolder
-
 
 @AndroidEntryPoint
 abstract class BaseFragment protected constructor() : Fragment() {
@@ -114,10 +115,10 @@ abstract class BaseFragment protected constructor() : Fragment() {
         val completionAdapter = ArrayAdapter(requireContext(),
                 android.R.layout.simple_dropdown_item_1line, emptyList)
 
-        queryFragmentModel.tagNames.subscribe {
+/*        queryFragmentModel.tagNames.subscribe {
             completionAdapter.clear()
-            completionAdapter.addAll(it.map { s -> "#$s" })
-        }
+            completionAdapter.addAll(it.toMutableList())
+        }*/
 
         pagedListAdapter = DictionaryPagedListAdapter(queryFragmentModel.disableBookmarkButton,
                 queryFragmentModel.disableMemoEdit, queryFragmentModel.commitBookmarksFun, completionAdapter,
@@ -126,7 +127,9 @@ abstract class BaseFragment protected constructor() : Fragment() {
                         ContextCompat.getColor(activity as Context,
                                 R.color.render_highlight),
                         ContextCompat.getColor(activity as Context,
-                                R.color.render_pos)))
+                                R.color.render_pos)), {
+                                    startActivity(Intent(this.activity, DictionaryTagsActivity::class.java))
+        })
 
         viewAutoDisposable!!.add(queryFragmentModel.pagedListObservable.subscribe { l: PagedList<DictionarySearchElement?> -> pagedListAdapter!!.submitList(l) })
         viewBinding!!.dictionaryBookmarkFragmentRecyclerview.adapter = pagedListAdapter

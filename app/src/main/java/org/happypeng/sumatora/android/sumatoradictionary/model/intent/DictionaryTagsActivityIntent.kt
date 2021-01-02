@@ -13,29 +13,18 @@
 
         You should have received a copy of the GNU General Public License
         along with this program.  If not, see <http://www.gnu.org/licenses/>.*/
+package org.happypeng.sumatora.android.sumatoradictionary.model.intent
 
-package org.happypeng.sumatora.android.sumatoradictionary.db;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryTagName
+import org.happypeng.sumatora.android.sumatoradictionary.mvibase.MviIntent
 
-import androidx.room.Entity;
-import androidx.room.Ignore;
-import androidx.room.Index;
-import androidx.room.PrimaryKey;
+sealed class DictionaryTagsActivityIntent : MviIntent
 
-@Entity(indices = {@Index(value = {"tagName"}, unique = true)})
-public class DictionaryTagName {
-    @PrimaryKey(autoGenerate = true)
-    public int tagId;
+class DictionaryTagsActivityUpdateTagNamesIntent(val tagNames: List<DictionaryTagName>) : DictionaryTagsActivityIntent()
 
-    public String tagName;
+object DictionaryTagsActivityCloseIntent : DictionaryTagsActivityIntent()
 
-    @Ignore
-    public DictionaryTagName(final String tagName) {
-        this.tagId = 0;
-        this.tagName = tagName;
-    }
+object DictionaryTagsActivityAddIntent : DictionaryTagsActivityIntent()
+object DictionaryTagsActivityAddCancelIntent : DictionaryTagsActivityIntent()
 
-    public DictionaryTagName() {
-        this.tagId = 0;
-        this.tagName = null;
-    }
-}
+class DictionaryTagsActivityCreateTagNameIntent(val name: String) : DictionaryTagsActivityIntent()

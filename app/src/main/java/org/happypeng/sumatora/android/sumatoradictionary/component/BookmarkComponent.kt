@@ -22,8 +22,6 @@ import io.reactivex.rxjava3.schedulers.Schedulers
 import io.reactivex.rxjava3.subjects.PublishSubject
 import io.reactivex.rxjava3.subjects.Subject
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryTag
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryTagName
 import java.util.*
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -35,46 +33,46 @@ class BookmarkComponent @Inject internal constructor(persistentDatabaseComponent
     val bookmarkChanges: Observable<List<DictionaryBookmark>> = bookmarkChangesSubject.observeOn(Schedulers.io()).map { l: List<DictionaryBookmark> ->
         val persistentDatabase = persistentDatabaseComponent.database
         val dictionaryBookmarkDao = persistentDatabase.dictionaryBookmarkDao()
-        val tagNameDao = persistentDatabase.dictionaryTagNameDao()
-        val tagDao = persistentDatabase.dictionaryTagDao()
+        //val tagNameDao = persistentDatabase.dictionaryTagNameDao()
+        //val tagDao = persistentDatabase.dictionaryTagDao()
 
         persistentDatabase.runInTransaction {
             for (b in l) {
-                val existingTags = tagDao.getBySeq(b.seq)
-
-                for (existingTag in existingTags) {
-                    tagDao.delete(existingTag)
-                }
-
-                val existingTagNames = tagNameDao.all
-
-                for (existingTagName in existingTagNames) {
-                    if (existingTagName != null) {
-                        if (tagDao.getById(existingTagName.tagId).size == 0) {
-                            tagNameDao.delete(existingTagName)
-                        }
-                    }
-                }
+//                val existingTags = tagDao.getBySeq(b.seq)
+//
+//                for (existingTag in existingTags) {
+//                    tagDao.delete(existingTag)
+//                }
+//
+//                val existingTagNames = tagNameDao.all
+//
+//                for (existingTagName in existingTagNames) {
+//                    if (existingTagName != null) {
+//                        if (tagDao.getById(existingTagName.tagId).size == 0) {
+//                            tagNameDao.delete(existingTagName)
+//                        }
+//                    }
+//                }
 
                 if (b.bookmark > 0 || b.memo != null && "" != b.memo) {
-                    if (b.memo != null) {
-                        for (hashtagMatch in hashtagRegex.findAll(b.memo)) {
-                            val hashtag = hashtagMatch.value.substring(1)
-
-                            val tagName = DictionaryTagName()
-                            tagName.tagName = hashtag
-
-                            tagNameDao.insert(tagName)
-
-                            val tagId = tagNameDao.getTagId(hashtag)
-
-                            val tag = DictionaryTag()
-                            tag.tagId = tagId
-                            tag.seq = b.seq
-
-                            tagDao.insert(tag)
-                        }
-                    }
+//                    if (b.memo != null) {
+//                        for (hashtagMatch in hashtagRegex.findAll(b.memo)) {
+//                            val hashtag = hashtagMatch.value.substring(1)
+//
+//                            val tagName = DictionaryTagName()
+//                            tagName.tagName = hashtag
+//
+//                            tagNameDao.insert(tagName)
+//
+//                            val tagId = tagNameDao.getTagId(hashtag)
+//
+//                            val tag = DictionaryTag()
+//                            tag.tagId = tagId
+//                            tag.seq = b.seq
+//
+//                            tagDao.insert(tag)
+//                        }
+//                    }
 
                     dictionaryBookmarkDao.insert(b)
                 } else {
@@ -92,7 +90,7 @@ class BookmarkComponent @Inject internal constructor(persistentDatabaseComponent
         bookmarkChangesSubject.onNext(list)
     }
 
-    companion object {
-        val hashtagRegex = Regex("#[^#\\s]+")
-    }
+//    companion object {
+//        val hashtagRegex = Regex("#[^#\\s]+")
+//    }
 }

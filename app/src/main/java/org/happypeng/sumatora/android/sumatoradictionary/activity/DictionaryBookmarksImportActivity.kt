@@ -15,6 +15,7 @@
         along with this program.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.happypeng.sumatora.android.sumatoradictionary.activity
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
@@ -101,7 +102,10 @@ class DictionaryBookmarksImportActivity : AppCompatActivity() {
                         ContextCompat.getColor(this,
                                 R.color.render_highlight),
                         ContextCompat.getColor(this,
-                                R.color.render_pos)))
+                                R.color.render_pos)),
+                {
+                    startActivity(Intent(this, DictionaryTagsActivity::class.java))
+                })
 
         autoDisposable!!.add(bookmarkImportModel.pagedListObservable.subscribe { l: PagedList<DictionarySearchElement?> -> pagedListAdapter!!.submitList(l) })
         viewBinding!!.dictionaryBookmarkFragmentRecyclerview.adapter = pagedListAdapter
