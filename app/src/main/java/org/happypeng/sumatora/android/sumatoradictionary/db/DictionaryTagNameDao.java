@@ -38,6 +38,9 @@ public interface DictionaryTagNameDao {
     @Delete
     void delete(DictionaryTagName tagName);
 
+    @Delete
+    void deleteMany(List<DictionaryTagName> tagNames);
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void insert(DictionaryTagName tagName);
 }

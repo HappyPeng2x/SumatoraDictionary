@@ -21,6 +21,7 @@ import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.subjects.PublishSubject
 import io.reactivex.rxjava3.subjects.Subject
 import org.happypeng.sumatora.android.sumatoradictionary.component.DictionaryTagsComponent
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryTagName
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.*
 import org.happypeng.sumatora.android.sumatoradictionary.model.processor.DictionaryTagsActivityProcessorHolder
 import org.happypeng.sumatora.android.sumatoradictionary.model.result.DictionaryTagsActivityResult
@@ -32,7 +33,6 @@ class DictionaryTagsModel @ViewModelInject constructor(private val dictionaryTag
         MviViewModel<DictionaryTagsActivityIntent, DictionaryTagsActivityState> {
     private val intentsSubject: PublishSubject<DictionaryTagsActivityIntent> = PublishSubject.create()
     private val statesObservable: Observable<DictionaryTagsActivityState> = compose()
-    private val closedObservable = statesObservable.filter { it.closed }.map { Unit }
     private val clearedSubject: Subject<Unit> = PublishSubject.create()
     private val clearedObservable = clearedSubject as Observable<Unit>
 
@@ -43,7 +43,8 @@ class DictionaryTagsModel @ViewModelInject constructor(private val dictionaryTag
                 .compose(DictionaryTagsActivityIntentTransformer())
                 .compose(actionProcessorHolder.actionProcessor)
                 .scan(DictionaryTagsActivityState(closed = false,
-                        dictionaryTagNames = null, add = false), this::transformStatus)
+                        dictionaryTagNames = null, add = false, edit = false,
+                        editCommitConfirm = false, seq = null), this::transformStatus)
                 .distinctUntilChanged()
                 .replay(1)
                 .autoConnect(0)
@@ -52,13 +53,14 @@ class DictionaryTagsModel @ViewModelInject constructor(private val dictionaryTag
     private fun transformStatus(previousState: DictionaryTagsActivityState, result: DictionaryTagsActivityResult): DictionaryTagsActivityState {
         return DictionaryTagsActivityState(closed = result.close,
                 dictionaryTagNames = result.dictionaryTagNames,
-                add = result.add)
+                add = result.add, edit = result.edit, editCommitConfirm = result.editCommitConfirm,
+                seq = null)
     }
 
     override fun states(): Observable<DictionaryTagsActivityState> = statesObservable
 
     override fun processIntents(intents: Observable<DictionaryTagsActivityIntent>) {
-        intents.takeUntil(closedObservable).subscribe(intentsSubject::onNext)
+        intents.takeUntil(clearedObservable).subscribe(intentsSubject::onNext)
     }
 
     override fun onCleared() {
@@ -72,12 +74,35 @@ class DictionaryTagsModel @ViewModelInject constructor(private val dictionaryTag
         processIntents(Observable.just(DictionaryTagsActivityAddIntent))
     }
 
+    fun commitEditMode() {
+        processIntents(Observable.just(DictionaryTagsActivityEditCommitIntent))
+    }
+
+    fun commitConfirmEditMode() {
+        processIntents(Observable.just(DictionaryTagsActivityEditCommitConfirmIntent))
+    }
+
+    fun enterEditMode() {
+        processIntents(Observable.just(DictionaryTagsActivityEditIntent))
+    }
+
+    fun exitEditMode() {
+        processIntents(Observable.just(DictionaryTagsActivityEditCancelIntent))
+    }
+
+    fun selectForDeletion(selected: Boolean, tagName: DictionaryTagName) {
+        processIntents(Observable.just(DictionaryTagsActivityEditSelectForDeletionIntent(tagName, selected)))
+    }
+
+    fun toggleSelect(tagName: DictionaryTagName) {
+        processIntents(Observable.just(DictionaryTagsActivityToggleSelectIntent(tagName)))
+    }
+
     fun createTagName(createTagName: String) {
         processIntents((Observable.just(DictionaryTagsActivityCreateTagNameIntent(createTagName))))
     }
 
     init {
-        processIntents(clearedObservable.map { DictionaryTagsActivityCloseIntent })
-        processIntents(dictionaryTagsComponent.dictionaryTagNames.map { DictionaryTagsActivityUpdateTagNamesIntent(it) })
+        processIntents(dictionaryTagsComponent.dictionaryTags.map { DictionaryTagsActivityUpdateTagsIntent(it) })
     }
 }

@@ -30,15 +30,24 @@ import io.reactivex.rxjava3.disposables.CompositeDisposable
 import org.happypeng.sumatora.android.sumatoradictionary.R
 import org.happypeng.sumatora.android.sumatoradictionary.adapter.DictionaryTagsAdapter
 import org.happypeng.sumatora.android.sumatoradictionary.databinding.ActivityTagsBinding
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryTagName
 import org.happypeng.sumatora.android.sumatoradictionary.model.DictionaryTagsModel
 import org.happypeng.sumatora.android.sumatoradictionary.model.viewbinding.QueryMenu
-
+import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionaryTagsViewHolderActions
 
 @AndroidEntryPoint
-class DictionaryTagsActivity : AppCompatActivity() {
+class DictionaryTagsActivity : AppCompatActivity(), DictionaryTagsViewHolderActions {
     private var autoDisposable: CompositeDisposable = CompositeDisposable()
 
     private val viewModel: DictionaryTagsModel by viewModels()
+
+    override fun selectForDeletion(selected: Boolean, tagName: DictionaryTagName) {
+        viewModel.selectForDeletion(selected, tagName)
+    }
+
+    override fun toggleSelected(tagName: DictionaryTagName) {
+        viewModel.toggleSelect(tagName)
+    }
 
     private fun getNewTagTitle() {
         val builder: AlertDialog.Builder = AlertDialog.Builder(this)
@@ -67,7 +76,7 @@ class DictionaryTagsActivity : AppCompatActivity() {
         setSupportActionBar(activityTagsBinding.dictionaryTagsActivityToolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
-        val adapter = DictionaryTagsAdapter()
+        val adapter = DictionaryTagsAdapter(this)
         activityTagsBinding.dictionaryTagsActivityRecyclerview.adapter = adapter
 
         val itemDecor = DividerItemDecoration(this,
@@ -90,6 +99,46 @@ class DictionaryTagsActivity : AppCompatActivity() {
             viewModel.addTag()
             false
         }
+
+        menu.findItem(R.id.dictionary_tags_activity_menu_edit).setOnMenuItemClickListener {
+            viewModel.enterEditMode()
+            false
+        }
+
+        menu.findItem(R.id.dictionary_tags_activity_menu_edit_cancel).setOnMenuItemClickListener {
+            viewModel.exitEditMode()
+            false
+        }
+
+        menu.findItem(R.id.dictionary_tags_activity_menu_edit_delete).setOnMenuItemClickListener {
+            viewModel.commitEditMode()
+            false
+        }
+
+        autoDisposable.add(viewModel.states().map { it.edit }.distinctUntilChanged()
+                .filter { it }
+                .subscribe {
+                    menu.findItem(R.id.dictionary_tags_activity_menu_edit).isVisible = false
+                    menu.findItem(R.id.dictionary_tags_activity_menu_edit_cancel).isVisible = true
+                    menu.findItem(R.id.dictionary_tags_activity_menu_add).isVisible = false
+                    menu.findItem(R.id.dictionary_tags_activity_menu_edit_delete).isVisible = true
+                })
+
+        autoDisposable.add(viewModel.states().map { it.edit }.distinctUntilChanged()
+                .filter { !it }
+                .subscribe {
+                    menu.findItem(R.id.dictionary_tags_activity_menu_edit).isVisible = true
+                    menu.findItem(R.id.dictionary_tags_activity_menu_edit_cancel).isVisible = false
+                    menu.findItem(R.id.dictionary_tags_activity_menu_add).isVisible = true
+                    menu.findItem(R.id.dictionary_tags_activity_menu_edit_delete).isVisible = false
+                })
+
+        autoDisposable.add(viewModel.states().map { it.editCommitConfirm }.distinctUntilChanged()
+                .filter { it }
+                .subscribe {
+                    println("CONFIRMED")
+                    viewModel.commitConfirmEditMode()
+                })
 
         QueryMenu.colorMenu(menu, this)
 

@@ -20,4 +20,9 @@
     <string name="nav_drawer_settings">Settings</string>
 
     <string name="dictionary_tags_activity_menu_add_title">Add</string>
+    <string name="dictionary_tags_activity_menu_edit_title">Edit</string>
+    <string name="dictionary_tags_activity_menu_edit_cancel_title">Cancel</string>
+    <string name="dictionary_tags_activity_menu_edit_delete_title">Delete</string>
+
+    <string name="dictionary_tags_activity_select">Select</string>
 </resources>

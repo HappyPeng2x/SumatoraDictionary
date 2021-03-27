@@ -15,9 +15,13 @@
         along with this program.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.happypeng.sumatora.android.sumatoradictionary.model.result
 
+import org.happypeng.sumatora.android.sumatoradictionary.adapter.`object`.DictionaryTagNameAdapterObject
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryTagName
 import org.happypeng.sumatora.android.sumatoradictionary.mvibase.MviResult
 
 class DictionaryTagsActivityResult(val close: Boolean,
-                                   val dictionaryTagNames: List<DictionaryTagName>?,
-                                   val add: Boolean) : MviResult
+                                   val dictionaryTagNames: List<DictionaryTagNameAdapterObject>?,
+                                   val add: Boolean,
+                                   val edit: Boolean,
+                                   val editCommitConfirm: Boolean,
+                                   val seq: Long?) : MviResult

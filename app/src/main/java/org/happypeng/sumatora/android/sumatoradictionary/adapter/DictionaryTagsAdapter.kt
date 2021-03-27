@@ -18,14 +18,19 @@ package org.happypeng.sumatora.android.sumatoradictionary.adapter
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.ListAdapter
+import org.happypeng.sumatora.android.sumatoradictionary.adapter.`object`.DictionaryTagNameAdapterObject
+import org.happypeng.sumatora.android.sumatoradictionary.adapter.`object`.DictionaryTagNameAdapterObjectDiffUtil
 import org.happypeng.sumatora.android.sumatoradictionary.databinding.DictionaryTagsViewBinding
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryTagName
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryTagNameDiffUtil
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionaryTagsViewHolder
+import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionaryTagsViewHolderActions
 
-class DictionaryTagsAdapter: ListAdapter<DictionaryTagName, DictionaryTagsViewHolder>(DictionaryTagNameDiffUtil.DIFF_UTIL) {
+class DictionaryTagsAdapter(private val actions: DictionaryTagsViewHolderActions):
+        ListAdapter<DictionaryTagNameAdapterObject, DictionaryTagsViewHolder>(DictionaryTagNameAdapterObjectDiffUtil.DIFF_UTIL) {
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): DictionaryTagsViewHolder {
-        return DictionaryTagsViewHolder(DictionaryTagsViewBinding.inflate(LayoutInflater.from(parent.context)))
+        return DictionaryTagsViewHolder(DictionaryTagsViewBinding.inflate(LayoutInflater.from(parent.context), parent, false),
+                actions)
     }
 
     override fun onBindViewHolder(holder: DictionaryTagsViewHolder, position: Int) {
@@ -34,6 +39,10 @@ class DictionaryTagsAdapter: ListAdapter<DictionaryTagName, DictionaryTagsViewHo
         if (entry != null) {
             holder.bindTo(entry)
         }
+    }
+
+    override fun getItemId(position: Int): Long {
+        return getItem(position).tagName.tagId.toLong()
     }
 
     init {

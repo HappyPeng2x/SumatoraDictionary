@@ -17,9 +17,21 @@
 package org.happypeng.sumatora.android.sumatoradictionary.db;
 
 import androidx.room.Entity;
+import androidx.room.Ignore;
 
 @Entity(primaryKeys = {"seq", "tagId"})
 public class DictionaryTag {
     public int tagId;
     public long seq;
+
+    @Ignore
+    public DictionaryTag(final long seq, final int tagId) {
+        this.seq = seq;
+        this.tagId = tagId;
+    }
+
+    public DictionaryTag() {
+        this.seq = 0;
+        this.tagId = 0;
+    }
 }

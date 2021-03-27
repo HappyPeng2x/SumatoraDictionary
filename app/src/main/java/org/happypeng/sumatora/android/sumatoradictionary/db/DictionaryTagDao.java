@@ -38,6 +38,12 @@ public interface DictionaryTagDao {
     @Delete
     void delete(DictionaryTag tag);
 
+    @Delete
+    void deleteMany(List<DictionaryTag> tags);
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void insert(DictionaryTag tag);
+
+    @Query("SELECT * FROM DictionaryTag")
+    List<DictionaryTag> getAll();
 }

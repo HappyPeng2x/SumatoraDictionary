@@ -15,12 +15,33 @@
         along with this program.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.happypeng.sumatora.android.sumatoradictionary.viewholder
 
+import android.view.View
 import androidx.recyclerview.widget.RecyclerView
+import org.happypeng.sumatora.android.sumatoradictionary.adapter.`object`.DictionaryTagNameAdapterObject
 import org.happypeng.sumatora.android.sumatoradictionary.databinding.DictionaryTagsViewBinding
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryTagName
 
-class DictionaryTagsViewHolder(private val dictionaryTagsViewBinding: DictionaryTagsViewBinding): RecyclerView.ViewHolder(dictionaryTagsViewBinding.dictionaryTagsView) {
-    fun bindTo(dictionaryTagName: DictionaryTagName) {
-        dictionaryTagsViewBinding.dictionaryTagsViewText.text = dictionaryTagName.tagName
+interface DictionaryTagsViewHolderActions {
+    fun selectForDeletion(selected: Boolean, tagName: DictionaryTagName)
+    fun toggleSelected(tagName: DictionaryTagName)
+}
+
+class DictionaryTagsViewHolder(private val dictionaryTagsViewBinding: DictionaryTagsViewBinding,
+                               private val actions: DictionaryTagsViewHolderActions): RecyclerView.ViewHolder(dictionaryTagsViewBinding.dictionaryTagsView) {
+    fun bindTo(dictionaryTagName: DictionaryTagNameAdapterObject) {
+        dictionaryTagsViewBinding.dictionaryTagsViewDeleteButton.setOnCheckedChangeListener(null)
+
+        dictionaryTagsViewBinding.dictionaryTagsViewText.text = dictionaryTagName.tagName.tagName
+        dictionaryTagsViewBinding.dictionaryTagsViewDeleteButton.visibility = if (dictionaryTagName.deleteSelectionEnabled) { View.VISIBLE } else { View.GONE }
+        dictionaryTagsViewBinding.dictionaryTagsViewDeleteButton.isChecked = dictionaryTagName.selectedForDelete
+        dictionaryTagsViewBinding.dictionaryTagsViewSelected.visibility = if (dictionaryTagName.selected) { View.VISIBLE } else { View.GONE }
+
+        dictionaryTagsViewBinding.dictionaryTagsViewDeleteButton.setOnCheckedChangeListener { _, isChecked ->
+            actions.selectForDeletion(isChecked, dictionaryTagName.tagName)
+        }
+
+        dictionaryTagsViewBinding.dictionaryTagsView.setOnClickListener {
+            actions.toggleSelected(dictionaryTagName.tagName)
+        }
     }
 }

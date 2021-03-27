@@ -16,15 +16,26 @@
 package org.happypeng.sumatora.android.sumatoradictionary.model.action
 
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryTagName
+import org.happypeng.sumatora.android.sumatoradictionary.model.intent.DictionaryTagsActivityIntent
 import org.happypeng.sumatora.android.sumatoradictionary.mvibase.MviAction
 
 sealed class DictionaryTagsActivityAction : MviAction
 
-class DictionaryTagsActivityUpdateTagNamesAction(val tagNames: List<DictionaryTagName>) : DictionaryTagsActivityAction()
+class DictionaryTagsActivityUpdateTagsAction(val tags: List<Pair<DictionaryTagName, List<Long>>>) : DictionaryTagsActivityAction()
+class DictionaryTagsActivitySetSeqAction(val seq: Long?) : DictionaryTagsActivityAction()
 
 object DictionaryTagsActivityCloseAction : DictionaryTagsActivityAction()
 
 object DictionaryTagsActivityAddAction : DictionaryTagsActivityAction()
 object DictionaryTagsActivityAddCancelAction : DictionaryTagsActivityAction()
 
+object DictionaryTagsActivityEditAction : DictionaryTagsActivityAction()
+object DictionaryTagsActivityEditCommitAction : DictionaryTagsActivityAction()
+object DictionaryTagsActivityEditCancelAction : DictionaryTagsActivityAction()
+object DictionaryTagsActivityEditCommitConfirmAction : DictionaryTagsActivityAction()
+
+class DictionaryTagsActivityEditSelectForDeletionAction(val tag: DictionaryTagName, val select: Boolean) : DictionaryTagsActivityAction()
+
 class DictionaryTagsActivityCreateTagNameAction(val tagName: String) : DictionaryTagsActivityAction()
+
+class DictionaryTagsActivityToggleSelectAction(val tag: DictionaryTagName) : DictionaryTagsActivityAction()

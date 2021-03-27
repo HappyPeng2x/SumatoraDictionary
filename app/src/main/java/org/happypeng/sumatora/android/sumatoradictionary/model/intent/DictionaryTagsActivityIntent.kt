@@ -15,16 +15,27 @@
         along with this program.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.happypeng.sumatora.android.sumatoradictionary.model.intent
 
+import org.happypeng.sumatora.android.sumatoradictionary.adapter.`object`.DictionaryTagNameAdapterObject
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryTagName
 import org.happypeng.sumatora.android.sumatoradictionary.mvibase.MviIntent
 
 sealed class DictionaryTagsActivityIntent : MviIntent
 
-class DictionaryTagsActivityUpdateTagNamesIntent(val tagNames: List<DictionaryTagName>) : DictionaryTagsActivityIntent()
+class DictionaryTagsActivityUpdateTagsIntent(val tags: List<Pair<DictionaryTagName, List<Long>>>) : DictionaryTagsActivityIntent()
+class DictionaryTagsActivitySetSeqIntent(val seq: Long?) : DictionaryTagsActivityIntent()
 
 object DictionaryTagsActivityCloseIntent : DictionaryTagsActivityIntent()
 
 object DictionaryTagsActivityAddIntent : DictionaryTagsActivityIntent()
 object DictionaryTagsActivityAddCancelIntent : DictionaryTagsActivityIntent()
 
+object DictionaryTagsActivityEditIntent : DictionaryTagsActivityIntent()
+object DictionaryTagsActivityEditCommitIntent : DictionaryTagsActivityIntent()
+object DictionaryTagsActivityEditCancelIntent : DictionaryTagsActivityIntent()
+object DictionaryTagsActivityEditCommitConfirmIntent : DictionaryTagsActivityIntent()
+
+class DictionaryTagsActivityEditSelectForDeletionIntent(val tag: DictionaryTagName, val select: Boolean) : DictionaryTagsActivityIntent()
+
 class DictionaryTagsActivityCreateTagNameIntent(val name: String) : DictionaryTagsActivityIntent()
+
+class DictionaryTagsActivityToggleSelectIntent(val tag: DictionaryTagName) : DictionaryTagsActivityIntent()

@@ -16,7 +16,6 @@
 package org.happypeng.sumatora.android.sumatoradictionary.model.transformer
 
 import io.reactivex.rxjava3.core.Observable
-import io.reactivex.rxjava3.core.ObservableEmitter
 import io.reactivex.rxjava3.core.ObservableSource
 import io.reactivex.rxjava3.core.ObservableTransformer
 import org.happypeng.sumatora.android.sumatoradictionary.model.action.*
@@ -28,12 +27,19 @@ class DictionaryTagsActivityIntentTransformer: ObservableTransformer<DictionaryT
             it.publish { shared ->
                 Observable.merge(
                         listOf(
-                                shared.ofType (DictionaryTagsActivityUpdateTagNamesIntent::class.java).map { intent -> DictionaryTagsActivityUpdateTagNamesAction(intent.tagNames) },
+                                shared.ofType (DictionaryTagsActivityUpdateTagsIntent::class.java).map { intent -> DictionaryTagsActivityUpdateTagsAction(intent.tags) },
                                 shared.filter { intent -> intent is DictionaryTagsActivityCloseIntent }.map { DictionaryTagsActivityCloseAction },
                                 shared.filter { intent -> intent is DictionaryTagsActivityAddIntent }.map { DictionaryTagsActivityAddAction },
                                 shared.filter { intent -> intent is DictionaryTagsActivityAddCancelIntent }.map { DictionaryTagsActivityAddCancelAction },
-                                shared.ofType(DictionaryTagsActivityCreateTagNameIntent::class.java).map { intent -> DictionaryTagsActivityCreateTagNameAction(intent.name) }
-                        )
+                                shared.ofType(DictionaryTagsActivityCreateTagNameIntent::class.java).map { intent -> DictionaryTagsActivityCreateTagNameAction(intent.name) },
+                                shared.ofType(DictionaryTagsActivityEditSelectForDeletionIntent::class.java).map { intent -> DictionaryTagsActivityEditSelectForDeletionAction(intent.tag, intent.select) },
+                                shared.filter { intent -> intent is DictionaryTagsActivityEditIntent }.map { DictionaryTagsActivityEditAction },
+                                shared.filter { intent -> intent is DictionaryTagsActivityEditCancelIntent }.map { DictionaryTagsActivityEditCancelAction },
+                                shared.filter { intent -> intent is DictionaryTagsActivityEditCommitIntent }.map { DictionaryTagsActivityEditCommitAction },
+                                shared.filter { intent -> intent is DictionaryTagsActivityEditCommitConfirmIntent }.map { DictionaryTagsActivityEditCommitConfirmAction },
+                                shared.ofType(DictionaryTagsActivityToggleSelectIntent::class.java).map { intent -> DictionaryTagsActivityToggleSelectAction(intent.tag) },
+                                shared.ofType(DictionaryTagsActivitySetSeqIntent::class.java).map { intent -> DictionaryTagsActivitySetSeqAction(intent.seq) }
+                                )
                 )
             }
         }

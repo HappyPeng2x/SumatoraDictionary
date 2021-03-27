@@ -5,5 +5,22 @@
         android:title="@string/dictionary_tags_activity_menu_add_title"
         android:id="@+id/dictionary_tags_activity_menu_add"
         android:icon="@drawable/ic_add_24px"
-        app:showAsAction="always" />
+        app:showAsAction="ifRoom" />
+    <item
+        android:title="@string/dictionary_tags_activity_menu_edit_title"
+        android:id="@+id/dictionary_tags_activity_menu_edit"
+        android:icon="@drawable/ic_edit_24px"
+        app:showAsAction="ifRoom" />
+    <item
+        android:title="@string/dictionary_tags_activity_menu_edit_cancel_title"
+        android:id="@+id/dictionary_tags_activity_menu_edit_cancel"
+        android:icon="@drawable/ic_cancel_24px"
+        android:visible="false"
+        app:showAsAction="ifRoom" />
+    <item
+        android:title="@string/dictionary_tags_activity_menu_edit_delete_title"
+        android:id="@+id/dictionary_tags_activity_menu_edit_delete"
+        android:icon="@drawable/ic_delete_24px"
+        android:visible="false"
+        app:showAsAction="ifRoom" />
 </menu>
