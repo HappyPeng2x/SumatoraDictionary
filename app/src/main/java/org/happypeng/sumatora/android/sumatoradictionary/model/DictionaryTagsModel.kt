@@ -24,9 +24,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.component.DictionaryTag
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryTagName
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.*
 import org.happypeng.sumatora.android.sumatoradictionary.model.processor.DictionaryTagsActivityProcessorHolder
-import org.happypeng.sumatora.android.sumatoradictionary.model.result.DictionaryTagsActivityResult
 import org.happypeng.sumatora.android.sumatoradictionary.model.state.DictionaryTagsActivityState
-import org.happypeng.sumatora.android.sumatoradictionary.model.transformer.DictionaryTagsActivityIntentTransformer
 import org.happypeng.sumatora.android.sumatoradictionary.mvibase.MviViewModel
 
 class DictionaryTagsModel @ViewModelInject constructor(private val dictionaryTagsComponent: DictionaryTagsComponent): ViewModel(),
@@ -40,21 +38,13 @@ class DictionaryTagsModel @ViewModelInject constructor(private val dictionaryTag
         val actionProcessorHolder = DictionaryTagsActivityProcessorHolder(dictionaryTagsComponent)
 
         return intentsSubject
-                .compose(DictionaryTagsActivityIntentTransformer())
                 .compose(actionProcessorHolder.actionProcessor)
-                .scan(DictionaryTagsActivityState(closed = false,
+                .startWith(Observable.just(DictionaryTagsActivityState(closed = false,
                         dictionaryTagNames = null, add = false, edit = false,
-                        editCommitConfirm = false, seq = null), this::transformStatus)
+                        editCommitConfirm = false, seq = null)))
                 .distinctUntilChanged()
                 .replay(1)
                 .autoConnect(0)
-    }
-
-    private fun transformStatus(previousState: DictionaryTagsActivityState, result: DictionaryTagsActivityResult): DictionaryTagsActivityState {
-        return DictionaryTagsActivityState(closed = result.close,
-                dictionaryTagNames = result.dictionaryTagNames,
-                add = result.add, edit = result.edit, editCommitConfirm = result.editCommitConfirm,
-                seq = null)
     }
 
     override fun states(): Observable<DictionaryTagsActivityState> = statesObservable

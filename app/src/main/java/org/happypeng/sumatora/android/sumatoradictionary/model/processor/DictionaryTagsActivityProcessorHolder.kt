@@ -20,32 +20,21 @@ import io.reactivex.rxjava3.core.ObservableTransformer
 import io.reactivex.rxjava3.schedulers.Schedulers
 import org.happypeng.sumatora.android.sumatoradictionary.adapter.`object`.DictionaryTagNameAdapterObject
 import org.happypeng.sumatora.android.sumatoradictionary.component.DictionaryTagsComponent
-import org.happypeng.sumatora.android.sumatoradictionary.model.action.*
-import org.happypeng.sumatora.android.sumatoradictionary.model.result.DictionaryTagsActivityResult
+import org.happypeng.sumatora.android.sumatoradictionary.model.intent.*
+import org.happypeng.sumatora.android.sumatoradictionary.model.state.DictionaryTagsActivityState
 
 class DictionaryTagsActivityProcessorHolder(private val dictionaryTagsComponent: DictionaryTagsComponent) {
-    data class State(val close: Boolean,
-                     val dictionaryTagNames: List<DictionaryTagNameAdapterObject>?,
-                     val add: Boolean,
-                     val edit: Boolean,
-                     val editCommitConfirm: Boolean,
-                     val seq: Long?) {
-        fun toResult(): DictionaryTagsActivityResult {
-            return DictionaryTagsActivityResult(close, dictionaryTagNames, add, edit, editCommitConfirm, seq)
-        }
-    }
-
-    internal val actionProcessor = ObservableTransformer<DictionaryTagsActivityAction, DictionaryTagsActivityResult> {
+    internal val actionProcessor = ObservableTransformer<DictionaryTagsActivityIntent, DictionaryTagsActivityState> {
         it.observeOn(Schedulers.io())
-                .scan(State(close = false, dictionaryTagNames = null, add = false, edit = false, editCommitConfirm = false, seq = null),
+                .scan(DictionaryTagsActivityState(closed = false, dictionaryTagNames = null, add = false, edit = false, editCommitConfirm = false, seq = null),
                         {
                             previousState, action ->
                             when (action) {
-                                is DictionaryTagsActivitySetSeqAction -> previousState.copy(seq = action.seq,
+                                is DictionaryTagsActivitySetSeqIntent -> previousState.copy(seq = action.seq,
                                         dictionaryTagNames = previousState.dictionaryTagNames?.map { element ->
                                             element.copy(selected = action.seq != null && element.tags.contains(action.seq))
                                         })
-                                is DictionaryTagsActivityUpdateTagsAction -> previousState /* run {
+                                is DictionaryTagsActivityUpdateTagsIntent -> previousState /* run {
                                     previousState.copy(dictionaryTagNames =
                                             action.tags.map { actionItem ->
                                                 previousState.dictionaryTagNames?.first { tagNameItem ->
@@ -73,36 +62,36 @@ class DictionaryTagsActivityProcessorHolder(private val dictionaryTagsComponent:
                                         }*/
                                     })
                                 }*/
-                                DictionaryTagsActivityCloseAction -> previousState.copy(close = true)
-                                DictionaryTagsActivityAddAction -> previousState.copy(add = true)
-                                DictionaryTagsActivityAddCancelAction -> previousState.copy(add = false)
-                                is DictionaryTagsActivityCreateTagNameAction -> run {
-                                    dictionaryTagsComponent.createTagName(action.tagName)
+                                DictionaryTagsActivityCloseIntent -> previousState.copy(closed = true)
+                                DictionaryTagsActivityAddIntent -> previousState.copy(add = true)
+                                DictionaryTagsActivityAddCancelIntent -> previousState.copy(add = false)
+                                is DictionaryTagsActivityCreateTagNameIntent -> run {
+                                    dictionaryTagsComponent.createTagName(action.name)
                                     previousState.copy(add = false)
                                 }
-                                DictionaryTagsActivityEditAction -> previousState.copy(dictionaryTagNames = previousState.dictionaryTagNames?.map { element ->
+                                DictionaryTagsActivityEditIntent -> previousState.copy(dictionaryTagNames = previousState.dictionaryTagNames?.map { element ->
                                     DictionaryTagNameAdapterObject(element.tagName, deleteSelectionEnabled = true, selectedForDelete = false, selected = element.selected,
                                             tags = element.tags)
                                 }, edit = true)
-                                DictionaryTagsActivityEditCommitConfirmAction ->run {
+                                DictionaryTagsActivityEditCommitConfirmIntent ->run {
                                     if (previousState.dictionaryTagNames != null) {
                                         dictionaryTagsComponent.deleteTagNames(previousState.dictionaryTagNames.filter { element -> element.selectedForDelete }.map { element -> element.tagName })
                                     }
 
                                     previousState.copy(edit = false, editCommitConfirm = false)
                                 }
-                                DictionaryTagsActivityEditCancelAction -> previousState.copy(dictionaryTagNames = previousState.dictionaryTagNames?.map { element ->
+                                DictionaryTagsActivityEditCancelIntent -> previousState.copy(dictionaryTagNames = previousState.dictionaryTagNames?.map { element ->
                                     DictionaryTagNameAdapterObject(element.tagName, deleteSelectionEnabled = false, selectedForDelete = false, selected = element.selected, tags = element.tags)
                                 }, edit = false)
-                                DictionaryTagsActivityEditCommitAction -> previousState.copy(editCommitConfirm = true)
-                                is DictionaryTagsActivityEditSelectForDeletionAction -> run {
+                                DictionaryTagsActivityEditCommitIntent -> previousState.copy(editCommitConfirm = true)
+                                is DictionaryTagsActivityEditSelectForDeletionIntent -> run {
                                     previousState.copy(dictionaryTagNames = previousState.dictionaryTagNames?.map { element ->
                                         DictionaryTagNameAdapterObject(element.tagName, deleteSelectionEnabled = element.deleteSelectionEnabled,
                                                 selectedForDelete = if (action.tag.tagId == element.tagName.tagId) { action.select } else { element.selectedForDelete },
                                                 selected = element.selected, tags = element.tags)
                                     })
                                 }
-                                is DictionaryTagsActivityToggleSelectAction -> run {
+                                is DictionaryTagsActivityToggleSelectIntent -> run {
                                     previousState.copy(dictionaryTagNames = previousState.dictionaryTagNames?.map { element ->
                                         DictionaryTagNameAdapterObject(element.tagName, deleteSelectionEnabled = element.deleteSelectionEnabled,
                                                 selected = if (action.tag.tagId == element.tagName.tagId) { !element.selected } else { element.selected },
@@ -112,6 +101,5 @@ class DictionaryTagsActivityProcessorHolder(private val dictionaryTagsComponent:
                             }
                         })
                 .observeOn(AndroidSchedulers.mainThread())
-                .map { state -> state.toResult() }
     }
 }
