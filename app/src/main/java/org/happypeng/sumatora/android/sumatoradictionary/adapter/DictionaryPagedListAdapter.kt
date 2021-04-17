@@ -33,7 +33,7 @@ class DictionaryPagedListAdapter(aDisableBookmarkButton: Boolean,
                                  commitConsumer: (Long, Long, String?) -> Unit,
                                  private val completionAdapter: ArrayAdapter<String>,
                                  private val holderColors: DictionarySearchElementViewHolder.Colors,
-                                 private val launchTags: () -> Unit) :
+                                 private val launchTags: (Long) -> Unit) :
         PagedListAdapter<DictionarySearchElement?, DictionarySearchElementViewHolder>(DictionarySearchElementDiffUtil.getDiffUtil()) {
     private val entities = JMDICT_ENTITIES
     private val disableBookmarkButton: Boolean

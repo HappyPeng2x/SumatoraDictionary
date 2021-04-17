@@ -20,6 +20,7 @@ import io.reactivex.rxjava3.core.ObservableTransformer
 import io.reactivex.rxjava3.schedulers.Schedulers
 import org.happypeng.sumatora.android.sumatoradictionary.adapter.`object`.DictionaryTagNameAdapterObject
 import org.happypeng.sumatora.android.sumatoradictionary.component.DictionaryTagsComponent
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryTag
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.*
 import org.happypeng.sumatora.android.sumatoradictionary.model.state.DictionaryTagsActivityState
 
@@ -30,38 +31,16 @@ class DictionaryTagsActivityProcessorHolder(private val dictionaryTagsComponent:
                         {
                             previousState, action ->
                             when (action) {
-                                is DictionaryTagsActivitySetSeqIntent -> previousState.copy(seq = action.seq,
-                                        dictionaryTagNames = previousState.dictionaryTagNames?.map { element ->
-                                            element.copy(selected = action.seq != null && element.tags.contains(action.seq))
-                                        })
-                                is DictionaryTagsActivityUpdateTagsIntent -> previousState /* run {
+                                is DictionaryTagsActivityUpdateTagsIntent ->
                                     previousState.copy(dictionaryTagNames =
-                                            action.tags.map { actionItem ->
-                                                previousState.dictionaryTagNames?.first { tagNameItem ->
-                                                    actionItem.first.tagId == tagNameItem.tagName.tagId }
-                                            })
-                                //action.tags.map { element ->
-                                        /*run {
-                                            var selectedForDelete = false
-                                            var selected = false
+                                    action.tags.map { tag -> run {
+                                        val itemPreviousState = previousState.dictionaryTagNames?.find { item ->
+                                            tag.first.tagId == item.tagName.tagId }
 
-                                            if (previousState.dictionaryTagNames != null) {
-                                                for (e in previousState.dictionaryTagNames) {
-                                                    if (e.tagName.tagId == element.first.tagId) {
-                                                        selectedForDelete = e.selectedForDelete
-                                                        selected = e.selected
-                                                    }
-                                                }
-                                            }
-
-                                            DictionaryTagNameAdapterObject(element.first,
-                                                    deleteSelectionEnabled = previousState.edit,
-                                                    selectedForDelete = selectedForDelete,
-                                                    selected = selected,
-                                                    tags = element.second)
-                                        }*/
-                                    })
-                                }*/
+                                        DictionaryTagNameAdapterObject(tag.first, tag.second, previousState.edit,
+                                                itemPreviousState != null && itemPreviousState.selectedForDelete,
+                                                tag.second.contains(action.seq)) }
+                                    }, seq = action.seq)
                                 DictionaryTagsActivityCloseIntent -> previousState.copy(closed = true)
                                 DictionaryTagsActivityAddIntent -> previousState.copy(add = true)
                                 DictionaryTagsActivityAddCancelIntent -> previousState.copy(add = false)
@@ -92,11 +71,26 @@ class DictionaryTagsActivityProcessorHolder(private val dictionaryTagsComponent:
                                     })
                                 }
                                 is DictionaryTagsActivityToggleSelectIntent -> run {
-                                    previousState.copy(dictionaryTagNames = previousState.dictionaryTagNames?.map { element ->
+                                    if (previousState.seq != null) {
+                                        val previousStateTag = previousState.dictionaryTagNames?.find { tag ->
+                                            tag.tagName.tagId == action.tag.tagId
+                                        }
+                                        val previousSelected = previousStateTag != null && previousStateTag.selected
+
+                                        if (previousSelected) {
+                                            dictionaryTagsComponent.deleteTag(DictionaryTag(previousState.seq, action.tag.tagId))
+                                        } else {
+                                            dictionaryTagsComponent.createTag(previousState.seq, action.tag.tagId)
+                                        }
+                                    }
+
+                                    previousState
+
+                                    /*previousState.copy(dictionaryTagNames = previousState.dictionaryTagNames?.map { element ->
                                         DictionaryTagNameAdapterObject(element.tagName, deleteSelectionEnabled = element.deleteSelectionEnabled,
                                                 selected = if (action.tag.tagId == element.tagName.tagId) { !element.selected } else { element.selected },
                                                 selectedForDelete = element.selectedForDelete, tags = element.tags)
-                                    })
+                                    })*/
                                 }
                             }
                         })

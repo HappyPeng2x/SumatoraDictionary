@@ -21,8 +21,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.mvibase.MviIntent
 
 sealed class DictionaryTagsActivityIntent : MviIntent
 
-class DictionaryTagsActivityUpdateTagsIntent(val tags: List<Pair<DictionaryTagName, List<Long>>>) : DictionaryTagsActivityIntent()
-class DictionaryTagsActivitySetSeqIntent(val seq: Long?) : DictionaryTagsActivityIntent()
+class DictionaryTagsActivityUpdateTagsIntent(val seq: Long, val tags: List<Pair<DictionaryTagName, List<Long>>>) : DictionaryTagsActivityIntent()
 
 object DictionaryTagsActivityCloseIntent : DictionaryTagsActivityIntent()
 

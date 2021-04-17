@@ -92,7 +92,7 @@ class DictionaryTagsModel @ViewModelInject constructor(private val dictionaryTag
         processIntents((Observable.just(DictionaryTagsActivityCreateTagNameIntent(createTagName))))
     }
 
-    init {
-        processIntents(dictionaryTagsComponent.dictionaryTags.map { DictionaryTagsActivityUpdateTagsIntent(it) })
+    fun setSeq(seq: Long) {
+        processIntents(dictionaryTagsComponent.dictionaryTags.map { DictionaryTagsActivityUpdateTagsIntent(seq, it) })
     }
 }

@@ -128,7 +128,9 @@ abstract class BaseFragment protected constructor() : Fragment() {
                                 R.color.render_highlight),
                         ContextCompat.getColor(activity as Context,
                                 R.color.render_pos)), {
-                                    startActivity(Intent(this.activity, DictionaryTagsActivity::class.java))
+            val intent = Intent(this.activity, DictionaryTagsActivity::class.java)
+            intent.putExtra("seq", it)
+            startActivity(intent)
         })
 
         viewAutoDisposable!!.add(queryFragmentModel.pagedListObservable.subscribe { l: PagedList<DictionarySearchElement?> -> pagedListAdapter!!.submitList(l) })

@@ -40,7 +40,7 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
                                         private val intentSubject: Subject<DictionaryPagedListAdapterIntent>,
                                         private val completionAdapter: ArrayAdapter<String>,
                                         private val colors: Colors,
-                                        private val launchTags: () -> Unit) : RecyclerView.ViewHolder(wordCardBinding.wordCardView) {
+                                        private val launchTags: (Long) -> Unit) : RecyclerView.ViewHolder(wordCardBinding.wordCardView) {
     class Colors(val activeLang: Int,
                  val backupLang: Int,
                  val highlight: Int,
@@ -136,7 +136,7 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
         }
 
         wordCardBinding.wordCardListIcon.setOnClickListener {
-            launchTags.invoke()
+            launchTags.invoke(entry.seq)
         }
 
         wordCardBinding.wordCardMemo.setOnFocusChangeListener { _, hasFocus ->

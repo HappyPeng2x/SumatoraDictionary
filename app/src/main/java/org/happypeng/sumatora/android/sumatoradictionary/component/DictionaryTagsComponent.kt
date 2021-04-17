@@ -52,6 +52,16 @@ class DictionaryTagsComponent @Inject internal constructor(private val persisten
                 .subscribe(dictionaryTagsSubject::onNext)
     }
 
+    fun deleteTag(tag: DictionaryTag) {
+        Observable.create<List<Pair<DictionaryTagName, List<Long>>>> {
+            persistentDatabaseComponent.database.dictionaryTagDao().delete(tag)
+            it.onNext(getTagsData())
+            it.onComplete() }
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(dictionaryTagsSubject::onNext)
+    }
+
     fun createTagName(tagName: String) {
         Observable.create<List<Pair<DictionaryTagName, List<Long>>>> {
             persistentDatabaseComponent.database.dictionaryTagNameDao().insert(DictionaryTagName(tagName))

@@ -70,6 +70,14 @@ class DictionaryTagsActivity : AppCompatActivity(), DictionaryTagsViewHolderActi
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        if (savedInstanceState == null || savedInstanceState.getLong("seq", 0) == 0L) {
+            val seq = intent.getLongExtra("seq", 0)
+
+            viewModel.setSeq(seq)
+
+            savedInstanceState?.putLong("seq", seq)
+        }
+
         val activityTagsBinding = ActivityTagsBinding.inflate(layoutInflater)
         setContentView(activityTagsBinding.root)
 
