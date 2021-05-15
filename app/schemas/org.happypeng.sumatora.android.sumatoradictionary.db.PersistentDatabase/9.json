@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 9,
-    "identityHash": "4d09a491815fc2025148c737ac937c6c",
+    "identityHash": "01e555686c61cbb58daf5a93a780b1e5",
     "entities": [
       {
         "tableName": "PersistentSetting",
@@ -136,7 +136,7 @@
       },
       {
         "tableName": "DictionarySearchElement",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`ref` INTEGER NOT NULL, `entryOrder` INTEGER NOT NULL, `seq` INTEGER NOT NULL, `readingsPrio` TEXT, `readings` TEXT, `writingsPrio` TEXT, `writings` TEXT, `pos` TEXT, `xref` TEXT, `ant` TEXT, `misc` TEXT, `lsource` TEXT, `dial` TEXT, `s_inf` TEXT, `field` TEXT, `lang` TEXT, `lang_setting` TEXT, `gloss` TEXT, `example_sentences` TEXT, `example_translations` TEXT, `bookmark` INTEGER NOT NULL, `memo` TEXT, PRIMARY KEY(`ref`, `seq`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`ref` INTEGER NOT NULL, `entryOrder` INTEGER NOT NULL, `seq` INTEGER NOT NULL, `readingsPrio` TEXT, `readings` TEXT, `writingsPrio` TEXT, `writings` TEXT, `pos` TEXT, `xref` TEXT, `ant` TEXT, `misc` TEXT, `lsource` TEXT, `dial` TEXT, `s_inf` TEXT, `field` TEXT, `lang` TEXT, `lang_setting` TEXT, `gloss` TEXT, `example_sentences` TEXT, `example_translations` TEXT, `bookmark` INTEGER NOT NULL, `memo` TEXT, `tags` TEXT, PRIMARY KEY(`ref`, `seq`))",
         "fields": [
           {
             "fieldPath": "ref",
@@ -267,6 +267,12 @@
           {
             "fieldPath": "memo",
             "columnName": "memo",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "tags",
+            "columnName": "tags",
             "affinity": "TEXT",
             "notNull": false
           }
@@ -594,7 +600,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, \"4d09a491815fc2025148c737ac937c6c\")"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, \"01e555686c61cbb58daf5a93a780b1e5\")"
     ]
   }
 }
