@@ -29,7 +29,8 @@ import androidx.room.RoomDatabase;
         AssetDictionaryObject.class,
         PersistentLanguageSettings.class,
         DictionaryTag.class,
-        DictionaryTagName.class}, version = 9)
+        DictionaryTagName.class},
+        views = {DictionaryTagsList.class}, version = 9)
 abstract public class PersistentDatabase extends RoomDatabase {
     public abstract PersistentSettingsDao persistentSettingsDao();
     public abstract DictionaryBookmarkDao dictionaryBookmarkDao();
@@ -43,4 +44,5 @@ abstract public class PersistentDatabase extends RoomDatabase {
     public abstract DictionarySearchElementDao dictionarySearchElementDao();
     public abstract DictionaryTagNameDao dictionaryTagNameDao();
     public abstract DictionaryTagDao dictionaryTagDao();
+    public abstract DictionaryTagsListDao dictionaryTagsListDao();
 }
