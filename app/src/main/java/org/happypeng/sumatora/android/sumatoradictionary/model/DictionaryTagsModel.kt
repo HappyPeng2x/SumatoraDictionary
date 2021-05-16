@@ -15,8 +15,8 @@
         along with this program.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.happypeng.sumatora.android.sumatoradictionary.model
 
-import androidx.hilt.lifecycle.ViewModelInject
 import androidx.lifecycle.ViewModel
+import dagger.hilt.android.lifecycle.HiltViewModel
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.subjects.PublishSubject
 import io.reactivex.rxjava3.subjects.Subject
@@ -26,9 +26,11 @@ import org.happypeng.sumatora.android.sumatoradictionary.model.intent.*
 import org.happypeng.sumatora.android.sumatoradictionary.model.processor.DictionaryTagsActivityProcessorHolder
 import org.happypeng.sumatora.android.sumatoradictionary.model.state.DictionaryTagsActivityState
 import org.happypeng.sumatora.android.sumatoradictionary.mvibase.MviViewModel
+import javax.inject.Inject
 
-class DictionaryTagsModel @ViewModelInject constructor(private val dictionaryTagsComponent: DictionaryTagsComponent): ViewModel(),
-        MviViewModel<DictionaryTagsActivityIntent, DictionaryTagsActivityState> {
+@HiltViewModel
+class DictionaryTagsModel @Inject constructor(private val dictionaryTagsComponent: DictionaryTagsComponent): ViewModel(),
+    MviViewModel<DictionaryTagsActivityIntent, DictionaryTagsActivityState> {
     private val intentsSubject: PublishSubject<DictionaryTagsActivityIntent> = PublishSubject.create()
     private val statesObservable: Observable<DictionaryTagsActivityState> = compose()
     private val clearedSubject: Subject<Unit> = PublishSubject.create()
@@ -38,13 +40,13 @@ class DictionaryTagsModel @ViewModelInject constructor(private val dictionaryTag
         val actionProcessorHolder = DictionaryTagsActivityProcessorHolder(dictionaryTagsComponent)
 
         return intentsSubject
-                .compose(actionProcessorHolder.actionProcessor)
-                .startWith(Observable.just(DictionaryTagsActivityState(closed = false,
-                        dictionaryTagNames = null, add = false, edit = false,
-                        editCommitConfirm = false, seq = null)))
-                .distinctUntilChanged()
-                .replay(1)
-                .autoConnect(0)
+            .compose(actionProcessorHolder.actionProcessor)
+            .startWith(Observable.just(DictionaryTagsActivityState(closed = false,
+                dictionaryTagNames = null, add = false, edit = false,
+                editCommitConfirm = false, seq = null)))
+            .distinctUntilChanged()
+            .replay(1)
+            .autoConnect(0)
     }
 
     override fun states(): Observable<DictionaryTagsActivityState> = statesObservable

@@ -1,30 +1,33 @@
 package org.happypeng.sumatora.android.sumatoradictionary.model
 
 import android.net.Uri
-import androidx.hilt.Assisted
-import androidx.hilt.lifecycle.ViewModelInject
 import androidx.lifecycle.SavedStateHandle
 import androidx.paging.PagedList
+import dagger.hilt.android.lifecycle.HiltViewModel
 import io.reactivex.rxjava3.core.Observable
-import io.reactivex.rxjava3.disposables.CompositeDisposable
 import io.reactivex.rxjava3.subjects.PublishSubject
-import org.happypeng.sumatora.android.sumatoradictionary.component.*
+import org.happypeng.sumatora.android.sumatoradictionary.component.BookmarkImportComponent
+import org.happypeng.sumatora.android.sumatoradictionary.component.BookmarkShareComponent
+import org.happypeng.sumatora.android.sumatoradictionary.component.LanguageSettingsComponent
+import org.happypeng.sumatora.android.sumatoradictionary.component.PersistentDatabaseComponent
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.*
 import org.happypeng.sumatora.android.sumatoradictionary.model.processor.ImportActionProcessorHolder
 import org.happypeng.sumatora.android.sumatoradictionary.model.result.ImportResult
 import org.happypeng.sumatora.android.sumatoradictionary.model.state.ImportState
-import org.happypeng.sumatora.android.sumatoradictionary.mvibase.MviViewModel
 import org.happypeng.sumatora.android.sumatoradictionary.model.transformer.ImportIntentTransformer
+import org.happypeng.sumatora.android.sumatoradictionary.mvibase.MviViewModel
+import javax.inject.Inject
 
-class BookmarkImportModel @ViewModelInject constructor(private val bookmarkImportComponent: BookmarkImportComponent,
-                                                       persistentDatabaseComponent: PersistentDatabaseComponent,
-                                                       languageSettingsComponent: LanguageSettingsComponent,
-                                                       bookmarkShareComponent: BookmarkShareComponent,
-                                                       @Assisted savedStateHandle: SavedStateHandle?) :
-        BaseFragmentModel(persistentDatabaseComponent, languageSettingsComponent,
-                { component: PersistentDatabaseComponent, callback: PagedList.BoundaryCallback<DictionarySearchElement?>? ->
-                    component.getSearchElements(KEY, callback) }, false, true), MviViewModel<ImportIntent, ImportState> {
+@HiltViewModel
+class BookmarkImportModel @Inject constructor(private val bookmarkImportComponent: BookmarkImportComponent,
+                                              persistentDatabaseComponent: PersistentDatabaseComponent,
+                                              languageSettingsComponent: LanguageSettingsComponent,
+                                              bookmarkShareComponent: BookmarkShareComponent,
+                                              savedStateHandle: SavedStateHandle?) :
+    BaseFragmentModel(persistentDatabaseComponent, languageSettingsComponent,
+        { component: PersistentDatabaseComponent, callback: PagedList.BoundaryCallback<DictionarySearchElement?>? ->
+            component.getSearchElements(KEY, callback) }, false, true), MviViewModel<ImportIntent, ImportState> {
     companion object {
         const val KEY = 3
     }
@@ -37,13 +40,13 @@ class BookmarkImportModel @ViewModelInject constructor(private val bookmarkImpor
         val actionProcessorHolder = ImportActionProcessorHolder(persistentDatabaseComponent, bookmarkImportComponent, KEY)
 
         return intentsSubject
-                .compose(ImportIntentTransformer())
-                .compose(actionProcessorHolder.actionProcessor)
-                .scan(ImportState(false, null, closed = false, processing = false),
-                        this::transformStatus)
-                .distinctUntilChanged()
-                .replay(1)
-                .autoConnect(0)
+            .compose(ImportIntentTransformer())
+            .compose(actionProcessorHolder.actionProcessor)
+            .scan(ImportState(false, null, closed = false, processing = false),
+                this::transformStatus)
+            .distinctUntilChanged()
+            .replay(1)
+            .autoConnect(0)
     }
 
     private fun transformStatus(previousState: ImportState, result: ImportResult): ImportState {

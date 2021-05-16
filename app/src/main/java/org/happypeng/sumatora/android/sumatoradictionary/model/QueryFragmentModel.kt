@@ -15,22 +15,22 @@
         along with this program.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.happypeng.sumatora.android.sumatoradictionary.model
 
-import androidx.hilt.Assisted
-import androidx.hilt.lifecycle.ViewModelInject
 import androidx.lifecycle.SavedStateHandle
 import androidx.paging.PagedList.BoundaryCallback
+import dagger.hilt.android.lifecycle.HiltViewModel
 import org.happypeng.sumatora.android.sumatoradictionary.component.BookmarkComponent
 import org.happypeng.sumatora.android.sumatoradictionary.component.BookmarkShareComponent
 import org.happypeng.sumatora.android.sumatoradictionary.component.LanguageSettingsComponent
 import org.happypeng.sumatora.android.sumatoradictionary.component.PersistentDatabaseComponent
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement
-import org.happypeng.sumatora.android.sumatoradictionary.model.state.QueryState
+import javax.inject.Inject
 
-class QueryFragmentModel @ViewModelInject constructor(bookmarkComponent: BookmarkComponent,
-                                                      persistentDatabaseComponent: PersistentDatabaseComponent,
-                                                      languageSettingsComponent: LanguageSettingsComponent,
-                                                      bookmarkShareComponent: BookmarkShareComponent,
-                                                      @Assisted savedStateHandle: SavedStateHandle) : BaseQueryFragmentModel(bookmarkComponent,
+@HiltViewModel
+class QueryFragmentModel @Inject constructor(bookmarkComponent: BookmarkComponent,
+                                             persistentDatabaseComponent: PersistentDatabaseComponent,
+                                             languageSettingsComponent: LanguageSettingsComponent,
+                                             bookmarkShareComponent: BookmarkShareComponent,
+                                             savedStateHandle: SavedStateHandle) : BaseQueryFragmentModel(bookmarkComponent,
         persistentDatabaseComponent,
         languageSettingsComponent,
         bookmarkShareComponent,
