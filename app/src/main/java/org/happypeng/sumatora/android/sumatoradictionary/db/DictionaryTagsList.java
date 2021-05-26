@@ -18,7 +18,8 @@ package org.happypeng.sumatora.android.sumatoradictionary.db;
 
 import androidx.room.DatabaseView;
 
-@DatabaseView("SELECT DictionaryTag.seq, json_group_array(DictionaryTagName.tagId || ' ' || DictionaryTagName.tagName) AS tagsList "
+@DatabaseView("SELECT DictionaryTag.seq, "
+        + "json_group_array(json_object('tagId', DictionaryTagName.tagId, 'tagName', DictionaryTagName.tagName)) AS tagsList "
         + "FROM DictionaryTagName, DictionaryTag "
         + "WHERE DictionaryTagName.tagId = DictionaryTag.tagId "
         + "GROUP BY DictionaryTag.seq")

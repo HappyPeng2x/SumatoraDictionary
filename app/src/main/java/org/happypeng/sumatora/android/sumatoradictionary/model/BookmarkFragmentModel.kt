@@ -18,10 +18,7 @@ package org.happypeng.sumatora.android.sumatoradictionary.model
 import androidx.lifecycle.SavedStateHandle
 import androidx.paging.PagedList.BoundaryCallback
 import dagger.hilt.android.lifecycle.HiltViewModel
-import org.happypeng.sumatora.android.sumatoradictionary.component.BookmarkComponent
-import org.happypeng.sumatora.android.sumatoradictionary.component.BookmarkShareComponent
-import org.happypeng.sumatora.android.sumatoradictionary.component.LanguageSettingsComponent
-import org.happypeng.sumatora.android.sumatoradictionary.component.PersistentDatabaseComponent
+import org.happypeng.sumatora.android.sumatoradictionary.component.*
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement
 import javax.inject.Inject
 
@@ -30,6 +27,7 @@ class BookmarkFragmentModel @Inject constructor(bookmarkComponent: BookmarkCompo
                                                 persistentDatabaseComponent: PersistentDatabaseComponent,
                                                 languageSettingsComponent: LanguageSettingsComponent,
                                                 bookmarkShareComponent: BookmarkShareComponent,
+                                                dictionaryTagsComponent: DictionaryTagsComponent,
                                                 savedStateHandle: SavedStateHandle) : BaseQueryFragmentModel(bookmarkComponent,
     persistentDatabaseComponent,
     languageSettingsComponent,
@@ -43,7 +41,8 @@ class BookmarkFragmentModel @Inject constructor(bookmarkComponent: BookmarkCompo
     true,
     false,
     false,
-    savedStateHandle.get(QueryFragmentModel.STATUS_KEY)
+    savedStateHandle.get(QueryFragmentModel.STATUS_KEY),
+    dictionaryTagsComponent
 ) {
     companion object {
         const val KEY = 2

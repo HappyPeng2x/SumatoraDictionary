@@ -16,17 +16,19 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.viewholder
 
-import android.graphics.Color
 import android.text.InputType
 import android.view.View
 import android.widget.ArrayAdapter
-import android.widget.MultiAutoCompleteTextView
 import androidx.recyclerview.widget.RecyclerView
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.readValue
+import com.google.android.material.chip.Chip
 import io.reactivex.rxjava3.disposables.Disposable
 import io.reactivex.rxjava3.subjects.Subject
 import org.happypeng.sumatora.android.sumatoradictionary.R
 import org.happypeng.sumatora.android.sumatoradictionary.databinding.WordCardBinding
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryTagName
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.DictionaryPagedListAdapterCloseIntent
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.DictionaryPagedListAdapterIntent
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.renderEntry
@@ -148,6 +150,19 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
                             entry.bookmark,
                             "")
                 }
+            }
+        }
+
+        wordCardBinding.wordCardTagList.removeAllViews()
+
+        if (entry.tags != null) {
+            val mapper = ObjectMapper()
+            val tagsList = mapper.readValue<List<DictionaryTagName>>(entry.tags)
+
+            for (tag in tagsList.sortedBy { it.tagName }) {
+                val chip = Chip(wordCardBinding.wordCardTagList.context)
+                chip.text = tag.tagName
+                wordCardBinding.wordCardTagList.addView(chip)
             }
         }
     }

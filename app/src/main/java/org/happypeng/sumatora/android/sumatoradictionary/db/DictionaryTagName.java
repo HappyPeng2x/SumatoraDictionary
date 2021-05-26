@@ -21,11 +21,19 @@ import androidx.room.Ignore;
 import androidx.room.Index;
 import androidx.room.PrimaryKey;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+@JsonInclude(JsonInclude.Include.NON_NULL)
+@JsonIgnoreProperties(ignoreUnknown = true)
 @Entity(indices = {@Index(value = {"tagName"}, unique = true)})
 public class DictionaryTagName {
+    @JsonProperty("tagId")
     @PrimaryKey(autoGenerate = true)
     public int tagId;
 
+    @JsonProperty("tagName")
     public String tagName;
 
     @Ignore

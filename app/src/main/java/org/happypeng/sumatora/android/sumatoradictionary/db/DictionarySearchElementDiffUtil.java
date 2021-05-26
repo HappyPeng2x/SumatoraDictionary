@@ -25,7 +25,7 @@ public class DictionarySearchElementDiffUtil {
             return false;
         }
 
-        if (str1 == null && str2 == null) {
+        if (str1 == null) {
             return true;
         }
 
@@ -44,7 +44,8 @@ public class DictionarySearchElementDiffUtil {
                     return oldItem.getSeq() == newItem.getSeq() && oldItem.getLang().equals(newItem.getLang()) &&
                             oldItem.getLangSetting().equals(newItem.getLangSetting()) &&
                             oldItem.getBookmark() == newItem.getBookmark() &&
-                            compareStrings(oldItem.memo, newItem.memo);
+                            compareStrings(oldItem.memo, newItem.memo) &&
+                            compareStrings(oldItem.tags, newItem.tags);
                 }
             };
 

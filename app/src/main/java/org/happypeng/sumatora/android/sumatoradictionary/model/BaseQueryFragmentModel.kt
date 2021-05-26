@@ -21,10 +21,7 @@ import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.schedulers.Schedulers
 import io.reactivex.rxjava3.subjects.PublishSubject
-import org.happypeng.sumatora.android.sumatoradictionary.component.BookmarkComponent
-import org.happypeng.sumatora.android.sumatoradictionary.component.BookmarkShareComponent
-import org.happypeng.sumatora.android.sumatoradictionary.component.LanguageSettingsComponent
-import org.happypeng.sumatora.android.sumatoradictionary.component.PersistentDatabaseComponent
+import org.happypeng.sumatora.android.sumatoradictionary.component.*
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.*
@@ -49,7 +46,8 @@ abstract class BaseQueryFragmentModel protected constructor(private val bookmark
                                                             private val filterMemos: Boolean,
                                                             disableBookmarkButton: Boolean,
                                                             disableMemoEdit: Boolean,
-                                                            private val savedState: QueryState?
+                                                            private val savedState: QueryState?,
+                                                            dictionaryTagsComponent: DictionaryTagsComponent
 ) : BaseFragmentModel(persistentDatabaseComponent, languageSettingsComponent, pagedListFactory, disableBookmarkButton, disableMemoEdit), MviViewModel<QueryIntent, QueryState> {
     private val intentsSubject: PublishSubject<QueryIntent> = PublishSubject.create()
     private val statesObservable = compose()
@@ -98,6 +96,7 @@ abstract class BaseQueryFragmentModel protected constructor(private val bookmark
 
     init {
         processIntents(bookmarkComponent.bookmarkChanges.map { BookmarkIntent })
+        processIntents(dictionaryTagsComponent.dictionaryTags.map { BookmarkIntent })
         processIntents(languageSettingsComponent.persistentLanguageSettings
                 .map { intent: LanguageSettingIntent ->
                     when (intent) {
@@ -127,10 +126,10 @@ abstract class BaseQueryFragmentModel protected constructor(private val bookmark
 
     val commitBookmarksFun = { seq: Long, bookmark: Long, memo: String? -> commitBookmarks(seq, bookmark, memo) }
 
-    val tagNames = bookmarkComponent.bookmarkChanges
-            .observeOn(Schedulers.io())
-            .map {
-                persistentDatabaseComponent.database.dictionaryTagNameDao().tagNames
-            }
-            .observeOn(AndroidSchedulers.mainThread())
+/*    val tagNames = bookmarkComponent.bookmarkChanges
+        .observeOn(Schedulers.io())
+        .map {
+            persistentDatabaseComponent.database.dictionaryTagNameDao().tagNames
+        }
+        .observeOn(AndroidSchedulers.mainThread())*/
 }
