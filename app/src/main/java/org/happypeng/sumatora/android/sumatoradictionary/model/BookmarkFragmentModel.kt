@@ -15,8 +15,8 @@
         along with this program.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.happypeng.sumatora.android.sumatoradictionary.model
 
-import androidx.hilt.Assisted
-import androidx.hilt.lifecycle.ViewModelInject
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import androidx.lifecycle.SavedStateHandle
 import androidx.paging.PagedList.BoundaryCallback
 import org.happypeng.sumatora.android.sumatoradictionary.component.BookmarkComponent
@@ -26,15 +26,16 @@ import org.happypeng.sumatora.android.sumatoradictionary.component.PersistentDat
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement
 import org.happypeng.sumatora.android.sumatoradictionary.model.state.QueryState
 
-class BookmarkFragmentModel @ViewModelInject constructor(bookmarkComponent: BookmarkComponent,
+@HiltViewModel
+class BookmarkFragmentModel @Inject constructor(bookmarkComponent: BookmarkComponent,
                                                          persistentDatabaseComponent: PersistentDatabaseComponent,
                                                          languageSettingsComponent: LanguageSettingsComponent,
                                                          bookmarkShareComponent: BookmarkShareComponent,
-                                                         @Assisted savedStateHandle: SavedStateHandle) : BaseQueryFragmentModel(bookmarkComponent,
+                                                         savedStateHandle: SavedStateHandle) : BaseQueryFragmentModel(bookmarkComponent,
         persistentDatabaseComponent,
         languageSettingsComponent,
         bookmarkShareComponent,
-        { component: PersistentDatabaseComponent, callback: BoundaryCallback<DictionarySearchElement?>? -> component.getSearchElements(KEY, callback) },
+        { component: PersistentDatabaseComponent, callback: BoundaryCallback<DictionarySearchElement>? -> component.getSearchElements(KEY, callback) },
         KEY,
         true,
         true,

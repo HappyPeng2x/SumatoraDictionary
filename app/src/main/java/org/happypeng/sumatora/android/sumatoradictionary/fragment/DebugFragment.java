@@ -75,7 +75,7 @@ public class DebugFragment extends Fragment {
 
         mTextView = (TextView) view.findViewById(R.id.debug_text_view);
 
-        mViewModel.getLog().observe(this,
+        mViewModel.getLog().observe(getViewLifecycleOwner(),
                 new Observer<String>() {
                     @Override
                     public void onChanged(String s) {
@@ -131,7 +131,7 @@ public class DebugFragment extends Fragment {
 
         TypedValue typedValue = new TypedValue();
 
-        TypedArray a = ctx.obtainStyledAttributes(typedValue.data, new int[] { R.attr.colorButtonNormal });
+        TypedArray a = ctx.obtainStyledAttributes(typedValue.data, new int[] { androidx.appcompat.R.attr.colorButtonNormal });
         int color = a.getColor(0, 0);
 
         a.recycle();

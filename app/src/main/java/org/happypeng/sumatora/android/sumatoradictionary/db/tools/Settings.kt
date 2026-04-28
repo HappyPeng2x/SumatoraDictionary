@@ -13,72 +13,66 @@
 
         You should have received a copy of the GNU General Public License
         along with this program.  If not, see <http://www.gnu.org/licenses/>. */
+package org.happypeng.sumatora.android.sumatoradictionary.db.tools
 
-package org.happypeng.sumatora.android.sumatoradictionary.db.tools;
+import kotlinx.coroutines.launch
+import androidx.annotation.MainThread
+import androidx.annotation.WorkerThread
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.ProcessLifecycleOwner
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.switchMap
+import kotlinx.coroutines.Dispatchers
+import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase
+import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentSetting
 
-import android.os.AsyncTask;
+class Settings {
+    private val m_db: MutableLiveData<PersistentDatabase?>
 
-import androidx.annotation.MainThread;
-import androidx.annotation.WorkerThread;
-import androidx.arch.core.util.Function;
-import androidx.lifecycle.LiveData;
-import androidx.lifecycle.MutableLiveData;
-import androidx.lifecycle.Transformations;
-
-import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
-import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentSetting;
-
-public class Settings {
-    public static final String REPOSITORY_URL = "repositoryURL";
-
-    private final MutableLiveData<PersistentDatabase> m_db;
-
-    public Settings() {
-        m_db = new MutableLiveData<>();
+    init {
+        m_db = MutableLiveData<PersistentDatabase?>()
     }
 
     @WorkerThread
-    public void postDatabase(final PersistentDatabase aDB) {
-        m_db.postValue(aDB);
+    fun postDatabase(aDB: PersistentDatabase?) {
+        m_db.postValue(aDB)
     }
 
-    public LiveData<String> getValue(final String aName) {
-        return Transformations.switchMap(m_db,
-                new Function<PersistentDatabase, LiveData<String>>() {
-                    @Override
-                    public LiveData<String> apply(PersistentDatabase input) {
-                        return input.persistentSettingsDao().getValue(aName);
-                    }
-                });
+    fun getValue(aName: String?): LiveData<String?> {
+        return m_db.switchMap<PersistentDatabase?, String?> { input: PersistentDatabase? ->
+            if (input == null) return@switchMap null // Handle potential nulls
+            input.persistentSettingsDao().getValue(aName)
+        }
     }
 
     @WorkerThread
-    public String getValueDirect(final String aName) {
-        PersistentDatabase db = m_db.getValue();
+    fun getValueDirect(aName: String?): String? {
+        val db = m_db.getValue()
 
         if (db != null) {
-            return db.persistentSettingsDao().getValueDirect(aName);
+            return db.persistentSettingsDao().getValueDirect(aName)
         }
 
-        return null;
+        return null
     }
 
     @WorkerThread
-    public void postValue(final String aName, final String aValue) {
+    fun postValue(aName: String, aValue: String) {
         if (m_db.getValue() != null) {
-            m_db.getValue().persistentSettingsDao().insert(new PersistentSetting(aName, aValue));
+            m_db.getValue()!!.persistentSettingsDao().insert(PersistentSetting(aName, aValue))
         }
     }
 
     @MainThread
-    public void setValue(final String aName, final String aValue) {
-        new AsyncTask<Void, Void, Void>() {
-            @Override
-            protected Void doInBackground(Void... voids) {
-                postValue(aName, aValue);
+    fun setValue(aName: String, aValue: String) {
+        // This will now correctly resolve to the Coroutine launch
+        ProcessLifecycleOwner.get().lifecycleScope.launch(Dispatchers.IO) {
+            postValue(aName, aValue)
+        }
+    }
 
-                return null;
-            }
-        }.execute();
+    companion object {
+        const val REPOSITORY_URL: String = "repositoryURL"
     }
 }

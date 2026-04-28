@@ -48,7 +48,6 @@ import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.observers.DisposableCompletableObserver;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 
-@ActivityScoped
 public class BookmarkShareComponent {
     private static final String AUTHORITY = "org.happypeng.sumatora.android.sumatoradictionary.fileprovider";
 
@@ -56,9 +55,8 @@ public class BookmarkShareComponent {
     final PersistentDatabaseComponent persistentDatabaseComponent;
     final BookmarkComponent bookmarkComponent;
 
-
     @Inject
-    BookmarkShareComponent(@ActivityContext final Context context,
+    BookmarkShareComponent(@ApplicationContext final Context context, // 2. Change to @ApplicationContext
                            final PersistentDatabaseComponent persistentDatabaseComponent,
                            final BookmarkComponent bookmarkComponent) {
         this.context = context;
@@ -84,15 +82,18 @@ public class BookmarkShareComponent {
 
     @MainThread
     public void shareBookmarks(final File outputFile) {
-        Uri contentUri = FileProvider.getUriForFile
-                (context, AUTHORITY, outputFile);
+        Uri contentUri = FileProvider.getUriForFile(context, AUTHORITY, outputFile);
 
         Intent sharingIntent = new Intent(Intent.ACTION_SEND);
-
         sharingIntent.setType("text/*");
         sharingIntent.putExtra(Intent.EXTRA_STREAM, contentUri);
         sharingIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
 
-        context.startActivity(Intent.createChooser(sharingIntent, "Share bookmarks"));
+        Intent chooserIntent = Intent.createChooser(sharingIntent, "Share bookmarks");
+
+        // When using ApplicationContext, you MUST add FLAG_ACTIVITY_NEW_TASK
+        chooserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+        context.startActivity(chooserIntent);
     }
 }

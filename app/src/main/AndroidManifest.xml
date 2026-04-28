@@ -62,7 +62,8 @@
             android:enabled="true"
             android:exported="true"></service>-->
 
-        <activity android:name=".activity.DictionaryLaunchActivity">
+        <activity android:name=".activity.DictionaryLaunchActivity"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.PROCESS_TEXT" />
 
@@ -80,6 +81,7 @@
         </activity>
         <activity
             android:name=".activity.DictionaryBookmarksImportActivity"
+            android:exported="true"
             android:theme="@style/AppTheme">
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
@@ -101,6 +103,7 @@
             android:theme="@style/AppTheme" />-->
         <activity
             android:name=".activity.MainActivity"
+            android:exported="true"
             android:label="@string/app_name"
             android:launchMode="singleTask"
             android:taskAffinity=""

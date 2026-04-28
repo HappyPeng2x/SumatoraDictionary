@@ -36,8 +36,8 @@ import org.happypeng.sumatora.android.sumatoradictionary.operator.LiveDataWrappe
 
 abstract class BaseFragmentModel protected constructor(protected val persistentDatabaseComponent: PersistentDatabaseComponent,
                                                        protected val languageSettingsComponent: LanguageSettingsComponent,
-                                                       pagedListFactory: (PersistentDatabaseComponent, BoundaryCallback<DictionarySearchElement?>?) ->
-                                                       LiveData<PagedList<DictionarySearchElement?>>,
+                                                       pagedListFactory: (PersistentDatabaseComponent, BoundaryCallback<DictionarySearchElement>?) ->
+                                                       LiveData<PagedList<DictionarySearchElement>>,
                                                        val disableBookmarkButton: Boolean,
                                                        val disableMemoEdit: Boolean): ViewModel() {
     class ScrolledEvent(val entryOrder: Int)
@@ -45,8 +45,8 @@ abstract class BaseFragmentModel protected constructor(protected val persistentD
     private val clearedSubject: Subject<Unit> = PublishSubject.create()
     val clearedObservable = clearedSubject as Observable<Unit>
 
-    private val pagedListSubject: Subject<PagedList<DictionarySearchElement?>> = BehaviorSubject.create()
-    val pagedListObservable = pagedListSubject as Observable<PagedList<DictionarySearchElement?>>
+    private val pagedListSubject: Subject<PagedList<DictionarySearchElement>> = BehaviorSubject.create()
+    val pagedListObservable = pagedListSubject as Observable<PagedList<DictionarySearchElement>>
 
     private val scrollSubject: Subject<ScrolledEvent> = PublishSubject.create()
     val scrollObservable = scrollSubject as Observable<ScrolledEvent>
@@ -58,7 +58,7 @@ abstract class BaseFragmentModel protected constructor(protected val persistentD
         languageSettingsComponent.updatePersistentLanguageSettings(newLanguageSettings)
     }
 
-    val installedDictionaries: Observable<List<InstalledDictionary?>?>
+    val installedDictionaries: Observable<List<InstalledDictionary?>>
         get() = Observable.defer { Observable.just(persistentDatabaseComponent.database.installedDictionaryDao().all) }
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
@@ -71,7 +71,7 @@ abstract class BaseFragmentModel protected constructor(protected val persistentD
     }
 
     init {
-        val pagedList = pagedListFactory.invoke(persistentDatabaseComponent, object: BoundaryCallback<DictionarySearchElement?>() {
+        val pagedList = pagedListFactory.invoke(persistentDatabaseComponent, object: BoundaryCallback<DictionarySearchElement>() {
             override fun onItemAtEndLoaded(itemAtEnd: DictionarySearchElement) {
                 super.onItemAtEndLoaded(itemAtEnd)
                 scrollSubject.onNext(ScrolledEvent(itemAtEnd.entryOrder))

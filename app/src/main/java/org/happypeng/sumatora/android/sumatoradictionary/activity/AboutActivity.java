@@ -328,6 +328,6 @@ public class AboutActivity extends MaterialAboutActivity {
 
     @Override
     protected CharSequence getActivityTitle() {
-        return getString(R.string.mal_title_about);
+        return getString(com.danielstone.materialaboutlibrary.R.string.mal_title_about);
     }
 }

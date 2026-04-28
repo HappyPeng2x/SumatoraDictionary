@@ -43,7 +43,9 @@ import java.util.List;
 public class QueryMenu {
     public SearchView searchView;
     public ImageView searchCloseButton;
-    public SearchView.SearchAutoComplete searchAutoComplete;
+
+    public androidx.appcompat.widget.AppCompatAutoCompleteTextView searchAutoComplete;
+
     public MenuItem shareBookmarks;
     public TextView languageMenuText;
 
@@ -71,7 +73,7 @@ public class QueryMenu {
         searchView = (SearchView) searchViewMenuItem.getActionView();
         searchView.setSearchableInfo(searchManager.getSearchableInfo(componentName));
 
-        searchCloseButton = searchView.findViewById(R.id.search_close_btn);
+        searchCloseButton = searchView.findViewById(androidx.appcompat.R.id.search_close_btn);
 
         shareBookmarks = menu.findItem(R.id.search_query_menu_share_bookmarks);
 
@@ -82,7 +84,7 @@ public class QueryMenu {
 
         searchView.requestFocus();
 
-        searchAutoComplete =
+        searchAutoComplete = (androidx.appcompat.widget.AppCompatAutoCompleteTextView)
                 searchView.findViewById(androidx.appcompat.R.id.search_src_text);
 
         colorMenu(menu, context);
@@ -93,7 +95,7 @@ public class QueryMenu {
     public static void colorMenu(@NonNull Menu aMenu, @NonNull Context context) {
         TypedValue typedValue = new TypedValue();
 
-        TypedArray a = context.obtainStyledAttributes(typedValue.data, new int[] { R.attr.colorButtonNormal });
+        TypedArray a = context.obtainStyledAttributes(typedValue.data, new int[] { androidx.appcompat.R.attr.colorButtonNormal });
         int color = a.getColor(0, 0);
 
         a.recycle();

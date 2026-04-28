@@ -1,8 +1,8 @@
 package org.happypeng.sumatora.android.sumatoradictionary.model
 
 import android.net.Uri
-import androidx.hilt.Assisted
-import androidx.hilt.lifecycle.ViewModelInject
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import androidx.lifecycle.SavedStateHandle
 import androidx.paging.PagedList
 import io.reactivex.rxjava3.core.Observable
@@ -17,13 +17,14 @@ import org.happypeng.sumatora.android.sumatoradictionary.model.state.ImportState
 import org.happypeng.sumatora.android.sumatoradictionary.mvibase.MviViewModel
 import org.happypeng.sumatora.android.sumatoradictionary.model.transformer.ImportIntentTransformer
 
-class BookmarkImportModel @ViewModelInject constructor(private val bookmarkImportComponent: BookmarkImportComponent,
+@HiltViewModel
+class BookmarkImportModel @Inject constructor(private val bookmarkImportComponent: BookmarkImportComponent,
                                                        persistentDatabaseComponent: PersistentDatabaseComponent,
                                                        languageSettingsComponent: LanguageSettingsComponent,
                                                        bookmarkShareComponent: BookmarkShareComponent,
-                                                       @Assisted savedStateHandle: SavedStateHandle?) :
+                                                       savedStateHandle: SavedStateHandle?) :
         BaseFragmentModel(persistentDatabaseComponent, languageSettingsComponent,
-                { component: PersistentDatabaseComponent, callback: PagedList.BoundaryCallback<DictionarySearchElement?>? ->
+                { component: PersistentDatabaseComponent, callback: PagedList.BoundaryCallback<DictionarySearchElement>? ->
                     component.getSearchElements(KEY, callback) }, false, true), MviViewModel<ImportIntent, ImportState> {
     companion object {
         const val KEY = 3

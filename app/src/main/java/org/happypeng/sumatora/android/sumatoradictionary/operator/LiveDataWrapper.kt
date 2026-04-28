@@ -16,15 +16,31 @@
 package org.happypeng.sumatora.android.sumatoradictionary.operator
 
 import androidx.lifecycle.LiveData
+import androidx.lifecycle.Observer
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.subjects.PublishSubject
 import io.reactivex.rxjava3.subjects.Subject
 
 object LiveDataWrapper {
-    fun <T, C> wrap(liveData: LiveData<T>,
-                    close: Observable<C>): Observable<T> {
+    // Add : Any to T to ensure it matches LiveData's bounds
+    fun <T : Any, C : Any> wrap(
+        liveData: LiveData<T>,
+        close: Observable<C>
+    ): Observable<T> {
         val subject: Subject<T> = PublishSubject.create()
-        liveData.observeForever { t: T -> subject.onNext(t) }
-        return subject.takeUntil(close).doOnComplete { liveData.removeObserver { t: T -> subject.onNext(t) } }
+
+        // Store the observer in a variable so we can remove it later
+        val observer = Observer<T> { t ->
+            subject.onNext(t)
+        }
+
+        liveData.observeForever(observer)
+
+        return subject
+            .takeUntil(close)
+            .doOnTerminate {
+                // Use the stored reference to properly remove the observer
+                liveData.removeObserver(observer)
+            }
     }
 }

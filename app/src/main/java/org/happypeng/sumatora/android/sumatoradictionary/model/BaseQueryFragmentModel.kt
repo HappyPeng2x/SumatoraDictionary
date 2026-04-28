@@ -39,8 +39,8 @@ abstract class BaseQueryFragmentModel protected constructor(private val bookmark
                                                             persistentDatabaseComponent: PersistentDatabaseComponent,
                                                             languageSettingsComponent: LanguageSettingsComponent,
                                                             private val bookmarkShareComponent: BookmarkShareComponent,
-                                                            pagedListFactory: (PersistentDatabaseComponent, PagedList.BoundaryCallback<DictionarySearchElement?>?) ->
-                                                            LiveData<PagedList<DictionarySearchElement?>>,
+                                                            pagedListFactory: (PersistentDatabaseComponent, PagedList.BoundaryCallback<DictionarySearchElement>?) ->
+                                                            LiveData<PagedList<DictionarySearchElement>>,
                                                             val key: Int,
                                                             val searchIconifiedByDefault: Boolean,
                                                             val shareButtonVisible: Boolean,
