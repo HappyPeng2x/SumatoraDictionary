@@ -25,10 +25,15 @@ import androidx.room.Query;
 
 import java.util.List;
 
+import io.reactivex.rxjava3.core.Observable;
+
 @Dao
 public interface DictionaryBookmarkDao {
     @Query("SELECT * FROM DictionaryBookmark")
     List<DictionaryBookmark> getAll();
+
+    @Query("SELECT * FROM DictionaryBookmark")
+    Observable<List<DictionaryBookmark>> getAllObservable();
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void insert(DictionaryBookmark aBookmark);

@@ -17,53 +17,39 @@
 package org.happypeng.sumatora.android.sumatoradictionary.component;
 
 import androidx.annotation.MainThread;
-import androidx.annotation.WorkerThread;
 
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmarkDao;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
+import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.schedulers.Schedulers;
-import io.reactivex.rxjava3.subjects.PublishSubject;
-import io.reactivex.rxjava3.subjects.Subject;
 
 @Singleton
 public class BookmarkComponent {
     private final PersistentDatabaseComponent persistentDatabaseComponent;
-    private final Subject<List<DictionaryBookmark>> bookmarkChanges;
     private final Observable<List<DictionaryBookmark>> bookmarkChangesObservable;
 
     @Inject
     BookmarkComponent(final PersistentDatabaseComponent persistentDatabaseComponent) {
         this.persistentDatabaseComponent = persistentDatabaseComponent;
 
-        bookmarkChanges = PublishSubject.create();
-        bookmarkChangesObservable =
-                bookmarkChanges.observeOn(Schedulers.io()).map(l -> {
-                    final PersistentDatabase persistentDatabase = persistentDatabaseComponent.getDatabase();
-                    final DictionaryBookmarkDao dictionaryBookmarkDao = persistentDatabase.dictionaryBookmarkDao();
-
-                    persistentDatabase.runInTransaction(() ->
-                    {
-                        for (DictionaryBookmark b : l) {
-                            if (b.bookmark > 0 || (b.memo != null && !"".equals(b.memo))) {
-                                dictionaryBookmarkDao.insert(b);
-                            } else {
-                                dictionaryBookmarkDao.delete(b);
-                            }
-                        }
-                    });
-
-                    return l;
-                }).observeOn(AndroidSchedulers.mainThread()).publish().autoConnect();
+        // Use Room's native RxJava support to create an observable directly from the DAO.
+        // This ensures Room is the single source of truth and greatly simplifies implementation.
+        this.bookmarkChangesObservable = Observable.defer(() ->
+                persistentDatabaseComponent.getDatabase().dictionaryBookmarkDao().getAllObservable())
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .replay(1)
+                .autoConnect();
     }
 
     public Observable<List<DictionaryBookmark>> getBookmarkChanges() {
@@ -72,14 +58,25 @@ public class BookmarkComponent {
 
     @MainThread
     public void updateBookmarks(final List<DictionaryBookmark> bookmarks) {
-        bookmarkChanges.onNext(bookmarks);
+        // Only write to the database. Room will automatically emit updates to bookmarkChangesObservable.
+        Completable.fromAction(() -> {
+            final PersistentDatabase persistentDatabase = persistentDatabaseComponent.getDatabase();
+            final DictionaryBookmarkDao dictionaryBookmarkDao = persistentDatabase.dictionaryBookmarkDao();
+
+            persistentDatabase.runInTransaction(() -> {
+                for (DictionaryBookmark b : bookmarks) {
+                    if (b.bookmark > 0 || (b.memo != null && !b.memo.isEmpty())) {
+                        dictionaryBookmarkDao.insert(b);
+                    } else {
+                        dictionaryBookmarkDao.delete(b);
+                    }
+                }
+            });
+        }).subscribeOn(Schedulers.io()).subscribe();
     }
 
     @MainThread
     public void updateBookmark(final DictionaryBookmark bookmark) {
-        final ArrayList<DictionaryBookmark> list = new ArrayList<>(1);
-        list.add(bookmark);
-
-        bookmarkChanges.onNext(list);
+        updateBookmarks(Collections.singletonList(bookmark));
     }
 }
