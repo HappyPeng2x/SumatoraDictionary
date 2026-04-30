@@ -20,9 +20,7 @@ import androidx.annotation.MainThread;
 
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmarkDao;
-import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 
-import java.util.Collections;
 import java.util.List;
 
 import javax.inject.Inject;
@@ -57,26 +55,16 @@ public class BookmarkComponent {
     }
 
     @MainThread
-    public void updateBookmarks(final List<DictionaryBookmark> bookmarks) {
+    public void updateBookmark(final DictionaryBookmark bookmark) {
         // Only write to the database. Room will automatically emit updates to bookmarkChangesObservable.
         Completable.fromAction(() -> {
-            final PersistentDatabase persistentDatabase = persistentDatabaseComponent.getDatabase();
-            final DictionaryBookmarkDao dictionaryBookmarkDao = persistentDatabase.dictionaryBookmarkDao();
+            final DictionaryBookmarkDao dictionaryBookmarkDao = persistentDatabaseComponent.getDatabase().dictionaryBookmarkDao();
 
-            persistentDatabase.runInTransaction(() -> {
-                for (DictionaryBookmark b : bookmarks) {
-                    if (b.bookmark > 0 || (b.memo != null && !b.memo.isEmpty())) {
-                        dictionaryBookmarkDao.insert(b);
-                    } else {
-                        dictionaryBookmarkDao.delete(b);
-                    }
-                }
-            });
+            if (bookmark.bookmark > 0 || (bookmark.memo != null && !bookmark.memo.isEmpty())) {
+                dictionaryBookmarkDao.insert(bookmark);
+            } else {
+                dictionaryBookmarkDao.delete(bookmark);
+            }
         }).subscribeOn(Schedulers.io()).subscribe();
-    }
-
-    @MainThread
-    public void updateBookmark(final DictionaryBookmark bookmark) {
-        updateBookmarks(Collections.singletonList(bookmark));
     }
 }
