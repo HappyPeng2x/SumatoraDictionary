@@ -59,13 +59,15 @@ class QueryActionProcessorHolder(private val databaseComponent: PersistentDataba
                                 setIntent = false, clearSearchBox = false),
                                 { previousState, action ->
                                     when (action) {
-                                        is QueryLanguageSettingDetachedAction -> run {
+                                        is QueryLanguageSettingDetachedAction -> {
                                             previousState.dictionarySearchQueryTool?.close()
                                             previousState.copy(dictionarySearchQueryTool = null, ready = false,
                                                     persistentLanguageSettings = null, initial = false,
                                                     setIntent = false, clearSearchBox = false)
                                         }
-                                        is QueryLanguageSettingAttachedAction -> run {
+                                        is QueryLanguageSettingAttachedAction -> {
+                                            previousState.dictionarySearchQueryTool?.close()
+                                            
                                             val queryTool =  DictionarySearchQueryTool(databaseComponent, key,
                                                     action.persistentLanguageSettings)
 
@@ -79,7 +81,8 @@ class QueryActionProcessorHolder(private val databaseComponent: PersistentDataba
                                                 val maxTransaction = if (runUntilFound)
                                                 { queryTool.getCount(previousState.term) } else { previousState.currentQuery }
 
-                                                while (current < maxTransaction && ((runUntilFound && !found) || !runUntilFound)) {
+                                                // If currentQuery > 0, we are restoring. We must use !runUntilFound to ignore 'found' status.
+                                                while (current < maxTransaction && (!runUntilFound || !found)) {
                                                     found = queryTool.execute(previousState.term, current, filterBookmarks, filterMemos)
                                                     current++
                                                 }
@@ -91,10 +94,10 @@ class QueryActionProcessorHolder(private val databaseComponent: PersistentDataba
                                                     ready = true, initial = false, setIntent = false,
                                                     clearSearchBox = false)
                                         }
-                                        is SetTermAction -> run {
-                                            if (previousState.dictionarySearchQueryTool != null) {
+                                        is SetTermAction -> {
+                                            previousState.dictionarySearchQueryTool?.let { tool ->
                                                 databaseComponent.database.runInTransaction {
-                                                    previousState.dictionarySearchQueryTool.delete()
+                                                    tool.delete()
                                                 }
                                             }
 
@@ -102,17 +105,28 @@ class QueryActionProcessorHolder(private val databaseComponent: PersistentDataba
                                                     initial = false, setIntent = false,
                                                     clearSearchBox = false)
                                         }
-                                        is CloseSearchBoxAction ->
-                                            previousState.copy(term = "", searching = true, found = false, currentQuery = 0,
+                                        is CloseSearchBoxAction -> {
+                                            var current = 0
+                                            previousState.dictionarySearchQueryTool?.let { tool ->
+                                                databaseComponent.database.runInTransaction {
+                                                    tool.delete()
+                                                    if (filterBookmarks || filterMemos) {
+                                                        tool.execute("", 0, filterBookmarks, filterMemos)
+                                                        current = 1
+                                                    }
+                                                }
+                                            }
+                                            previousState.copy(term = "", searching = false, found = false, currentQuery = current,
                                                     initial = false, searchBoxClosed = action.input == "" && searchBoxClosed,
                                                     setIntent = previousState.term != "",
                                                     clearSearchBox = action.input != "")
+                                        }
                                         ClosedSearchBoxAction ->
                                             previousState.copy(initial = false, setIntent =  false, clearSearchBox = false)
                                         OpenSearchBoxAction -> previousState.copy(searchBoxClosed = false)
-                                        is SearchAction -> run {
-                                            if (previousState.dictionarySearchQueryTool != null) {
-                                                val queryTool = previousState.dictionarySearchQueryTool
+                                        is SearchAction -> {
+                                            val queryTool = previousState.dictionarySearchQueryTool
+                                            if (queryTool != null) {
                                                 val maxTransaction = queryTool.getCount(previousState.term)
 
                                                 var current = 0
@@ -120,27 +134,24 @@ class QueryActionProcessorHolder(private val databaseComponent: PersistentDataba
 
                                                 databaseComponent.database.runInTransaction {
                                                     queryTool.delete()
-                                                }
-
-                                                databaseComponent.database.runInTransaction {
                                                     while (current < maxTransaction && !found) {
                                                         found = queryTool.execute(previousState.term, current, filterBookmarks, filterMemos)
                                                         current++
                                                     }
                                                 }
 
-                                                previousState.copy(dictionarySearchQueryTool = queryTool,
-                                                        currentQuery = current, found = found, searching = false,
+                                                previousState.copy(currentQuery = current, found = found, searching = false,
                                                         initial = false, setIntent = false,
                                                         clearSearchBox = false)
                                             } else { previousState }
                                         }
-                                        is ScrollAction -> run {
-                                            if (previousState.dictionarySearchQueryTool != null) {
-                                                val queryTool = previousState.dictionarySearchQueryTool
+                                        is ScrollAction -> {
+                                            val queryTool = previousState.dictionarySearchQueryTool
+                                            if (queryTool != null) {
                                                 val maxTransaction = queryTool.getCount(previousState.term)
 
                                                 var current = previousState.currentQuery
+                                                // Fix: Reset 'found' to false for the loop so that it actually triggers the next levels
                                                 var found = false
 
                                                 databaseComponent.database.runInTransaction {
@@ -150,43 +161,54 @@ class QueryActionProcessorHolder(private val databaseComponent: PersistentDataba
                                                     }
                                                 }
 
-                                                previousState.copy(dictionarySearchQueryTool = queryTool,
-                                                        currentQuery = current, searching = false,
+                                                previousState.copy(currentQuery = current, 
+                                                        found = previousState.found || found, 
+                                                        searching = false,
                                                         initial = false, setIntent = false,
                                                         clearSearchBox = false)
                                             } else {
                                                 previousState
                                             }
                                         }
-                                        is BookmarkAction -> run {
-                                            if (previousState.dictionarySearchQueryTool != null) {
-                                                val queryTool = previousState.dictionarySearchQueryTool
-                                                val maxTransaction = previousState.currentQuery
-
-                                                var current = 0
-
+                                        is BookmarkAction -> {
+                                            val queryTool = previousState.dictionarySearchQueryTool
+                                            if (queryTool != null) {
+                                                val term = previousState.term
                                                 databaseComponent.database.runInTransaction {
-                                                    queryTool.delete()
+                                                    if (term.isEmpty()) {
+                                                        queryTool.delete()
+                                                        queryTool.execute("", 0, filterBookmarks, filterMemos)
+                                                    } else {
+                                                        val db = databaseComponent.database.openHelper.writableDatabase
+                                                        db.execSQL("UPDATE DictionarySearchElement SET " +
+                                                                "bookmark = IFNULL((SELECT bookmark FROM DictionaryBookmark WHERE DictionaryBookmark.seq = DictionarySearchElement.seq), 0), " +
+                                                                "memo = (SELECT memo FROM DictionaryBookmark WHERE DictionaryBookmark.seq = DictionarySearchElement.seq) " +
+                                                                "WHERE ref = ?", arrayOf<Any>(key))
 
-                                                    while (current < maxTransaction) {
-                                                        queryTool.execute(previousState.term, current, filterBookmarks, filterMemos)
-                                                        current++
+                                                        if (filterBookmarks || filterMemos) {
+                                                            db.execSQL("DELETE FROM DictionarySearchElement WHERE ref = ? AND NOT (" +
+                                                                    "(? = 0 AND ? = 0) OR " +
+                                                                    "((? AND bookmark > 0) OR (? AND memo IS NOT NULL AND memo != ''))" +
+                                                                    ")",
+                                                                    arrayOf<Any>(key, if (filterBookmarks) 1 else 0, if (filterMemos) 1 else 0,
+                                                                            if (filterBookmarks) 1 else 0, if (filterMemos) 1 else 0))
+                                                        }
                                                     }
                                                 }
                                             }
 
                                             previousState
                                         }
-                                        is QueryClearAction -> run {
-                                            if (previousState.dictionarySearchQueryTool != null) {
+                                        is QueryClearAction -> {
+                                            previousState.dictionarySearchQueryTool?.let { tool ->
                                                 databaseComponent.database.runInTransaction {
-                                                    previousState.dictionarySearchQueryTool.delete()
+                                                    tool.delete()
                                                 }
                                             }
 
                                             previousState
                                         }
-                                        is QueryCloseAction -> run {
+                                        is QueryCloseAction -> {
                                             previousState.dictionarySearchQueryTool?.close()
 
                                             previousState.copy(closed = true, setIntent = false,
