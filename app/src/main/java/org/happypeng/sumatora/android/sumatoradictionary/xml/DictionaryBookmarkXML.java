@@ -19,7 +19,6 @@ package org.happypeng.sumatora.android.sumatoradictionary.xml;
 import android.util.Xml;
 
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserFactory;
 import org.xmlpull.v1.XmlSerializer;
@@ -46,6 +45,10 @@ public class DictionaryBookmarkXML {
         for (DictionaryBookmark ele : aBookmarks) {
             serializer.startTag(null, "bookmark");
             serializer.attribute(null, "seq", Long.toString(ele.seq));
+            serializer.attribute(null, "bookmark", Long.toString(ele.bookmark));
+            if (ele.memo != null) {
+                serializer.attribute(null, "memo", ele.memo);
+            }
 
             serializer.endTag(null, "bookmark");
         }
@@ -58,8 +61,8 @@ public class DictionaryBookmarkXML {
         fos.close();
     }
 
-    public static List<Long> readXML(InputStream aStream) {
-        List<Long> result = new LinkedList<Long>();
+    public static List<DictionaryBookmark> readXML(InputStream aStream) {
+        List<DictionaryBookmark> result = new LinkedList<>();
 
         try {
             XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
@@ -86,9 +89,13 @@ public class DictionaryBookmarkXML {
                     } else if (bookmarksOpen) {
                         if (xpp.getName().equals("bookmark")) {
                             String seqStr = xpp.getAttributeValue(null, "seq");
+                            String bookmarkStr = xpp.getAttributeValue(null, "bookmark");
+                            String memo = xpp.getAttributeValue(null, "memo");
 
                             if (seqStr != null) {
-                                result.add(Long.valueOf(seqStr));
+                                long seq = Long.parseLong(seqStr);
+                                long bookmark = bookmarkStr != null ? Long.parseLong(bookmarkStr) : 1;
+                                result.add(new DictionaryBookmark(seq, bookmark, memo));
                             } else {
                                 System.err.println("seq attribute not found for line " + xpp.getLineNumber());
                             }

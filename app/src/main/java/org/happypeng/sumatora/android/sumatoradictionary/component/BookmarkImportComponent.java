@@ -26,6 +26,7 @@ import androidx.sqlite.db.SupportSQLiteStatement;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmarkImport;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.xml.DictionaryBookmarkXML;
@@ -41,7 +42,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext;
 
 @Singleton
 public class BookmarkImportComponent {
-    private static String SQL_BOOKMARK_IMPORT_COMMIT = "INSERT OR IGNORE INTO DictionaryBookmark SELECT seq, bookmark, memo FROM DictionaryBookmarkImport WHERE ref = ?";
+    // Optimization: Use REPLACE to ensure memos are updated if the bookmark already exists
+    private static String SQL_BOOKMARK_IMPORT_COMMIT = "INSERT OR REPLACE INTO DictionaryBookmark SELECT seq, bookmark, memo FROM DictionaryBookmarkImport WHERE ref = ?";
 
     private final Context context;
     private final PersistentDatabaseComponent persistentDatabaseComponent;
@@ -93,21 +95,21 @@ public class BookmarkImportComponent {
             final String type = contentResolver.getType(uri);
 
             if ("text/xml".equals(type)) {
-                final List<Long> seqs = DictionaryBookmarkXML.readXML(is);
+                // Fix: Use the new return type that includes bookmark status and memo
+                final List<DictionaryBookmark> bookmarks = DictionaryBookmarkXML.readXML(is);
                 is.close();
 
-                if (seqs == null) {
+                if (bookmarks == null) {
                     // TBD: error management
-
                     return;
                 }
 
                 database.runInTransaction(() -> {
                     database.dictionaryBookmarkImportDao().delete(key);
 
-                    for (Long seq : seqs) {
+                    for (DictionaryBookmark b : bookmarks) {
                         database.dictionaryBookmarkImportDao().insert(
-                                new DictionaryBookmarkImport(key, seq, 1, null));
+                                new DictionaryBookmarkImport(key, b.seq, b.bookmark, b.memo));
                     }
                 });
             } else if ("application/json".equals(type)) {
@@ -115,14 +117,13 @@ public class BookmarkImportComponent {
                 final List<DictionaryBookmarkImport> bookmarks = mapper.readValue(is, new TypeReference<List<DictionaryBookmarkImport>>() {});
                 is.close();
 
-                for (DictionaryBookmarkImport dictionaryBookmarkImport : bookmarks) {
-                    dictionaryBookmarkImport.ref = key;
-                }
-
                 if (bookmarks == null) {
                     // TBD: error management
-
                     return;
+                }
+
+                for (DictionaryBookmarkImport dictionaryBookmarkImport : bookmarks) {
+                    dictionaryBookmarkImport.ref = key;
                 }
 
                 database.runInTransaction(() -> {
@@ -135,7 +136,6 @@ public class BookmarkImportComponent {
             // mStatus.postValue(STATUS_PROCESSED);
         } catch (IOException e) {
             System.err.println(e.toString());
-
             // TBD: error management
         }
     }

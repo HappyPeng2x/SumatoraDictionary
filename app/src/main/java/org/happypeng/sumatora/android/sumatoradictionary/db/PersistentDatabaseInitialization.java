@@ -79,8 +79,15 @@ public abstract class PersistentDatabaseInitialization {
 
         if (cur != null) {
             if (cur.getCount() != 0) {
+                int seqIndex = cur.getColumnIndex("seq");
+                int bookmarkIndex = cur.getColumnIndex("bookmark");
+                int memoIndex = cur.getColumnIndex("memo");
+
                 while (cur.moveToNext()) {
-                    list.add(new DictionaryBookmark(cur.getLong(0), 1, null));
+                    long seq = seqIndex != -1 ? cur.getLong(seqIndex) : cur.getLong(0);
+                    long bookmark = bookmarkIndex != -1 ? cur.getLong(bookmarkIndex) : 1;
+                    String memo = memoIndex != -1 ? cur.getString(memoIndex) : null;
+                    list.add(new DictionaryBookmark(seq, bookmark, memo));
                 }
             }
 
@@ -181,17 +188,7 @@ public abstract class PersistentDatabaseInitialization {
             try {
                 FileInputStream fis = new FileInputStream(bookmarksBackup);
 
-                List<Long> bSeqs = DictionaryBookmarkXML.readXML(fis);
-
-                if (bSeqs != null) {
-                    resBookmarks = new LinkedList<>();
-
-                    for (Long seq : bSeqs) {
-                        DictionaryBookmark b = new DictionaryBookmark();
-                        b.seq = seq;
-                        resBookmarks.add(b);
-                    }
-                }
+                resBookmarks = DictionaryBookmarkXML.readXML(fis);
 
                 fis.close();
             } catch (IOException ignored) {
