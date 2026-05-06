@@ -42,8 +42,15 @@ import dagger.hilt.android.qualifiers.ApplicationContext;
 
 @Singleton
 public class BookmarkImportComponent {
-    // Optimization: Use REPLACE to ensure memos are updated if the bookmark already exists
-    private static String SQL_BOOKMARK_IMPORT_COMMIT = "INSERT OR REPLACE INTO DictionaryBookmark SELECT seq, bookmark, memo FROM DictionaryBookmarkImport WHERE ref = ?";
+    // Optimization: Use UPSERT (ON CONFLICT) for clever merging rules.
+    // - bookmark: true if true in either table (using MAX).
+    // - memo: updated only if the imported memo is not empty.
+    private static String SQL_BOOKMARK_IMPORT_COMMIT =
+            "INSERT INTO DictionaryBookmark (seq, bookmark, memo) " +
+            "SELECT seq, bookmark, memo FROM DictionaryBookmarkImport WHERE ref = ? " +
+            "ON CONFLICT(seq) DO UPDATE SET " +
+            "bookmark = MAX(DictionaryBookmark.bookmark, excluded.bookmark), " +
+            "memo = CASE WHEN excluded.memo IS NOT NULL AND excluded.memo != '' THEN excluded.memo ELSE DictionaryBookmark.memo END";
 
     private final Context context;
     private final PersistentDatabaseComponent persistentDatabaseComponent;
