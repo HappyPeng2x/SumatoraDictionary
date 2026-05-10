@@ -49,11 +49,11 @@ public class BasicSearchTest {
     @Test
     public void basicSearchTest() {
         ViewInteraction searchAutoComplete = onView(
-                allOf(withId(R.id.search_src_text),
+                allOf(withId(androidx.appcompat.R.id.search_src_text),
                         childAtPosition(
-                                allOf(withId(R.id.search_plate),
+                                allOf(withId(androidx.appcompat.R.id.search_plate),
                                         childAtPosition(
-                                                withId(R.id.search_edit_frame),
+                                                withId(androidx.appcompat.R.id.search_edit_frame),
                                                 1)),
                                 0),
                         isDisplayed()));

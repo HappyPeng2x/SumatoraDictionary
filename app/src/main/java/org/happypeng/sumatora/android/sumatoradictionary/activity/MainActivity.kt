@@ -53,6 +53,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    fun sayHello() {
+        // Dummy method for testing
+    }
+
     private fun startActivityWithDelay(activity: Class<*>) {
         Handler().postDelayed({ startActivity(Intent(this@MainActivity, activity)) }, DELAY_MILLIS.toLong())
     }

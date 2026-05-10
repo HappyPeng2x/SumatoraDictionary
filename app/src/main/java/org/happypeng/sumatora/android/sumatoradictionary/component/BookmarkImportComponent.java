@@ -99,7 +99,16 @@ public class BookmarkImportComponent {
         try {
             final ContentResolver contentResolver = context.getContentResolver();
             final InputStream is = contentResolver.openInputStream(uri);
-            final String type = contentResolver.getType(uri);
+            String type = contentResolver.getType(uri);
+
+            // Fallback for file URIs where getType() might return null
+            if (type == null && uri.getPath() != null) {
+                if (uri.getPath().endsWith(".json")) {
+                    type = "application/json";
+                } else if (uri.getPath().endsWith(".xml")) {
+                    type = "text/xml";
+                }
+            }
 
             if ("text/xml".equals(type)) {
                 // Fix: Use the new return type that includes bookmark status and memo
