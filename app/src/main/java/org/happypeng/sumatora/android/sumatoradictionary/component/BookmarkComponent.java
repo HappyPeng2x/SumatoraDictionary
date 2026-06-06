@@ -60,7 +60,7 @@ public class BookmarkComponent {
         Completable.fromAction(() -> {
             final DictionaryBookmarkDao dictionaryBookmarkDao = persistentDatabaseComponent.getDatabase().dictionaryBookmarkDao();
 
-            if (bookmark.bookmark > 0 || (bookmark.memo != null && !bookmark.memo.isEmpty())) {
+            if (bookmark.bookmark > 0 || (bookmark.memo != null && !bookmark.memo.isEmpty()) || (bookmark.tags != null && !bookmark.tags.isEmpty())) {
                 dictionaryBookmarkDao.insert(bookmark);
             } else {
                 dictionaryBookmarkDao.delete(bookmark);

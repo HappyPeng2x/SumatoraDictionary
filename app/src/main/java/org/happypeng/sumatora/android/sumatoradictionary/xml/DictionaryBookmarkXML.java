@@ -49,6 +49,9 @@ public class DictionaryBookmarkXML {
             if (ele.memo != null) {
                 serializer.attribute(null, "memo", ele.memo);
             }
+            if (ele.tags != null) {
+                serializer.attribute(null, "tags", ele.tags);
+            }
 
             serializer.endTag(null, "bookmark");
         }
@@ -91,11 +94,12 @@ public class DictionaryBookmarkXML {
                             String seqStr = xpp.getAttributeValue(null, "seq");
                             String bookmarkStr = xpp.getAttributeValue(null, "bookmark");
                             String memo = xpp.getAttributeValue(null, "memo");
+                            String tags = xpp.getAttributeValue(null, "tags");
 
                             if (seqStr != null) {
                                 long seq = Long.parseLong(seqStr);
                                 long bookmark = bookmarkStr != null ? Long.parseLong(bookmarkStr) : 1;
-                                result.add(new DictionaryBookmark(seq, bookmark, memo));
+                                result.add(new DictionaryBookmark(seq, bookmark, memo, tags));
                             } else {
                                 System.err.println("seq attribute not found for line " + xpp.getLineNumber());
                             }

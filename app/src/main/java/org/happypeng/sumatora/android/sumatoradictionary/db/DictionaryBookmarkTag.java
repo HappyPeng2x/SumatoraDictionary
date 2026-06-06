@@ -16,40 +16,20 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.db;
 
+import androidx.annotation.NonNull;
 import androidx.room.Entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
-
-@JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonIgnoreProperties(ignoreUnknown = true)
-@Entity(primaryKeys = {"seq"})
-public class DictionaryBookmark {
-    @JsonProperty("seq")
+@Entity(primaryKeys = {"seq", "tag"})
+public class DictionaryBookmarkTag {
     public long seq;
 
-    @JsonProperty("bookmark")
-    public long bookmark;
+    @NonNull
+    public String tag;
 
-    @JsonProperty("memo")
-    public String memo;
+    public DictionaryBookmarkTag() { tag = ""; }
 
-    @JsonProperty("tags")
-    public String tags;
-
-    public DictionaryBookmark() {}
-
-    public DictionaryBookmark(long aSeq, long aBookmark, String aMemo) {
+    public DictionaryBookmarkTag(long aSeq, @NonNull String aTag) {
         seq = aSeq;
-        bookmark = aBookmark;
-        memo = aMemo;
-    }
-
-    public DictionaryBookmark(long aSeq, long aBookmark, String aMemo, String aTags) {
-        seq = aSeq;
-        bookmark = aBookmark;
-        memo = aMemo;
-        tags = aTags;
+        tag = aTag;
     }
 }

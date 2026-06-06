@@ -312,10 +312,10 @@ public abstract class PersistentDatabaseInitialization {
 
         // Clean bookmark table
         persistentDatabase.getOpenHelper().getWritableDatabase()
-                .execSQL("DELETE FROM DictionaryBookmark WHERE bookmark = 0 AND IFNULL(memo, '') = ''");
+                .execSQL("DELETE FROM DictionaryBookmark WHERE bookmark = 0 AND IFNULL(memo, '') = '' AND IFNULL(tags, '') = ''");
 
         persistentDatabase.getOpenHelper().getWritableDatabase()
-                .execSQL("UPDATE DictionaryBookmark SET bookmark = 1 WHERE IFNULL(memo, '') != ''");
+                .execSQL("UPDATE DictionaryBookmark SET bookmark = 1 WHERE IFNULL(memo, '') != '' OR IFNULL(tags, '') != ''");
 
         // No persistence - clear display on initialization
         persistentDatabase.dictionarySearchElementDao().deleteAll();

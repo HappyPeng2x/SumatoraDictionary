@@ -14,6 +14,6 @@ public interface DictionarySearchElementDao {
     @Query("DELETE FROM DictionarySearchElement")
     void deleteAll();
 
-    @Query("UPDATE DictionarySearchElement SET bookmark = :bookmark, memo = :memo WHERE seq = :seq")
-    void updateBookmarkStatus(long seq, long bookmark, String memo);
+    @Query("UPDATE DictionarySearchElement SET bookmark = :bookmark, memo = :memo, tags = :tags WHERE seq = :seq")
+    void updateBookmarkStatus(long seq, long bookmark, String memo, String tags);
 }

@@ -37,6 +37,9 @@ public class DictionaryBookmarkImport {
     @JsonProperty("memo")
     public String memo;
 
+    @JsonProperty("tags")
+    public String tags;
+
     public DictionaryBookmarkImport() { super(); }
 
     public DictionaryBookmarkImport(int aRef, long aSeq, long aBookmark, String aMemo) {
@@ -46,5 +49,15 @@ public class DictionaryBookmarkImport {
         seq = aSeq;
         memo = aMemo;
         bookmark = aBookmark;
+    }
+
+    public DictionaryBookmarkImport(int aRef, long aSeq, long aBookmark, String aMemo, String aTags) {
+        super();
+
+        ref = aRef;
+        seq = aSeq;
+        memo = aMemo;
+        bookmark = aBookmark;
+        tags = aTags;
     }
 }

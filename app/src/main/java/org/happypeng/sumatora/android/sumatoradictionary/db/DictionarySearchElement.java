@@ -42,6 +42,7 @@ public class DictionarySearchElement {
     public String example_translations;
     public long bookmark;
     public String memo;
+    public String tags;
 
     public DictionarySearchElement() { }
 
@@ -81,6 +82,7 @@ public class DictionarySearchElement {
 
     public long getBookmark() { return bookmark; }
     public String getMemo() { return memo; }
+    public String getTags() { return tags; }
 
     public String getPos() { return pos; }
     public String getXref() { return xref; }
