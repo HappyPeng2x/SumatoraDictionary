@@ -108,7 +108,11 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
 
         pagedListAdapter =
                 new DictionaryPagedListAdapter(bookmarkImportModel.getDisableBookmarkButton(),
-                        bookmarkImportModel.getDisableMemoEdit(), (seq, bookmark, memo) -> Unit.INSTANCE,
+                        bookmarkImportModel.getDisableMemoEdit(),
+                        bookmarkImportModel.getDisableTagEdit(),
+                        (seq, bookmark, memo) -> Unit.INSTANCE,
+                        (seq, tags) -> Unit.INSTANCE,
+                        () -> java.util.Collections.emptyList(),
                         new DictionarySearchElementViewHolder.Colors(ContextCompat.getColor(this, R.color.text_background_primary),
                                 ContextCompat.getColor(this, R.color.text_background_primary_backup),
                                 ContextCompat.getColor(this,

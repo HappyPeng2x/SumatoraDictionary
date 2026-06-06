@@ -25,7 +25,7 @@ class BookmarkImportModel @Inject constructor(private val bookmarkImportComponen
                                                        savedStateHandle: SavedStateHandle?) :
         BaseFragmentModel(persistentDatabaseComponent, languageSettingsComponent,
                 { component: PersistentDatabaseComponent, callback: PagedList.BoundaryCallback<DictionarySearchElement>? ->
-                    component.getSearchElements(KEY, callback) }, false, true), MviViewModel<ImportIntent, ImportState> {
+                    component.getSearchElements(KEY, callback) }, false, true, true), MviViewModel<ImportIntent, ImportState> {
     companion object {
         const val KEY = 3
     }

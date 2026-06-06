@@ -28,6 +28,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmarkImport;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmarkTag;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.xml.DictionaryBookmarkXML;
 
@@ -44,13 +45,14 @@ import dagger.hilt.android.qualifiers.ApplicationContext;
 public class BookmarkImportComponent {
     // Optimization: Use UPSERT (ON CONFLICT) for clever merging rules.
     // - bookmark: true if true in either table (using MAX).
-    // - memo: updated only if the imported memo is not empty.
+    // - memo/tags: updated only if the imported value is not empty.
     private static String SQL_BOOKMARK_IMPORT_COMMIT =
-            "INSERT INTO DictionaryBookmark (seq, bookmark, memo) " +
-            "SELECT seq, bookmark, memo FROM DictionaryBookmarkImport WHERE ref = ? " +
+            "INSERT INTO DictionaryBookmark (seq, bookmark, memo, tags) " +
+            "SELECT seq, bookmark, memo, tags FROM DictionaryBookmarkImport WHERE ref = ? " +
             "ON CONFLICT(seq) DO UPDATE SET " +
             "bookmark = MAX(DictionaryBookmark.bookmark, excluded.bookmark), " +
-            "memo = CASE WHEN excluded.memo IS NOT NULL AND excluded.memo != '' THEN excluded.memo ELSE DictionaryBookmark.memo END";
+            "memo = CASE WHEN excluded.memo IS NOT NULL AND excluded.memo != '' THEN excluded.memo ELSE DictionaryBookmark.memo END, " +
+            "tags = CASE WHEN excluded.tags IS NOT NULL AND excluded.tags != '' THEN excluded.tags ELSE DictionaryBookmark.tags END";
 
     private final Context context;
     private final PersistentDatabaseComponent persistentDatabaseComponent;
@@ -81,7 +83,19 @@ public class BookmarkImportComponent {
             commitQuery.bindLong(1, ref);
             commitQuery.executeInsert();
 
+            final List<DictionaryBookmarkImport> imported = database.dictionaryBookmarkImportDao().getByRef(ref);
             database.dictionaryBookmarkImportDao().delete(ref);
+
+            for (DictionaryBookmarkImport imp : imported) {
+                if (imp.tags != null && !imp.tags.isEmpty()) {
+                    database.dictionaryBookmarkTagDao().deleteTagsForSeq(imp.seq);
+                    final List<DictionaryBookmarkTag> tagEntities = new java.util.ArrayList<>();
+                    for (String t : imp.tags.split(",")) {
+                        if (!t.isEmpty()) tagEntities.add(new DictionaryBookmarkTag(imp.seq, t));
+                    }
+                    database.dictionaryBookmarkTagDao().insertMany(tagEntities);
+                }
+            }
         });
     }
 
@@ -125,7 +139,7 @@ public class BookmarkImportComponent {
 
                     for (DictionaryBookmark b : bookmarks) {
                         database.dictionaryBookmarkImportDao().insert(
-                                new DictionaryBookmarkImport(key, b.seq, b.bookmark, b.memo));
+                                new DictionaryBookmarkImport(key, b.seq, b.bookmark, b.memo, b.tags));
                     }
                 });
             } else if ("application/json".equals(type)) {

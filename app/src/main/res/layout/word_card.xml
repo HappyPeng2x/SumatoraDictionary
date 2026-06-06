@@ -43,6 +43,34 @@
                 android:hint="Memo"
                 android:inputType="textAutoCorrect|textMultiLine"
                 android:visibility="gone" />
+
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/word_card_tags"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingStart="4dp"
+                android:paddingEnd="4dp"
+                android:paddingTop="2dp"
+                android:paddingBottom="2dp"
+                app:chipSpacingVertical="2dp"
+                android:visibility="gone" />
+
+            <AutoCompleteTextView
+                android:id="@+id/word_card_tag_input"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@color/text_background_memo"
+                app:fontFamily="sans-serif"
+                android:padding="6dp"
+                android:textColor="@color/text_foreground_primary"
+                android:textSize="14sp"
+                android:importantForAutofill="no"
+                android:hint="@string/tag_input_hint"
+                android:inputType="text|textNoSuggestions"
+                android:imeOptions="actionDone"
+                android:completionThreshold="1"
+                android:visibility="gone" />
+
         </LinearLayout>
 
         <LinearLayout
@@ -86,6 +114,18 @@
                 android:tint="@color/text_foreground_primary"
                 android:src="@drawable/ic_delete_24px"
                 android:visibility="gone" />
+
+            <ImageButton
+                android:id="@+id/word_card_tag_icon"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@null"
+                android:paddingTop="5dp"
+                android:paddingRight="5dp"
+                android:paddingLeft="5dp"
+                android:contentDescription="@string/tag_icon_description"
+                android:tint="@color/text_foreground_primary"
+                android:src="@drawable/ic_outline_class_24px"/>
 
         </LinearLayout>
 

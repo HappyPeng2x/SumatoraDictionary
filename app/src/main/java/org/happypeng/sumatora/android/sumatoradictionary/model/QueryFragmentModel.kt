@@ -37,7 +37,7 @@ class QueryFragmentModel @Inject constructor(bookmarkComponent: BookmarkComponen
         bookmarkShareComponent,
         { component: PersistentDatabaseComponent, callback: BoundaryCallback<DictionarySearchElement>? -> component.getSearchElements(KEY, callback) },
         KEY, false, false, TITLE, false,
-        false, false, false,
+        false, false, false, false,
         savedStateHandle.get(STATUS_KEY)
 ) {
     companion object {

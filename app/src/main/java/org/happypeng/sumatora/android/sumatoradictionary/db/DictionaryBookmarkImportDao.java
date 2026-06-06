@@ -27,6 +27,9 @@ import androidx.room.Query;
 
 @Dao
 public interface DictionaryBookmarkImportDao {
+    @Query("SELECT * FROM DictionaryBookmarkImport WHERE ref = :ref")
+    List<DictionaryBookmarkImport> getByRef(int ref);
+
     @Query("DELETE FROM DictionaryBookmarkImport WHERE ref=:ref")
     void delete(int ref);
 

@@ -182,7 +182,8 @@ class QueryActionProcessorHolder(private val databaseComponent: PersistentDataba
                                                         val db = databaseComponent.database.openHelper.writableDatabase
                                                         db.execSQL("UPDATE DictionarySearchElement SET " +
                                                                 "bookmark = IFNULL((SELECT bookmark FROM DictionaryBookmark WHERE DictionaryBookmark.seq = DictionarySearchElement.seq), 0), " +
-                                                                "memo = (SELECT memo FROM DictionaryBookmark WHERE DictionaryBookmark.seq = DictionarySearchElement.seq) " +
+                                                                "memo = (SELECT memo FROM DictionaryBookmark WHERE DictionaryBookmark.seq = DictionarySearchElement.seq), " +
+                                                                "tags = (SELECT tags FROM DictionaryBookmark WHERE DictionaryBookmark.seq = DictionarySearchElement.seq) " +
                                                                 "WHERE ref = ?", arrayOf<Any>(key))
 
                                                         if (filterBookmarks || filterMemos) {

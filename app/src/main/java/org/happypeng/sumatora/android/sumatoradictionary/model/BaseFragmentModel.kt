@@ -39,7 +39,8 @@ abstract class BaseFragmentModel protected constructor(protected val persistentD
                                                        pagedListFactory: (PersistentDatabaseComponent, BoundaryCallback<DictionarySearchElement>?) ->
                                                        LiveData<PagedList<DictionarySearchElement>>,
                                                        val disableBookmarkButton: Boolean,
-                                                       val disableMemoEdit: Boolean): ViewModel() {
+                                                       val disableMemoEdit: Boolean,
+                                                       val disableTagEdit: Boolean): ViewModel() {
     class ScrolledEvent(val entryOrder: Int)
 
     private val clearedSubject: Subject<Unit> = PublishSubject.create()

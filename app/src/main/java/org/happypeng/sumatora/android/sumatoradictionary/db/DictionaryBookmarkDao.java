@@ -47,6 +47,9 @@ public interface DictionaryBookmarkDao {
     @Query("DELETE FROM DictionaryBookmark WHERE seq = :seq")
     void delete(long seq);
 
+    @Query("SELECT * FROM DictionaryBookmark WHERE seq = :seq")
+    DictionaryBookmark getBySeq(long seq);
+
     // This query is used to get a LiveData updated when the table is modified
     @Query("SELECT seq FROM DictionaryBookmark LIMIT 1")
     LiveData<Long> getFirstLive();

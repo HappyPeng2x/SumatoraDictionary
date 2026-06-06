@@ -131,7 +131,11 @@ public abstract class BaseFragment extends Fragment {
 
         pagedListAdapter =
                 new DictionaryPagedListAdapter(queryFragmentModel.getDisableBookmarkButton(),
-                        queryFragmentModel.getDisableMemoEdit(), queryFragmentModel.getCommitBookmarksFun(),
+                        queryFragmentModel.getDisableMemoEdit(),
+                        queryFragmentModel.getDisableTagEdit(),
+                        queryFragmentModel.getCommitBookmarksFun(),
+                        queryFragmentModel.getCommitTagsFun(),
+                        queryFragmentModel.getAvailableTagsFun(),
                         new DictionarySearchElementViewHolder.Colors(ContextCompat.getColor(getContext(),
                                 R.color.text_background_primary),
                                 ContextCompat.getColor(getContext(),

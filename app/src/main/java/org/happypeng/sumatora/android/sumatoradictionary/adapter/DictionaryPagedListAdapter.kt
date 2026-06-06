@@ -31,13 +31,19 @@ import java.util.*
 
 class DictionaryPagedListAdapter(aDisableBookmarkButton: Boolean,
                                  aDisableMemoEdit: Boolean,
+                                 aDisableTagEdit: Boolean,
                                  commitConsumer: (Long, Long, String?) -> Unit,
+                                 commitTagsConsumer: (Long, String) -> Unit,
+                                 tagSuggestionsProvider: () -> List<String>,
                                  private val holderColors: DictionarySearchElementViewHolder.Colors) :
         PagedListAdapter<DictionarySearchElement?, DictionarySearchElementViewHolder>(DictionarySearchElementDiffUtil.getDiffUtil()) {
     private val entities = JMDICT_ENTITIES
     private val disableBookmarkButton: Boolean
     private val disableMemoEdit: Boolean
+    private val disableTagEdit: Boolean
     private val commitConsumer: (Long, Long, String?) -> Unit
+    private val commitTagsConsumer: (Long, String) -> Unit
+    private val tagSuggestionsProvider: () -> List<String>
     private val intentSubject: PublishSubject<DictionaryPagedListAdapterIntent> = PublishSubject.create()
 
     fun close() {
@@ -53,8 +59,9 @@ class DictionaryPagedListAdapter(aDisableBookmarkButton: Boolean,
         val layoutInflater = LayoutInflater.from(parent.context)
         val wordCardBinding = WordCardBinding.inflate(layoutInflater)
         return DictionarySearchElementViewHolder(wordCardBinding,
-                entities, disableBookmarkButton, disableMemoEdit,
-                commitConsumer, intentSubject, holderColors)
+                entities, disableBookmarkButton, disableMemoEdit, disableTagEdit,
+                commitConsumer, commitTagsConsumer, tagSuggestionsProvider,
+                intentSubject, holderColors)
     }
 
     override fun onBindViewHolder(holder: DictionarySearchElementViewHolder, position: Int) {
@@ -68,7 +75,10 @@ class DictionaryPagedListAdapter(aDisableBookmarkButton: Boolean,
         setHasStableIds(true)
         disableBookmarkButton = aDisableBookmarkButton
         disableMemoEdit = aDisableMemoEdit
+        disableTagEdit = aDisableTagEdit
         this.commitConsumer = commitConsumer
+        this.commitTagsConsumer = commitTagsConsumer
+        this.tagSuggestionsProvider = tagSuggestionsProvider
     }
 
     override fun onViewRecycled(holder: DictionarySearchElementViewHolder) {

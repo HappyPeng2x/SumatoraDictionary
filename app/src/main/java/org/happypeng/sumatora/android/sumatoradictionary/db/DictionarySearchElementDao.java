@@ -16,4 +16,7 @@ public interface DictionarySearchElementDao {
 
     @Query("UPDATE DictionarySearchElement SET bookmark = :bookmark, memo = :memo, tags = :tags WHERE seq = :seq")
     void updateBookmarkStatus(long seq, long bookmark, String memo, String tags);
+
+    @Query("UPDATE DictionarySearchElement SET tags = :tags WHERE seq = :seq")
+    void updateTags(long seq, String tags);
 }

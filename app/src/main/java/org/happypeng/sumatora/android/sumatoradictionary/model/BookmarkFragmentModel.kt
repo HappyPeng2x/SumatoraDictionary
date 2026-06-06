@@ -44,6 +44,7 @@ class BookmarkFragmentModel @Inject constructor(bookmarkComponent: BookmarkCompo
         true,
         false,
         false,
+        false,
         savedStateHandle.get(QueryFragmentModel.STATUS_KEY)
 ) {
     companion object {
