@@ -54,8 +54,17 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
 
     private var subscription: Disposable? = null
     private var tagLoadSubscription: Disposable? = null
-    private var isTagEditing = false
+    // editingSeq is the single source of truth for whether the tag editor is open and for which
+    // entry. Unlike isTagEditing (a boolean), it cannot be inadvertently reset by bindTo() because
+    // it is only written in openTagEditor(), closeTagEditor(), and the else-branch of bindTo()
+    // (which handles a genuine entry change). wasEditingSameEntry is derived purely from this field.
+    private var editingSeq: Long? = null
+    // True only during the subscription?.dispose() call inside bindTo() when rebinding the same
+    // entry. Lets doFinally distinguish a rebind (skip commit) from a recycle or entry-change
+    // (commit in-progress tags).
+    private var isRebindingSameEntry = false
     private val currentTags = mutableListOf<String>()
+    private var currentEntry: DictionarySearchElement? = null
 
     private fun openMemo() {
         wordCardBinding.wordCardMemo.visibility = View.VISIBLE
@@ -92,6 +101,7 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
                     chip.setOnCloseIconClickListener {
                         currentTags.remove(tag)
                         rebuildChips(closeable = true)
+                        commitCurrentTags()
                     }
                 }
                 wordCardBinding.wordCardTags.addView(chip)
@@ -99,8 +109,15 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
         }
     }
 
+    private fun commitCurrentTags() {
+        currentEntry?.let { entry ->
+            val tagsStr = currentTags.joinToString(",")
+            commitTagsConsumer.invoke(entry.seq, tagsStr)
+        }
+    }
+
     private fun openTagEditor() {
-        isTagEditing = true
+        editingSeq = currentEntry?.seq
         wordCardBinding.wordCardTagInput.visibility = View.VISIBLE
         rebuildChips(closeable = true)
         tagLoadSubscription?.dispose()
@@ -116,7 +133,8 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
     }
 
     private fun closeTagEditor(entry: DictionarySearchElement) {
-        isTagEditing = false
+        addPendingTag()
+        editingSeq = null
         wordCardBinding.wordCardTagInput.setText("")
         wordCardBinding.wordCardTagInput.dismissDropDown()
         wordCardBinding.wordCardTagInput.visibility = View.GONE
@@ -130,27 +148,33 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
     }
 
     fun recycle() {
-        subscription?.dispose()
+        subscription?.dispose()   // doFinally runs here; commits tags if editor was open
+        editingSeq = null
         subscription = null
         tagLoadSubscription?.dispose()
         tagLoadSubscription = null
     }
 
     fun bindTo(entry: DictionarySearchElement) {
+        val wasEditingSameEntry = editingSeq == entry.seq
+        currentEntry = entry
+        isRebindingSameEntry = wasEditingSameEntry
         subscription?.dispose()
+        isRebindingSameEntry = false
 
         // doFinally captures entry from the previous bindTo call (closed-over val).
-        // At dispose time, isTagEditing and currentTags still reflect that previous entry.
-        subscription = intentSubject.takeUntil { when (it) {
-            DictionaryPagedListAdapterCloseIntent -> true
-            else -> false
-        } }.doFinally {
+        // At dispose time, editingSeq and currentTags still reflect that previous entry.
+        subscription = intentSubject.takeUntil {
+            it == DictionaryPagedListAdapterCloseIntent
+        }.doFinally {
             val memo = wordCardBinding.wordCardMemo.editableText.toString()
             if (memo != entry.memo && !(entry.memo == null && memo == "")) {
                 commitConsumer.invoke(entry.seq, entry.bookmark,
                     wordCardBinding.wordCardMemo.editableText.toString())
             }
-            if (isTagEditing) {
+            // Commit in-progress tags only when truly leaving this entry (recycle or entry-change),
+            // not on a same-entry DB-triggered rebind.
+            if (editingSeq != null && !isRebindingSameEntry) {
                 val tagsStr = currentTags.joinToString(",")
                 if (tagsStr != (entry.tags ?: "")) {
                     commitTagsConsumer.invoke(entry.seq, tagsStr)
@@ -158,10 +182,9 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
             }
         }.subscribe()
 
-        // Reset tag state before setting up new entry
+        // editingSeq is NOT reset here; it survives same-entry rebinds.
         tagLoadSubscription?.dispose()
         tagLoadSubscription = null
-        isTagEditing = false
 
         if (entry.getLang() != entry.langSetting) {
             wordCardBinding.wordCardView.setBackgroundColor(colors.backupLang)
@@ -212,18 +235,27 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
             }
         }
 
-        // Tags: initialise chip list and display
-        currentTags.clear()
-        val entryTags = entry.getTags()
-        if (!entryTags.isNullOrEmpty()) {
-            currentTags.addAll(entryTags.split(",").filter { it.isNotBlank() })
+        // If the same entry is being rebound (e.g. DB-triggered RecyclerView refresh) while
+        // the editor is open, preserve the in-progress chip state and keep the editor open.
+        // editingSeq is the ground truth — it survives intermediate bindTo() calls and is never
+        // reset by them, only by closeTagEditor() or a genuine entry change.
+        if (wasEditingSameEntry) {
+            wordCardBinding.wordCardTagInput.visibility = View.VISIBLE
+            rebuildChips(closeable = true)
+        } else {
+            editingSeq = null
+            currentTags.clear()
+            val entryTags = entry.getTags()
+            if (!entryTags.isNullOrEmpty()) {
+                currentTags.addAll(entryTags.split(",").filter { it.isNotBlank() })
+            }
+            wordCardBinding.wordCardTagInput.setText("")
+            wordCardBinding.wordCardTagInput.visibility = View.GONE
+            rebuildChips(closeable = false)
         }
-        wordCardBinding.wordCardTagInput.setText("")
-        wordCardBinding.wordCardTagInput.visibility = View.GONE
-        rebuildChips(closeable = false)
 
         wordCardBinding.wordCardTagIcon.setOnClickListener {
-            if (isTagEditing) {
+            if (editingSeq != null) {
                 closeTagEditor(entry)
             } else {
                 openTagEditor()
@@ -231,7 +263,6 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
             }
         }
 
-        // Confirm a typed tag on IME Done
         wordCardBinding.wordCardTagInput.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_DONE) {
                 addPendingTag()
@@ -251,6 +282,7 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
         if (tagText.isNotEmpty() && !currentTags.contains(tagText)) {
             currentTags.add(tagText)
             rebuildChips(closeable = true)
+            commitCurrentTags()
         }
         wordCardBinding.wordCardTagInput.setText("")
     }

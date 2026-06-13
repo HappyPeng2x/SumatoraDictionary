@@ -18,16 +18,22 @@ package org.happypeng.sumatora.android.sumatoradictionary.fragment;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.Spanned;
+import android.text.TextWatcher;
+import android.text.style.ForegroundColorSpan;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.ListPopupWindow;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.DividerItemDecoration;
@@ -43,8 +49,17 @@ import org.happypeng.sumatora.android.sumatoradictionary.model.viewbinding.Fragm
 import org.happypeng.sumatora.android.sumatoradictionary.model.viewbinding.QueryMenu;
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionarySearchElementViewHolder;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import dagger.hilt.android.AndroidEntryPoint;
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
+import io.reactivex.rxjava3.core.Single;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
+import io.reactivex.rxjava3.disposables.Disposable;
+import io.reactivex.rxjava3.schedulers.Schedulers;
 import io.reactivex.rxjava3.subjects.PublishSubject;
 import io.reactivex.rxjava3.subjects.Subject;
 
@@ -57,6 +72,16 @@ public abstract class BaseFragment extends Fragment {
     protected CompositeDisposable fragmentAutoDisposable = new CompositeDisposable();
 
     private Subject<String> intentSearchTerm = PublishSubject.create();
+
+    private ListPopupWindow tagCompletionPopup;
+    private Disposable tagLookupDisposable;
+    private boolean isInsertingTag = false;
+
+    private static final Pattern TAG_PATTERN = Pattern.compile("#[^\\s#,]+");
+
+    private static class TagForegroundSpan extends ForegroundColorSpan {
+        TagForegroundSpan(int color) { super(color); }
+    }
 
     protected Bundle savedInstanceState;
 
@@ -235,6 +260,8 @@ public abstract class BaseFragment extends Fragment {
             queryMenu.restoreInstanceState(savedInstanceState);
         }
 
+        setupTagCompletion(queryFragmentModel);
+
         focusSearchView();
     }
 
@@ -264,9 +291,143 @@ public abstract class BaseFragment extends Fragment {
         }
     }
 
+    private void setupTagCompletion(BaseQueryFragmentModel model) {
+        if (queryMenu == null || queryMenu.searchAutoComplete == null) return;
+
+        tagCompletionPopup = new ListPopupWindow(requireContext());
+        tagCompletionPopup.setAnchorView(queryMenu.searchAutoComplete);
+        tagCompletionPopup.setWidth(ListPopupWindow.WRAP_CONTENT);
+        tagCompletionPopup.setModal(false);
+
+        tagCompletionPopup.setOnItemClickListener((parent, view, position, id) -> {
+            String selectedTag = (String) parent.getItemAtPosition(position);
+            isInsertingTag = true;
+            insertTagIntoSearchBox(selectedTag);
+            tagCompletionPopup.dismiss();
+            queryMenu.searchAutoComplete.post(() -> isInsertingTag = false);
+        });
+
+        queryMenu.searchAutoComplete.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                applyTagSpans(s);
+                if (!isInsertingTag) {
+                    int cursor = queryMenu.searchAutoComplete.getSelectionStart();
+                    showTagCompletion(s.toString(), cursor, model);
+                }
+            }
+        });
+
+        // Apply spans to any initial text already in the search box.
+        applyTagSpans(queryMenu.searchAutoComplete.getText());
+    }
+
+    private void applyTagSpans(Editable s) {
+        if (s == null || getContext() == null) return;
+        TagForegroundSpan[] existing = s.getSpans(0, s.length(), TagForegroundSpan.class);
+        for (TagForegroundSpan span : existing) {
+            s.removeSpan(span);
+        }
+        int tagColor = ContextCompat.getColor(requireContext(), R.color.colorAccent);
+        Matcher matcher = TAG_PATTERN.matcher(s);
+        while (matcher.find()) {
+            s.setSpan(new TagForegroundSpan(tagColor),
+                    matcher.start(), matcher.end(),
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+    }
+
+    private void showTagCompletion(String text, int cursor, BaseQueryFragmentModel model) {
+        if (tagCompletionPopup == null) return;
+
+        int wordStart = cursor;
+        while (wordStart > 0 && !Character.isWhitespace(text.charAt(wordStart - 1))) {
+            wordStart--;
+        }
+
+        if (wordStart < text.length() && text.charAt(wordStart) == '#') {
+            final String prefix = cursor > wordStart ? text.substring(wordStart + 1, cursor).toLowerCase() : "";
+
+            if (tagLookupDisposable != null && !tagLookupDisposable.isDisposed()) {
+                tagLookupDisposable.dispose();
+            }
+            tagLookupDisposable = Single.fromCallable(() -> {
+                List<String> allTags = (List<String>) model.getAvailableTagsFun().invoke();
+                // If prefix is an exact tag match, the user backspaced into a completed tag —
+                // show all tags so they can easily pick a replacement.
+                boolean exactMatch = false;
+                for (String tag : allTags) {
+                    if (tag.equalsIgnoreCase(prefix)) { exactMatch = true; break; }
+                }
+                String effectivePrefix = exactMatch ? "" : prefix;
+                List<String> matching = new ArrayList<>();
+                for (String tag : allTags) {
+                    if (tag.toLowerCase().startsWith(effectivePrefix)) {
+                        matching.add(tag);
+                    }
+                }
+                return matching;
+            })
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe(matchingTags -> {
+                if (tagCompletionPopup == null) return;
+                if (!matchingTags.isEmpty()) {
+                    ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(),
+                            android.R.layout.simple_list_item_1, matchingTags);
+                    tagCompletionPopup.setAdapter(adapter);
+                    tagCompletionPopup.show();
+                } else {
+                    tagCompletionPopup.dismiss();
+                }
+            });
+        } else {
+            tagCompletionPopup.dismiss();
+        }
+    }
+
+    private void insertTagIntoSearchBox(String tagName) {
+        if (queryMenu == null || queryMenu.searchAutoComplete == null) return;
+
+        String text = queryMenu.searchAutoComplete.getText().toString();
+        int cursor = queryMenu.searchAutoComplete.getSelectionStart();
+
+        int wordStart = cursor;
+        while (wordStart > 0 && !Character.isWhitespace(text.charAt(wordStart - 1))) {
+            wordStart--;
+        }
+
+        int wordEnd = cursor;
+        while (wordEnd < text.length() && !Character.isWhitespace(text.charAt(wordEnd))) {
+            wordEnd++;
+        }
+        // Skip any trailing spaces after the word
+        while (wordEnd < text.length() && text.charAt(wordEnd) == ' ') wordEnd++;
+
+        String replacement = "#" + tagName;
+        String newText = text.substring(0, wordStart) + replacement + " " + text.substring(wordEnd);
+        int newCursor = wordStart + replacement.length() + 1;
+
+        queryMenu.searchAutoComplete.setText(newText);
+        queryMenu.searchAutoComplete.setSelection(Math.min(newCursor, newText.length()));
+    }
+
     @Override
     public void onDestroyView() {
         super.onDestroyView();
+
+        if (tagLookupDisposable != null) {
+            tagLookupDisposable.dispose();
+            tagLookupDisposable = null;
+        }
+        if (tagCompletionPopup != null) {
+            if (tagCompletionPopup.isShowing()) tagCompletionPopup.dismiss();
+            tagCompletionPopup = null;
+        }
+        isInsertingTag = false;
 
         if (pagedListAdapter != null) {
             pagedListAdapter.close();

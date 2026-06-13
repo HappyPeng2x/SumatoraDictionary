@@ -220,11 +220,18 @@ public class DictionarySearchQueryTool {
                     + "FROM jmdict.DictionaryIndex "
                     + "WHERE readingsKanaParts MATCH ? || '*'";
 
+    private static final String SQL_TAG_ONLY_WHERE_CLAUSE =
+            "AND DictionaryBookmark.tags IS NOT NULL AND DictionaryBookmark.tags != ''";
+
     protected final PersistentDatabaseComponent persistentDatabase;
     private final String whereClause;
 
     private QueryStatement[] statements;
     private SupportSQLiteStatement deleteStatement;
+    private SupportSQLiteStatement tagOnlyStatement;
+    private SupportSQLiteStatement tagOnlyStatementBackup;
+    private SupportSQLiteStatement deleteByTagStatement;
+    private SupportSQLiteStatement countByRefStatement;
 
     private final int key;
 
@@ -391,6 +398,24 @@ public class DictionarySearchQueryTool {
                             backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, whereClause));
         }
 
+        tagOnlyStatement = db.compileStatement(String.format(SQL_QUERY_INSERT_BOOKMARK_DISPLAY_ELEMENT,
+                examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin,
+                persistentLanguageSettings.lang,
+                SQL_TAG_ONLY_WHERE_CLAUSE));
+
+        if (persistentLanguageSettings.backupLang != null) {
+            tagOnlyStatementBackup = db.compileStatement(String.format(SQL_QUERY_INSERT_BOOKMARK_DISPLAY_ELEMENT,
+                    backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin,
+                    persistentLanguageSettings.backupLang,
+                    SQL_TAG_ONLY_WHERE_CLAUSE));
+        }
+
+        deleteByTagStatement = db.compileStatement(
+                "DELETE FROM DictionarySearchElement WHERE ref = ? AND seq NOT IN (SELECT seq FROM DictionaryBookmarkTag WHERE tag = ?)");
+
+        countByRefStatement = db.compileStatement(
+                "SELECT COUNT(*) FROM DictionarySearchElement WHERE ref = ?");
+
         statements = new QueryStatement[15];
 
         statements[0] = new BasicQueryStatement(database, key, 1, persistentLanguageSettings, queryAllStatement, queryAllStatementBackup, false, romkan);
@@ -438,6 +463,56 @@ public class DictionarySearchQueryTool {
         }
     }
 
+    private boolean executeTagOnly() {
+        tagOnlyStatement.bindLong(1, key);
+        tagOnlyStatement.bindLong(2, 1);
+        tagOnlyStatement.bindString(3, persistentLanguageSettings.lang);
+        tagOnlyStatement.bindString(4, persistentLanguageSettings.lang);
+        tagOnlyStatement.bindString(5, "");
+        long insert = tagOnlyStatement.executeInsert();
+
+        long backupInsert = -1;
+        if (tagOnlyStatementBackup != null) {
+            tagOnlyStatementBackup.bindLong(1, key);
+            tagOnlyStatementBackup.bindLong(2, 1);
+            tagOnlyStatementBackup.bindString(3, persistentLanguageSettings.backupLang);
+            tagOnlyStatementBackup.bindString(4, persistentLanguageSettings.lang);
+            tagOnlyStatementBackup.bindString(5, "");
+            backupInsert = tagOnlyStatementBackup.executeInsert();
+        }
+
+        return Math.max(insert, backupInsert) >= 0;
+    }
+
+    public boolean execute(String term, int number, boolean isBookmarked, boolean hasMemo, List<String> tags) {
+        if (tags == null || tags.isEmpty()) {
+            return execute(term, number, isBookmarked, hasMemo);
+        }
+
+        boolean found;
+        if (term.isEmpty()) {
+            if (isBookmarked || hasMemo) {
+                found = execute(term, number, isBookmarked, hasMemo);
+            } else {
+                found = executeTagOnly();
+            }
+        } else {
+            found = execute(term, number, isBookmarked, hasMemo);
+        }
+
+        if (found) {
+            for (String tag : tags) {
+                deleteByTagStatement.bindLong(1, key);
+                deleteByTagStatement.bindString(2, tag);
+                deleteByTagStatement.execute();
+            }
+            countByRefStatement.bindLong(1, key);
+            return countByRefStatement.simpleQueryForLong() > 0;
+        }
+
+        return false;
+    }
+
     public int getCount(String term) {
         if ("".equals(term)) {
             return 1;
@@ -467,8 +542,39 @@ public class DictionarySearchQueryTool {
             } catch (IOException e) {
                 e.printStackTrace();
             }
-
             deleteStatement = null;
+        }
+        if (tagOnlyStatement != null) {
+            try {
+                tagOnlyStatement.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            tagOnlyStatement = null;
+        }
+        if (tagOnlyStatementBackup != null) {
+            try {
+                tagOnlyStatementBackup.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            tagOnlyStatementBackup = null;
+        }
+        if (deleteByTagStatement != null) {
+            try {
+                deleteByTagStatement.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            deleteByTagStatement = null;
+        }
+        if (countByRefStatement != null) {
+            try {
+                countByRefStatement.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            countByRefStatement = null;
         }
     }
 

@@ -140,21 +140,27 @@ abstract class BaseQueryFragmentModel protected constructor(private val bookmark
     private fun commitTags(seq: Long, tagsStr: String) {
         val db = persistentDatabaseComponent.database
         Completable.fromAction {
-            val existing = db.dictionaryBookmarkDao().getBySeq(seq)
-                ?: DictionaryBookmark(seq, 0L, null, null)
-            existing.tags = tagsStr.ifEmpty { null }
-            if (existing.bookmark > 0 || !existing.memo.isNullOrEmpty() || !existing.tags.isNullOrEmpty()) {
-                db.dictionaryBookmarkDao().insert(existing)
-            } else {
-                db.dictionaryBookmarkDao().delete(existing)
+            // All writes in one transaction so Room fires observers only after the state is fully
+            // consistent. Without this, BookmarkAction (triggered by the DictionaryBookmark insert)
+            // could run while DictionaryBookmarkTag is momentarily empty (between deleteTagsForSeq
+            // and insertMany), causing the entry to be dropped from tag-filtered search results.
+            db.runInTransaction {
+                val existing = db.dictionaryBookmarkDao().getBySeq(seq)
+                    ?: DictionaryBookmark(seq, 0L, null, null)
+                existing.tags = tagsStr.ifEmpty { null }
+                if (existing.bookmark > 0 || !existing.memo.isNullOrEmpty() || !existing.tags.isNullOrEmpty()) {
+                    db.dictionaryBookmarkDao().insert(existing)
+                } else {
+                    db.dictionaryBookmarkDao().delete(existing)
+                }
+                val tagDao = db.dictionaryBookmarkTagDao()
+                tagDao.deleteTagsForSeq(seq)
+                if (tagsStr.isNotEmpty()) {
+                    tagDao.insertMany(tagsStr.split(",").filter { it.isNotBlank() }
+                        .map { DictionaryBookmarkTag(seq, it) })
+                }
+                db.dictionarySearchElementDao().updateTags(seq, existing.tags)
             }
-            val tagDao = db.dictionaryBookmarkTagDao()
-            tagDao.deleteTagsForSeq(seq)
-            if (tagsStr.isNotEmpty()) {
-                tagDao.insertMany(tagsStr.split(",").filter { it.isNotBlank() }
-                    .map { DictionaryBookmarkTag(seq, it) })
-            }
-            db.dictionarySearchElementDao().updateTags(seq, existing.tags)
         }.subscribeOn(Schedulers.io()).subscribe()
     }
 
