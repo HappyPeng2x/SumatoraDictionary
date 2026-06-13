@@ -181,10 +181,17 @@ class QueryActionProcessorHolder(private val databaseComponent: PersistentDataba
                                             if (queryTool != null) {
                                                 val term = previousState.plainTerm
                                                 databaseComponent.database.runInTransaction {
-                                                    if (term.isEmpty()) {
+                                                    if (term.isEmpty() && previousState.tags.isEmpty()) {
+                                                        // No search term and no tag filter: delete+re-insert so
+                                                        // newly bookmarked/tagged entries appear live in the list.
                                                         queryTool.delete()
-                                                        queryTool.execute("", 0, filterBookmarks, filterMemos, previousState.tags)
+                                                        queryTool.execute("", 0, filterBookmarks, filterMemos, emptyList())
                                                     } else {
+                                                        // Term search OR tag-filtered search: only refresh the
+                                                        // bookmark/memo/tags columns on currently displayed rows.
+                                                        // Do NOT re-apply the tag filter — entries should stay in
+                                                        // results even after their tag is removed, consistent with
+                                                        // how term-based search results behave.
                                                         val db = databaseComponent.database.openHelper.writableDatabase
                                                         db.execSQL("UPDATE DictionarySearchElement SET " +
                                                                 "bookmark = IFNULL((SELECT bookmark FROM DictionaryBookmark WHERE DictionaryBookmark.seq = DictionarySearchElement.seq), 0), " +
