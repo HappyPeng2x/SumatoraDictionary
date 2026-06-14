@@ -24,6 +24,7 @@ object MainActivityNavigateBookmarksIntent : MainActivityNavigationIntent()
 object MainActivityNavigateSearchIntent : MainActivityNavigationIntent()
 object MainActivityNavigateSettingsIntent : MainActivityNavigationIntent()
 object MainActivityNavigateAboutIntent : MainActivityNavigationIntent()
+object MainActivityNavigateTagsIntent : MainActivityNavigationIntent()
 
 object MainActivityBackPressedIntent : MainActivityIntent()
 object MainActivityHomePressedIntent : MainActivityIntent()
@@ -34,3 +35,4 @@ object MainActivityCloseIntent : MainActivityIntent()
 
 class MainActivitySearchIntent(val term: String) : MainActivityIntent()
 class MainActivitySetSearchFragmentSearchIntent(val term: String): MainActivityIntent()
+class MainActivitySearchFromTagsIntent(val tag: String) : MainActivityIntent()

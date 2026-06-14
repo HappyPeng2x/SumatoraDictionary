@@ -17,6 +17,11 @@
             android:icon="@drawable/ic_outline_bookmarks_24px"
             android:title="@string/nav_drawer_item_bookmarks" />
         <item
+            android:id="@+id/navigation_view_item_tags"
+            android:checked="false"
+            android:icon="@drawable/ic_outline_label_24px"
+            android:title="@string/nav_drawer_item_tags" />
+        <item
             android:id="@+id/navigation_view_item_settings"
             android:checked="false"
             android:icon="@drawable/ic_outline_settings_24px"

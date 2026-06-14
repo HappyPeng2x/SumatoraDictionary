@@ -42,18 +42,27 @@ class MainActivityModel(private val state: SavedStateHandle) : ViewModel() {
                                         searchTerm = mainActivityState.searchTerms[MainActivityNavigationStatus.BOOKMARKS] ?: "",
                                         drawerOpen = false,
                                         navigate = true,
-                                        changeTerm = false)
+                                        changeTerm = false,
+                                        backDestination = null)
                             is MainActivityNavigateSearchIntent ->
                                 mainActivityState.copy(navigationStatus = MainActivityNavigationStatus.SEARCH,
                                         searchTerm = mainActivityState.searchTerms[MainActivityNavigationStatus.SEARCH] ?: "",
                                         drawerOpen = false,
                                         navigate = true,
-                                        changeTerm = false)
+                                        changeTerm = false,
+                                        backDestination = null)
                             is MainActivityNavigateSettingsIntent ->
                                 mainActivityState.copy(navigationStatus = MainActivityNavigationStatus.SETTINGS,
                                         drawerOpen = false,
                                         navigate = true,
-                                        changeTerm = false)
+                                        changeTerm = false,
+                                        backDestination = null)
+                            is MainActivityNavigateTagsIntent ->
+                                mainActivityState.copy(navigationStatus = MainActivityNavigationStatus.TAGS,
+                                        drawerOpen = false,
+                                        navigate = true,
+                                        changeTerm = false,
+                                        backDestination = null)
                             is MainActivityNavigateAboutIntent ->
                                 mainActivityState.copy(drawerOpen = false,
                                         navigate = false,
@@ -66,6 +75,7 @@ class MainActivityModel(private val state: SavedStateHandle) : ViewModel() {
                                 mainActivityState.copy(searchTerm = mainActivityIntent.term,
                                         changeTerm = true,
                                         navigate = true,
+                                        backDestination = null,
                                         searchTerms = mapOf(MainActivityNavigationStatus.BOOKMARKS to
                                                 if (mainActivityState.navigationStatus == MainActivityNavigationStatus.BOOKMARKS)
                                                 { mainActivityIntent.term } else { mainActivityState.searchTerms[MainActivityNavigationStatus.BOOKMARKS] ?: "" },
@@ -77,23 +87,52 @@ class MainActivityModel(private val state: SavedStateHandle) : ViewModel() {
                                         navigate = mainActivityState.navigationStatus != MainActivityNavigationStatus.SEARCH,
                                         changeTerm = true,
                                         navigationStatus = MainActivityNavigationStatus.SEARCH,
+                                        backDestination = null,
                                         searchTerms = mapOf(MainActivityNavigationStatus.BOOKMARKS to
                                                 run { mainActivityState.searchTerms[MainActivityNavigationStatus.BOOKMARKS] ?: "" },
                                                 MainActivityNavigationStatus.SEARCH to run { mainActivityIntent.term }))
+                            is MainActivitySearchFromTagsIntent ->
+                                mainActivityState.copy(
+                                        navigationStatus = MainActivityNavigationStatus.SEARCH,
+                                        searchTerm = "#${mainActivityIntent.tag}",
+                                        navigate = true,
+                                        changeTerm = true,
+                                        backDestination = MainActivityNavigationStatus.TAGS,
+                                        searchTerms = mainActivityState.searchTerms +
+                                                mapOf(MainActivityNavigationStatus.SEARCH to "#${mainActivityIntent.tag}"))
                             is MainActivityHomePressedIntent ->
                                 mainActivityState.copy(drawerOpen = true,
                                         changeTerm = false, navigate = false)
                             is MainActivityDrawerClosedIntent ->
                                 mainActivityState.copy(drawerOpen = false,
                                         changeTerm = false, navigate = false)
-                            is MainActivityBackPressedIntent ->
-                                mainActivityState.copy(
-                                        navigate = mainActivityState.navigationStatus != MainActivityNavigationStatus.SEARCH,
-                                        changeTerm = false,
-                                        finished =
-                                        mainActivityState.navigationStatus == MainActivityNavigationStatus.SEARCH,
-                                        navigationStatus = MainActivityNavigationStatus.SEARCH,
-                                        searchTerm = mainActivityState.searchTerms[MainActivityNavigationStatus.SEARCH] ?: "")
+                            is MainActivityBackPressedIntent -> {
+                                val dest = mainActivityState.backDestination
+                                when {
+                                    mainActivityState.navigationStatus == MainActivityNavigationStatus.SEARCH && dest != null ->
+                                        mainActivityState.copy(
+                                                navigate = true,
+                                                changeTerm = false,
+                                                finished = false,
+                                                navigationStatus = dest,
+                                                backDestination = null)
+                                    mainActivityState.navigationStatus == MainActivityNavigationStatus.SEARCH ->
+                                        mainActivityState.copy(
+                                                navigate = false,
+                                                changeTerm = false,
+                                                finished = true,
+                                                navigationStatus = MainActivityNavigationStatus.SEARCH,
+                                                searchTerm = mainActivityState.searchTerms[MainActivityNavigationStatus.SEARCH] ?: "")
+                                    else ->
+                                        mainActivityState.copy(
+                                                navigate = true,
+                                                changeTerm = false,
+                                                finished = false,
+                                                navigationStatus = MainActivityNavigationStatus.SEARCH,
+                                                backDestination = null,
+                                                searchTerm = mainActivityState.searchTerms[MainActivityNavigationStatus.SEARCH] ?: "")
+                                }
+                            }
                         }
                     })
                     .takeUntil { it.closed }
@@ -113,7 +152,8 @@ class MainActivityModel(private val state: SavedStateHandle) : ViewModel() {
                 drawerOpen = false, finished = false,
                 searchTerms = mapOf(MainActivityNavigationStatus.SEARCH to "",
                         MainActivityNavigationStatus.BOOKMARKS to ""),
-                changeTerm = false)
+                changeTerm = false,
+                backDestination = null)
 
         const val STATUS_KEY = "STATUS"
     }

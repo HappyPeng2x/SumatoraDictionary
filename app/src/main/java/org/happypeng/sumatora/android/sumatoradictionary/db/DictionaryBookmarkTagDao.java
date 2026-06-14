@@ -25,6 +25,8 @@ import androidx.room.Query;
 
 import java.util.List;
 
+import io.reactivex.rxjava3.core.Observable;
+
 @Dao
 public interface DictionaryBookmarkTagDao {
     @Query("SELECT DISTINCT tag FROM DictionaryBookmarkTag ORDER BY tag")
@@ -32,6 +34,9 @@ public interface DictionaryBookmarkTagDao {
 
     @Query("SELECT DISTINCT tag FROM DictionaryBookmarkTag ORDER BY tag")
     LiveData<List<String>> getAllTagsLive();
+
+    @Query("SELECT DISTINCT tag FROM DictionaryBookmarkTag ORDER BY tag")
+    Observable<List<String>> getAllTagsObservable();
 
     @Query("SELECT tag FROM DictionaryBookmarkTag WHERE seq = :seq ORDER BY tag")
     List<String> getTagsForSeq(long seq);

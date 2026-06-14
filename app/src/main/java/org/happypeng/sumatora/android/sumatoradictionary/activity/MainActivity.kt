@@ -35,8 +35,19 @@ import org.happypeng.sumatora.android.sumatoradictionary.fragment.BaseFragment
 import org.happypeng.sumatora.android.sumatoradictionary.fragment.BookmarkFragment
 import org.happypeng.sumatora.android.sumatoradictionary.fragment.QueryFragment
 import org.happypeng.sumatora.android.sumatoradictionary.fragment.SettingsFragment
+import org.happypeng.sumatora.android.sumatoradictionary.fragment.TagsFragment
 import org.happypeng.sumatora.android.sumatoradictionary.model.MainActivityModel
-import org.happypeng.sumatora.android.sumatoradictionary.model.intent.*
+import org.happypeng.sumatora.android.sumatoradictionary.model.intent.MainActivityBackPressedIntent
+import org.happypeng.sumatora.android.sumatoradictionary.model.intent.MainActivityDrawerClosedIntent
+import org.happypeng.sumatora.android.sumatoradictionary.model.intent.MainActivityHomePressedIntent
+import org.happypeng.sumatora.android.sumatoradictionary.model.intent.MainActivityNavigateAboutIntent
+import org.happypeng.sumatora.android.sumatoradictionary.model.intent.MainActivityNavigateBookmarksIntent
+import org.happypeng.sumatora.android.sumatoradictionary.model.intent.MainActivityNavigateSearchIntent
+import org.happypeng.sumatora.android.sumatoradictionary.model.intent.MainActivityNavigateSettingsIntent
+import org.happypeng.sumatora.android.sumatoradictionary.model.intent.MainActivityNavigateTagsIntent
+import org.happypeng.sumatora.android.sumatoradictionary.model.intent.MainActivitySearchIntent
+import org.happypeng.sumatora.android.sumatoradictionary.model.intent.MainActivitySetSearchFragmentSearchIntent
+import org.happypeng.sumatora.android.sumatoradictionary.model.intent.MainActivityCloseIntent
 import org.happypeng.sumatora.android.sumatoradictionary.model.state.MainActivityNavigationStatus
 import org.slf4j.LoggerFactory
 
@@ -67,6 +78,7 @@ class MainActivity : AppCompatActivity() {
             MainActivityNavigationStatus.SEARCH -> SEARCH_FRAGMENT_TAG
             MainActivityNavigationStatus.BOOKMARKS -> BOOKMARK_FRAGMENT_TAG
             MainActivityNavigationStatus.SETTINGS -> SETTINGS_FRAGMENT_TAG
+            MainActivityNavigationStatus.TAGS -> TAGS_FRAGMENT_TAG
         }
 
         val existingFragment = supportFragmentManager.findFragmentByTag(tag)
@@ -75,6 +87,7 @@ class MainActivity : AppCompatActivity() {
             MainActivityNavigationStatus.SEARCH -> QueryFragment()
             MainActivityNavigationStatus.BOOKMARKS -> BookmarkFragment()
             MainActivityNavigationStatus.SETTINGS -> SettingsFragment()
+            MainActivityNavigationStatus.TAGS -> TagsFragment()
         }
 
         if (existingFragment == null || navigate) {
@@ -113,6 +126,8 @@ class MainActivity : AppCompatActivity() {
                     viewModel.sendIntent(MainActivityNavigateSearchIntent)
                 R.id.navigation_view_item_bookmarks ->
                     viewModel.sendIntent(MainActivityNavigateBookmarksIntent)
+                R.id.navigation_view_item_tags ->
+                    viewModel.sendIntent(MainActivityNavigateTagsIntent)
                 R.id.navigation_view_item_settings ->
                     viewModel.sendIntent(MainActivityNavigateSettingsIntent)
                 R.id.navigation_view_item_about -> {
@@ -169,6 +184,8 @@ class MainActivity : AppCompatActivity() {
                                 navigationView.setCheckedItem(R.id.navigation_view_item_bookmarks)
                             MainActivityNavigationStatus.SETTINGS ->
                                 navigationView.setCheckedItem(R.id.navigation_view_item_settings)
+                            MainActivityNavigationStatus.TAGS ->
+                                navigationView.setCheckedItem(R.id.navigation_view_item_tags)
                         }
                     }
                 })
@@ -284,6 +301,7 @@ class MainActivity : AppCompatActivity() {
         private const val SEARCH_FRAGMENT_TAG = "SEARCH_FRAGMENT"
         private const val BOOKMARK_FRAGMENT_TAG = "BOOKMARK_FRAGMENT"
         private const val SETTINGS_FRAGMENT_TAG = "SETTINGS_FRAGMENT"
+        private const val TAGS_FRAGMENT_TAG = "TAGS_FRAGMENT"
         private const val DELAY_MILLIS = 250
     }
 }

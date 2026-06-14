@@ -21,7 +21,7 @@ import kotlinx.parcelize.Parcelize
 import org.happypeng.sumatora.android.sumatoradictionary.mvibase.MviViewState
 
 enum class MainActivityNavigationStatus {
-    SEARCH, BOOKMARKS, SETTINGS
+    SEARCH, BOOKMARKS, SETTINGS, TAGS
 }
 
 @Parcelize
@@ -32,4 +32,5 @@ data class MainActivityState(val closed: Boolean,
                              val searchTerm: String,
                              val drawerOpen: Boolean,
                              val finished: Boolean,
-                             val searchTerms: Map<MainActivityNavigationStatus, String>) : MviViewState, Parcelable
+                             val searchTerms: Map<MainActivityNavigationStatus, String>,
+                             val backDestination: MainActivityNavigationStatus?) : MviViewState, Parcelable
