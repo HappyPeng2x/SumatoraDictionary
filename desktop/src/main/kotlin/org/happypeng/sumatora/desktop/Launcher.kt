@@ -14,17 +14,10 @@
         You should have received a copy of the GNU General Public License
         along with this program.  If not, see <http://www.gnu.org/licenses/>.*/
 
-package org.happypeng.sumatora.android.sumatoradictionary;
+package org.happypeng.sumatora.desktop
 
-import android.app.Application;
-import android.content.Context;
-import androidx.test.runner.AndroidJUnitRunner;
-import dagger.hilt.android.testing.HiltTestApplication;
+import javafx.application.Application
 
-public class CustomTestRunner extends AndroidJUnitRunner {
-    @Override
-    public Application newApplication(ClassLoader cl, String className, Context context)
-            throws InstantiationException, IllegalAccessException, ClassNotFoundException {
-        return super.newApplication(cl, HiltTestApplication.class.getName(), context);
-    }
+fun main(args: Array<String>) {
+    Application.launch(DesktopApp::class.java, *args)
 }
