@@ -39,10 +39,6 @@ internal fun wordHeader(r: SearchResult): String = buildString {
     else append(rd ?: "")
 }
 
-internal fun parseTags(tags: String?): List<String> =
-    if (tags.isNullOrEmpty()) emptyList()
-    else tags.split(",").filter { it.isNotBlank() }
-
 internal fun parseQuery(raw: String): Pair<String, List<String>> {
     val tagRegex = Regex("""#([^\s#,]+)""")
     val tags = tagRegex.findAll(raw).map { it.groupValues[1] }.toList()

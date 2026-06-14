@@ -21,14 +21,9 @@ import javafx.scene.control.Button
 import javafx.scene.control.Label
 import javafx.scene.control.ScrollPane
 import javafx.scene.control.Separator
-import javafx.scene.control.TextArea
-import javafx.scene.control.TextField
 import javafx.scene.layout.FlowPane
-import javafx.scene.layout.HBox
-import javafx.scene.layout.Priority
 import javafx.scene.layout.VBox
 import org.happypeng.sumatora.core.bookmark.Bookmark
-import org.happypeng.sumatora.core.bookmark.BookmarkTag
 import org.happypeng.sumatora.desktop.model.SearchResult
 
 class WordDetailPane(
@@ -38,7 +33,6 @@ class WordDetailPane(
 
     private val body = VBox(10.0).apply { padding = Insets(20.0); minWidth = 300.0 }
     private var current: SearchResult? = null
-    private var memoArea: TextArea? = null
 
     init {
         content = body
@@ -53,13 +47,11 @@ class WordDetailPane(
 
     fun clear() {
         current = null
-        memoArea = null
         body.children.clear()
     }
 
     private fun render(r: SearchResult) {
         body.children.clear()
-        memoArea = null
 
         // ── Writing / reading header ───────────────────────────────────────────
         val writing = r.writingsPrio ?: r.writings
@@ -83,51 +75,30 @@ class WordDetailPane(
         }
         body.children += bookmarkBtn
 
-        // ── Memo editor ───────────────────────────────────────────────────────
-        body.children += Label("Memo").apply {
-            style = "-fx-font-size: 12px; -fx-text-fill: #666; -fx-font-weight: bold;"
-        }
-        val area = TextArea(r.memo ?: "").apply {
-            promptText = "Add a personal note…"
-            prefRowCount = 3
-            isWrapText = true
-            style = "-fx-font-size: 13px;"
-        }
-        // Auto-save memo when the field loses focus, but only if this area is still active.
-        area.focusedProperty().addListener { _, _, focused ->
-            if (!focused && area === memoArea) persistMemo(r, area.text.trim())
-        }
-        memoArea = area
-        body.children += area
-
-        // ── Tags editor ───────────────────────────────────────────────────────
-        body.children += Label("Tags").apply {
-            style = "-fx-font-size: 12px; -fx-text-fill: #666; -fx-font-weight: bold;"
-        }
-        val currentTags = r.tags?.split(",")?.filter { it.isNotEmpty() }?.toMutableList() ?: mutableListOf()
-        body.children += buildTagFlow(r, currentTags)
-
-        val tagInput = TextField().apply {
-            promptText = "New tag…"
-            style = "-fx-font-size: 13px;"
-        }
-        val addTagBtn = Button("Add").apply {
-            style = "-fx-font-size: 13px; -fx-cursor: hand;"
-        }
-        val doAddTag = {
-            val tag = tagInput.text.trim()
-            if (tag.isNotEmpty() && !currentTags.contains(tag)) {
-                currentTags.add(tag)
-                persistTags(r, currentTags)
-            } else {
-                tagInput.clear()
+        // ── Memo ──────────────────────────────────────────────────────────────
+        if (!r.memo.isNullOrEmpty()) {
+            body.children += Label("Memo: ${r.memo}").apply {
+                style = "-fx-font-style: italic; -fx-text-fill: #444; -fx-font-size: 13px;"
+                isWrapText = true
             }
-            Unit
         }
-        tagInput.setOnAction { doAddTag() }
-        addTagBtn.setOnAction { doAddTag() }
-        body.children += HBox(6.0, tagInput, addTagBtn).apply {
-            HBox.setHgrow(tagInput, Priority.ALWAYS)
+
+        // ── Tags ──────────────────────────────────────────────────────────────
+        val tagList = r.tags?.split(",")?.filter { it.isNotEmpty() } ?: emptyList()
+        if (tagList.isNotEmpty()) {
+            val flow = FlowPane(4.0, 4.0).apply {
+                children.addAll(tagList.map { tag ->
+                    Label(tag).apply {
+                        style = """
+                            -fx-background-color: #dce8f8;
+                            -fx-padding: 2 8 2 8;
+                            -fx-background-radius: 10;
+                            -fx-font-size: 12px;
+                        """.trimIndent()
+                    }
+                })
+            }
+            body.children += flow
         }
 
         body.children += Separator()
@@ -153,49 +124,6 @@ class WordDetailPane(
             }
             body.children += glossBox
         }
-    }
-
-    private fun buildTagFlow(r: SearchResult, currentTags: MutableList<String>): FlowPane =
-        FlowPane(4.0, 4.0).apply {
-            currentTags.forEach { tag ->
-                val removeBtn = Button("×").apply {
-                    style = "-fx-background-color: transparent; -fx-font-size: 11px; -fx-padding: 0 2 0 4; -fx-cursor: hand;"
-                    setOnAction {
-                        currentTags.remove(tag)
-                        persistTags(r, currentTags)
-                    }
-                }
-                children += HBox(0.0, Label(tag).apply { style = "-fx-font-size: 12px;" }, removeBtn).apply {
-                    style = """
-                        -fx-background-color: #dce8f8;
-                        -fx-padding: 2 4 2 8;
-                        -fx-background-radius: 10;
-                        -fx-alignment: center-left;
-                    """.trimIndent()
-                }
-            }
-        }
-
-    private fun persistMemo(r: SearchResult, newMemo: String) {
-        val existing = ctx.bookmarks.getBySeq(r.seq) ?: Bookmark(r.seq, r.bookmark, null, r.tags)
-        ctx.bookmarks.insert(Bookmark(r.seq, existing.bookmark, newMemo.ifEmpty { null }, existing.tags))
-        val updated = r.copy(memo = newMemo.ifEmpty { null })
-        current = updated
-        onChanged(updated)
-        // Do not re-render: the TextArea stays focused and the user keeps editing.
-    }
-
-    private fun persistTags(r: SearchResult, tags: List<String>) {
-        // Capture current memo content before re-rendering destroys the TextArea.
-        val liveMemo = memoArea?.text?.trim() ?: r.memo ?: ""
-        val tagsStr = tags.joinToString(",").ifEmpty { null }
-        ctx.bookmarks.insert(Bookmark(r.seq, r.bookmark, liveMemo.ifEmpty { null }, tagsStr))
-        ctx.tags.deleteTagsForSeq(r.seq)
-        tags.forEach { ctx.tags.insertTag(BookmarkTag(r.seq, it)) }
-        val updated = r.copy(memo = liveMemo.ifEmpty { null }, tags = tagsStr)
-        current = updated
-        render(updated)
-        onChanged(updated)
     }
 
     private fun toggleBookmark(r: SearchResult) {

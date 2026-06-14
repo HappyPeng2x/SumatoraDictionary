@@ -80,20 +80,16 @@ private class BookmarkCell : ListCell<SearchResult>() {
     override fun updateItem(item: SearchResult?, empty: Boolean) {
         super.updateItem(item, empty)
         if (empty || item == null) { graphic = null; text = null; return }
-        val rows = mutableListOf<javafx.scene.Node>(
-            Label(wordHeader(item)).apply { style = "-fx-font-size: 14px; -fx-font-weight: bold;" },
+        val hasMemo = !item.memo.isNullOrEmpty()
+        val tagCount = item.tags?.split(",")?.count { it.isNotEmpty() } ?: 0
+        val suffix = buildString {
+            if (hasMemo) append("  ✏")
+            if (tagCount > 0) append("  🏷$tagCount")
+        }
+        graphic = VBox(2.0,
+            Label(wordHeader(item) + suffix).apply { style = "-fx-font-size: 14px; -fx-font-weight: bold;" },
             Label(glossPreview(item.gloss)).apply { style = "-fx-font-size: 12px; -fx-text-fill: #888;" }
-        )
-        if (!item.memo.isNullOrEmpty()) {
-            rows += Label(item.memo).apply { style = "-fx-font-size: 11px; -fx-text-fill: #aaa; -fx-font-style: italic;" }
-        }
-        val tags = parseTags(item.tags)
-        if (tags.isNotEmpty()) {
-            rows += HBox(4.0, *tags.map { tag ->
-                Label(tag).apply { style = "-fx-background-color: #4a7c9e; -fx-background-radius: 10; -fx-padding: 1 6 1 6; -fx-text-fill: white; -fx-font-size: 11px;" }
-            }.toTypedArray()).apply { padding = Insets(2.0, 0.0, 0.0, 0.0) }
-        }
-        graphic = VBox(2.0, *rows.toTypedArray()).apply { padding = Insets(4.0, 8.0, 4.0, 8.0) }
+        ).apply { padding = Insets(4.0, 8.0, 4.0, 8.0) }
         text = null
     }
 }
