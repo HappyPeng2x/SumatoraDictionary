@@ -29,7 +29,7 @@ class AppContext(
     val bookmarks: BookmarkRepositoryImpl,
     val tags: TagRepositoryImpl,
     val settings: SettingsRepository,
-    val availableDbs: Map<String, File>
+    val availableDbs: MutableMap<String, File>
 ) {
     fun changeLanguage(newLang: String) {
         val oldLang = search.lang
@@ -39,5 +39,16 @@ class AppContext(
         availableDbs[newLang]?.let { db.attachDictionary(it, newLang) }
         search.lang = newLang
         settings.setLanguage(newLang)
+    }
+
+    /** Attach any newly installed .db files not yet attached to the connection. */
+    fun rescanAndAttach(dictDir: File) {
+        dictDir.listFiles { f -> f.extension == "db" }?.forEach { file ->
+            val alias = file.nameWithoutExtension
+            availableDbs[alias] = file
+            if (!db.getAttachedDatabases().contains(alias)) {
+                try { db.attachDictionary(file, alias) } catch (_: Exception) { }
+            }
+        }
     }
 }

@@ -51,10 +51,10 @@ class DesktopApp : Application() {
         val lang = settings.getLanguage()
 
         val dictDir = File(dataDir, "dictionaries")
-        val availableDbs: Map<String, File> = if (dictDir.isDirectory) {
+        val availableDbs: MutableMap<String, File> = if (dictDir.isDirectory) {
             dictDir.listFiles { f -> f.extension == "db" }
-                ?.associate { it.nameWithoutExtension to it } ?: emptyMap()
-        } else emptyMap()
+                ?.associateTo(mutableMapOf()) { it.nameWithoutExtension to it } ?: mutableMapOf()
+        } else mutableMapOf()
 
         // Attach the core dictionaries needed for search
         availableDbs["jmdict"]?.let { dbManager.attachDictionary(it, "jmdict") }
@@ -72,6 +72,14 @@ class DesktopApp : Application() {
         primaryStage.title = "Sumatora Dictionary"
         primaryStage.scene = Scene(MainView(ctx), 1100.0, 720.0)
         primaryStage.show()
+
+        if (availableDbs.isEmpty()) {
+            Alert(Alert.AlertType.INFORMATION).apply {
+                title = "No dictionaries installed"
+                headerText = null
+                contentText = "No dictionary files found in:\n${dictDir.absolutePath}\n\nGo to Settings → Dictionaries to download them."
+            }.show()
+        }
     }
 
     override fun stop() {
