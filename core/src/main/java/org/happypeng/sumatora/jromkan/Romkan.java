@@ -33,11 +33,11 @@ public class Romkan {
             } else if (arg0.length() > arg1.length()) {
                 return -1;
             }
-            
+
             return 0;
         }
     }
-    
+
     private RomkanData romkan_data;
 
     private Pattern rompat;
@@ -48,7 +48,7 @@ public class Romkan {
     private Pattern heppat;
 
     private LengthComparator length_comparator;
-    
+
     private static String joinString(final String a_separator, final List<String> a_elements) {
         StringBuilder buf = new StringBuilder();
         boolean first = true;
@@ -69,7 +69,7 @@ public class Romkan {
     public Romkan() {
         length_comparator = new LengthComparator();
         romkan_data = new RomkanData();
-        
+
         final ArrayList<String> romkan_keys = new ArrayList<>(romkan_data.get_romkan().keySet());
         Collections.sort(romkan_keys, length_comparator);
         rompat = Pattern.compile(joinString("|", romkan_keys));
@@ -94,27 +94,27 @@ public class Romkan {
         Collections.sort(heppat_keys, length_comparator);
         heppat = Pattern.compile(joinString("|", heppat_keys));
     }
-    
+
     public static String normalize_double_n(final String a_string) {
         String res = Pattern.compile("nn").matcher(a_string).replaceAll("n'");
         res = Pattern.compile("n'(?=[^aiueoyn]|$)").matcher(res).replaceAll("n");
-        
+
         return res;
     }
-    
+
     public String to_katakana(final String a_string) {
         String res = a_string.toLowerCase();
         res = normalize_double_n(res);
         StringBuffer ret = new StringBuffer();
         HashMap<String, String> romkan = romkan_data.get_romkan();
         Matcher match = rompat.matcher(res);
-        
+
         while (match.find()) {
             match.appendReplacement(ret, romkan.get(match.group()));
         }
-        
+
         match.appendTail(ret);
-        
+
         return ret.toString();
     }
 
@@ -124,13 +124,13 @@ public class Romkan {
         StringBuffer ret = new StringBuffer();
         HashMap<String, String> romkan_h = romkan_data.get_romkan_h();
         Matcher match = rompat_h.matcher(res);
-        
+
         while (match.find()) {
             match.appendReplacement(ret, romkan_h.get(match.group()));
         }
-        
+
         match.appendTail(ret);
-        
+
         return ret.toString();
     }
 
@@ -140,11 +140,11 @@ public class Romkan {
         HashMap<String, String> kanrom = romkan_data.get_kanrom();
         HashMap<String, String> kanrom_h = romkan_data.get_kanrom_h();
         Matcher match = kanpat.matcher(a_string);
-        
+
         while (match.find()) {
             match.appendReplacement(ret1, kanrom.get(match.group()));
         }
-        
+
         match.appendTail(ret1);
 
         Matcher match_h = kanpat_h.matcher(ret1.toString());
@@ -152,7 +152,7 @@ public class Romkan {
         while (match_h.find()) {
             match_h.appendReplacement(ret2, kanrom_h.get(match_h.group()));
         }
-        
+
         match_h.appendTail(ret2);
 
         String ret = Pattern.compile("n'(?=[^aiueoyn]|$)").matcher(ret2.toString()).replaceAll("n");
@@ -168,12 +168,12 @@ public class Romkan {
             while (match3.find()) {
                 match3.appendReplacement(ret3, to_hepburn.get(match3.group()));
             }
-            
+
             match3.appendTail(ret3);
 
             ret = ret3.toString();
         }
-        
+
         return ret;
     }
 
@@ -183,37 +183,37 @@ public class Romkan {
         HashMap<String, String> kanrom = romkan_data.get_kanrom();
         HashMap<String, String> kanrom_h = romkan_data.get_kanrom_h();
         Matcher match = kanpat.matcher(a_string);
-        
+
         while (match.find()) {
             match.appendReplacement(ret1, kanrom.get(match.group()));
         }
-        
+
         match.appendTail(ret1);
-        
+
         Matcher match_h = kanpat_h.matcher(ret1.toString());
-        
+
         while (match_h.find()) {
             match_h.appendReplacement(ret2, kanrom_h.get(match_h.group()));
         }
-        
+
         match_h.appendTail(ret2);
-        
+
         String ret = Pattern.compile("n'(?=[^aiueoyn]|$)").matcher(ret2.toString()).replaceAll("n").toLowerCase();
-        
+
         ret = normalize_double_n(ret);
-        
+
         StringBuffer ret3 = new StringBuffer();
         HashMap<String, String> to_kunrei = romkan_data.get_to_kunrei();
         Matcher match3 = heppat.matcher(ret);
-        
+
         while (match3.find()) {
             match3.appendReplacement(ret3, to_kunrei.get(match3.group()));
         }
-        
+
         match3.appendTail(ret3);
-        
+
         ret = ret3.toString();
-        
+
         return ret3.toString();
     }
 }

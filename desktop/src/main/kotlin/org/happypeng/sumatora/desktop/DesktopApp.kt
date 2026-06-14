@@ -17,14 +17,16 @@
 package org.happypeng.sumatora.desktop
 
 import javafx.application.Application
-import javafx.geometry.Insets
 import javafx.scene.Scene
-import javafx.scene.control.Label
-import javafx.scene.control.ScrollPane
-import javafx.scene.layout.VBox
-import javafx.scene.paint.Color
+import javafx.scene.control.Alert
 import javafx.stage.Stage
 import org.happypeng.sumatora.desktop.db.DatabaseManager
+import org.happypeng.sumatora.desktop.repository.BookmarkRepositoryImpl
+import org.happypeng.sumatora.desktop.repository.SearchRepository
+import org.happypeng.sumatora.desktop.repository.SettingsRepository
+import org.happypeng.sumatora.desktop.repository.TagRepositoryImpl
+import org.happypeng.sumatora.desktop.ui.AppContext
+import org.happypeng.sumatora.desktop.ui.MainView
 import java.io.File
 
 class DesktopApp : Application() {
@@ -33,64 +35,43 @@ class DesktopApp : Application() {
 
     override fun start(primaryStage: Stage) {
         val dataDir = File(System.getProperty("user.home"), ".sumatora")
-        val lines = mutableListOf<Pair<String, Boolean>>() // text, isError
 
-        // Open user database
-        try {
-            db = DatabaseManager(dataDir)
-            lines += "Data directory : ${dataDir.absolutePath}" to false
-            lines += "User database  : OK (${File(dataDir, "sumatora.db").absolutePath})" to false
+        val dbManager = try {
+            DatabaseManager(dataDir).also { db = it }
         } catch (e: Exception) {
-            lines += "FAILED to open user database: ${e.message}" to true
-            buildAndShow(primaryStage, lines)
+            Alert(Alert.AlertType.ERROR).apply {
+                title = "Startup error"
+                headerText = "Failed to open user database"
+                contentText = e.message
+            }.showAndWait()
             return
         }
 
-        // Discover available dictionary .db files (do NOT attach all — SQLite max is 10)
+        val settings = SettingsRepository(dbManager)
+        val lang = settings.getLanguage()
+
         val dictDir = File(dataDir, "dictionaries")
         val availableDbs: Map<String, File> = if (dictDir.isDirectory) {
             dictDir.listFiles { f -> f.extension == "db" }
                 ?.associate { it.nameWithoutExtension to it } ?: emptyMap()
-        } else {
-            emptyMap()
-        }
+        } else emptyMap()
 
-        if (availableDbs.isEmpty()) {
-            lines += "Dictionaries   : none found in ${dictDir.absolutePath}" to false
-            lines += "               → place unzipped .db files there to enable search" to false
-        } else {
-            lines += "Available DBs  : ${availableDbs.keys.sorted().joinToString()}" to false
-        }
+        // Attach the core dictionaries needed for search
+        availableDbs["jmdict"]?.let { dbManager.attachDictionary(it, "jmdict") }
+        availableDbs[lang]?.let { dbManager.attachDictionary(it, lang) }
 
-        // Attach only jmdict for the sanity check; translation DBs are attached on demand
-        availableDbs["jmdict"]?.let { jmdictFile ->
-            try {
-                db!!.attachDictionary(jmdictFile, "jmdict")
-                val count = db!!.rawQuery("SELECT count(*) AS cnt FROM jmdict.DictionaryEntry")
-                    .firstOrNull()?.get("cnt") ?: 0
-                lines += "jmdict entries : $count" to false
-                db!!.detachDictionary("jmdict")
-            } catch (e: Exception) {
-                lines += "jmdict check failed: ${e.message}" to true
-            }
-        }
+        val ctx = AppContext(
+            db        = dbManager,
+            search    = SearchRepository(dbManager, lang),
+            bookmarks = BookmarkRepositoryImpl(dbManager),
+            tags      = TagRepositoryImpl(dbManager),
+            settings  = settings,
+            availableDbs = availableDbs
+        )
 
-        buildAndShow(primaryStage, lines)
-    }
-
-    private fun buildAndShow(stage: Stage, lines: List<Pair<String, Boolean>>) {
-        val vbox = VBox(5.0).apply {
-            padding = Insets(16.0)
-            children.addAll(lines.map { (text, isError) ->
-                Label(text).apply {
-                    style = "-fx-font-family: monospace; -fx-font-size: 13px;"
-                    if (isError) textFill = Color.CRIMSON
-                }
-            })
-        }
-        stage.title = "Sumatora Dictionary"
-        stage.scene = Scene(ScrollPane(vbox).apply { isFitToWidth = true }, 620.0, 340.0)
-        stage.show()
+        primaryStage.title = "Sumatora Dictionary"
+        primaryStage.scene = Scene(MainView(ctx), 1100.0, 720.0)
+        primaryStage.show()
     }
 
     override fun stop() {
