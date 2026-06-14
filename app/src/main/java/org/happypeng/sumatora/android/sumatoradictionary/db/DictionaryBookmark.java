@@ -19,6 +19,8 @@ package org.happypeng.sumatora.android.sumatoradictionary.db;
 import androidx.room.Entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+import org.happypeng.sumatora.core.bookmark.Bookmark;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -51,5 +53,13 @@ public class DictionaryBookmark {
         bookmark = aBookmark;
         memo = aMemo;
         tags = aTags;
+    }
+
+    public Bookmark toBookmark() {
+        return new Bookmark(seq, bookmark, memo, tags);
+    }
+
+    public static DictionaryBookmark fromBookmark(Bookmark b) {
+        return new DictionaryBookmark(b.seq, b.bookmark, b.memo, b.tags);
     }
 }

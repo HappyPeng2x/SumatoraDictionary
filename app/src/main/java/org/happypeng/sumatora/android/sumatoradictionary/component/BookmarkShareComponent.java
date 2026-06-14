@@ -25,12 +25,13 @@ import androidx.annotation.MainThread;
 import androidx.annotation.WorkerThread;
 import androidx.core.content.FileProvider;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
+import org.happypeng.sumatora.core.bookmark.Bookmark;
+import org.happypeng.sumatora.core.bookmark.BookmarkImportExportService;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import javax.inject.Inject;
@@ -71,11 +72,15 @@ public class BookmarkShareComponent {
 
         parentDir.mkdirs();
 
-        List<DictionaryBookmark> bookmarks = persistentDatabaseComponent.getDatabase()
+        List<DictionaryBookmark> dbBookmarks = persistentDatabaseComponent.getDatabase()
                 .dictionaryBookmarkDao().getAll();
 
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.writeValue(outputFile, bookmarks);
+        List<Bookmark> bookmarks = new ArrayList<>(dbBookmarks.size());
+        for (DictionaryBookmark db : dbBookmarks) {
+            bookmarks.add(db.toBookmark());
+        }
+
+        BookmarkImportExportService.writeBookmarks(bookmarks, outputFile);
 
         return outputFile;
     }

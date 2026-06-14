@@ -23,10 +23,9 @@ import android.net.Uri;
 import androidx.annotation.WorkerThread;
 import androidx.sqlite.db.SupportSQLiteStatement;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
+import org.happypeng.sumatora.core.bookmark.Bookmark;
+import org.happypeng.sumatora.core.bookmark.BookmarkImportExportService;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmarkImport;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmarkTag;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
@@ -143,17 +142,17 @@ public class BookmarkImportComponent {
                     }
                 });
             } else if ("application/json".equals(type)) {
-                final ObjectMapper mapper = new ObjectMapper();
-                final List<DictionaryBookmarkImport> bookmarks = mapper.readValue(is, new TypeReference<List<DictionaryBookmarkImport>>() {});
+                final List<Bookmark> parsed = BookmarkImportExportService.readBookmarks(is);
                 is.close();
 
-                if (bookmarks == null) {
+                if (parsed == null) {
                     // TBD: error management
                     return;
                 }
 
-                for (DictionaryBookmarkImport dictionaryBookmarkImport : bookmarks) {
-                    dictionaryBookmarkImport.ref = key;
+                final List<DictionaryBookmarkImport> bookmarks = new java.util.ArrayList<>(parsed.size());
+                for (Bookmark b : parsed) {
+                    bookmarks.add(new DictionaryBookmarkImport(key, b.seq, b.bookmark, b.memo, b.tags));
                 }
 
                 database.runInTransaction(() -> {

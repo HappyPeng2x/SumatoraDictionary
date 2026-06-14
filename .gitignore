@@ -9,3 +9,13 @@
 .externalNativeBuild
 keystore.properties
 /.idea/caches
+
+# Compiled artifacts
+*.class
+*.dex
+*.apk
+*.aab
+*.aar
+
+# IntelliJ output
+out/
