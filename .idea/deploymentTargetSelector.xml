@@ -8,6 +8,7 @@
       </SelectionState>
       <SelectionState runConfigName="BookmarkIntegrationTest">
         <option name="selectionMode" value="DROPDOWN" />
+        <DialogSelection />
       </SelectionState>
       <SelectionState runConfigName="BasicSearchTest">
         <option name="selectionMode" value="DROPDOWN" />
@@ -22,6 +23,10 @@
         <DialogSelection />
       </SelectionState>
       <SelectionState runConfigName="unitTest">
+        <option name="selectionMode" value="DROPDOWN" />
+        <DialogSelection />
+      </SelectionState>
+      <SelectionState runConfigName="BookmarkRoundTripTest">
         <option name="selectionMode" value="DROPDOWN" />
         <DialogSelection />
       </SelectionState>
