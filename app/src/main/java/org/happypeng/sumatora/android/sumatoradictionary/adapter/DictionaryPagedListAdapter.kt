@@ -57,7 +57,7 @@ class DictionaryPagedListAdapter(aDisableBookmarkButton: Boolean,
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): DictionarySearchElementViewHolder {
         val layoutInflater = LayoutInflater.from(parent.context)
-        val wordCardBinding = WordCardBinding.inflate(layoutInflater)
+        val wordCardBinding = WordCardBinding.inflate(layoutInflater, parent, false)
         return DictionarySearchElementViewHolder(wordCardBinding,
                 entities, disableBookmarkButton, disableMemoEdit, disableTagEdit,
                 commitConsumer, commitTagsConsumer, tagSuggestionsProvider,

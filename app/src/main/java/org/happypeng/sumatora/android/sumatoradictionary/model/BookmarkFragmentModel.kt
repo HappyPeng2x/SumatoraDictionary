@@ -15,37 +15,34 @@
         along with this program.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.happypeng.sumatora.android.sumatoradictionary.model
 
-import dagger.hilt.android.lifecycle.HiltViewModel
-import javax.inject.Inject
 import androidx.lifecycle.SavedStateHandle
-import androidx.paging.PagedList.BoundaryCallback
+import dagger.hilt.android.lifecycle.HiltViewModel
 import org.happypeng.sumatora.android.sumatoradictionary.component.BookmarkComponent
 import org.happypeng.sumatora.android.sumatoradictionary.component.BookmarkShareComponent
 import org.happypeng.sumatora.android.sumatoradictionary.component.LanguageSettingsComponent
 import org.happypeng.sumatora.android.sumatoradictionary.component.PersistentDatabaseComponent
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement
-import org.happypeng.sumatora.android.sumatoradictionary.model.state.QueryState
+import javax.inject.Inject
 
 @HiltViewModel
-class BookmarkFragmentModel @Inject constructor(bookmarkComponent: BookmarkComponent,
-                                                         persistentDatabaseComponent: PersistentDatabaseComponent,
-                                                         languageSettingsComponent: LanguageSettingsComponent,
-                                                         bookmarkShareComponent: BookmarkShareComponent,
-                                                         savedStateHandle: SavedStateHandle) : BaseQueryFragmentModel(bookmarkComponent,
-        persistentDatabaseComponent,
-        languageSettingsComponent,
-        bookmarkShareComponent,
-        { component: PersistentDatabaseComponent, callback: BoundaryCallback<DictionarySearchElement>? -> component.getSearchElements(KEY, callback) },
-        KEY,
-        true,
-        true,
-        TITLE,
-        true,
-        true,
-        false,
-        false,
-        false,
-        savedStateHandle.get(QueryFragmentModel.STATUS_KEY)
+class BookmarkFragmentModel @Inject constructor(
+    bookmarkComponent: BookmarkComponent,
+    persistentDatabaseComponent: PersistentDatabaseComponent,
+    languageSettingsComponent: LanguageSettingsComponent,
+    bookmarkShareComponent: BookmarkShareComponent,
+    savedStateHandle: SavedStateHandle
+) : BaseQueryFragmentModel(
+    persistentDatabaseComponent, languageSettingsComponent, bookmarkComponent, bookmarkShareComponent,
+    { component, callback -> component.getSearchElements(KEY, callback) },
+    key = KEY,
+    searchIconifiedByDefault = true,
+    shareButtonVisible = true,
+    title = TITLE,
+    filterBookmarks = true,
+    filterMemos = true,
+    disableBookmarkButton = false,
+    disableMemoEdit = false,
+    disableTagEdit = false,
+    savedState = savedStateHandle.get(QueryFragmentModel.STATUS_KEY)
 ) {
     companion object {
         const val KEY = 2
@@ -54,8 +51,6 @@ class BookmarkFragmentModel @Inject constructor(bookmarkComponent: BookmarkCompo
     }
 
     init {
-        states().subscribe {
-            savedStateHandle.set(QueryFragmentModel.STATUS_KEY, it)
-        }
+        states().subscribe { savedStateHandle[QueryFragmentModel.STATUS_KEY] = it }
     }
 }
