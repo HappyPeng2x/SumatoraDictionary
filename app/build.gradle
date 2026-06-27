@@ -4,6 +4,12 @@ apply plugin: 'kotlin-kapt'
 apply plugin: 'kotlin-parcelize'
 apply plugin: 'dagger.hilt.android.plugin'
 
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
 android {
     namespace = "org.happypeng.sumatora.android.sumatoradictionary"
 
@@ -36,8 +42,18 @@ android {
         testInstrumentationRunnerArguments disableAnalytics: 'true'
     }
 
+    signingConfigs {
+        release {
+            keyAlias keystoreProperties['keyAlias']
+            keyPassword keystoreProperties['keyPassword']
+            storeFile keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null
+            storePassword keystoreProperties['storePassword']
+        }
+    }
+
     buildTypes {
         release {
+            signingConfig signingConfigs.release
             buildConfigField("boolean", "DEBUG_MESSAGE", "false")
             buildConfigField("boolean", "DEBUG_QUERYTOOL", "false")
             buildConfigField("boolean", "DEBUG_DICTIONARY_ACTIVITY", "false")
