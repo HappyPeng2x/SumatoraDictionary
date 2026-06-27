@@ -16,7 +16,6 @@
 
 package org.happypeng.sumatora.core.bookmark
 
-import com.fasterxml.jackson.core.type.TypeReference
 import com.fasterxml.jackson.databind.ObjectMapper
 import java.io.File
 import java.io.InputStream
@@ -38,6 +37,7 @@ object BookmarkImportExportService {
 
     @JvmStatic
     fun readBookmarks(inputStream: InputStream): List<Bookmark> {
-        return mapper.readValue(inputStream, object : TypeReference<List<Bookmark>>() {})
+        val listType = mapper.typeFactory.constructCollectionType(List::class.java, Bookmark::class.java)
+        return mapper.readValue(inputStream, listType)
     }
 }

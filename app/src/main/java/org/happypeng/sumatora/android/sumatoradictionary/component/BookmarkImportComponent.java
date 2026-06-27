@@ -42,10 +42,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext;
 
 @Singleton
 public class BookmarkImportComponent {
-    // Optimization: Use UPSERT (ON CONFLICT) for clever merging rules.
-    // - bookmark: true if true in either table (using MAX).
-    // - memo/tags: updated only if the imported value is not empty.
-    private static String SQL_BOOKMARK_IMPORT_COMMIT =
+    // Merge rules: bookmark = MAX(existing, imported); memo/tags updated only when imported value is non-empty.
+    private static final String SQL_BOOKMARK_IMPORT_COMMIT =
             "INSERT INTO DictionaryBookmark (seq, bookmark, memo, tags) " +
             "SELECT seq, bookmark, memo, tags FROM DictionaryBookmarkImport WHERE ref = ? " +
             "ON CONFLICT(seq) DO UPDATE SET " +
@@ -66,9 +64,7 @@ public class BookmarkImportComponent {
 
     private synchronized void initQuery() {
         if (commitQuery == null) {
-            final PersistentDatabase persistentDatabase = persistentDatabaseComponent.getDatabase();
-
-            commitQuery = persistentDatabase.compileStatement(SQL_BOOKMARK_IMPORT_COMMIT);
+            commitQuery = persistentDatabaseComponent.getDatabase().compileStatement(SQL_BOOKMARK_IMPORT_COMMIT);
         }
     }
 
@@ -112,6 +108,9 @@ public class BookmarkImportComponent {
         try {
             final ContentResolver contentResolver = context.getContentResolver();
             final InputStream is = contentResolver.openInputStream(uri);
+            if (is == null) {
+                return;
+            }
             String type = contentResolver.getType(uri);
 
             // Fallback for file URIs where getType() might return null
@@ -163,7 +162,7 @@ public class BookmarkImportComponent {
 
             // TBD: status management
             // mStatus.postValue(STATUS_PROCESSED);
-        } catch (IOException e) {
+        } catch (IOException | RuntimeException e) {
             System.err.println(e.toString());
             // TBD: error management
         }
