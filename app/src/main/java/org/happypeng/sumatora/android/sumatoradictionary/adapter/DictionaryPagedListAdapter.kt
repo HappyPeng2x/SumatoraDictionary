@@ -23,7 +23,7 @@ import io.reactivex.rxjava3.subjects.PublishSubject
 import org.happypeng.sumatora.android.sumatoradictionary.databinding.WordCardBinding
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElementDiffUtil
-import org.happypeng.sumatora.android.sumatoradictionary.db.tools.JMDICT_ENTITIES
+import org.happypeng.sumatora.core.dict.JMDICT_ENTITIES
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.DictionaryPagedListAdapterCloseIntent
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.DictionaryPagedListAdapterIntent
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionarySearchElementViewHolder
@@ -52,7 +52,7 @@ class DictionaryPagedListAdapter(aDisableBookmarkButton: Boolean,
 
     // No placeholders = no null values
     override fun getItemId(position: Int): Long {
-        return getItem(position)!!.getSeq()
+        return getItem(position)!!.seq
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): DictionarySearchElementViewHolder {

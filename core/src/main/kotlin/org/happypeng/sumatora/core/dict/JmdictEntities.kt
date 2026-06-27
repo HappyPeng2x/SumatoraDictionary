@@ -14,7 +14,7 @@
         You should have received a copy of the GNU General Public License
         along with this program.  If not, see <http://www.gnu.org/licenses/>.*/
 
-package org.happypeng.sumatora.android.sumatoradictionary.db.tools
+package org.happypeng.sumatora.core.dict
 
 val JMDICT_ENTITIES = hashMapOf(
         "MA" to "martial arts term",

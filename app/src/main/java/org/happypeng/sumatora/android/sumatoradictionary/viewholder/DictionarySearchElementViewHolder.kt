@@ -186,14 +186,14 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
         tagLoadSubscription?.dispose()
         tagLoadSubscription = null
 
-        if (entry.getLang() != entry.langSetting) {
+        if (entry.lang != entry.langSetting) {
             wordCardBinding.wordCardView.setBackgroundColor(colors.backupLang)
         } else {
             wordCardBinding.wordCardView.setBackgroundColor(colors.activeLang)
         }
 
         wordCardBinding.wordCardText.text = renderEntry(entry, entities, colors)
-        if (entry.getBookmark() != 0L) {
+        if (entry.bookmark != 0L) {
             wordCardBinding.wordCardBookmarkIcon.setImageResource(R.drawable.ic_outline_bookmark_24px)
         } else {
             wordCardBinding.wordCardBookmarkIcon.setImageResource(R.drawable.ic_outline_bookmark_border_24px)
@@ -201,11 +201,11 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
 
         wordCardBinding.wordCardBookmarkIcon.setOnClickListener {
             commitConsumer.invoke(entry.seq,
-                if (entry.getBookmark() > 0) 0 else 1,
+                if (entry.bookmark > 0) 0 else 1,
                 wordCardBinding.wordCardMemo.editableText.toString())
         }
 
-        val memo = entry.getMemo()
+        val memo = entry.memo
         if (memo != null && "" != memo) {
             openMemo()
             wordCardBinding.wordCardMemo.setText(memo)
@@ -245,7 +245,7 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
         } else {
             editingSeq = null
             currentTags.clear()
-            val entryTags = entry.getTags()
+            val entryTags = entry.tags
             if (!entryTags.isNullOrEmpty()) {
                 currentTags.addAll(entryTags.split(",").filter { it.isNotBlank() })
             }

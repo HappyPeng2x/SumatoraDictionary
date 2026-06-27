@@ -14,13 +14,14 @@
         You should have received a copy of the GNU General Public License
         along with this program.  If not, see <http://www.gnu.org/licenses/>.*/
 
-package org.happypeng.sumatora.android.sumatoradictionary.db.tools
+package org.happypeng.sumatora.core.search
 
 // Parses a search query that may contain #tag tokens.
 // Example: "verb #jlpt-n5 #common" → plainTerm="verb", tags=["jlpt-n5", "common"]
 object TagQueryParser {
     private val TAG_REGEX = Regex("""#([^\s#,]+)""")
 
+    @JvmStatic
     fun parse(query: String): Pair<String, List<String>> {
         val tags = TAG_REGEX.findAll(query).map { it.groupValues[1] }.toList()
         val plainTerm = TAG_REGEX.replace(query, "").trim()

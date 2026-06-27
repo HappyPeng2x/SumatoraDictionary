@@ -36,7 +36,8 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElem
 import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.DictionarySearchQueryTool
-import org.happypeng.sumatora.android.sumatoradictionary.db.tools.TagQueryParser
+import org.happypeng.sumatora.core.bookmark.BookmarkMergeService
+import org.happypeng.sumatora.core.search.TagQueryParser
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.LanguageSettingAttachedIntent
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.LanguageSettingDetachedIntent
 import org.happypeng.sumatora.android.sumatoradictionary.model.state.QueryState
@@ -183,7 +184,7 @@ abstract class BaseQueryFragmentModel protected constructor(
                 tagDao.deleteTagsForSeq(seq)
                 if (tagsStr.isNotEmpty()) {
                     tagDao.insertMany(
-                        tagsStr.split(",").filter { it.isNotBlank() }.map { DictionaryBookmarkTag(seq, it) }
+                        BookmarkMergeService.splitTags(tagsStr).map { DictionaryBookmarkTag(seq, it) }
                     )
                 }
                 db.dictionarySearchElementDao().updateTags(seq, existing.tags)

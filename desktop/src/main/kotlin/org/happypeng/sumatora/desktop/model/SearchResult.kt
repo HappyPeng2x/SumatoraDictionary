@@ -16,25 +16,27 @@
 
 package org.happypeng.sumatora.desktop.model
 
+import org.happypeng.sumatora.core.dict.DictionaryResult
+
 data class SearchResult(
-    val seq: Long,
-    val readingsPrio: String?,
-    val readings: String?,
-    val writingsPrio: String?,
-    val writings: String?,
-    val pos: String?,
-    val xref: String?,
-    val ant: String?,
-    val misc: String?,
-    val lsource: String?,
-    val dial: String?,
-    val s_inf: String?,
-    val field: String?,
-    val lang: String?,
-    val gloss: String?,
-    val exampleSentences: String?,
-    val exampleTranslations: String?,
-    val bookmark: Long,
-    val memo: String?,
-    val tags: String?
-)
+    override val seq: Long,
+    override val readingsPrio: String?,
+    override val readings: String?,
+    override val writingsPrio: String?,
+    override val writings: String?,
+    override val pos: String?,
+    override val xref: String?,
+    override val ant: String?,
+    override val misc: String?,
+    override val lsource: String?,
+    override val dial: String?,
+    override val s_inf: String?,
+    override val field: String?,
+    override val lang: String?,
+    override val gloss: String?,
+    override val exampleSentences: String?,
+    override val exampleTranslations: String?,
+    override val bookmark: Long,
+    override val memo: String?,
+    override val tags: String?
+) : DictionaryResult

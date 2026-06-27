@@ -18,8 +18,10 @@ package org.happypeng.sumatora.android.sumatoradictionary.db;
 
 import androidx.room.Entity;
 
+import org.happypeng.sumatora.core.dict.DictionaryResult;
+
 @Entity(primaryKeys = {"ref", "seq"})
-public class DictionarySearchElement {
+public class DictionarySearchElement implements DictionaryResult {
     public int ref;
     public int entryOrder;
     public long seq;

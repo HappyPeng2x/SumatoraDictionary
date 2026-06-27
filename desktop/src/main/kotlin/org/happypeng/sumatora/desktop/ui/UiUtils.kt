@@ -17,6 +17,7 @@
 package org.happypeng.sumatora.desktop.ui
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import org.happypeng.sumatora.core.dict.JMDICT_ENTITIES
 import org.happypeng.sumatora.desktop.model.SearchResult
 
 private val jsonMapper = ObjectMapper()
@@ -39,13 +40,10 @@ internal fun wordHeader(r: SearchResult): String = buildString {
     else append(rd ?: "")
 }
 
-internal fun parseTags(tags: String?): List<String> =
-    if (tags.isNullOrEmpty()) emptyList()
-    else tags.split(",").filter { it.isNotBlank() }
-
-internal fun parseQuery(raw: String): Pair<String, List<String>> {
-    val tagRegex = Regex("""#([^\s#,]+)""")
-    val tags = tagRegex.findAll(raw).map { it.groupValues[1] }.toList()
-    val plain = raw.replace(tagRegex, "").trim()
-    return plain to tags
+internal fun expandPos(posJson: String?): String {
+    if (posJson.isNullOrEmpty()) return ""
+    return try {
+        val groups = jsonMapper.readValue(posJson, Array<Array<String>>::class.java)
+        groups.flatMap { it.toList() }.distinct().mapNotNull { JMDICT_ENTITIES[it] }.joinToString(", ")
+    } catch (e: Exception) { "" }
 }

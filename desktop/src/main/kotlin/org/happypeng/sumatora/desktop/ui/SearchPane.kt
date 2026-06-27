@@ -30,6 +30,8 @@ import javafx.scene.layout.Priority
 import javafx.scene.layout.VBox
 import javafx.scene.control.Label
 import javafx.util.Duration
+import org.happypeng.sumatora.core.bookmark.BookmarkMergeService
+import org.happypeng.sumatora.core.search.TagQueryParser
 import org.happypeng.sumatora.desktop.model.SearchResult
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -75,7 +77,7 @@ class SearchPane(private val ctx: AppContext) : VBox() {
     private fun runSearch() {
         val raw = searchField.text ?: ""
         val bookmarksOnly = bookmarksCheck.isSelected
-        val (plain, tagList) = parseQuery(raw)
+        val (plain, tagList) = TagQueryParser.parse(raw)
         val gen = genCounter.incrementAndGet()
 
         Thread {
@@ -103,7 +105,7 @@ private class ResultCell : ListCell<SearchResult>() {
         if (!item.memo.isNullOrEmpty()) {
             rows += Label(item.memo).apply { style = "-fx-font-size: 11px; -fx-text-fill: #aaa; -fx-font-style: italic;" }
         }
-        val tags = parseTags(item.tags)
+        val tags = BookmarkMergeService.splitTags(item.tags)
         if (tags.isNotEmpty()) {
             rows += HBox(4.0, *tags.map { tag ->
                 Label(tag).apply { style = "-fx-background-color: #4a7c9e; -fx-background-radius: 10; -fx-padding: 1 6 1 6; -fx-text-fill: white; -fx-font-size: 11px;" }

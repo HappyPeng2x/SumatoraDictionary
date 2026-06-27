@@ -29,6 +29,8 @@ import javafx.scene.layout.HBox
 import javafx.scene.layout.Priority
 import javafx.scene.layout.VBox
 import javafx.util.Duration
+import org.happypeng.sumatora.core.bookmark.BookmarkMergeService
+import org.happypeng.sumatora.core.search.TagQueryParser
 import org.happypeng.sumatora.desktop.model.SearchResult
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -66,7 +68,7 @@ class BookmarksPane(private val ctx: AppContext) : VBox() {
 
     fun refresh() {
         val gen = genCounter.incrementAndGet()
-        val (plain, tagList) = parseQuery(searchField.text ?: "")
+        val (plain, tagList) = TagQueryParser.parse(searchField.text ?: "")
         Thread {
             val results = try { ctx.search.search(plain, tagList, showBookmarksOnly = true) } catch (e: Exception) { emptyList() }
             if (genCounter.get() == gen) Platform.runLater { resultList.items.setAll(results) }
@@ -87,7 +89,7 @@ private class BookmarkCell : ListCell<SearchResult>() {
         if (!item.memo.isNullOrEmpty()) {
             rows += Label(item.memo).apply { style = "-fx-font-size: 11px; -fx-text-fill: #aaa; -fx-font-style: italic;" }
         }
-        val tags = parseTags(item.tags)
+        val tags = BookmarkMergeService.splitTags(item.tags)
         if (tags.isNotEmpty()) {
             rows += HBox(4.0, *tags.map { tag ->
                 Label(tag).apply { style = "-fx-background-color: #4a7c9e; -fx-background-radius: 10; -fx-padding: 1 6 1 6; -fx-text-fill: white; -fx-font-size: 11px;" }

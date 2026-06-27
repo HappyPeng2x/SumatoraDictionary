@@ -66,7 +66,7 @@ public fun renderEntry(aEntry: DictionarySearchElement,
     entities: HashMap<String, String>, colors: DictionarySearchElementViewHolder.Colors): SpannableStringBuilder {
     val sb = SpannableStringBuilder()
     var writingsCount = 0
-    for (w in aEntry.getWritingsPrio().split(" ".toRegex()).toTypedArray()) {
+    for (w in aEntry.writingsPrio.orEmpty().split(" ".toRegex()).toTypedArray()) {
         if (w.length > 0) {
             if (writingsCount > 0) {
                 sb.append("・")
@@ -79,7 +79,7 @@ public fun renderEntry(aEntry: DictionarySearchElement,
             writingsCount = writingsCount + 1
         }
     }
-    for (w in aEntry.getWritings().split(" ".toRegex()).toTypedArray()) {
+    for (w in aEntry.writings.orEmpty().split(" ".toRegex()).toTypedArray()) {
         if (w.length > 0) {
             if (writingsCount > 0) {
                 sb.append("・")
@@ -96,7 +96,7 @@ public fun renderEntry(aEntry: DictionarySearchElement,
     sb.append("【")
     sb.setSpan(ForegroundColorSpan(Color.GRAY), sb.length - 1, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
     var readingsCount = 0
-    for (r in aEntry.getReadingsPrio().split(" ".toRegex()).toTypedArray()) {
+    for (r in aEntry.readingsPrio.orEmpty().split(" ".toRegex()).toTypedArray()) {
         if (r.length > 0) {
             if (readingsCount > 0) {
                 sb.append("・")
@@ -109,7 +109,7 @@ public fun renderEntry(aEntry: DictionarySearchElement,
             readingsCount = readingsCount + 1
         }
     }
-    for (r in aEntry.getReadings().split(" ".toRegex()).toTypedArray()) {
+    for (r in aEntry.readings.orEmpty().split(" ".toRegex()).toTypedArray()) {
         if (r.length > 0) {
             if (readingsCount > 0) {
                 sb.append("・")
@@ -124,9 +124,9 @@ public fun renderEntry(aEntry: DictionarySearchElement,
     sb.append("　")
     var glossCount = 0
     try {
-        val gloss = JSONArray(aEntry.getGloss())
+        val gloss = JSONArray(aEntry.gloss)
         var pos: JSONArray? = null
-        val posStr = aEntry.getPos()
+        val posStr = aEntry.pos
         if (posStr != null) {
             pos = JSONArray(posStr)
         }

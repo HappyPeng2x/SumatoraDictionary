@@ -16,6 +16,7 @@
 
 package org.happypeng.sumatora.desktop.repository
 
+import org.happypeng.sumatora.core.search.QueryUtils
 import org.happypeng.sumatora.desktop.db.DatabaseManager
 import org.happypeng.sumatora.desktop.model.SearchResult
 import org.happypeng.sumatora.jromkan.Romkan
@@ -57,7 +58,7 @@ class SearchRepository(
                 runBookmarkQuery(showBookmarksOnly, showMemoOnly).forEach { seen.putIfAbsent(it.seq, it) }
             }
         } else {
-            val escaped = escapeTerm(plainTerm)
+            val escaped = QueryUtils.escapeTerm(plainTerm)
             val katakana = romkan.to_katakana(romkan.to_hepburn(escaped))
 
             for (step in FORWARD_STEPS) {
@@ -186,7 +187,4 @@ class SearchRepository(
         tags = getString("tags")
     )
 
-    companion object {
-        private fun escapeTerm(term: String): String = term.replace(Regex("[\"()]"), "")
-    }
 }

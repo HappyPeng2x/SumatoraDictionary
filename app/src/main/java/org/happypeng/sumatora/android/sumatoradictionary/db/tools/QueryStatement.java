@@ -22,6 +22,8 @@ import androidx.sqlite.db.SupportSQLiteStatement;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings;
 
+import org.happypeng.sumatora.core.search.QueryUtils;
+
 import java.io.IOException;
 import java.util.List;
 
@@ -83,6 +85,6 @@ public abstract class QueryStatement {
     }
 
     protected static String escapeTerm(final String term) {
-        return term.replaceAll("[\"()]", "");
+        return QueryUtils.escapeTerm(term);
     }
 }

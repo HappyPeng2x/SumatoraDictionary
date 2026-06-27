@@ -28,6 +28,7 @@ import javafx.scene.layout.HBox
 import javafx.scene.layout.Priority
 import javafx.scene.layout.VBox
 import org.happypeng.sumatora.core.bookmark.Bookmark
+import org.happypeng.sumatora.core.bookmark.BookmarkMergeService
 import org.happypeng.sumatora.core.bookmark.BookmarkTag
 import org.happypeng.sumatora.desktop.model.SearchResult
 
@@ -104,7 +105,7 @@ class WordDetailPane(
         body.children += Label("Tags").apply {
             style = "-fx-font-size: 12px; -fx-text-fill: #666; -fx-font-weight: bold;"
         }
-        val currentTags = r.tags?.split(",")?.filter { it.isNotEmpty() }?.toMutableList() ?: mutableListOf()
+        val currentTags = BookmarkMergeService.splitTags(r.tags).toMutableList()
         body.children += buildTagFlow(r, currentTags)
 
         val tagInput = TextField().apply {
@@ -133,8 +134,9 @@ class WordDetailPane(
         body.children += Separator()
 
         // ── Part of speech ────────────────────────────────────────────────────
-        if (!r.pos.isNullOrEmpty()) {
-            body.children += Label(r.pos).apply {
+        val posText = expandPos(r.pos)
+        if (posText.isNotEmpty()) {
+            body.children += Label(posText).apply {
                 style = "-fx-font-style: italic; -fx-text-fill: #666; -fx-font-size: 12px;"
                 isWrapText = true
             }
