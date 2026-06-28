@@ -8,10 +8,6 @@ Please see the [screenshots](/SCREENSHOTS.md) and visit the [website](https://su
      alt="Get it on F-Droid"
      height="80">](https://f-droid.org/packages/org.happypeng.sumatora.android.sumatoradictionary/)
 
-[<img src="https://play.google.com/intl/en_us/badges/images/generic/en_badge_web_generic.png"
-     alt="Get it on Google Play"
-     height="80">](https://play.google.com/store/apps/details?id=org.happypeng.sumatora.android.sumatoradictionary)
-
 ## Features
 
 Sumatora has the following distinctive features:
@@ -40,8 +36,6 @@ See the [LICENSE](LICENSE) file for details.
 * [A nice tiger photo](https://unsplash.com/photos/5RBXc7R-YWs), published under the [Unsplash License](https://unsplash.com/license), by Blake Meyer
 * [logback-android](https://tony19.github.io/logback-android/index.html), published under the [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0.html), by Anthony Trinh and QOS.ch
 * [Python-romkan](https://www.soimort.org/python-romkan/), published under the [BSD license](https://raw.githubusercontent.com/soimort/python-romkan/master/LICENSE), by Mort Yao
-
-Google Play and the Google Play logo are trademarks of Google LLC.
 
 ## Debugging
 
