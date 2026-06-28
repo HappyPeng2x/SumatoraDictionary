@@ -19,8 +19,8 @@ android {
         applicationId "org.happypeng.sumatora.android.sumatoradictionary"
         minSdkVersion 29
         targetSdkVersion 35
-        versionCode 32
-        versionName "0.4.7.1"
+        versionCode 33
+        versionName "0.4.7.2"
         multiDexEnabled true
 
         compileOptions {
@@ -122,10 +122,6 @@ dependencies {
     implementation "com.github.tony19:logback-android:2.0.0"
     implementation 'com.github.requery:sqlite-android:3.49.0'
     implementation 'com.github.HappyPeng2x:SuperRubySpan:v0.2.1'
-
-    implementation 'com.fasterxml.jackson.core:jackson-databind:2.11.2'
-    implementation 'com.fasterxml.jackson.core:jackson-core:2.11.2'
-    implementation 'com.fasterxml.jackson.core:jackson-annotations:2.11.2'
 
     // Hilt
     implementation 'com.google.dagger:hilt-android:2.51.1'

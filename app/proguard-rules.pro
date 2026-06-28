@@ -24,3 +24,13 @@
 -keep class org.slf4j.** { *; }
 -keepattributes *Annotation*
 -dontwarn ch.qos.logback.core.net.*
+
+# Jackson 2.11 does not bundle R8 rules; keep all Jackson classes to prevent
+# reflection-based deserialization from breaking under minification.
+-keep class com.fasterxml.jackson.core.** { *; }
+-keep class com.fasterxml.jackson.databind.** { *; }
+-keep class com.fasterxml.jackson.annotation.** { *; }
+-dontwarn com.fasterxml.jackson.**
+
+# Keep Bookmark model so R8 does not strip fields accessed only via Jackson reflection.
+-keep class org.happypeng.sumatora.core.bookmark.Bookmark { *; }

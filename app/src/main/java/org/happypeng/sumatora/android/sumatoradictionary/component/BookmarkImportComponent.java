@@ -18,6 +18,7 @@ package org.happypeng.sumatora.android.sumatoradictionary.component;
 
 import android.content.ContentResolver;
 import android.content.Context;
+import android.util.Log;
 import android.net.Uri;
 
 import androidx.annotation.WorkerThread;
@@ -163,8 +164,7 @@ public class BookmarkImportComponent {
             // TBD: status management
             // mStatus.postValue(STATUS_PROCESSED);
         } catch (IOException | RuntimeException e) {
-            System.err.println(e.toString());
-            // TBD: error management
+            Log.e("BookmarkImport", "Failed to process URI: " + uri, e);
         }
     }
 }
