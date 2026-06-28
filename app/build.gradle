@@ -19,8 +19,8 @@ android {
         applicationId "org.happypeng.sumatora.android.sumatoradictionary"
         minSdkVersion 29
         targetSdkVersion 35
-        versionCode 33
-        versionName "0.4.7.2"
+        versionCode 34
+        versionName "0.4.7.3"
         multiDexEnabled true
 
         compileOptions {
@@ -53,7 +53,9 @@ android {
 
     buildTypes {
         release {
-            signingConfig signingConfigs.release
+            if (keystorePropertiesFile.exists()) {
+                signingConfig signingConfigs.release
+            }
             buildConfigField("boolean", "DEBUG_MESSAGE", "false")
             buildConfigField("boolean", "DEBUG_QUERYTOOL", "false")
             buildConfigField("boolean", "DEBUG_DICTIONARY_ACTIVITY", "false")
