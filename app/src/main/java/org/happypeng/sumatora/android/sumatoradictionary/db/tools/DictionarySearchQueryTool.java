@@ -119,10 +119,10 @@ public class DictionarySearchQueryTool {
             "DELETE FROM DictionaryElement WHERE ref = ?";
 
     static private final String SQL_REVERSE_QUERY_EXACT =
-            "SELECT DictionaryTranslationIndex.docid AS gloss_docid, split_offsets(offsets(DictionaryTranslationIndex), ' ', 2, 500) AS gloss_offset FROM %s.DictionaryTranslationIndex WHERE DictionaryTranslationIndex.gloss MATCH ?";
+            "SELECT DictionaryTranslationIndex.rowid AS gloss_docid, 0 AS gloss_offset FROM %s.DictionaryTranslationIndex WHERE DictionaryTranslationIndex.gloss MATCH ?";
 
     static private final String SQL_REVERSE_QUERY_BEGIN =
-            "SELECT DictionaryTranslationIndex.docid AS gloss_docid, split_offsets(offsets(DictionaryTranslationIndex), ' ', 2, 500) AS gloss_offset FROM %s.DictionaryTranslationIndex WHERE DictionaryTranslationIndex.gloss MATCH ? || '*'";
+            "SELECT DictionaryTranslationIndex.rowid AS gloss_docid, 0 AS gloss_offset FROM %s.DictionaryTranslationIndex WHERE DictionaryTranslationIndex.gloss MATCH ? || '*'";
 
     static private final String SQL_QUERY_DICTIONARY_ELEMENT_DISPLAY =
             "INSERT OR IGNORE INTO DictionarySearchElement SELECT "

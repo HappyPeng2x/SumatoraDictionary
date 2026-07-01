@@ -1,4 +1,4 @@
-<repository version="4" date="20200517">
+<repository version="5" date="20260701">
     <dictionary uri="dictionaries/jmdict.db"
         type="jmdict" description="Index" lang=""/>
     <dictionary uri="dictionaries/eng.db"
@@ -30,4 +30,25 @@
     <dictionary
         uri="dictionaries/examples_eng.db"
         type="tatoeba" description="English examples" lang="eng" />
+    <dictionary
+        uri="dictionaries/examples_fre.db"
+        type="tatoeba" description="French examples" lang="fre" />
+    <dictionary
+        uri="dictionaries/examples_ger.db"
+        type="tatoeba" description="German examples" lang="ger" />
+    <dictionary
+        uri="dictionaries/examples_rus.db"
+        type="tatoeba" description="Russian examples" lang="rus" />
+    <dictionary
+        uri="dictionaries/examples_spa.db"
+        type="tatoeba" description="Spanish examples" lang="spa" />
+    <dictionary
+        uri="dictionaries/examples_dut.db"
+        type="tatoeba" description="Dutch examples" lang="dut" />
+    <dictionary
+        uri="dictionaries/examples_hun.db"
+        type="tatoeba" description="Hungarian examples" lang="hun" />
+    <dictionary
+        uri="dictionaries/examples_swe.db"
+        type="tatoeba" description="Swedish examples" lang="swe" />
 </repository>

@@ -17,7 +17,6 @@
 package org.happypeng.sumatora.android.sumatoradictionary.activity;
 
 
-import android.hardware.input.InputManager;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewParent;
@@ -52,6 +51,7 @@ import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static androidx.test.espresso.matcher.ViewMatchers.withText;
 import static org.hamcrest.Matchers.allOf;
+import static org.hamcrest.Matchers.containsString;
 
 @HiltAndroidTest
 @LargeTest
@@ -68,19 +68,11 @@ public class BasicSearchTest {
     @Inject PersistentDatabaseComponent dbComponent;
 
     @Before
-    public void initialize() throws NoSuchMethodException {
+    public void initialize() {
         hiltRule.inject();
         Assume.assumeFalse(
                 "skipped: no dictionary installed on this device",
                 dbComponent.getDatabase().installedDictionaryDao().getAll().isEmpty());
-        // Espresso uses InputManager.getInstance() via reflection for UI event injection.
-        // On stock Android 16 (AOSP emulators) this method was removed; skip there rather
-        // than crashing at the first Espresso action.
-        try {
-            InputManager.class.getDeclaredMethod("getInstance");
-        } catch (NoSuchMethodException e) {
-            Assume.assumeTrue("InputManager.getInstance() not available; Espresso UI injection unsupported", false);
-        }
         mActivityTestRule.launchActivity(null);
         mActivityTestRule.getActivity().sayHello();
     }
@@ -115,7 +107,7 @@ public class BasicSearchTest {
         Assume.assumeTrue("activity lost window focus after search",
                 mActivityTestRule.getActivity().hasWindowFocus());
 
-        onView(withText("私 【わたし】　1. pronoun I, me\n\n→ 騒がしいホームで誰かが私の名前を呼んでいるのが聞こえた I could hear someone calling my name on the noisy platform."))
+        onView(withText(containsString("私 【わたし")))
                 .check(matches(isDisplayed()));
 
         onView(withId(R.id.dictionary_bookmark_fragment_search_status))

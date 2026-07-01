@@ -119,7 +119,7 @@ class SearchRepository(
             SELECT ${selectColumns()}
             ${fromJoin()}
             AND DictionaryTranslation.rowid IN (
-                SELECT DictionaryTranslationIndex.docid
+                SELECT DictionaryTranslationIndex.rowid
                 FROM $lang.DictionaryTranslationIndex
                 WHERE DictionaryTranslationIndex.gloss MATCH ?
             )

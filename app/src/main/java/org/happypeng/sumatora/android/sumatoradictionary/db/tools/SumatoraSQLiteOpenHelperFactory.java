@@ -77,23 +77,6 @@ public class SumatoraSQLiteOpenHelperFactory implements SupportSQLiteOpenHelper.
         @Override
         public void onOpen(SQLiteDatabase db) {
             callback.onOpen(db);
-
-            db.addFunction("split_offsets", 4, new SQLiteDatabase.Function() {
-                @Override
-                public void callback(Args args, Result result) {
-                    String arg = args.getString(0);
-                    String exp = args.getString(1);
-                    String[] elements = arg.split(exp);
-                    int pos = args.getInt(2);
-                    int def = args.getInt(3);
-
-                    if (pos > elements.length) {
-                        result.set(def);
-                    } else {
-                        result.set(Integer.parseInt(elements[pos]));
-                    }
-                }
-            });
         }
 
         @Override protected SQLiteDatabaseConfiguration createConfiguration(String path, int openFlags) {
