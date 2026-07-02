@@ -12,6 +12,7 @@
 
     <!-- Text -->
     <color name="text_foreground_primary">@color/black_87</color>
+    <color name="text_foreground_secondary">#757575</color>
 
     <color name="text_background_primary">@color/white</color>
     <color name="text_background_primary_backup">#aaaaaa</color>
@@ -22,6 +23,7 @@
 
     <color name="render_highlight">#ccffcc</color>
     <color name="render_pos">#3333aa</color>
+    <color name="render_pos_chip_bg">#E8E8F8</color>
 
     <!-- Blue -->
     <color name="blue_500">#2196f3</color>

@@ -22,39 +22,25 @@ import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.style.BackgroundColorSpan
 import android.text.style.ForegroundColorSpan
-import android.text.style.RelativeSizeSpan
 import android.text.style.StyleSpan
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionarySearchElementViewHolder
-import org.happypeng.sumatora.android.superrubyspan.tools.JapaneseText
 import org.json.JSONArray
 import org.json.JSONException
 import java.util.HashMap
 
-private fun renderJSONArray(aArray: JSONArray?, aSeparator: String,
-                            aResolveEntities: Boolean,
-                            entities: HashMap<String, String>,
-                            colors: DictionarySearchElementViewHolder.Colors): String {
-    if (aArray == null) {
-        return ""
-    }
+private fun resolveJSONArray(array: JSONArray?, separator: String,
+                             entities: HashMap<String, String>): String {
+    if (array == null) return ""
     val sb = StringBuilder()
     try {
-        for (i in 0 until aArray.length()) {
-            val s = aArray.getString(i)
-            if (sb.length > 0 && aSeparator != null) {
-                sb.append(aSeparator)
-            }
-            if (aResolveEntities) {
-                if (entities != null &&
-                        entities.containsKey(s)) {
-                    sb.append(entities[s])
-                } else {
-                    System.err.println("Could not resolve entity: $s")
-                }
-            } else {
-                sb.append(s)
-            }
+        for (i in 0 until array.length()) {
+            val s = array.getString(i)
+            if (sb.isNotEmpty()) sb.append(separator)
+            sb.append(entities[s] ?: run {
+                System.err.println("Could not resolve entity: $s")
+                s
+            })
         }
     } catch (e: JSONException) {
         e.printStackTrace()
@@ -62,119 +48,73 @@ private fun renderJSONArray(aArray: JSONArray?, aSeparator: String,
     return sb.toString()
 }
 
-public fun renderEntry(aEntry: DictionarySearchElement,
-    entities: HashMap<String, String>, colors: DictionarySearchElementViewHolder.Colors): SpannableStringBuilder {
+private fun appendWords(sb: SpannableStringBuilder, spaceSeparated: String?,
+                        highlight: Int, count: Int): Int {
+    var n = count
+    for (w in spaceSeparated.orEmpty().split(" ").filter { it.isNotEmpty() }) {
+        if (n > 0) {
+            sb.append("・")
+            sb.setSpan(ForegroundColorSpan(Color.GRAY), sb.length - 1, sb.length,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        }
+        sb.append(w)
+        if (highlight != 0) {
+            sb.setSpan(BackgroundColorSpan(highlight), sb.length - w.length, sb.length,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        }
+        n++
+    }
+    return n
+}
+
+fun renderHeadword(entry: DictionarySearchElement,
+                   colors: DictionarySearchElementViewHolder.Colors): SpannableStringBuilder {
     val sb = SpannableStringBuilder()
-    var writingsCount = 0
-    for (w in aEntry.writingsPrio.orEmpty().split(" ".toRegex()).toTypedArray()) {
-        if (w.length > 0) {
-            if (writingsCount > 0) {
-                sb.append("・")
-                sb.setSpan(ForegroundColorSpan(Color.GRAY), sb.length - 1, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-            }
-            sb.append(w)
-            sb.setSpan(BackgroundColorSpan(colors.highlight),
-                    sb.length - w.length, sb.length,
-                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-            writingsCount = writingsCount + 1
-        }
+    val hasWritings = !entry.writingsPrio.isNullOrBlank() || !entry.writings.isNullOrBlank()
+    if (hasWritings) {
+        var n = appendWords(sb, entry.writingsPrio, colors.highlight, 0)
+        appendWords(sb, entry.writings, 0, n)
+    } else {
+        // Kana-only entry: readings serve as the headword
+        var n = appendWords(sb, entry.readingsPrio, colors.highlight, 0)
+        appendWords(sb, entry.readings, 0, n)
     }
-    for (w in aEntry.writings.orEmpty().split(" ".toRegex()).toTypedArray()) {
-        if (w.length > 0) {
-            if (writingsCount > 0) {
-                sb.append("・")
-                sb.setSpan(ForegroundColorSpan(Color.GRAY), sb.length - 1, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-            }
-            sb.append(w)
-            writingsCount = writingsCount + 1
-        }
-    }
-    if (writingsCount > 0) {
-        sb.append(" ")
-    }
-    sb.setSpan(RelativeSizeSpan(1.4f), 0, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-    sb.append("【")
-    sb.setSpan(ForegroundColorSpan(Color.GRAY), sb.length - 1, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-    var readingsCount = 0
-    for (r in aEntry.readingsPrio.orEmpty().split(" ".toRegex()).toTypedArray()) {
-        if (r.length > 0) {
-            if (readingsCount > 0) {
-                sb.append("・")
-                sb.setSpan(ForegroundColorSpan(Color.GRAY), sb.length - 1, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-            }
-            sb.append(r)
-            sb.setSpan(BackgroundColorSpan(colors.highlight),
-                    sb.length - r.length, sb.length,
-                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-            readingsCount = readingsCount + 1
-        }
-    }
-    for (r in aEntry.readings.orEmpty().split(" ".toRegex()).toTypedArray()) {
-        if (r.length > 0) {
-            if (readingsCount > 0) {
-                sb.append("・")
-                sb.setSpan(ForegroundColorSpan(Color.GRAY), sb.length - 1, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-            }
-            sb.append(r)
-            readingsCount = readingsCount + 1
-        }
-    }
-    sb.append("】")
-    sb.setSpan(ForegroundColorSpan(Color.GRAY), sb.length - 1, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-    sb.append("　")
+    return sb
+}
+
+fun renderReading(entry: DictionarySearchElement,
+                  colors: DictionarySearchElementViewHolder.Colors): SpannableStringBuilder {
+    val sb = SpannableStringBuilder()
+    var n = appendWords(sb, entry.readingsPrio, colors.highlight, 0)
+    appendWords(sb, entry.readings, 0, n)
+    return sb
+}
+
+fun renderGloss(entry: DictionarySearchElement,
+                entities: HashMap<String, String>,
+                colors: DictionarySearchElementViewHolder.Colors): SpannableStringBuilder {
+    val sb = SpannableStringBuilder()
     var glossCount = 0
     try {
-        val gloss = JSONArray(aEntry.gloss)
-        var pos: JSONArray? = null
-        val posStr = aEntry.pos
-        if (posStr != null) {
-            pos = JSONArray(posStr)
-        }
+        val gloss = JSONArray(entry.gloss)
+        val pos = entry.pos?.let { JSONArray(it) }
         for (i in 0 until gloss.length()) {
-            if (glossCount > 0) {
-                sb.append("　")
-            }
-            val prefix = Integer.toString(glossCount + 1) + ". "
+            if (glossCount > 0) sb.append("\n")
+            val prefix = "${glossCount + 1}. "
             sb.append(prefix)
-            sb.setSpan(StyleSpan(Typeface.BOLD),
-                    sb.length - prefix.length, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            sb.setSpan(StyleSpan(Typeface.BOLD), sb.length - prefix.length, sb.length,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
             if (pos != null && glossCount < pos.length()) {
-                val p = renderJSONArray(pos.getJSONArray(glossCount), ", ", true, entities, colors)
-                if (p.length > 0) {
+                val p = resolveJSONArray(pos.getJSONArray(glossCount), ", ", entities)
+                if (p.isNotEmpty()) {
                     sb.append(p)
-                    sb.setSpan(ForegroundColorSpan(colors.pos),
-                            sb.length - p.length, sb.length,
-                            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                    sb.setSpan(ForegroundColorSpan(colors.pos), sb.length - p.length, sb.length,
+                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
                     sb.append(" ")
                 }
             }
             sb.append(gloss.getString(i))
-            glossCount = glossCount + 1
-        }
-    } catch (e: JSONException) {
-        e.printStackTrace()
-    }
-    try {
-        val exampleSentences = aEntry.exampleSentences
-        val exampleTranslations = aEntry.exampleTranslations
-        if (exampleSentences != null &&
-                exampleTranslations != null) {
-            val exampleSentencesArray = JSONArray(aEntry.exampleSentences)
-            val exampleTranslationsArray = JSONArray(aEntry.exampleTranslations)
-            for (i in 0 until exampleSentencesArray.length()) {
-                if (i == 0) {
-                    sb.append("\n\n")
-                    sb.setSpan(RelativeSizeSpan(0.3f), sb.length - 2, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                }
-                if (i < exampleTranslationsArray.length()) {
-                    JapaneseText.spannifyWithFurigana(sb, "→ " + exampleSentencesArray.getString(i), 0.9f)
-                }
-                sb.append(" ")
-                sb.append(exampleTranslationsArray.getString(i))
-                if (i + 1 < exampleSentencesArray.length()) {
-                    sb.append("\n")
-                }
-            }
+            glossCount++
         }
     } catch (e: JSONException) {
         e.printStackTrace()

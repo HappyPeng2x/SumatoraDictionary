@@ -29,13 +29,18 @@ import org.happypeng.sumatora.android.sumatoradictionary.model.intent.Dictionary
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionarySearchElementViewHolder
 import java.util.*
 
+fun interface OnEntryClickListener {
+    fun onClick(entry: DictionarySearchElement)
+}
+
 class DictionaryPagedListAdapter(aDisableBookmarkButton: Boolean,
                                  aDisableMemoEdit: Boolean,
                                  aDisableTagEdit: Boolean,
                                  commitConsumer: (Long, Long, String?) -> Unit,
                                  commitTagsConsumer: (Long, String) -> Unit,
                                  tagSuggestionsProvider: () -> List<String>,
-                                 private val holderColors: DictionarySearchElementViewHolder.Colors) :
+                                 private val holderColors: DictionarySearchElementViewHolder.Colors,
+                                 private val onEntryClick: OnEntryClickListener = OnEntryClickListener {}) :
         PagedListAdapter<DictionarySearchElement?, DictionarySearchElementViewHolder>(DictionarySearchElementDiffUtil.getDiffUtil()) {
     private val entities = JMDICT_ENTITIES
     private val disableBookmarkButton: Boolean
@@ -61,7 +66,7 @@ class DictionaryPagedListAdapter(aDisableBookmarkButton: Boolean,
         return DictionarySearchElementViewHolder(wordCardBinding,
                 entities, disableBookmarkButton, disableMemoEdit, disableTagEdit,
                 commitConsumer, commitTagsConsumer, tagSuggestionsProvider,
-                intentSubject, holderColors)
+                intentSubject, holderColors, onEntryClick)
     }
 
     override fun onBindViewHolder(holder: DictionarySearchElementViewHolder, position: Int) {

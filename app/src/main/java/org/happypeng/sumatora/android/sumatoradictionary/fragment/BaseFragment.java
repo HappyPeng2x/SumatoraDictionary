@@ -48,6 +48,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.model.state.QueryState;
 import org.happypeng.sumatora.android.sumatoradictionary.model.viewbinding.FragmentDictionaryQueryBindingUtil;
 import org.happypeng.sumatora.android.sumatoradictionary.model.viewbinding.QueryMenu;
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionarySearchElementViewHolder;
+import org.happypeng.sumatora.android.sumatoradictionary.fragment.EntryDetailBottomSheet;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -168,7 +169,11 @@ public abstract class BaseFragment extends Fragment {
                                 ContextCompat.getColor(getContext(),
                                         R.color.render_highlight),
                                 ContextCompat.getColor(getContext(),
-                                        R.color.render_pos)));
+                                        R.color.render_pos)),
+                        entry -> {
+                            EntryDetailBottomSheet sheet = EntryDetailBottomSheet.Companion.newInstance(entry);
+                            sheet.show(getChildFragmentManager(), "entry_detail");
+                        });
 
         viewAutoDisposable.add(queryFragmentModel.getPagedListObservable().subscribe(l ->
                 pagedListAdapter.submitList(l)));

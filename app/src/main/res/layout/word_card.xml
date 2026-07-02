@@ -13,26 +13,54 @@
         android:orientation="horizontal">
 
         <LinearLayout
+            android:id="@+id/word_card_content"
             android:layout_width="0dp"
             android:layout_weight="1"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:background="?android:selectableItemBackground"
+            android:paddingStart="10dp"
+            android:paddingEnd="6dp"
+            android:paddingTop="8dp"
+            android:paddingBottom="8dp">
 
             <TextView
-                android:id="@+id/word_card_text"
+                android:id="@+id/word_card_headword"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:background="?android:selectableItemBackground"
                 app:fontFamily="sans-serif"
-                android:padding="6dp"
+                android:textColor="@color/text_foreground_primary"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                tools:text="大きい・大きな" />
+
+            <TextView
+                android:id="@+id/word_card_reading"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="1dp"
+                app:fontFamily="sans-serif"
+                android:textColor="@color/text_foreground_secondary"
+                android:textSize="13sp"
+                tools:text="おおきい・おおきな" />
+
+            <TextView
+                android:id="@+id/word_card_gloss"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                app:fontFamily="sans-serif"
                 android:textColor="@color/text_foreground_primary"
                 android:textSize="14sp"
-                tools:text="Text 1" />
+                android:maxLines="3"
+                android:ellipsize="end"
+                tools:text="1. large, big, great" />
 
             <EditText
                 android:id="@+id/word_card_memo"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
                 android:background="@color/text_background_memo"
                 app:fontFamily="sans-serif"
                 android:padding="6dp"
@@ -76,7 +104,8 @@
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:paddingTop="4dp">
 
             <ImageButton
                 android:id="@+id/word_card_bookmark_icon"

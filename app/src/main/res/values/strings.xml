@@ -25,4 +25,5 @@
 
     <string name="tags_empty">No tags yet</string>
     <string name="tags_title">Tags</string>
+    <string name="examples_header">Examples</string>
 </resources>

@@ -12,9 +12,11 @@
 
     <color name="render_highlight">#004400</color>
     <color name="render_pos">@color/primary</color>
+    <color name="render_pos_chip_bg">#1E1C36</color>
 
     <!-- Text -->
     <color name="text_foreground_primary">#aaaaaa</color>
+    <color name="text_foreground_secondary">#888888</color>
 
     <color name="text_background_primary">#333333</color>
     <color name="text_background_primary_backup">#222222</color>

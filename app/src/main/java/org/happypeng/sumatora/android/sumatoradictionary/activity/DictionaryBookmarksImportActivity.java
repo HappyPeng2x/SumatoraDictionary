@@ -40,6 +40,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.model.BookmarkImportMod
 import org.happypeng.sumatora.android.sumatoradictionary.model.state.ImportState;
 import org.happypeng.sumatora.android.sumatoradictionary.model.viewbinding.QueryMenu;
 import org.happypeng.sumatora.android.sumatoradictionary.model.viewbinding.FragmentDictionaryQueryBindingUtil;
+import org.happypeng.sumatora.android.sumatoradictionary.fragment.EntryDetailBottomSheet;
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionarySearchElementViewHolder;
 
 import javax.inject.Inject;
@@ -118,7 +119,11 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
                                 ContextCompat.getColor(this,
                                         R.color.render_highlight),
                                 ContextCompat.getColor(this,
-                                        R.color.render_pos)));
+                                        R.color.render_pos)),
+                        entry -> {
+                            EntryDetailBottomSheet sheet = EntryDetailBottomSheet.Companion.newInstance(entry);
+                            sheet.show(getSupportFragmentManager(), "entry_detail");
+                        });
 
         autoDisposable.add(bookmarkImportModel.getPagedListObservable().subscribe(l ->
                 pagedListAdapter.submitList(l)));

@@ -31,9 +31,12 @@ import io.reactivex.rxjava3.subjects.Subject
 import org.happypeng.sumatora.android.sumatoradictionary.R
 import org.happypeng.sumatora.android.sumatoradictionary.databinding.WordCardBinding
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement
+import org.happypeng.sumatora.android.sumatoradictionary.adapter.OnEntryClickListener
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.DictionaryPagedListAdapterCloseIntent
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.DictionaryPagedListAdapterIntent
-import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.renderEntry
+import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.renderGloss
+import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.renderHeadword
+import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.renderReading
 import java.util.*
 
 class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBinding,
@@ -45,7 +48,8 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
                                         private val commitTagsConsumer: (Long, String) -> Unit,
                                         private val tagSuggestionsProvider: () -> List<String>,
                                         private val intentSubject: Subject<DictionaryPagedListAdapterIntent>,
-                                        private val colors: Colors) : RecyclerView.ViewHolder(wordCardBinding.wordCardView) {
+                                        private val colors: Colors,
+                                        private val onEntryClick: OnEntryClickListener = OnEntryClickListener {}) : RecyclerView.ViewHolder(wordCardBinding.wordCardView) {
 
     class Colors(val activeLang: Int,
                  val backupLang: Int,
@@ -192,7 +196,16 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
             wordCardBinding.wordCardView.setBackgroundColor(colors.activeLang)
         }
 
-        wordCardBinding.wordCardText.text = renderEntry(entry, entities, colors)
+        wordCardBinding.wordCardHeadword.text = renderHeadword(entry, colors)
+        val hasWritings = !entry.writingsPrio.isNullOrBlank() || !entry.writings.isNullOrBlank()
+        if (hasWritings) {
+            wordCardBinding.wordCardReading.visibility = View.VISIBLE
+            wordCardBinding.wordCardReading.text = renderReading(entry, colors)
+        } else {
+            wordCardBinding.wordCardReading.visibility = View.GONE
+        }
+        wordCardBinding.wordCardGloss.text = renderGloss(entry, entities, colors)
+        wordCardBinding.wordCardContent.setOnClickListener { onEntryClick.onClick(entry) }
         if (entry.bookmark != 0L) {
             wordCardBinding.wordCardBookmarkIcon.setImageResource(R.drawable.ic_outline_bookmark_24px)
         } else {
