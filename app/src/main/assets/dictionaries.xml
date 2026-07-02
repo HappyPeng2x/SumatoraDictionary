@@ -1,54 +1,54 @@
-<repository version="5" date="20260702">
-    <dictionary uri="dictionaries/jmdict.db"
+<repository version="6" date="20260703">
+    <dictionary uri="dictionaries/jmdict.db.gz"
         type="jmdict" description="Index" lang=""/>
-    <dictionary uri="dictionaries/eng.db"
+    <dictionary uri="dictionaries/eng.db.gz"
         type="jmdict_translation" description="English" lang="eng"/>
     <dictionary
-        uri="dictionaries/ger.db"
+        uri="dictionaries/ger.db.gz"
         type="jmdict_translation" description="Deutsch" lang="ger"/>
     <dictionary
-        uri="dictionaries/rus.db"
+        uri="dictionaries/rus.db.gz"
         type="jmdict_translation" description="русский язык" lang="rus"/>
     <dictionary
-        uri="dictionaries/spa.db"
+        uri="dictionaries/spa.db.gz"
         type="jmdict_translation" description="Español" lang="spa"/>
     <dictionary
-        uri="dictionaries/dut.db"
+        uri="dictionaries/dut.db.gz"
         type="jmdict_translation" description="Nederlands" lang="dut"/>
     <dictionary
-        uri="dictionaries/hun.db"
+        uri="dictionaries/hun.db.gz"
         type="jmdict_translation" description="Magyar nyelv" lang="hun"/>
     <dictionary
-        uri="dictionaries/swe.db"
+        uri="dictionaries/swe.db.gz"
         type="jmdict_translation" description="Svenska" lang="swe"/>
     <dictionary
-        uri="dictionaries/fre.db"
+        uri="dictionaries/fre.db.gz"
         type="jmdict_translation" description="Français" lang="fre"/>
     <dictionary
-        uri="dictionaries/slv.db"
+        uri="dictionaries/slv.db.gz"
         type="jmdict_translation" description="Slovenski jezik" lang="slv"/>
     <dictionary
-        uri="dictionaries/examples_eng.db"
+        uri="dictionaries/examples_eng.db.gz"
         type="tatoeba" description="English examples" lang="eng" />
     <dictionary
-        uri="dictionaries/examples_fre.db"
+        uri="dictionaries/examples_fre.db.gz"
         type="tatoeba" description="French examples" lang="fre" />
     <dictionary
-        uri="dictionaries/examples_ger.db"
+        uri="dictionaries/examples_ger.db.gz"
         type="tatoeba" description="German examples" lang="ger" />
     <dictionary
-        uri="dictionaries/examples_rus.db"
+        uri="dictionaries/examples_rus.db.gz"
         type="tatoeba" description="Russian examples" lang="rus" />
     <dictionary
-        uri="dictionaries/examples_spa.db"
+        uri="dictionaries/examples_spa.db.gz"
         type="tatoeba" description="Spanish examples" lang="spa" />
     <dictionary
-        uri="dictionaries/examples_dut.db"
+        uri="dictionaries/examples_dut.db.gz"
         type="tatoeba" description="Dutch examples" lang="dut" />
     <dictionary
-        uri="dictionaries/examples_hun.db"
+        uri="dictionaries/examples_hun.db.gz"
         type="tatoeba" description="Hungarian examples" lang="hun" />
     <dictionary
-        uri="dictionaries/examples_swe.db"
+        uri="dictionaries/examples_swe.db.gz"
         type="tatoeba" description="Swedish examples" lang="swe" />
 </repository>

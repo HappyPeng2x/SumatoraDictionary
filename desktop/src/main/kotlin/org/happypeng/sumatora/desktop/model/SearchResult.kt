@@ -38,5 +38,6 @@ data class SearchResult(
     override val exampleTranslations: String?,
     override val bookmark: Long,
     override val memo: String?,
-    override val tags: String?
+    override val tags: String?,
+    override val furigana: String?
 ) : DictionaryResult

@@ -91,7 +91,8 @@ class SearchRepository(
         json_group_array(DictionaryTranslation.gloss) AS gloss,
         null AS example_sentences, null AS example_translations,
         IFNULL(DictionaryBookmark.bookmark, 0) AS bookmark,
-        DictionaryBookmark.memo, DictionaryBookmark.tags
+        DictionaryBookmark.memo, DictionaryBookmark.tags,
+        DictionaryEntry.furigana
     """.trimIndent()
 
     private fun fromJoin() = """
@@ -184,7 +185,8 @@ class SearchRepository(
         exampleTranslations = getString("example_translations"),
         bookmark = getLong("bookmark"),
         memo = getString("memo"),
-        tags = getString("tags")
+        tags = getString("tags"),
+        furigana = getString("furigana")
     )
 
 }

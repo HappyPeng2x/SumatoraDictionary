@@ -30,6 +30,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.zip.GZIPInputStream;
 
 @Entity(primaryKeys = {"type", "lang"})
 public class AssetDictionaryObject extends BaseDictionaryObject {
@@ -53,9 +54,10 @@ public class AssetDictionaryObject extends BaseDictionaryObject {
 
     @WorkerThread
     private static boolean copyAsset(@NonNull final AssetManager aAssetManager, String aName,
-                                     File aOutput) {
+                                     File aOutput, boolean aGzip) {
         try {
-            InputStream in = aAssetManager.open(aName);
+            InputStream raw = aAssetManager.open(aName);
+            InputStream in = aGzip ? new GZIPInputStream(raw) : raw;
             OutputStream out = new FileOutputStream(aOutput);
             copyFile(in, out);
             in.close();
@@ -81,13 +83,30 @@ public class AssetDictionaryObject extends BaseDictionaryObject {
         }
 
         File sourceFile = new File(file);
-        String fileName = sourceFile.getName();
+        String sourceName = sourceFile.getName();
+        boolean isGzip = sourceName.endsWith(".gz");
+        // Destination is always a plain .db file (strip .gz if present)
+        String destName = isGzip ? sourceName.substring(0, sourceName.length() - 3) : sourceName;
 
-        File destFile = new File(aDatabaseDir, fileName);
+        File destFile = new File(aDatabaseDir, destName);
 
-        if (copyAsset(aAssetManager,
-                sourceFile.toString(),
-                destFile)) {
+        // Try the asset name as listed in the URI first.
+        // If that fails, try the alternative: AAPT may strip .gz from gzipped assets
+        // (making them accessible as plain .db), or may keep them as .gz requiring decompression.
+        boolean success = copyAsset(aAssetManager, sourceFile.toString(), destFile, isGzip);
+        if (!success) {
+            if (isGzip) {
+                // AAPT stripped .gz: asset stored as plain bytes under the non-.gz name
+                String plainName = sourceFile.toString();
+                plainName = plainName.substring(0, plainName.length() - 3);
+                success = copyAsset(aAssetManager, plainName, destFile, false);
+            } else {
+                // Asset stored gzipped under a .gz name; decompress on copy
+                success = copyAsset(aAssetManager, sourceFile.toString() + ".gz", destFile, true);
+            }
+        }
+
+        if (success) {
             InstalledDictionary insertDir = new InstalledDictionary(destFile.toString(),
                     description, type, lang, version, date);
 

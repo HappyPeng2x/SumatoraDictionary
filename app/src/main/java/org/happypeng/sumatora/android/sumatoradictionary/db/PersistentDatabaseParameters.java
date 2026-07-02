@@ -195,4 +195,19 @@ public abstract class PersistentDatabaseParameters {
             database.execSQL("CREATE TABLE IF NOT EXISTS DictionaryBookmarkTag (`seq` INTEGER NOT NULL, `tag` TEXT NOT NULL, PRIMARY KEY(`seq`, `tag`))");
         }
     };
+
+    public static final Migration MIGRATION_9_10 = new Migration(9, 10) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL("DROP TABLE IF EXISTS DictionarySearchElement");
+            database.execSQL("CREATE TABLE IF NOT EXISTS DictionarySearchElement ("
+                    + "`ref` INTEGER NOT NULL, `entryOrder` INTEGER NOT NULL, `seq` INTEGER NOT NULL, "
+                    + "`readingsPrio` TEXT, `readings` TEXT, `writingsPrio` TEXT, `writings` TEXT, "
+                    + "`pos` TEXT, `xref` TEXT, `ant` TEXT, `misc` TEXT, `lsource` TEXT, `dial` TEXT, "
+                    + "`s_inf` TEXT, `field` TEXT, `lang` TEXT, `lang_setting` TEXT, `gloss` TEXT, "
+                    + "`example_sentences` TEXT, `example_translations` TEXT, "
+                    + "`bookmark` INTEGER NOT NULL, `memo` TEXT, `tags` TEXT, `furigana` TEXT, "
+                    + "PRIMARY KEY(`ref`, `seq`))");
+        }
+    };
 }

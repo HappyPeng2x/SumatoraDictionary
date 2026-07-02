@@ -45,6 +45,7 @@ public class DictionarySearchElement implements DictionaryResult {
     public long bookmark;
     public String memo;
     public String tags;
+    public String furigana;
 
     public DictionarySearchElement() { }
 
@@ -85,6 +86,7 @@ public class DictionarySearchElement implements DictionaryResult {
     public long getBookmark() { return bookmark; }
     public String getMemo() { return memo; }
     public String getTags() { return tags; }
+    public String getFurigana() { return furigana; }
 
     public String getPos() { return pos; }
     public String getXref() { return xref; }

@@ -37,4 +37,5 @@ interface DictionaryResult {
     val bookmark: Long
     val memo: String?
     val tags: String?
+    val furigana: String?
 }

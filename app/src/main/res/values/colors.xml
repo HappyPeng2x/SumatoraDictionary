@@ -25,18 +25,25 @@
     <color name="render_pos">#3333aa</color>
     <color name="render_pos_chip_bg">#E8E8F8</color>
 
-    <!-- Tag chip category colors (white text on colored background) -->
-    <color name="tag_pos">#616161</color>       <!-- noun, verb, adj — Material Grey 700 -->
-    <color name="tag_register">#BF360C</color>  <!-- slang, colloq., vulgar — Deep Orange 900 -->
-    <color name="tag_kana">#2E7D32</color>      <!-- uk (kana-only) — Green 800 -->
-    <color name="tag_kanji">#1565C0</color>     <!-- uK (kanji-only) — Blue 800 -->
-    <color name="tag_usage">#AD1457</color>     <!-- abbr., archaic, idiomatic — Pink 700 -->
-    <color name="tag_domain">#00695C</color>    <!-- field terms (med, comp…) — Teal 800 -->
-    <color name="tag_dialect">#4527A0</color>   <!-- regional dialects — Deep Purple 800 -->
+    <!-- Tag chip colors matching Jitendex CSS -->
+    <color name="tag_pos">#565656</color>       <!-- part-of-speech-info: dark grey -->
+    <color name="tag_register">#795548</color>  <!-- misc-info: brown (slang, colloq., etc.) -->
+    <color name="tag_kana">#795548</color>      <!-- misc-info: brown (uk = kana-only) -->
+    <color name="tag_kanji">#795548</color>     <!-- misc-info: brown (uK = kanji-only) -->
+    <color name="tag_usage">#795548</color>     <!-- misc-info: brown (archaic, abbr., etc.) -->
+    <color name="tag_domain">#7B1FA2</color>    <!-- field-info: purple (med, comp, law…) -->
+    <color name="tag_dialect">#388E3C</color>   <!-- dialect-info: green -->
 
-    <!-- Example sentence box -->
+    <!-- Extra-info left-border colors matching Jitendex CSS -->
+    <color name="border_example">#9E9E9E</color>   <!-- ex-sent: grey -->
+    <color name="border_note">#DAA520</color>       <!-- sense-note: goldenrod -->
+    <color name="border_xref">#1A73E8</color>       <!-- xref: blue -->
+    <color name="border_ant">#795548</color>        <!-- antonym: brown -->
+    <color name="border_lsource">#7B1FA2</color>    <!-- lang-source: purple -->
+
+    <!-- Legacy (kept for compat) -->
     <color name="example_box_bg">#F5F5F5</color>
-    <color name="example_box_border">#DDDDDD</color>
+    <color name="example_box_border">#9E9E9E</color>
 
     <!-- Blue -->
     <color name="blue_500">#2196f3</color>
