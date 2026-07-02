@@ -95,7 +95,8 @@ class EntryDetailBottomSheet : BottomSheetDialogFragment() {
         }
 
         buildSenses(binding.entryDetailSenses, args.getString(ARG_GLOSS),
-            args.getString(ARG_POS), primaryColor, posColor, posChipBgColor, secondaryColor)
+            args.getString(ARG_POS), args.getString(ARG_MISC),
+            primaryColor, posColor, posChipBgColor, secondaryColor)
 
         buildExamples(binding.entryDetailExamples, binding.entryDetailExamplesHeader,
             binding.entryDetailExamplesDivider,
@@ -117,25 +118,33 @@ class EntryDetailBottomSheet : BottomSheetDialogFragment() {
     }
 
     private fun buildSenses(container: LinearLayout, glossJson: String?, posJson: String?,
+                             miscJson: String?,
                              primaryColor: Int, posColor: Int, posChipBgColor: Int,
                              secondaryColor: Int) {
         if (glossJson.isNullOrBlank()) return
         val glossArray = try { JSONArray(glossJson) } catch (e: JSONException) { return }
         val posArray = try { posJson?.let { JSONArray(it) } } catch (e: JSONException) { null }
+        val miscArray = try { miscJson?.let { JSONArray(it) } } catch (e: JSONException) { null }
 
-        data class SenseGroup(val posKeys: List<String>, val glosses: MutableList<String>)
+        fun keysAt(array: JSONArray?, i: Int): List<String> {
+            if (array == null || i >= array.length()) return emptyList()
+            val arr = array.optJSONArray(i) ?: return emptyList()
+            return (0 until arr.length()).map { arr.getString(it) }
+        }
+
+        // Group consecutive senses that share the same POS
+        data class SenseGroup(val posKeys: List<String>,
+                               val glosses: MutableList<Pair<String, List<String>>> = mutableListOf())
         val groups = mutableListOf<SenseGroup>()
 
         for (i in 0 until glossArray.length()) {
-            val posKeys: List<String> = if (posArray != null && i < posArray.length()) {
-                val arr = posArray.optJSONArray(i) ?: JSONArray()
-                (0 until arr.length()).map { arr.getString(it) }
-            } else emptyList()
+            val posKeys = keysAt(posArray, i)
+            val miscKeys = keysAt(miscArray, i)
             val last = groups.lastOrNull()
             if (last != null && last.posKeys == posKeys) {
-                last.glosses.add(glossArray.getString(i))
+                last.glosses.add(glossArray.getString(i) to miscKeys)
             } else {
-                groups.add(SenseGroup(posKeys, mutableListOf(glossArray.getString(i))))
+                groups.add(SenseGroup(posKeys, mutableListOf(glossArray.getString(i) to miscKeys)))
             }
         }
 
@@ -155,35 +164,30 @@ class EntryDetailBottomSheet : BottomSheetDialogFragment() {
                     layoutParams = lp
                 }
                 for (key in group.posKeys) {
-                    val resolved = JMDICT_ENTITIES[key] ?: key
-                    val chip = TextView(context).apply {
-                        text = key
-                        contentDescription = resolved
-                        textSize = 11f
-                        setTextColor(posColor)
-                        typeface = Typeface.DEFAULT_BOLD
-                        val bg = resources.getDrawable(R.drawable.bg_pos_chip, context.theme)
-                        background = bg
-                        val hPad = 6.dp(); val vPad = 2.dp()
-                        setPadding(hPad, vPad, hPad, vPad)
-                        val lp = LinearLayout.LayoutParams(
-                            LinearLayout.LayoutParams.WRAP_CONTENT,
-                            LinearLayout.LayoutParams.WRAP_CONTENT)
-                        lp.marginEnd = 4.dp()
-                        layoutParams = lp
-                    }
-                    posRow.addView(chip)
+                    posRow.addView(makeChip(key, posColor, posChipBgColor))
                 }
                 container.addView(posRow)
             }
 
-            for (gloss in group.glosses) {
+            for ((gloss, miscKeys) in group.glosses) {
                 val glossView = TextView(context).apply {
                     val sb = SpannableStringBuilder()
                     val prefix = "$absoluteIndex. "
                     sb.append(prefix)
                     sb.setSpan(StyleSpan(Typeface.BOLD), 0, prefix.length,
                         Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                    // Inline misc tags (uk, col, id, arch, …) before the gloss text
+                    for ((j, key) in miscKeys.withIndex()) {
+                        if (j > 0) {
+                            sb.append("·")
+                            sb.setSpan(android.text.style.ForegroundColorSpan(android.graphics.Color.GRAY),
+                                sb.length - 1, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                        }
+                        sb.append(key)
+                        sb.setSpan(android.text.style.ForegroundColorSpan(posColor),
+                            sb.length - key.length, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                    }
+                    if (miscKeys.isNotEmpty()) sb.append("  ")
                     sb.append(gloss)
                     text = sb
                     textSize = 15f
@@ -198,6 +202,25 @@ class EntryDetailBottomSheet : BottomSheetDialogFragment() {
                 container.addView(glossView)
                 absoluteIndex++
             }
+        }
+    }
+
+    private fun makeChip(key: String, posColor: Int, posChipBgColor: Int): TextView {
+        val density = resources.displayMetrics.density
+        fun Int.dp() = (this * density).toInt()
+        return TextView(context).apply {
+            text = key
+            contentDescription = JMDICT_ENTITIES[key] ?: key
+            textSize = 11f
+            setTextColor(posColor)
+            typeface = Typeface.DEFAULT_BOLD
+            background = resources.getDrawable(R.drawable.bg_pos_chip, context.theme)
+            setPadding(6.dp(), 2.dp(), 6.dp(), 2.dp())
+            val lp = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT)
+            lp.marginEnd = 4.dp()
+            layoutParams = lp
         }
     }
 
@@ -255,6 +278,7 @@ class EntryDetailBottomSheet : BottomSheetDialogFragment() {
         private const val ARG_READINGS = "r"
         private const val ARG_GLOSS = "g"
         private const val ARG_POS = "p"
+        private const val ARG_MISC = "m"
         private const val ARG_EXAMPLE_SENTENCES = "es"
         private const val ARG_EXAMPLE_TRANSLATIONS = "et"
 
@@ -266,6 +290,7 @@ class EntryDetailBottomSheet : BottomSheetDialogFragment() {
                 ARG_READINGS to entry.readings,
                 ARG_GLOSS to entry.gloss,
                 ARG_POS to entry.pos,
+                ARG_MISC to entry.misc,
                 ARG_EXAMPLE_SENTENCES to entry.example_sentences,
                 ARG_EXAMPLE_TRANSLATIONS to entry.example_translations
             )

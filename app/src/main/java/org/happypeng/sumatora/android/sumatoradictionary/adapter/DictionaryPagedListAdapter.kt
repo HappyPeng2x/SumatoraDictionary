@@ -23,11 +23,9 @@ import io.reactivex.rxjava3.subjects.PublishSubject
 import org.happypeng.sumatora.android.sumatoradictionary.databinding.WordCardBinding
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElementDiffUtil
-import org.happypeng.sumatora.core.dict.JMDICT_ENTITIES
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.DictionaryPagedListAdapterCloseIntent
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.DictionaryPagedListAdapterIntent
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionarySearchElementViewHolder
-import java.util.*
 
 fun interface OnEntryClickListener {
     fun onClick(entry: DictionarySearchElement)
@@ -42,7 +40,6 @@ class DictionaryPagedListAdapter(aDisableBookmarkButton: Boolean,
                                  private val holderColors: DictionarySearchElementViewHolder.Colors,
                                  private val onEntryClick: OnEntryClickListener = OnEntryClickListener {}) :
         PagedListAdapter<DictionarySearchElement?, DictionarySearchElementViewHolder>(DictionarySearchElementDiffUtil.getDiffUtil()) {
-    private val entities = JMDICT_ENTITIES
     private val disableBookmarkButton: Boolean
     private val disableMemoEdit: Boolean
     private val disableTagEdit: Boolean
@@ -64,7 +61,7 @@ class DictionaryPagedListAdapter(aDisableBookmarkButton: Boolean,
         val layoutInflater = LayoutInflater.from(parent.context)
         val wordCardBinding = WordCardBinding.inflate(layoutInflater, parent, false)
         return DictionarySearchElementViewHolder(wordCardBinding,
-                entities, disableBookmarkButton, disableMemoEdit, disableTagEdit,
+                disableBookmarkButton, disableMemoEdit, disableTagEdit,
                 commitConsumer, commitTagsConsumer, tagSuggestionsProvider,
                 intentSubject, holderColors, onEntryClick)
     }

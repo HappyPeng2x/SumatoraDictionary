@@ -27,26 +27,6 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElem
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionarySearchElementViewHolder
 import org.json.JSONArray
 import org.json.JSONException
-import java.util.HashMap
-
-private fun resolveJSONArray(array: JSONArray?, separator: String,
-                             entities: HashMap<String, String>): String {
-    if (array == null) return ""
-    val sb = StringBuilder()
-    try {
-        for (i in 0 until array.length()) {
-            val s = array.getString(i)
-            if (sb.isNotEmpty()) sb.append(separator)
-            sb.append(entities[s] ?: run {
-                System.err.println("Could not resolve entity: $s")
-                s
-            })
-        }
-    } catch (e: JSONException) {
-        e.printStackTrace()
-    }
-    return sb.toString()
-}
 
 private fun appendWords(sb: SpannableStringBuilder, spaceSeparated: String?,
                         highlight: Int, count: Int): Int {
@@ -72,11 +52,10 @@ fun renderHeadword(entry: DictionarySearchElement,
     val sb = SpannableStringBuilder()
     val hasWritings = !entry.writingsPrio.isNullOrBlank() || !entry.writings.isNullOrBlank()
     if (hasWritings) {
-        var n = appendWords(sb, entry.writingsPrio, colors.highlight, 0)
+        val n = appendWords(sb, entry.writingsPrio, colors.highlight, 0)
         appendWords(sb, entry.writings, 0, n)
     } else {
-        // Kana-only entry: readings serve as the headword
-        var n = appendWords(sb, entry.readingsPrio, colors.highlight, 0)
+        val n = appendWords(sb, entry.readingsPrio, colors.highlight, 0)
         appendWords(sb, entry.readings, 0, n)
     }
     return sb
@@ -85,34 +64,46 @@ fun renderHeadword(entry: DictionarySearchElement,
 fun renderReading(entry: DictionarySearchElement,
                   colors: DictionarySearchElementViewHolder.Colors): SpannableStringBuilder {
     val sb = SpannableStringBuilder()
-    var n = appendWords(sb, entry.readingsPrio, colors.highlight, 0)
+    val n = appendWords(sb, entry.readingsPrio, colors.highlight, 0)
     appendWords(sb, entry.readings, 0, n)
     return sb
 }
 
+private fun keysAt(array: JSONArray?, index: Int): List<String> {
+    if (array == null || index >= array.length()) return emptyList()
+    val arr = array.optJSONArray(index) ?: return emptyList()
+    return (0 until arr.length()).map { arr.getString(it) }
+}
+
+private fun SpannableStringBuilder.appendTags(tags: List<String>, posColor: Int) {
+    for ((j, tag) in tags.withIndex()) {
+        if (j > 0) {
+            append("·")
+            setSpan(ForegroundColorSpan(Color.GRAY), length - 1, length,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        }
+        append(tag)
+        setSpan(ForegroundColorSpan(posColor), length - tag.length, length,
+            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+    }
+    if (tags.isNotEmpty()) append(" ")
+}
+
 fun renderGloss(entry: DictionarySearchElement,
-                entities: HashMap<String, String>,
                 colors: DictionarySearchElementViewHolder.Colors): SpannableStringBuilder {
     val sb = SpannableStringBuilder()
     var glossCount = 0
     try {
-        val gloss = JSONArray(entry.gloss)
+        val gloss = JSONArray(entry.gloss ?: return sb)
         val pos = entry.pos?.let { JSONArray(it) }
+        val misc = entry.misc?.let { JSONArray(it) }
         for (i in 0 until gloss.length()) {
             if (glossCount > 0) sb.append("\n")
             val prefix = "${glossCount + 1}. "
             sb.append(prefix)
             sb.setSpan(StyleSpan(Typeface.BOLD), sb.length - prefix.length, sb.length,
                 Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-            if (pos != null && glossCount < pos.length()) {
-                val p = resolveJSONArray(pos.getJSONArray(glossCount), ", ", entities)
-                if (p.isNotEmpty()) {
-                    sb.append(p)
-                    sb.setSpan(ForegroundColorSpan(colors.pos), sb.length - p.length, sb.length,
-                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                    sb.append(" ")
-                }
-            }
+            sb.appendTags(keysAt(pos, i) + keysAt(misc, i), colors.pos)
             sb.append(gloss.getString(i))
             glossCount++
         }

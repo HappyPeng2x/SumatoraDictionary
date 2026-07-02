@@ -37,10 +37,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.model.intent.Dictionary
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.renderGloss
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.renderHeadword
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.renderReading
-import java.util.*
-
 class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBinding,
-                                        private val entities: HashMap<String, String>,
                                         disableBookmarkButton: Boolean,
                                         private val disableMemoEdit: Boolean,
                                         private val disableTagEdit: Boolean,
@@ -204,7 +201,7 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
         } else {
             wordCardBinding.wordCardReading.visibility = View.GONE
         }
-        wordCardBinding.wordCardGloss.text = renderGloss(entry, entities, colors)
+        wordCardBinding.wordCardGloss.text = renderGloss(entry, colors)
         wordCardBinding.wordCardContent.setOnClickListener { onEntryClick.onClick(entry) }
         if (entry.bookmark != 0L) {
             wordCardBinding.wordCardBookmarkIcon.setImageResource(R.drawable.ic_outline_bookmark_24px)
