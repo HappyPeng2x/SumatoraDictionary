@@ -274,6 +274,12 @@ public class DictionarySearchQueryTool {
                 examplesQueryTranslations = SQL_QUERY_EXAMPLE_TRANSLATIONS;
                 examplesLeftJoin = String.format(SQL_QUERY_JOIN_EXAMPLES, "examples_" + d.getLang());
             }
+            if ("tatoeba".equals(d.getType()) && persistentLanguageSettings.backupLang != null
+                    && persistentLanguageSettings.backupLang.equals(d.getLang())) {
+                backupExamplesQuery = SQL_QUERY_EXAMPLE_SENTENCES;
+                backupExamplesQueryTranslations = SQL_QUERY_EXAMPLE_TRANSLATIONS;
+                backupExamplesLeftJoin = String.format(SQL_QUERY_JOIN_EXAMPLES, "examples_" + d.getLang());
+            }
         }
 
         deleteStatement = db.compileStatement(SQL_QUERY_DELETE);

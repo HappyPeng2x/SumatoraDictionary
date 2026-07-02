@@ -1,4 +1,4 @@
-<repository version="5" date="20260701">
+<repository version="5" date="20260702">
     <dictionary uri="dictionaries/jmdict.db"
         type="jmdict" description="Index" lang=""/>
     <dictionary uri="dictionaries/eng.db"
