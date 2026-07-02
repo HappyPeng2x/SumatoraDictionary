@@ -17,12 +17,10 @@
 package org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering
 
 import android.graphics.Color
-import android.graphics.Typeface
 import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.style.BackgroundColorSpan
 import android.text.style.ForegroundColorSpan
-import android.text.style.StyleSpan
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionarySearchElementViewHolder
 import org.json.JSONArray
@@ -69,43 +67,62 @@ fun renderReading(entry: DictionarySearchElement,
     return sb
 }
 
-private fun keysAt(array: JSONArray?, index: Int): List<String> {
+internal fun keysAt(array: JSONArray?, index: Int): List<String> {
     if (array == null || index >= array.length()) return emptyList()
     val arr = array.optJSONArray(index) ?: return emptyList()
     return (0 until arr.length()).map { arr.getString(it) }
 }
 
-private fun SpannableStringBuilder.appendTags(tags: List<String>, posColor: Int) {
-    for ((j, tag) in tags.withIndex()) {
-        if (j > 0) {
-            append("·")
-            setSpan(ForegroundColorSpan(Color.GRAY), length - 1, length,
-                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-        }
-        append(tag)
-        setSpan(ForegroundColorSpan(posColor), length - tag.length, length,
-            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-    }
-    if (tags.isNotEmpty()) append(" ")
-}
-
 fun renderGloss(entry: DictionarySearchElement,
-                colors: DictionarySearchElementViewHolder.Colors): SpannableStringBuilder {
+                colors: DictionarySearchElementViewHolder.Colors,
+                density: Float): SpannableStringBuilder {
     val sb = SpannableStringBuilder()
-    var glossCount = 0
     try {
         val gloss = JSONArray(entry.gloss ?: return sb)
-        val pos = entry.pos?.let { JSONArray(it) }
-        val misc = entry.misc?.let { JSONArray(it) }
+        val pos   = entry.pos?.let   { JSONArray(it) }
+        val misc  = entry.misc?.let  { JSONArray(it) }
+        val field = entry.field?.let { JSONArray(it) }
+        val dial  = entry.dial?.let  { JSONArray(it) }
+
+        // Collect all unique tag keys in first-appearance order
+        val seenKeys = linkedSetOf<String>()
         for (i in 0 until gloss.length()) {
-            if (glossCount > 0) sb.append("\n")
-            val prefix = "${glossCount + 1}. "
-            sb.append(prefix)
-            sb.setSpan(StyleSpan(Typeface.BOLD), sb.length - prefix.length, sb.length,
-                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-            sb.appendTags(keysAt(pos, i) + keysAt(misc, i), colors.pos)
+            seenKeys += keysAt(pos, i)
+            seenKeys += keysAt(misc, i)
+            seenKeys += keysAt(field, i)
+            seenKeys += keysAt(dial, i)
+        }
+
+        val cornerPx    = 3f  * density
+        val hPadPx      = 5f  * density
+        val vPadPx      = 1.5f * density
+        val trailingPx  = 4f  * density
+
+        // Tag chips line
+        for (key in seenKeys) {
+            val label = TagSystem.label(key)
+            val bgColor = colors.tagBgColor(key)
+            if (bgColor == 0) continue
+            val start = sb.length
+            sb.append(" ") // placeholder character replaced by the span
+            sb.setSpan(
+                RoundedTagSpan(label, bgColor, 0.85f, cornerPx, hPadPx, vPadPx, trailingPx),
+                start, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+        }
+
+        if (seenKeys.isNotEmpty()) sb.append("\n")
+
+        // All glosses pipe-separated
+        val PIPE = "  |  "
+        for (i in 0 until gloss.length()) {
+            if (i > 0) {
+                val pipeStart = sb.length
+                sb.append(PIPE)
+                sb.setSpan(ForegroundColorSpan(Color.GRAY), pipeStart, sb.length,
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
             sb.append(gloss.getString(i))
-            glossCount++
         }
     } catch (e: JSONException) {
         e.printStackTrace()

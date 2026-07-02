@@ -34,6 +34,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElem
 import org.happypeng.sumatora.android.sumatoradictionary.adapter.OnEntryClickListener
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.DictionaryPagedListAdapterCloseIntent
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.DictionaryPagedListAdapterIntent
+import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.TagSystem
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.renderGloss
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.renderHeadword
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.renderReading
@@ -51,7 +52,29 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
     class Colors(val activeLang: Int,
                  val backupLang: Int,
                  val highlight: Int,
-                 val pos: Int)
+                 val pos: Int,
+                 val tags: TagColors) {
+
+        class TagColors(
+            val pos: Int,
+            val register: Int,
+            val kana: Int,
+            val kanji: Int,
+            val usage: Int,
+            val domain: Int,
+            val dialect: Int
+        )
+
+        fun tagBgColor(key: String): Int = when (TagSystem.category(key)) {
+            TagSystem.Category.POS      -> tags.pos
+            TagSystem.Category.REGISTER -> tags.register
+            TagSystem.Category.KANA     -> tags.kana
+            TagSystem.Category.KANJI    -> tags.kanji
+            TagSystem.Category.USAGE    -> tags.usage
+            TagSystem.Category.DOMAIN   -> tags.domain
+            TagSystem.Category.DIALECT  -> tags.dialect
+        }
+    }
 
     private var subscription: Disposable? = null
     private var tagLoadSubscription: Disposable? = null
@@ -201,7 +224,8 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
         } else {
             wordCardBinding.wordCardReading.visibility = View.GONE
         }
-        wordCardBinding.wordCardGloss.text = renderGloss(entry, colors)
+        val density = wordCardBinding.wordCardGloss.context.resources.displayMetrics.density
+        wordCardBinding.wordCardGloss.text = renderGloss(entry, colors, density)
         wordCardBinding.wordCardContent.setOnClickListener { onEntryClick.onClick(entry) }
         if (entry.bookmark != 0L) {
             wordCardBinding.wordCardBookmarkIcon.setImageResource(R.drawable.ic_outline_bookmark_24px)

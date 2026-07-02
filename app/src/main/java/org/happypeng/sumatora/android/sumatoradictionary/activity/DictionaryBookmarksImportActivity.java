@@ -114,12 +114,20 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
                         (seq, bookmark, memo) -> Unit.INSTANCE,
                         (seq, tags) -> Unit.INSTANCE,
                         () -> java.util.Collections.emptyList(),
-                        new DictionarySearchElementViewHolder.Colors(ContextCompat.getColor(this, R.color.text_background_primary),
+                        new DictionarySearchElementViewHolder.Colors(
+                                ContextCompat.getColor(this, R.color.text_background_primary),
                                 ContextCompat.getColor(this, R.color.text_background_primary_backup),
-                                ContextCompat.getColor(this,
-                                        R.color.render_highlight),
-                                ContextCompat.getColor(this,
-                                        R.color.render_pos)),
+                                ContextCompat.getColor(this, R.color.render_highlight),
+                                ContextCompat.getColor(this, R.color.render_pos),
+                                new DictionarySearchElementViewHolder.Colors.TagColors(
+                                        ContextCompat.getColor(this, R.color.tag_pos),
+                                        ContextCompat.getColor(this, R.color.tag_register),
+                                        ContextCompat.getColor(this, R.color.tag_kana),
+                                        ContextCompat.getColor(this, R.color.tag_kanji),
+                                        ContextCompat.getColor(this, R.color.tag_usage),
+                                        ContextCompat.getColor(this, R.color.tag_domain),
+                                        ContextCompat.getColor(this, R.color.tag_dialect)
+                                )),
                         entry -> {
                             EntryDetailBottomSheet sheet = EntryDetailBottomSheet.Companion.newInstance(entry);
                             sheet.show(getSupportFragmentManager(), "entry_detail");

@@ -162,14 +162,20 @@ public abstract class BaseFragment extends Fragment {
                         queryFragmentModel.getCommitBookmarksFun(),
                         queryFragmentModel.getCommitTagsFun(),
                         queryFragmentModel.getAvailableTagsFun(),
-                        new DictionarySearchElementViewHolder.Colors(ContextCompat.getColor(getContext(),
-                                R.color.text_background_primary),
-                                ContextCompat.getColor(getContext(),
-                                        R.color.text_background_primary_backup),
-                                ContextCompat.getColor(getContext(),
-                                        R.color.render_highlight),
-                                ContextCompat.getColor(getContext(),
-                                        R.color.render_pos)),
+                        new DictionarySearchElementViewHolder.Colors(
+                                ContextCompat.getColor(getContext(), R.color.text_background_primary),
+                                ContextCompat.getColor(getContext(), R.color.text_background_primary_backup),
+                                ContextCompat.getColor(getContext(), R.color.render_highlight),
+                                ContextCompat.getColor(getContext(), R.color.render_pos),
+                                new DictionarySearchElementViewHolder.Colors.TagColors(
+                                        ContextCompat.getColor(getContext(), R.color.tag_pos),
+                                        ContextCompat.getColor(getContext(), R.color.tag_register),
+                                        ContextCompat.getColor(getContext(), R.color.tag_kana),
+                                        ContextCompat.getColor(getContext(), R.color.tag_kanji),
+                                        ContextCompat.getColor(getContext(), R.color.tag_usage),
+                                        ContextCompat.getColor(getContext(), R.color.tag_domain),
+                                        ContextCompat.getColor(getContext(), R.color.tag_dialect)
+                                )),
                         entry -> {
                             EntryDetailBottomSheet sheet = EntryDetailBottomSheet.Companion.newInstance(entry);
                             sheet.show(getChildFragmentManager(), "entry_detail");
