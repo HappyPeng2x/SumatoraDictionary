@@ -221,7 +221,8 @@ public abstract class PersistentDatabaseInitialization {
     @WorkerThread
     public static void initializeDatabase(@NonNull final Context context,
                                           @NonNull final PersistentDatabase persistentDatabase,
-                                          @NonNull final HashMap<String, String> entities) {
+                                          @NonNull final HashMap<String, String> entities,
+                                          @NonNull final DictionaryControlInfo controlInfo) {
         int databaseReset = context.getResources().getInteger(R.integer.database_reset);
 
         // Remove older versions database
@@ -266,7 +267,7 @@ public abstract class PersistentDatabaseInitialization {
         List<InstalledDictionary> dictionaries = persistentDatabase.installedDictionaryDao().getAll();
 
         for (InstalledDictionary d : dictionaries) {
-            if (d.type.equals("jmdict")) {
+            if (d.type.equals("jmdict") || d.type.equals("kanjidic2") || d.type.equals("pitch")) {
                 d.attach(persistentDatabase);
             }
 
@@ -301,6 +302,29 @@ public abstract class PersistentDatabaseInitialization {
                         String content = cur.getString(1);
 
                         entities.put(name, content);
+                    }
+                }
+
+                cur.close();
+            }
+        } catch (SQLException ignored) {
+
+        }
+
+        try {
+            Cursor cur = persistentDatabase.getOpenHelper().getReadableDatabase().query("SELECT control, value FROM jmdict.DictionaryControl");
+
+            if (cur != null) {
+                while (cur.moveToNext()) {
+                    String control = cur.getString(0);
+                    long value = cur.isNull(1) ? 0 : cur.getLong(1);
+
+                    if ("build_timestamp".equals(control)) {
+                        controlInfo.buildTimestamp = value;
+                    } else if ("format_version".equals(control)) {
+                        controlInfo.formatVersion = (int) value;
+                    } else if ("entry_count".equals(control)) {
+                        controlInfo.entryCount = (int) value;
                     }
                 }
 

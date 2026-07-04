@@ -32,13 +32,32 @@ import android.widget.EditText;
 import android.widget.TextView;
 
 import org.happypeng.sumatora.android.sumatoradictionary.R;
+import org.happypeng.sumatora.android.sumatoradictionary.component.PersistentDatabaseComponent;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryControlInfo;
 
+import java.text.DateFormat;
+import java.util.Date;
+
+import javax.inject.Inject;
+
+import dagger.hilt.android.AndroidEntryPoint;
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
+import io.reactivex.rxjava3.core.Single;
+import io.reactivex.rxjava3.disposables.CompositeDisposable;
+import io.reactivex.rxjava3.schedulers.Schedulers;
+
+@AndroidEntryPoint
 public class SettingsFragment extends Fragment {
     public interface SettingsFragmentActions {
         void displayLog();
         void manageDictionaries();
         void setRepositoryURL(final String aUrl);
     }
+
+    @Inject
+    PersistentDatabaseComponent persistentDatabaseComponent;
+
+    private final CompositeDisposable disposables = new CompositeDisposable();
 
     private SettingsFragmentActions mActions;
 
@@ -96,7 +115,32 @@ public class SettingsFragment extends Fragment {
                 }
         );
 
+        final TextView dictionaryInfo = view.findViewById(R.id.settings_dictionary_info);
+        disposables.add(
+                Single.fromCallable(() -> persistentDatabaseComponent.getDictionaryControlInfo())
+                        .subscribeOn(Schedulers.io())
+                        .observeOn(AndroidSchedulers.mainThread())
+                        .subscribe(info -> dictionaryInfo.setText(formatDictionaryInfo(info)))
+        );
+
         return view;
+    }
+
+    private static String formatDictionaryInfo(DictionaryControlInfo info) {
+        if (info.buildTimestamp == 0 && info.entryCount == 0) {
+            return "";
+        }
+
+        String date = DateFormat.getDateInstance(DateFormat.MEDIUM)
+                .format(new Date(info.buildTimestamp * 1000L));
+
+        return "Dictionary build: " + date + ", " + info.entryCount + " entries";
+    }
+
+    @Override
+    public void onDestroyView() {
+        disposables.clear();
+        super.onDestroyView();
     }
 
     public void setRepositoryURL(final String aURL) {

@@ -15,6 +15,7 @@
         along with this program.  If not, see <http://www.gnu.org/licenses/>.*/
 package org.happypeng.sumatora.android.sumatoradictionary.activity
 
+import android.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
@@ -28,9 +29,13 @@ import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.Fragment
 import com.google.android.material.navigation.NavigationView
 import dagger.hilt.android.AndroidEntryPoint
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
+import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.disposables.CompositeDisposable
+import io.reactivex.rxjava3.schedulers.Schedulers
 import org.happypeng.sumatora.android.sumatoradictionary.BuildConfig
 import org.happypeng.sumatora.android.sumatoradictionary.R
+import org.happypeng.sumatora.android.sumatoradictionary.component.PersistentDatabaseComponent
 import org.happypeng.sumatora.android.sumatoradictionary.fragment.BaseFragment
 import org.happypeng.sumatora.android.sumatoradictionary.fragment.BookmarkFragment
 import org.happypeng.sumatora.android.sumatoradictionary.fragment.QueryFragment
@@ -55,6 +60,9 @@ import org.slf4j.LoggerFactory
 class MainActivity : AppCompatActivity() {
     private val viewModel: MainActivityModel by viewModels()
     private val compositeDisposable = CompositeDisposable()
+
+    @javax.inject.Inject
+    lateinit var persistentDatabaseComponent: PersistentDatabaseComponent
 
     private val logger = run {
         if (BuildConfig.DEBUG_DICTIONARY_ACTIVITY) {
@@ -117,6 +125,22 @@ class MainActivity : AppCompatActivity() {
         }
 
         setContentView(R.layout.activity_dictionary)
+
+        compositeDisposable.add(
+            Single.fromCallable { persistentDatabaseComponent.dictionaryControlInfo }
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe { info ->
+                    if (!info.isSupported) {
+                        AlertDialog.Builder(this)
+                            .setTitle(R.string.app_name)
+                            .setMessage("This dictionary database requires a newer version of the app. Please update to continue.")
+                            .setCancelable(false)
+                            .setPositiveButton(android.R.string.ok) { _, _ -> finish() }
+                            .show()
+                    }
+                }
+        )
 
         val navigationView: NavigationView = findViewById(R.id.activity_main_navigation_view)
 

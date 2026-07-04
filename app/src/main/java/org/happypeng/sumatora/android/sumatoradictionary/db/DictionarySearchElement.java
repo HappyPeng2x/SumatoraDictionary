@@ -46,6 +46,13 @@ public class DictionarySearchElement implements DictionaryResult {
     public String memo;
     public String tags;
     public String furigana;
+    public int score;
+    public String stagk;
+    public String stagr;
+    public String example_matched_tokens;
+    public String deinflection_label;
+    public boolean is_proper_noun;
+    public String proper_noun_types;
 
     public DictionarySearchElement() { }
 
@@ -99,4 +106,12 @@ public class DictionarySearchElement implements DictionaryResult {
 
     public String getExampleSentences() { return example_sentences; }
     public String getExampleTranslations() { return example_translations; }
+
+    public int getScore() { return score; }
+    public String getStagk() { return stagk; }
+    public String getStagr() { return stagr; }
+    public String getExampleMatchedTokens() { return example_matched_tokens; }
+    public String getDeinflectionLabel() { return deinflection_label; }
+    public boolean isProperNoun() { return is_proper_noun; }
+    public String getProperNounTypes() { return proper_noun_types; }
 }

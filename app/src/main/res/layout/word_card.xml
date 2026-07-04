@@ -30,7 +30,7 @@
                 android:layout_height="wrap_content"
                 app:fontFamily="sans-serif"
                 android:textColor="@color/text_foreground_primary"
-                android:textSize="20sp"
+                android:textSize="18sp"
                 android:textStyle="bold"
                 tools:text="大きい・大きな" />
 
@@ -52,8 +52,6 @@
                 app:fontFamily="sans-serif"
                 android:textColor="@color/text_foreground_primary"
                 android:textSize="14sp"
-                android:maxLines="3"
-                android:ellipsize="end"
                 tools:text="1. large, big, great" />
 
             <EditText

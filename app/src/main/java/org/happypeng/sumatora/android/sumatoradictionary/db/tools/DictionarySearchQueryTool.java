@@ -23,6 +23,9 @@ import org.happypeng.sumatora.android.sumatoradictionary.component.PersistentDat
 import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings;
+import org.happypeng.sumatora.core.search.Deinflector;
+import org.happypeng.sumatora.core.search.DeinflectionCandidate;
+import org.happypeng.sumatora.core.search.QueryUtils;
 import org.happypeng.sumatora.jromkan.Romkan;
 
 import java.io.IOException;
@@ -32,6 +35,10 @@ import java.util.List;
 public class DictionarySearchQueryTool {
     static final String SQL_QUERY_INSERT_DISPLAY_ELEMENT =
             "INSERT OR IGNORE INTO DictionarySearchElement "
+                    + "(ref, entryOrder, seq, readingsPrio, readings, writingsPrio, writings, "
+                    + "pos, xref, ant, misc, lsource, dial, s_inf, field, lang, lang_setting, gloss, "
+                    + "example_sentences, example_translations, bookmark, memo, tags, furigana, "
+                    + "score, stagk, stagr, example_matched_tokens, deinflection_label, is_proper_noun, proper_noun_types) "
                     + "SELECT ? AS ref, "
                     + "? AS entryOrder, "
                     + "DictionaryEntry.seq, "
@@ -55,17 +62,75 @@ public class DictionarySearchQueryTool {
                     + "IFNULL(DictionaryBookmark.bookmark, 0), "
                     + "DictionaryBookmark.memo, "
                     + "DictionaryBookmark.tags, "
-                    + "DictionaryEntry.furigana "
+                    + "DictionaryEntry.furigana, "
+                    + "DictionaryEntry.score, "
+                    + "DictionaryEntry.stagk, "
+                    + "DictionaryEntry.stagr, "
+                    + "%s as example_matched_tokens, "
+                    + "NULL as deinflection_label, "
+                    + "0 as is_proper_noun, "
+                    + "NULL as proper_noun_types "
                     + "FROM (jmdict.DictionaryEntry %s) LEFT JOIN DictionaryBookmark ON DictionaryBookmark.seq = DictionaryEntry.seq, "
                     + "%s.DictionaryTranslation "
                     + "WHERE DictionaryEntry.seq = DictionaryTranslation.seq AND "
                     + "DictionaryEntry.seq IN (%s) %s "
                     + "GROUP BY DictionaryEntry.seq";
 
+    // Gap 4 — deinflection: same shape as SQL_QUERY_INSERT_DISPLAY_ELEMENT, but binds
+    // deinflection_label instead of a NULL literal, and requires DictionaryEntry.rules to
+    // contain the rule code the candidate dictionary form was produced under.
+    static final String SQL_QUERY_DEINFLECTION_INSERT =
+            "INSERT OR IGNORE INTO DictionarySearchElement "
+                    + "(ref, entryOrder, seq, readingsPrio, readings, writingsPrio, writings, "
+                    + "pos, xref, ant, misc, lsource, dial, s_inf, field, lang, lang_setting, gloss, "
+                    + "example_sentences, example_translations, bookmark, memo, tags, furigana, "
+                    + "score, stagk, stagr, example_matched_tokens, deinflection_label, is_proper_noun, proper_noun_types) "
+                    + "SELECT ? AS ref, "
+                    + "? AS entryOrder, "
+                    + "DictionaryEntry.seq, "
+                    + "DictionaryEntry.readingsPrio, "
+                    + "DictionaryEntry.readings, "
+                    + "DictionaryEntry.writingsPrio, "
+                    + "DictionaryEntry.writings, "
+                    + "DictionaryEntry.pos, "
+                    + "DictionaryEntry.xref, "
+                    + "DictionaryEntry.ant, "
+                    + "DictionaryEntry.misc, "
+                    + "DictionaryEntry.lsource, "
+                    + "DictionaryEntry.dial, "
+                    + "DictionaryEntry.s_inf, "
+                    + "DictionaryEntry.field, "
+                    + "? AS lang, "
+                    + "? AS lang_setting, "
+                    + "json_group_array(DictionaryTranslation.gloss) AS gloss, "
+                    + "%s as example_sentences, "
+                    + "%s as example_translations, "
+                    + "IFNULL(DictionaryBookmark.bookmark, 0), "
+                    + "DictionaryBookmark.memo, "
+                    + "DictionaryBookmark.tags, "
+                    + "DictionaryEntry.furigana, "
+                    + "DictionaryEntry.score, "
+                    + "DictionaryEntry.stagk, "
+                    + "DictionaryEntry.stagr, "
+                    + "%s as example_matched_tokens, "
+                    + "? AS deinflection_label, "
+                    + "0 as is_proper_noun, "
+                    + "NULL as proper_noun_types "
+                    + "FROM (jmdict.DictionaryEntry %s) LEFT JOIN DictionaryBookmark ON DictionaryBookmark.seq = DictionaryEntry.seq, "
+                    + "%s.DictionaryTranslation "
+                    + "WHERE DictionaryEntry.seq = DictionaryTranslation.seq AND "
+                    + "DictionaryEntry.seq IN (%s) AND "
+                    + "instr(' ' || IFNULL(DictionaryEntry.rules, '') || ' ', ' ' || ? || ' ') > 0 "
+                    + "GROUP BY DictionaryEntry.seq";
+
     private final static String BOOKMARKS_WHERE_CLAUSE = "((? = 0 AND ? = 0) OR (((? AND IFNULL(DictionaryBookmark.bookmark, 0) > 0) OR (? AND DictionaryBookmark.memo IS NOT NULL AND DictionaryBookmark.memo != ''))))";
 
     static final String SQL_QUERY_INSERT_BOOKMARK_DISPLAY_ELEMENT =
             "INSERT OR IGNORE INTO DictionarySearchElement "
+                    + "(ref, entryOrder, seq, readingsPrio, readings, writingsPrio, writings, "
+                    + "pos, xref, ant, misc, lsource, dial, s_inf, field, lang, lang_setting, gloss, "
+                    + "example_sentences, example_translations, bookmark, memo, tags, furigana, "
+                    + "score, stagk, stagr, example_matched_tokens, deinflection_label, is_proper_noun, proper_noun_types) "
                     + "SELECT ? AS ref, "
                     + "? AS entryOrder, "
                     + "DictionaryEntry.seq, "
@@ -89,7 +154,14 @@ public class DictionarySearchQueryTool {
                     + "DictionaryBookmark.bookmark, "
                     + "DictionaryBookmark.memo, "
                     + "DictionaryBookmark.tags, "
-                    + "DictionaryEntry.furigana "
+                    + "DictionaryEntry.furigana, "
+                    + "DictionaryEntry.score, "
+                    + "DictionaryEntry.stagk, "
+                    + "DictionaryEntry.stagr, "
+                    + "%s as example_matched_tokens, "
+                    + "NULL as deinflection_label, "
+                    + "0 as is_proper_noun, "
+                    + "NULL as proper_noun_types "
                     + "FROM (jmdict.DictionaryEntry %s) LEFT JOIN DictionaryBookmark ON DictionaryBookmark.seq = DictionaryEntry.seq, "
                     + "%s.DictionaryTranslation "
                     + "WHERE DictionaryEntry.seq = DictionaryTranslation.seq "
@@ -104,6 +176,9 @@ public class DictionarySearchQueryTool {
 
     static final String SQL_QUERY_EXAMPLE_TRANSLATIONS =
             "ExamplesSummary.translations";
+
+    static final String SQL_QUERY_EXAMPLE_MATCHED_TOKENS =
+            "ExamplesSummary.matched_tokens";
 
     static private final String SQL_REVERSE_QUERY_INSERT_ELEMENT =
             "INSERT OR IGNORE INTO DictionaryElement "
@@ -127,7 +202,12 @@ public class DictionarySearchQueryTool {
             "SELECT DictionaryTranslationIndex.rowid AS gloss_docid, 0 AS gloss_offset FROM %s.DictionaryTranslationIndex WHERE DictionaryTranslationIndex.gloss MATCH ? || '*'";
 
     static private final String SQL_QUERY_DICTIONARY_ELEMENT_DISPLAY =
-            "INSERT OR IGNORE INTO DictionarySearchElement SELECT "
+            "INSERT OR IGNORE INTO DictionarySearchElement "
+                    + "(ref, entryOrder, seq, readingsPrio, readings, writingsPrio, writings, "
+                    + "pos, xref, ant, misc, lsource, dial, s_inf, field, lang, lang_setting, gloss, "
+                    + "example_sentences, example_translations, bookmark, memo, tags, furigana, "
+                    + "score, stagk, stagr, example_matched_tokens, deinflection_label, is_proper_noun, proper_noun_types) "
+                    + "SELECT "
                     + "DictionaryElement.ref, "
                     + "DictionaryElement.entryOrder, "
                     + "DictionaryElement.seq, "
@@ -151,7 +231,14 @@ public class DictionarySearchQueryTool {
                     + "IFNULL(DictionaryBookmark.bookmark, 0), "
                     + "DictionaryBookmark.memo, "
                     + "DictionaryBookmark.tags, "
-                    + "DictionaryEntry.furigana "
+                    + "DictionaryEntry.furigana, "
+                    + "DictionaryEntry.score, "
+                    + "DictionaryEntry.stagk, "
+                    + "DictionaryEntry.stagr, "
+                    + "%s as example_matched_tokens, "
+                    + "NULL as deinflection_label, "
+                    + "0 as is_proper_noun, "
+                    + "NULL as proper_noun_types "
                     + "FROM (DictionaryElement LEFT JOIN DictionaryBookmark ON DictionaryElement.seq = DictionaryBookmark.seq), "
                     + "jmdict.DictionaryEntry %s, "
                     + "%s.DictionaryTranslation "
@@ -226,6 +313,36 @@ public class DictionarySearchQueryTool {
     private static final String SQL_TAG_ONLY_WHERE_CLAUSE =
             "AND DictionaryBookmark.tags IS NOT NULL AND DictionaryBookmark.tags != ''";
 
+    // Gap 4 — deinflection hits sort after direct dictionary tiers but before proper names.
+    private static final int DEINFLECTION_ENTRY_ORDER = 15;
+
+    // Gap 8 — proper name (JMnedict) search, run as an appended pass after the regular tiers
+    // (see executeProperNouns()). Hits sort after all direct dictionary results (entryOrder 20/21).
+    private static final int PROPER_NOUN_ENTRY_ORDER_EXACT = 20;
+    private static final int PROPER_NOUN_ENTRY_ORDER_BEGIN = 21;
+
+    static private final String SQL_QUERY_PROPER_NOUN_EXACT_WRITING =
+            "SELECT ProperNounIndex.`rowid` AS seq FROM jmdict.ProperNounIndex WHERE writings MATCH ?";
+
+    static private final String SQL_QUERY_PROPER_NOUN_EXACT_READING =
+            "SELECT ProperNounIndex.`rowid` AS seq FROM jmdict.ProperNounIndex WHERE readingsKana MATCH ?";
+
+    static private final String SQL_QUERY_PROPER_NOUN_BEGIN_WRITING =
+            "SELECT ProperNounIndex.`rowid` AS seq FROM jmdict.ProperNounIndex WHERE writings MATCH ? || '*'";
+
+    static private final String SQL_QUERY_PROPER_NOUN_BEGIN_READING =
+            "SELECT ProperNounIndex.`rowid` AS seq FROM jmdict.ProperNounIndex WHERE readingsKana MATCH ? || '*'";
+
+    static private final String SQL_QUERY_PROPER_NOUN_INSERT =
+            "INSERT OR IGNORE INTO DictionarySearchElement "
+                    + "(ref, entryOrder, seq, readings, writings, lang, lang_setting, gloss, "
+                    + "bookmark, score, is_proper_noun, proper_noun_types) "
+                    + "SELECT ? AS ref, ? AS entryOrder, ProperNounEntry.seq, ProperNounEntry.readings, "
+                    + "ProperNounEntry.writings, ? AS lang, ? AS lang_setting, ProperNounEntry.translations, "
+                    + "0, 0, 1, ProperNounEntry.types "
+                    + "FROM jmdict.ProperNounEntry "
+                    + "WHERE ProperNounEntry.seq IN (%s)";
+
     protected final PersistentDatabaseComponent persistentDatabase;
     private final String whereClause;
 
@@ -235,6 +352,15 @@ public class DictionarySearchQueryTool {
     private SupportSQLiteStatement tagOnlyStatementBackup;
     private SupportSQLiteStatement deleteByTagStatement;
     private SupportSQLiteStatement countByRefStatement;
+    private SupportSQLiteStatement properNounExactWritingStatement;
+    private SupportSQLiteStatement properNounExactReadingStatement;
+    private SupportSQLiteStatement properNounBeginWritingStatement;
+    private SupportSQLiteStatement properNounBeginReadingStatement;
+    private SupportSQLiteStatement deinflectWritingPrioStatement;
+    private SupportSQLiteStatement deinflectWritingNonPrioStatement;
+    private SupportSQLiteStatement deinflectReadingPrioStatement;
+    private SupportSQLiteStatement deinflectReadingNonPrioStatement;
+    private Romkan romkanRef;
 
     private final int key;
 
@@ -257,6 +383,7 @@ public class DictionarySearchQueryTool {
         final SupportSQLiteDatabase db = database.getOpenHelper().getWritableDatabase();
 
         final Romkan romkan = persistentDatabase.getRomkan();
+        this.romkanRef = romkan;
 
         // "AND DictionaryEntry.seq IN ("
         String whereClause = this.whereClause == null ? "" : "AND " + this.whereClause;
@@ -265,22 +392,26 @@ public class DictionarySearchQueryTool {
 
         String examplesQuerySentences = "null";
         String examplesQueryTranslations = "null";
+        String examplesQueryMatchedTokens = "null";
         String examplesLeftJoin = "";
 
         String backupExamplesQuery = "null";
         String backupExamplesQueryTranslations = "null";
+        String backupExamplesQueryMatchedTokens = "null";
         String backupExamplesLeftJoin = "";
 
         for (InstalledDictionary d : installedDictionaries) {
             if ("tatoeba".equals(d.getType()) && persistentLanguageSettings.lang.equals(d.getLang())) {
                 examplesQuerySentences = SQL_QUERY_EXAMPLE_SENTENCES;
                 examplesQueryTranslations = SQL_QUERY_EXAMPLE_TRANSLATIONS;
+                examplesQueryMatchedTokens = SQL_QUERY_EXAMPLE_MATCHED_TOKENS;
                 examplesLeftJoin = String.format(SQL_QUERY_JOIN_EXAMPLES, "examples_" + d.getLang());
             }
             if ("tatoeba".equals(d.getType()) && persistentLanguageSettings.backupLang != null
                     && persistentLanguageSettings.backupLang.equals(d.getLang())) {
                 backupExamplesQuery = SQL_QUERY_EXAMPLE_SENTENCES;
                 backupExamplesQueryTranslations = SQL_QUERY_EXAMPLE_TRANSLATIONS;
+                backupExamplesQueryMatchedTokens = SQL_QUERY_EXAMPLE_MATCHED_TOKENS;
                 backupExamplesLeftJoin = String.format(SQL_QUERY_JOIN_EXAMPLES, "examples_" + d.getLang());
             }
         }
@@ -289,43 +420,43 @@ public class DictionarySearchQueryTool {
 
         final SupportSQLiteStatement queryAllStatement =
                 db.compileStatement(String.format(SQL_QUERY_INSERT_BOOKMARK_DISPLAY_ELEMENT,
-                        examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, persistentLanguageSettings.lang, whereClause));
+                        examplesQuerySentences, examplesQueryTranslations, examplesQueryMatchedTokens, examplesLeftJoin, persistentLanguageSettings.lang, whereClause));
         final SupportSQLiteStatement queryExactPrioWriting =
                 db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                        examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_EXACT_WRITING_PRIO, whereClause));
+                        examplesQuerySentences, examplesQueryTranslations, examplesQueryMatchedTokens, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_EXACT_WRITING_PRIO, whereClause));
         final SupportSQLiteStatement queryExactPrioReading =
                 db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                        examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_EXACT_READING_PRIO, whereClause));
+                        examplesQuerySentences, examplesQueryTranslations, examplesQueryMatchedTokens, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_EXACT_READING_PRIO, whereClause));
         final SupportSQLiteStatement queryExactNonPrioWriting =
                 db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                        examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_EXACT_WRITING_NONPRIO, whereClause));
+                        examplesQuerySentences, examplesQueryTranslations, examplesQueryMatchedTokens, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_EXACT_WRITING_NONPRIO, whereClause));
         final SupportSQLiteStatement queryExactNonPrioReading =
                 db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                        examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_EXACT_READING_NONPRIO, whereClause));
+                        examplesQuerySentences, examplesQueryTranslations, examplesQueryMatchedTokens, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_EXACT_READING_NONPRIO, whereClause));
         final SupportSQLiteStatement queryBeginPrioWriting =
                 db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                        examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_BEGIN_WRITING_PRIO, whereClause));
+                        examplesQuerySentences, examplesQueryTranslations, examplesQueryMatchedTokens, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_BEGIN_WRITING_PRIO, whereClause));
         final SupportSQLiteStatement queryBeginPrioReading =
                 db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                        examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_BEGIN_READING_PRIO, whereClause));
+                        examplesQuerySentences, examplesQueryTranslations, examplesQueryMatchedTokens, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_BEGIN_READING_PRIO, whereClause));
         final SupportSQLiteStatement queryBeginNonPrioWriting =
                 db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                        examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_BEGIN_WRITING_NONPRIO, whereClause));
+                        examplesQuerySentences, examplesQueryTranslations, examplesQueryMatchedTokens, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_BEGIN_WRITING_NONPRIO, whereClause));
         final SupportSQLiteStatement queryBeginNonPrioReading =
                 db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                        examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_BEGIN_READING_NONPRIO, whereClause));
+                        examplesQuerySentences, examplesQueryTranslations, examplesQueryMatchedTokens, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_BEGIN_READING_NONPRIO, whereClause));
         final SupportSQLiteStatement queryPartsPrioWriting =
                 db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                        examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_PARTS_WRITING_PRIO, whereClause));
+                        examplesQuerySentences, examplesQueryTranslations, examplesQueryMatchedTokens, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_PARTS_WRITING_PRIO, whereClause));
         final SupportSQLiteStatement queryPartsPrioReading =
                 db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                        examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_PARTS_READING_PRIO, whereClause));
+                        examplesQuerySentences, examplesQueryTranslations, examplesQueryMatchedTokens, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_PARTS_READING_PRIO, whereClause));
         final SupportSQLiteStatement queryPartsNonPrioWriting =
                 db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                        examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_PARTS_WRITING_NONPRIO, whereClause));
+                        examplesQuerySentences, examplesQueryTranslations, examplesQueryMatchedTokens, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_PARTS_WRITING_NONPRIO, whereClause));
         final SupportSQLiteStatement queryPartsNonPrioReading =
                 db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                        examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_PARTS_READING_NONPRIO, whereClause));
+                        examplesQuerySentences, examplesQueryTranslations, examplesQueryMatchedTokens, examplesLeftJoin, persistentLanguageSettings.lang, SQL_QUERY_PARTS_READING_NONPRIO, whereClause));
         final SupportSQLiteStatement reverseQueryExact =
                 db.compileStatement(String.format(SQL_REVERSE_QUERY_INSERT_ELEMENT,
                         persistentLanguageSettings.lang, String.format(SQL_REVERSE_QUERY_EXACT, persistentLanguageSettings.lang)));
@@ -335,7 +466,7 @@ public class DictionarySearchQueryTool {
 
         final SupportSQLiteStatement reverseQueryDisplayElement =
                 db.compileStatement(String.format(SQL_QUERY_DICTIONARY_ELEMENT_DISPLAY,
-                        examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, persistentLanguageSettings.lang, whereClause));
+                        examplesQuerySentences, examplesQueryTranslations, examplesQueryMatchedTokens, examplesLeftJoin, persistentLanguageSettings.lang, whereClause));
         final SupportSQLiteStatement reverseQueryDeleteElements =
                 db.compileStatement(SQL_REVERSE_QUERY_DELETE_ELEMENTS);
 
@@ -359,43 +490,43 @@ public class DictionarySearchQueryTool {
         if (persistentLanguageSettings.backupLang != null) {
             queryAllStatementBackup =
                     db.compileStatement(String.format(SQL_QUERY_INSERT_BOOKMARK_DISPLAY_ELEMENT,
-                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, whereClause));
+                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesQueryMatchedTokens, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, whereClause));
             queryExactPrioWritingBackup =
                     db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_EXACT_WRITING_PRIO, whereClause));
+                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesQueryMatchedTokens, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_EXACT_WRITING_PRIO, whereClause));
             queryExactPrioReadingBackup =
                     db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_EXACT_READING_PRIO, whereClause));
+                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesQueryMatchedTokens, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_EXACT_READING_PRIO, whereClause));
             queryExactNonPrioWritingBackup =
                     db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_EXACT_WRITING_NONPRIO, whereClause));
+                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesQueryMatchedTokens, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_EXACT_WRITING_NONPRIO, whereClause));
             queryExactNonPrioReadingBackup =
                     db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_EXACT_READING_NONPRIO, whereClause));
+                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesQueryMatchedTokens, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_EXACT_READING_NONPRIO, whereClause));
             queryBeginPrioWritingBackup =
                     db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_BEGIN_WRITING_PRIO, whereClause));
+                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesQueryMatchedTokens, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_BEGIN_WRITING_PRIO, whereClause));
             queryBeginPrioReadingBackup =
                     db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_BEGIN_READING_PRIO, whereClause));
+                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesQueryMatchedTokens, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_BEGIN_READING_PRIO, whereClause));
             queryBeginNonPrioWritingBackup =
                     db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_BEGIN_READING_PRIO, whereClause));
+                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesQueryMatchedTokens, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_BEGIN_READING_PRIO, whereClause));
             queryBeginNonPrioReadingBackup =
                     db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_BEGIN_READING_NONPRIO, whereClause));
+                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesQueryMatchedTokens, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_BEGIN_READING_NONPRIO, whereClause));
             queryPartsPrioWritingBackup =
                     db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_PARTS_WRITING_PRIO, whereClause));
+                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesQueryMatchedTokens, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_PARTS_WRITING_PRIO, whereClause));
             queryPartsPrioReadingBackup =
                     db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_PARTS_READING_PRIO, whereClause));
+                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesQueryMatchedTokens, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_PARTS_READING_PRIO, whereClause));
             queryPartsNonPrioWritingBackup =
                     db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_PARTS_WRITING_NONPRIO, whereClause));
+                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesQueryMatchedTokens, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_PARTS_WRITING_NONPRIO, whereClause));
             queryPartsNonPrioReadingBackup =
                     db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_PARTS_READING_NONPRIO, whereClause));
+                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesQueryMatchedTokens, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, SQL_QUERY_PARTS_READING_NONPRIO, whereClause));
             reverseQueryExactBackup =
                     db.compileStatement(String.format(SQL_REVERSE_QUERY_INSERT_ELEMENT,
                             persistentLanguageSettings.backupLang, String.format(SQL_REVERSE_QUERY_EXACT, persistentLanguageSettings.backupLang)));
@@ -404,17 +535,17 @@ public class DictionarySearchQueryTool {
                             persistentLanguageSettings.backupLang, String.format(SQL_REVERSE_QUERY_BEGIN, persistentLanguageSettings.backupLang)));
             reverseQueryDisplayBackupElement =
                     db.compileStatement(String.format(SQL_QUERY_DICTIONARY_ELEMENT_DISPLAY,
-                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, whereClause));
+                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesQueryMatchedTokens, backupExamplesLeftJoin, persistentLanguageSettings.backupLang, whereClause));
         }
 
         tagOnlyStatement = db.compileStatement(String.format(SQL_QUERY_INSERT_BOOKMARK_DISPLAY_ELEMENT,
-                examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin,
+                examplesQuerySentences, examplesQueryTranslations, examplesQueryMatchedTokens, examplesLeftJoin,
                 persistentLanguageSettings.lang,
                 SQL_TAG_ONLY_WHERE_CLAUSE));
 
         if (persistentLanguageSettings.backupLang != null) {
             tagOnlyStatementBackup = db.compileStatement(String.format(SQL_QUERY_INSERT_BOOKMARK_DISPLAY_ELEMENT,
-                    backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin,
+                    backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesQueryMatchedTokens, backupExamplesLeftJoin,
                     persistentLanguageSettings.backupLang,
                     SQL_TAG_ONLY_WHERE_CLAUSE));
         }
@@ -424,6 +555,28 @@ public class DictionarySearchQueryTool {
 
         countByRefStatement = db.compileStatement(
                 "SELECT COUNT(*) FROM DictionarySearchElement WHERE ref = ?");
+
+        properNounExactWritingStatement = db.compileStatement(String.format(
+                SQL_QUERY_PROPER_NOUN_INSERT, SQL_QUERY_PROPER_NOUN_EXACT_WRITING));
+        properNounExactReadingStatement = db.compileStatement(String.format(
+                SQL_QUERY_PROPER_NOUN_INSERT, SQL_QUERY_PROPER_NOUN_EXACT_READING));
+        properNounBeginWritingStatement = db.compileStatement(String.format(
+                SQL_QUERY_PROPER_NOUN_INSERT, SQL_QUERY_PROPER_NOUN_BEGIN_WRITING));
+        properNounBeginReadingStatement = db.compileStatement(String.format(
+                SQL_QUERY_PROPER_NOUN_INSERT, SQL_QUERY_PROPER_NOUN_BEGIN_READING));
+
+        deinflectWritingPrioStatement = db.compileStatement(String.format(SQL_QUERY_DEINFLECTION_INSERT,
+                examplesQuerySentences, examplesQueryTranslations, examplesQueryMatchedTokens, examplesLeftJoin,
+                persistentLanguageSettings.lang, SQL_QUERY_EXACT_WRITING_PRIO));
+        deinflectWritingNonPrioStatement = db.compileStatement(String.format(SQL_QUERY_DEINFLECTION_INSERT,
+                examplesQuerySentences, examplesQueryTranslations, examplesQueryMatchedTokens, examplesLeftJoin,
+                persistentLanguageSettings.lang, SQL_QUERY_EXACT_WRITING_NONPRIO));
+        deinflectReadingPrioStatement = db.compileStatement(String.format(SQL_QUERY_DEINFLECTION_INSERT,
+                examplesQuerySentences, examplesQueryTranslations, examplesQueryMatchedTokens, examplesLeftJoin,
+                persistentLanguageSettings.lang, SQL_QUERY_EXACT_READING_PRIO));
+        deinflectReadingNonPrioStatement = db.compileStatement(String.format(SQL_QUERY_DEINFLECTION_INSERT,
+                examplesQuerySentences, examplesQueryTranslations, examplesQueryMatchedTokens, examplesLeftJoin,
+                persistentLanguageSettings.lang, SQL_QUERY_EXACT_READING_NONPRIO));
 
         statements = new QueryStatement[15];
 
@@ -530,6 +683,84 @@ public class DictionarySearchQueryTool {
         }
     }
 
+    // Gap 8 — proper name (JMnedict) search: an appended pass run once per term alongside (not
+    // instead of) the regular tiered dictionary search, so proper-name hits show below direct
+    // dictionary results in the same list. Returns whether any rows were inserted.
+    public boolean executeProperNouns(String term) {
+        if (term == null || term.isEmpty()) {
+            return false;
+        }
+
+        final String writingTerm = QueryUtils.escapeTerm(term);
+        final String readingTerm = romkanRef.to_katakana(romkanRef.to_hepburn(writingTerm));
+
+        long exactWriting = bindAndInsertProperNoun(properNounExactWritingStatement,
+                PROPER_NOUN_ENTRY_ORDER_EXACT, writingTerm);
+        long exactReading = bindAndInsertProperNoun(properNounExactReadingStatement,
+                PROPER_NOUN_ENTRY_ORDER_EXACT, readingTerm);
+        long beginWriting = bindAndInsertProperNoun(properNounBeginWritingStatement,
+                PROPER_NOUN_ENTRY_ORDER_BEGIN, writingTerm);
+        long beginReading = bindAndInsertProperNoun(properNounBeginReadingStatement,
+                PROPER_NOUN_ENTRY_ORDER_BEGIN, readingTerm);
+
+        return exactWriting >= 0 || exactReading >= 0 || beginWriting >= 0 || beginReading >= 0;
+    }
+
+    private long bindAndInsertProperNoun(SupportSQLiteStatement statement, int entryOrder, String term) {
+        statement.bindLong(1, key);
+        statement.bindLong(2, entryOrder);
+        statement.bindString(3, persistentLanguageSettings.lang);
+        statement.bindString(4, persistentLanguageSettings.lang);
+        statement.bindString(5, term);
+
+        return statement.executeInsert();
+    }
+
+    // Gap 4 — deinflection: an appended pass run once per term, alongside (not instead of) the
+    // regular tiered search, so conjugated-form hits ("食べた" -> 食べる, past) show alongside
+    // direct hits. Each Deinflector candidate is verified against DictionaryEntry.rules by the
+    // SQL itself (see SQL_QUERY_DEINFLECTION_INSERT); candidates that don't match a real rule
+    // code just insert zero rows. Returns whether any rows were inserted.
+    public boolean executeDeinflection(String term) {
+        if (term == null || term.isEmpty()) {
+            return false;
+        }
+
+        // The Deinflector's rule table matches hiragana conjugation suffixes (e.g. "た", "ない"),
+        // so romaji (and any katakana) input needs to be normalized to hiragana first.
+        final String hiraganaTerm = romkanRef.to_hiragana(QueryUtils.escapeTerm(term));
+
+        boolean anyFound = false;
+        for (DeinflectionCandidate candidate : Deinflector.INSTANCE.deinflect(hiraganaTerm)) {
+            final String writingTerm = QueryUtils.escapeTerm(candidate.getDictionaryForm());
+            final String readingTerm = romkanRef.to_katakana(romkanRef.to_hepburn(writingTerm));
+
+            long r1 = bindAndInsertDeinflection(deinflectWritingPrioStatement, writingTerm, candidate);
+            long r2 = bindAndInsertDeinflection(deinflectWritingNonPrioStatement, writingTerm, candidate);
+            long r3 = bindAndInsertDeinflection(deinflectReadingPrioStatement, readingTerm, candidate);
+            long r4 = bindAndInsertDeinflection(deinflectReadingNonPrioStatement, readingTerm, candidate);
+
+            if (r1 >= 0 || r2 >= 0 || r3 >= 0 || r4 >= 0) {
+                anyFound = true;
+            }
+        }
+
+        return anyFound;
+    }
+
+    private long bindAndInsertDeinflection(SupportSQLiteStatement statement, String term,
+                                           DeinflectionCandidate candidate) {
+        statement.bindLong(1, key);
+        statement.bindLong(2, DEINFLECTION_ENTRY_ORDER);
+        statement.bindString(3, persistentLanguageSettings.lang);
+        statement.bindString(4, persistentLanguageSettings.lang);
+        statement.bindString(5, candidate.getLabel());
+        statement.bindString(6, term);
+        statement.bindString(7, candidate.getRuleCode());
+
+        return statement.executeInsert();
+    }
+
     public void close() {
         if (statements != null) {
             for (QueryStatement s : statements) {
@@ -584,6 +815,34 @@ public class DictionarySearchQueryTool {
                 e.printStackTrace();
             }
             countByRefStatement = null;
+        }
+
+        closeQuietly(properNounExactWritingStatement);
+        closeQuietly(properNounExactReadingStatement);
+        closeQuietly(properNounBeginWritingStatement);
+        closeQuietly(properNounBeginReadingStatement);
+        properNounExactWritingStatement = null;
+        properNounExactReadingStatement = null;
+        properNounBeginWritingStatement = null;
+        properNounBeginReadingStatement = null;
+
+        closeQuietly(deinflectWritingPrioStatement);
+        closeQuietly(deinflectWritingNonPrioStatement);
+        closeQuietly(deinflectReadingPrioStatement);
+        closeQuietly(deinflectReadingNonPrioStatement);
+        deinflectWritingPrioStatement = null;
+        deinflectWritingNonPrioStatement = null;
+        deinflectReadingPrioStatement = null;
+        deinflectReadingNonPrioStatement = null;
+    }
+
+    private static void closeQuietly(SupportSQLiteStatement statement) {
+        if (statement != null) {
+            try {
+                statement.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
 

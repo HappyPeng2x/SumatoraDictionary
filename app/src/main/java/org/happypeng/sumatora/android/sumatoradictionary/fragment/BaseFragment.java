@@ -73,6 +73,7 @@ public abstract class BaseFragment extends Fragment {
     protected CompositeDisposable fragmentAutoDisposable = new CompositeDisposable();
 
     private Subject<String> intentSearchTerm = PublishSubject.create();
+    private String currentSearchTerm = "";
 
     private ListPopupWindow tagCompletionPopup;
     private Disposable tagLookupDisposable;
@@ -126,6 +127,10 @@ public abstract class BaseFragment extends Fragment {
         viewAutoDisposable.add(queryFragmentModel.states().filter(QueryState::getSetIntent)
                 .subscribe(s -> setActivityIntentSearchTerm(s.getTerm())));
 
+        viewAutoDisposable.add(queryFragmentModel.states().map(QueryState::getTerm)
+                .distinctUntilChanged()
+                .subscribe(t -> currentSearchTerm = t));
+
         // Toolbar configuration
         ((AppCompatActivity) getActivity()).setSupportActionBar(viewBinding.dictionaryBookmarkFragmentToolbar);
 
@@ -177,7 +182,7 @@ public abstract class BaseFragment extends Fragment {
                                         ContextCompat.getColor(getContext(), R.color.tag_dialect)
                                 )),
                         entry -> {
-                            EntryDetailBottomSheet sheet = EntryDetailBottomSheet.Companion.newInstance(entry);
+                            EntryDetailBottomSheet sheet = EntryDetailBottomSheet.Companion.newInstance(entry, currentSearchTerm, null);
                             sheet.show(getChildFragmentManager(), "entry_detail");
                         });
 

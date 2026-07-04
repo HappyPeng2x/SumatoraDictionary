@@ -38,4 +38,11 @@ interface DictionaryResult {
     val memo: String?
     val tags: String?
     val furigana: String?
+    val score: Int
+    val stagk: String?
+    val stagr: String?
+    val exampleMatchedTokens: String?
+    val deinflectionLabel: String?
+    val isProperNoun: Boolean
+    val properNounTypes: String?
 }

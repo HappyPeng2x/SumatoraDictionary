@@ -217,6 +217,10 @@ abstract class BaseQueryFragmentModel protected constructor(
                         found = queryTool.execute(prev.plainTerm, current, filterBookmarks, filterMemos, prev.tags)
                         current++
                     }
+                    if (!filterBookmarks && !filterMemos) {
+                        found = queryTool.executeProperNouns(prev.plainTerm) || found
+                        found = queryTool.executeDeinflection(prev.plainTerm) || found
+                    }
                 }
                 prev.copy(queryTool = queryTool, currentQuery = current, found = found,
                     searching = false, languageSettings = op.settings, ready = true,
@@ -237,6 +241,10 @@ abstract class BaseQueryFragmentModel protected constructor(
                     while (current < max && !found) {
                         found = tool.execute(prev.plainTerm, current, filterBookmarks, filterMemos, prev.tags)
                         current++
+                    }
+                    if (!filterBookmarks && !filterMemos) {
+                        found = tool.executeProperNouns(prev.plainTerm) || found
+                        found = tool.executeDeinflection(prev.plainTerm) || found
                     }
                 }
                 prev.copy(currentQuery = current, found = found, searching = false,

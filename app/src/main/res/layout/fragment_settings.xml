@@ -66,6 +66,16 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Display log" />
+
+        <TextView
+            android:id="@+id/settings_dictionary_info"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="16dp"
+            android:layout_marginEnd="16dp"
+            android:textAppearance="@style/Body2"
+            tools:text="Dictionary build: 2026-07-04, 210000 entries" />
         </LinearLayout>
     </ScrollView>
 

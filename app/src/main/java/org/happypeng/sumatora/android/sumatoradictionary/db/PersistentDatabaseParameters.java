@@ -210,4 +210,22 @@ public abstract class PersistentDatabaseParameters {
                     + "PRIMARY KEY(`ref`, `seq`))");
         }
     };
+
+    public static final Migration MIGRATION_10_11 = new Migration(10, 11) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL("DROP TABLE IF EXISTS DictionarySearchElement");
+            database.execSQL("CREATE TABLE IF NOT EXISTS DictionarySearchElement ("
+                    + "`ref` INTEGER NOT NULL, `entryOrder` INTEGER NOT NULL, `seq` INTEGER NOT NULL, "
+                    + "`readingsPrio` TEXT, `readings` TEXT, `writingsPrio` TEXT, `writings` TEXT, "
+                    + "`pos` TEXT, `xref` TEXT, `ant` TEXT, `misc` TEXT, `lsource` TEXT, `dial` TEXT, "
+                    + "`s_inf` TEXT, `field` TEXT, `lang` TEXT, `lang_setting` TEXT, `gloss` TEXT, "
+                    + "`example_sentences` TEXT, `example_translations` TEXT, "
+                    + "`bookmark` INTEGER NOT NULL, `memo` TEXT, `tags` TEXT, `furigana` TEXT, "
+                    + "`score` INTEGER NOT NULL, `stagk` TEXT, `stagr` TEXT, "
+                    + "`example_matched_tokens` TEXT, `deinflection_label` TEXT, "
+                    + "`is_proper_noun` INTEGER NOT NULL, `proper_noun_types` TEXT, "
+                    + "PRIMARY KEY(`ref`, `seq`))");
+        }
+    };
 }

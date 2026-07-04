@@ -1,6 +1,10 @@
-<repository version="6" date="20260703">
+<repository version="7" date="20260704">
     <dictionary uri="dictionaries/jmdict.db.gz"
         type="jmdict" description="Index" lang=""/>
+    <dictionary uri="dictionaries/kanjidic2.db.gz"
+        type="kanjidic2" description="Kanji data" lang=""/>
+    <dictionary uri="dictionaries/pitch.db.gz"
+        type="pitch" description="Pitch accent" lang=""/>
     <dictionary uri="dictionaries/eng.db.gz"
         type="jmdict_translation" description="English" lang="eng"/>
     <dictionary
