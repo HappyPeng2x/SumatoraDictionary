@@ -142,6 +142,14 @@ public class PersistentDatabaseComponent {
     private static final String FORM_QUERY_BY_ID =
             "SELECT text, reading, form_type, form_id, is_common FROM %s.EntryForm WHERE form_id = ? AND is_search_only = 0 LIMIT 1";
 
+    // Which SearchTerm row matched should only decide what gets highlighted, never make the app
+    // hide content that exists on the entry - so a match on the bare kana reading still pairs it
+    // with a kanji spelling here, the same way a match on a kanji form already shows its reading.
+    private static final String FORM_QUERY_PAIRED_WRITING =
+            "SELECT text, reading, form_type, form_id, is_common FROM %s.EntryForm "
+                    + "WHERE entry_id = ? AND form_type = 'writing' AND reading = ? AND is_search_only = 0 "
+                    + "ORDER BY is_primary DESC, score DESC, ord LIMIT 1";
+
     private static final class DisplayForm {
         @Nullable String text;
         @Nullable String reading;
@@ -160,7 +168,20 @@ public class PersistentDatabaseComponent {
             Cursor cur = null;
             if (matchedFormId != null) {
                 cur = readable.query(String.format(FORM_QUERY_BY_ID, pack), new Object[]{matchedFormId});
-                if (cur != null && !cur.moveToFirst()) {
+                if (cur != null && cur.moveToFirst()) {
+                    if ("reading".equals(cur.getString(2))) {
+                        Cursor pairedCur = readable.query(String.format(FORM_QUERY_PAIRED_WRITING, pack),
+                                new Object[]{entryId, cur.getString(0)});
+                        if (pairedCur != null) {
+                            if (pairedCur.moveToFirst()) {
+                                cur.close();
+                                cur = pairedCur;
+                            } else {
+                                pairedCur.close();
+                            }
+                        }
+                    }
+                } else if (cur != null) {
                     cur.close();
                     cur = null;
                 }
