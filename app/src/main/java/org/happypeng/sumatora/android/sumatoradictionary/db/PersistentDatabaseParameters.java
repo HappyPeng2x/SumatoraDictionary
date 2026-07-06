@@ -265,4 +265,20 @@ public abstract class PersistentDatabaseParameters {
             database.execSQL("CREATE TABLE IF NOT EXISTS LocalDictionaryObject (`description` TEXT, `type` TEXT NOT NULL, `lang` TEXT NOT NULL, `version` INTEGER NOT NULL, `date` INTEGER NOT NULL, `file` TEXT NOT NULL, PRIMARY KEY(`type`, `lang`))");
         }
     };
+
+    // Background dictionary update pipeline (update-pipeline.md): InstalledDictionary gains
+    // pending* columns so a verified-but-not-yet-live update can wait for the next cold start
+    // instead of hot-swapping a file that may already be ATTACHed; RemoteDictionaryObject gains
+    // sha256 so a downloaded pack can be verified before being treated as installable.
+    public static final Migration MIGRATION_12_13 = new Migration(12, 13) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE InstalledDictionary ADD COLUMN pendingFile TEXT");
+            database.execSQL("ALTER TABLE InstalledDictionary ADD COLUMN pendingVersion INTEGER");
+            database.execSQL("ALTER TABLE InstalledDictionary ADD COLUMN pendingDate INTEGER");
+
+            database.execSQL("DROP TABLE IF EXISTS RemoteDictionaryObject");
+            database.execSQL("CREATE TABLE IF NOT EXISTS RemoteDictionaryObject (`description` TEXT, `type` TEXT NOT NULL, `lang` TEXT NOT NULL, `version` INTEGER NOT NULL, `date` INTEGER NOT NULL, `file` TEXT NOT NULL, `localFile` TEXT NOT NULL, `downloadId` INTEGER NOT NULL, `sha256` TEXT NOT NULL DEFAULT '', PRIMARY KEY(`type`, `lang`))");
+        }
+    };
 }

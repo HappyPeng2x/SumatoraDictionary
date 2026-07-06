@@ -71,13 +71,20 @@ public class BaseDictionaryObject {
 
     }
 
+    // True if this object's (version, date) is newer than aOther's - used both to decide whether
+    // a bundled asset needs reinstalling and whether a remote manifest entry is worth downloading.
+    public boolean isSuperiorVersion(final BaseDictionaryObject aOther) {
+        return version > aOther.version || (version >= aOther.version && date > aOther.date);
+    }
+
     public interface Constructor<T extends BaseDictionaryObject> {
         public T create(final @NonNull String aFile,
                         final String aDescription,
                         final @NonNull String aType,
                         final @NonNull String aLang,
                         int aVersion,
-                        int aDate);
+                        int aDate,
+                        final @NonNull String aSha256);
     }
 
     public static <T extends BaseDictionaryObject> List<T> fromXML(final InputStream aStream,
@@ -116,11 +123,17 @@ public class BaseDictionaryObject {
                             lang = "";
                         }
 
+                        String sha256 = xpp.getAttributeValue(null, "sha256");
+
+                        if (sha256 == null) {
+                            sha256 = "";
+                        }
+
                         result.add(aConstructor.create(xpp.getAttributeValue(null, "uri"),
                                 xpp.getAttributeValue(null, "description"),
                                 xpp.getAttributeValue(null, "type"),
                                 lang,
-                                version, date));
+                                version, date, sha256));
                     }
                 } else if(eventType == XmlPullParser.END_TAG) {
                     level--;

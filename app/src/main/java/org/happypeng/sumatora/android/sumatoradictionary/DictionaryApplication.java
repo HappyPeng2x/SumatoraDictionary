@@ -16,16 +16,24 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary;
 
-import android.app.Application;
 import android.os.StrictMode;
 
+import androidx.hilt.work.HiltWorkerFactory;
 import androidx.multidex.MultiDexApplication;
+import androidx.work.Configuration;
+
+import org.happypeng.sumatora.android.sumatoradictionary.update.DictionaryUpdateWorker;
+
+import javax.inject.Inject;
 
 import dagger.hilt.android.HiltAndroidApp;
 
 @HiltAndroidApp
-public class DictionaryApplication extends MultiDexApplication {
+public class DictionaryApplication extends MultiDexApplication implements Configuration.Provider {
     //private DownloadEventReceiver m_downloadEventReceiver;
+
+    @Inject
+    HiltWorkerFactory workerFactory;
 
     @Override
     public void onCreate() {
@@ -41,5 +49,14 @@ public class DictionaryApplication extends MultiDexApplication {
                     .penaltyLog()
                     .build());
         }
+
+        DictionaryUpdateWorker.enqueuePeriodic(this);
+    }
+
+    @Override
+    public Configuration getWorkManagerConfiguration() {
+        return new Configuration.Builder()
+                .setWorkerFactory(workerFactory)
+                .build();
     }
 }

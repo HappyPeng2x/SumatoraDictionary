@@ -138,7 +138,7 @@ public abstract class PersistentDatabaseInitialization {
             List<AssetDictionaryObject> dl = InstalledDictionary.fromXML(in,
                     new BaseDictionaryObject.Constructor<AssetDictionaryObject>() {
                         @Override
-                        public AssetDictionaryObject create(@NonNull String aFile, String aDescription, @NonNull String aType, @NonNull String aLang, int aVersion, int aDate) {
+                        public AssetDictionaryObject create(@NonNull String aFile, String aDescription, @NonNull String aType, @NonNull String aLang, int aVersion, int aDate, @NonNull String aSha256) {
                             return new AssetDictionaryObject(aFile, aDescription, aType, aLang, aVersion, aDate);
                         }
                     });
@@ -218,6 +218,21 @@ public abstract class PersistentDatabaseInitialization {
     }
 
     @WorkerThread
+    private static void promotePendingUpdate(@NonNull final PersistentDatabase persistentDatabase,
+                                             @NonNull final InstalledDictionary d) {
+        new File(d.file).delete();
+
+        d.file = d.pendingFile;
+        d.version = d.pendingVersion;
+        d.date = d.pendingDate;
+        d.pendingFile = null;
+        d.pendingVersion = null;
+        d.pendingDate = null;
+
+        persistentDatabase.installedDictionaryDao().insert(d);
+    }
+
+    @WorkerThread
     public static void initializeDatabase(@NonNull final Context context,
                                           @NonNull final PersistentDatabase persistentDatabase,
                                           @NonNull final DictionaryControlInfo controlInfo) {
@@ -265,6 +280,13 @@ public abstract class PersistentDatabaseInitialization {
         List<InstalledDictionary> dictionaries = persistentDatabase.installedDictionaryDao().getAll();
 
         for (InstalledDictionary d : dictionaries) {
+            // A background update (update-pipeline.md) may have downloaded and verified a newer
+            // version of this pack already - nothing has ATTACHed anything yet this session, so
+            // this is the one safe moment to swap the old file out for the new one.
+            if (d.hasPendingUpdate()) {
+                promotePendingUpdate(persistentDatabase, d);
+            }
+
             if (d.type.equals("core") || d.type.equals("kanji") || d.type.equals("pitch")
                     || d.type.equals("suffix") || d.type.equals("names")) {
                 d.attach(persistentDatabase);

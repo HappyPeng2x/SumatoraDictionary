@@ -24,6 +24,29 @@
             android:orientation="vertical">
 
             <LinearLayout
+                android:id="@+id/activity_dictionaries_management_updates_panel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="15dp"
+                android:orientation="vertical">
+                <Button
+                    android:id="@+id/activity_dictionaries_management_check_updates"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/check_for_updates" />
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:paddingTop="10dp"
+                    android:text="@string/installed_dictionaries_header"
+                    android:textAppearance="@style/TextAppearance.AppCompat.Large" />
+                <TextView
+                    android:id="@+id/activity_dictionaries_management_installed_summary"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <LinearLayout
                 android:id="@+id/activity_dictionaries_management_install_panel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

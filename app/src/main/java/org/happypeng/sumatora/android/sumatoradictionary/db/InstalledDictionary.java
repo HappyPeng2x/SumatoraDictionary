@@ -79,13 +79,20 @@ public class InstalledDictionary extends BaseDictionaryObject {
         date = aDate;
     }
 
+    // Set when a background update (see update-pipeline.md) has downloaded and verified a newer
+    // version of this pack but hasn't promoted it yet - the live SQLite connection may already
+    // have `file` ATTACHed, so swapping in `pendingFile` only happens in the reconciliation step
+    // at the next cold start (PersistentDatabaseInitialization), never while attached.
+    public String pendingFile;
+    public Integer pendingVersion;
+    public Integer pendingDate;
+
     public boolean isSame(final InstalledDictionary aDictionary) {
         return (lang.equals(aDictionary.lang) && type.equals(aDictionary.type));
     }
 
-    public boolean isSuperiorVersion(final InstalledDictionary aDictionary) {
-        return (version > aDictionary.version ||
-                (version >= aDictionary.version && date > aDictionary.date));
+    public boolean hasPendingUpdate() {
+        return pendingFile != null;
     }
 
     public String getAlias() {

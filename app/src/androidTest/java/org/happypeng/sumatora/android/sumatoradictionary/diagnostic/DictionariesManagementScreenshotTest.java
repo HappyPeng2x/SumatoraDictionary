@@ -22,6 +22,8 @@ import android.util.Log;
 import androidx.test.internal.runner.junit4.AndroidJUnit4ClassRunner;
 import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.rule.ActivityTestRule;
+import androidx.work.Configuration;
+import androidx.work.testing.WorkManagerTestInitHelper;
 
 import org.happypeng.sumatora.android.sumatoradictionary.R;
 import org.happypeng.sumatora.android.sumatoradictionary.activity.DictionariesManagementActivity;
@@ -62,6 +64,15 @@ public class DictionariesManagementScreenshotTest {
     @Before
     public void setUp() {
         hiltRule.inject();
+
+        // HiltTestApplication (swapped in by CustomTestRunner) doesn't implement
+        // Configuration.Provider the way the real DictionaryApplication does, so
+        // WorkManager.getInstance() would otherwise throw here - work-testing's helper does the
+        // on-demand init the real Application would normally trigger.
+        WorkManagerTestInitHelper.initializeTestWorkManager(
+                InstrumentationRegistry.getInstrumentation().getTargetContext(),
+                new Configuration.Builder().build());
+
         Assume.assumeFalse(
                 "skipped: no dictionary installed on this device",
                 dbComponent.getDatabase().installedDictionaryDao().getAll().isEmpty());
@@ -75,6 +86,24 @@ public class DictionariesManagementScreenshotTest {
         screenshot("dictionaries_management_before.png");
 
         Log.i(TAG, "remote rows before tap: " + dbComponent.getDatabase().remoteDictionaryObjectDao().getAll().size());
+
+        // Phase 0c: tap "Check for updates" and confirm the installed-dictionaries summary
+        // populated without crashing (network itself is exercised separately by the worker).
+        activityRule.getActivity().runOnUiThread(() -> {
+            android.widget.Button checkUpdates = activityRule.getActivity()
+                    .findViewById(R.id.activity_dictionaries_management_check_updates);
+            checkUpdates.performClick();
+        });
+
+        Thread.sleep(1000);
+
+        activityRule.getActivity().runOnUiThread(() -> {
+            android.widget.TextView summary = activityRule.getActivity()
+                    .findViewById(R.id.activity_dictionaries_management_installed_summary);
+            Log.i(TAG, "installed summary text: " + summary.getText());
+        });
+
+        screenshot("dictionaries_management_check_updates.png");
 
         // Two rows share the dictionary_card_install id (one per card layout instance), so a
         // plain Espresso withId() match is ambiguous - click the first row's button directly.

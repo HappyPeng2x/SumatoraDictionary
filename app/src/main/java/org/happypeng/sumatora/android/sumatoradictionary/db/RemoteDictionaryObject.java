@@ -32,12 +32,14 @@ import java.io.File;
 public class RemoteDictionaryObject extends BaseDictionaryObject {
     public @NonNull String localFile;
     public long downloadId;
+    public @NonNull String sha256;
 
     public RemoteDictionaryObject() {
         super();
 
         localFile = "";
         downloadId = -1;
+        sha256 = "";
     }
 
     public void setLocalFile(@NonNull String aLocalFile) {
@@ -54,6 +56,16 @@ public class RemoteDictionaryObject extends BaseDictionaryObject {
                                   final @NonNull String aLang,
                                   int aVersion,
                                   int aDate) {
+        this(aUrl, aDescription, aType, aLang, aVersion, aDate, "");
+    }
+
+    public RemoteDictionaryObject(final @NonNull String aUrl,
+                                  final String aDescription,
+                                  final @NonNull String aType,
+                                  final @NonNull String aLang,
+                                  int aVersion,
+                                  int aDate,
+                                  final @NonNull String aSha256) {
         this();
 
         file = aUrl;
@@ -62,6 +74,7 @@ public class RemoteDictionaryObject extends BaseDictionaryObject {
         lang = aLang;
         version = aVersion;
         date = aDate;
+        sha256 = aSha256;
 
         localFile = "";
     }

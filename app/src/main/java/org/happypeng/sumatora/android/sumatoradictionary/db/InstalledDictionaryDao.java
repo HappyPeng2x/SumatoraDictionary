@@ -41,4 +41,7 @@ public interface InstalledDictionaryDao {
 
     @Query("SELECT * FROM InstalledDictionary WHERE InstalledDictionary.type == :aType AND InstalledDictionary.lang == :aLang LIMIT 1")
     InstalledDictionary getForTypeLang(String aType, String aLang);
+
+    @Query("SELECT * FROM InstalledDictionary WHERE pendingFile IS NOT NULL")
+    List<InstalledDictionary> getPendingUpdates();
 }

@@ -67,8 +67,18 @@ public class LocalDictionaryObject extends BaseDictionaryObject {
     }
 
     public InstalledDictionary install(final File aDatabaseDir) {
+        return install(aDatabaseDir, false);
+    }
+
+    // aVersionSuffixed is used when this install is a background update to a pack that may
+    // already be live-attached (see update-pipeline.md): writing to a version-suffixed filename
+    // instead of the active type-lang.db name means the currently-attached file is never touched,
+    // so the caller can safely defer promoting it until the next cold start.
+    public InstalledDictionary install(final File aDatabaseDir, final boolean aVersionSuffixed) {
         File sourceFile = new File(file);
-        File destFile = new File(aDatabaseDir, type + "-" + lang + ".db");
+        File destFile = new File(aDatabaseDir, aVersionSuffixed
+                ? type + "-" + lang + "-v" + version + "-" + date + ".db"
+                : type + "-" + lang + ".db");
 
         if (copyGZipFile(sourceFile, destFile)) {
             return new InstalledDictionary(destFile.toString(),

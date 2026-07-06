@@ -1,5 +1,5 @@
 <resources>
-    <string name="dictionaries_url">https://sumatora.happypeng.org/dictionaries/v4/dictionaries.xml</string>
+    <string name="dictionaries_url">https://raw.githubusercontent.com/HappyPeng2x/SumatoraDictionary/main/dictionaries.xml</string>
 
     <string name="app_name">Sumatora</string>
     <string name="search_hint">Search&#8230;</string>
@@ -14,6 +14,11 @@
     <string name="installed_optional_dictionaries_header">Installed</string>
     <string name="no_optional_dictionaries_available">All optional dictionaries are installed.</string>
     <string name="no_optional_dictionaries_installed">No optional dictionaries installed yet.</string>
+    <string name="dictionary_update_ready_title">Dictionary update ready</string>
+    <string name="dictionary_update_ready_text">Restart Sumatora to apply the %1$s update</string>
+    <string name="check_for_updates">Check for updates</string>
+    <string name="installed_dictionaries_header">Installed dictionaries</string>
+    <string name="checking_for_updates">Checking for updates…</string>
 
     <string name="tag_icon_description">Tag icon</string>
     <string name="tag_input_hint">Add tag</string>

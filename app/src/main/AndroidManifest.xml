@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     package="org.happypeng.sumatora.android.sumatoradictionary">
 
     <queries>
@@ -47,9 +48,14 @@
         </intent>
     </queries>
 
-    <!-- Needed only for downloading the optional search_suffix/names dictionary packs
-         (Settings > Manage dictionaries). Everything else in the app works fully offline. -->
+    <!-- Needed only for downloading the optional search_suffix/names dictionary packs and for
+         background dictionary update checks (Settings > Manage dictionaries). Everything else in
+         the app works fully offline. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Best-effort "update ready" notification after a background update download - if the user
+         never grants this, DictionaryDownloadCompleteReceiver's notify() call is a silent no-op
+         and the update is still picked up on the next cold start regardless. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:name=".DictionaryApplication"
@@ -151,6 +157,19 @@
                 <action android:name="android.intent.action.DOWNLOAD_COMPLETE" />
             </intent-filter>
         </receiver>
+
+        <!-- WorkManager is initialized manually in DictionaryApplication with a Hilt-aware
+             WorkerFactory, so the default on-demand initializer must not run first. -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup.InitializationProvider"
+                tools:node="remove" />
+        </provider>
     </application>
 
 </manifest>
