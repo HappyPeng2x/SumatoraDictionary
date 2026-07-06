@@ -9,6 +9,11 @@
     <string name="install_icon_description">Install</string>
     <string name="delete_icon_description">Delete</string>
     <string name="dictionary_card_description">Description</string>
+    <string name="manage_dictionaries_title">Manage dictionaries</string>
+    <string name="available_dictionaries_header">Available to download</string>
+    <string name="installed_optional_dictionaries_header">Installed</string>
+    <string name="no_optional_dictionaries_available">All optional dictionaries are installed.</string>
+    <string name="no_optional_dictionaries_installed">No optional dictionaries installed yet.</string>
 
     <string name="tag_icon_description">Tag icon</string>
     <string name="tag_input_hint">Add tag</string>

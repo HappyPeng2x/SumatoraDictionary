@@ -57,7 +57,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.model.state.MainActivit
 import org.slf4j.LoggerFactory
 
 @AndroidEntryPoint
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), SettingsFragment.SettingsFragmentActions {
     private val viewModel: MainActivityModel by viewModels()
     private val compositeDisposable = CompositeDisposable()
 
@@ -200,6 +200,10 @@ class MainActivity : AppCompatActivity() {
                         fragment.setIntentSearchTerm(intent.searchTerm)
                     }
 
+                    if (fragment is SettingsFragment) {
+                        fragment.setFragmentActions(this)
+                    }
+
                     if (intent.navigate) {
                         when (intent.navigationStatus) {
                             MainActivityNavigationStatus.SEARCH ->
@@ -319,6 +323,20 @@ class MainActivity : AppCompatActivity() {
 
     override fun onBackPressed() {
         viewModel.sendIntent(MainActivityBackPressedIntent)
+    }
+
+    // SettingsFragment.SettingsFragmentActions
+    override fun displayLog() {
+        // No log viewer in this build.
+    }
+
+    override fun manageDictionaries() {
+        startActivity(Intent(this, DictionariesManagementActivity::class.java))
+    }
+
+    override fun setRepositoryURL(aUrl: String) {
+        // Not wired to anything yet - the repository URL is only meaningful once the app fetches
+        // a remote manifest (see update-pipeline.md), which isn't built yet.
     }
 
     companion object {

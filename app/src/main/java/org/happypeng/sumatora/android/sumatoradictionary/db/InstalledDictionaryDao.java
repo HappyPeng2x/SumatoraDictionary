@@ -33,11 +33,6 @@ public interface InstalledDictionaryDao {
     @Query("SELECT * FROM InstalledDictionary")
     LiveData<List<InstalledDictionary>> getAllLive();
 
-    @Query("SELECT * FROM InstalledDictionary " +
-            "WHERE InstalledDictionary.type = 'jmdict_translation' " +
-            "AND InstalledDictionary.lang != 'eng'")
-    LiveData<List<InstalledDictionary>> getRemovableLive();
-
     @Delete
     void delete(InstalledDictionary aAction);
 

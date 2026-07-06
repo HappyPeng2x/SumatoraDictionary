@@ -23,128 +23,51 @@
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-            <!--            <LinearLayout
-                            android:id="@+id/activity_dictionaries_management_update_panel"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:padding="15dp"
-                            android:orientation="vertical">
-                            <TextView
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:text="Update"
-                                android:paddingBottom="5dp"
-                                android:textAppearance="@style/TextAppearance.AppCompat.Large" />
-                            <androidx.recyclerview.widget.RecyclerView
-                                android:id="@+id/activity_dictionaries_management_update_rv"
-                                android:layout_width="match_parent"
-                                android:layout_height="match_parent" />
-                            <Button
-                                android:id="@+id/activity_dictionaries_management_update_button"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Update all" />
-                        </LinearLayout>-->
-            <LinearLayout
-                android:id="@+id/activity_dictionaries_management_update_panel"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:padding="15dp"
-                android:orientation="vertical"
-                android:visibility="gone">
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Update"
-                    android:paddingBottom="5dp"
-                    android:textAppearance="@style/TextAppearance.AppCompat.Large" />
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="The following dictionaries need to be updated:"
-                    android:paddingBottom="5dp" />
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/activity_dictionaries_management_update_rv"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent" />
-                <Button
-                    android:id="@+id/activity_dictionaries_management_update_button"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Update" />
-            </LinearLayout>
-            <LinearLayout
-                android:id="@+id/activity_dictionaries_management_loading_panel"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:padding="15dp"
-                android:orientation="vertical"
-                android:visibility="gone">
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Loading"
-                    android:paddingBottom="5dp"
-                    android:textAppearance="@style/TextAppearance.AppCompat.Large" />
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Please wait while the database is being updated."
-                    android:paddingBottom="5dp" />
-            </LinearLayout>
             <LinearLayout
                 android:id="@+id/activity_dictionaries_management_install_panel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:padding="15dp"
-                android:orientation="vertical"
-                android:visibility="gone">
+                android:orientation="vertical">
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Install"
+                    android:text="@string/available_dictionaries_header"
                     android:paddingBottom="5dp"
                     android:textAppearance="@style/TextAppearance.AppCompat.Large" />
+                <TextView
+                    android:id="@+id/activity_dictionaries_management_install_empty"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/no_optional_dictionaries_available"
+                    android:visibility="gone" />
                 <androidx.recyclerview.widget.RecyclerView
                     android:id="@+id/activity_dictionaries_management_install_rv"
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent" />
-            </LinearLayout>
-            <LinearLayout
-                android:id="@+id/activity_dictionaries_management_downloads_panel"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:padding="15dp"
-                android:orientation="vertical"
-                android:visibility="gone">
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Downloads"
-                    android:paddingBottom="5dp"
-                    android:textAppearance="@style/TextAppearance.AppCompat.Large" />
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/activity_dictionaries_management_downloads_rv"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent" />
+                    android:layout_height="wrap_content" />
             </LinearLayout>
             <LinearLayout
                 android:id="@+id/activity_dictionaries_management_remove_panel"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:padding="15dp"
-                android:orientation="vertical"
-                android:visibility="gone">
+                android:orientation="vertical">
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Delete"
+                    android:text="@string/installed_optional_dictionaries_header"
                     android:paddingBottom="5dp"
                     android:textAppearance="@style/TextAppearance.AppCompat.Large" />
+                <TextView
+                    android:id="@+id/activity_dictionaries_management_remove_empty"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/no_optional_dictionaries_installed"
+                    android:visibility="gone" />
                 <androidx.recyclerview.widget.RecyclerView
                     android:id="@+id/activity_dictionaries_management_remove_rv"
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent" />
+                    android:layout_height="wrap_content" />
             </LinearLayout>
         </LinearLayout>
     </ScrollView>

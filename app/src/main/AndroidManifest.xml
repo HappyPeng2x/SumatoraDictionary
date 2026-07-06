@@ -47,9 +47,9 @@
         </intent>
     </queries>
 
-<!--
+    <!-- Needed only for downloading the optional search_suffix/names dictionary packs
+         (Settings > Manage dictionaries). Everything else in the app works fully offline. -->
     <uses-permission android:name="android.permission.INTERNET" />
--->
 
     <application
         android:name=".DictionaryApplication"
@@ -98,9 +98,10 @@
                     android:scheme="content" />
             </intent-filter>
         </activity>
-<!--        <activity
+        <activity
             android:name=".activity.DictionariesManagementActivity"
-            android:theme="@style/AppTheme" />-->
+            android:label="@string/manage_dictionaries_title"
+            android:theme="@style/AppTheme" />
         <activity
             android:name=".activity.MainActivity"
             android:exported="true"
@@ -140,6 +141,16 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/provider_paths" />
         </provider>
+
+        <!-- Manifest-registered (not runtime-only) so a download started from the Settings
+             screen still gets installed even if the app process was killed while it ran. -->
+        <receiver
+            android:name=".receiver.DictionaryDownloadCompleteReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.DOWNLOAD_COMPLETE" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>
