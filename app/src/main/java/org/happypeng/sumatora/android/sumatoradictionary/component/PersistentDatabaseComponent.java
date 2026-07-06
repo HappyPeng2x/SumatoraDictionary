@@ -599,9 +599,17 @@ public class PersistentDatabaseComponent {
                     if (senseCur != null) {
                         while (senseCur.moveToNext()) {
                             long senseId = senseCur.getLong(0);
+                            String glossText = glossLang != null ? fetchGlossText(readable, glossLang, senseId) : null;
+                            if (glossText == null && languageSettings.backupLang != null
+                                    && !languageSettings.backupLang.equals(glossLang)) {
+                                glossText = fetchGlossText(readable, languageSettings.backupLang, senseId);
+                            }
+                            if (glossText == null) {
+                                continue;
+                            }
                             EntryDetail.Sense sense = new EntryDetail.Sense();
                             sense.displayIndex = ++displayIndex[0];
-                            sense.glossText = glossLang != null ? fetchGlossText(readable, glossLang, senseId) : null;
+                            sense.glossText = glossText;
                             sense.notes = fetchStrings(readable,
                                     "SELECT text FROM core.SenseNote WHERE sense_id = ? ORDER BY ord", senseId);
                             sense.xrefs = fetchXrefs(readable, senseId, "xref");
