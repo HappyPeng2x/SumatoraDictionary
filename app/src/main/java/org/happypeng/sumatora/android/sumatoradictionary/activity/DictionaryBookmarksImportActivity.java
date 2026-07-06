@@ -128,7 +128,8 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
                                         ContextCompat.getColor(this, R.color.tag_usage),
                                         ContextCompat.getColor(this, R.color.tag_domain),
                                         ContextCompat.getColor(this, R.color.tag_dialect)
-                                )),
+                                ),
+                                ContextCompat.getColor(this, R.color.text_foreground_secondary)),
                         entry -> {
                             EntryDetailBottomSheet sheet = EntryDetailBottomSheet.Companion.newInstance(entry, null);
                             sheet.show(getSupportFragmentManager(), "entry_detail");

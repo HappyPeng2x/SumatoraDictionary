@@ -114,6 +114,24 @@ fun renderReading(summary: EntryListSummary,
                   colors: DictionarySearchElementViewHolder.Colors): SpannableStringBuilder =
     renderReading(summary.primaryReading, colors)
 
+// Search-list row: headword and reading share one line (reading trails the headword, smaller
+// and in the secondary color) instead of stacking on their own row, so the row's width isn't
+// spent on two short lines that leave the rest of the line empty.
+fun renderHeadwordWithReading(summary: EntryListSummary,
+                              colors: DictionarySearchElementViewHolder.Colors,
+                              onKanjiClick: ((String) -> Unit)? = null): SpannableStringBuilder {
+    val sb = renderHeadword(summary, colors, onKanjiClick)
+    if (!summary.primaryReading.isNullOrBlank()) {
+        sb.append("  ")
+        val start = sb.length
+        sb.append(summary.primaryReading)
+        sb.setSpan(RelativeSizeSpan(0.8f), start, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        sb.setSpan(ForegroundColorSpan(colors.secondary), start, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        sb.setSpan(BackgroundColorSpan(colors.highlight), start, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+    }
+    return sb
+}
+
 private fun appendTagPills(sb: SpannableStringBuilder, codes: List<String>,
                            colors: DictionarySearchElementViewHolder.Colors, density: Float) {
     if (codes.isEmpty()) return

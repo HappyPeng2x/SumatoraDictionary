@@ -181,7 +181,8 @@ public abstract class BaseFragment extends Fragment {
                                         ContextCompat.getColor(getContext(), R.color.tag_usage),
                                         ContextCompat.getColor(getContext(), R.color.tag_domain),
                                         ContextCompat.getColor(getContext(), R.color.tag_dialect)
-                                )),
+                                ),
+                                ContextCompat.getColor(getContext(), R.color.text_foreground_secondary)),
                         entry -> {
                             EntryDetailBottomSheet sheet = EntryDetailBottomSheet.Companion.newInstance(entry, null);
                             sheet.show(getChildFragmentManager(), "entry_detail");

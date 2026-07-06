@@ -93,16 +93,17 @@ class EntryDetailBottomSheet : BottomSheetDialogFragment() {
             ContextCompat.getColor(ctx, R.color.tag_domain),
             ContextCompat.getColor(ctx, R.color.tag_dialect)
         )
+        val primaryColor   = ContextCompat.getColor(ctx, R.color.text_foreground_primary)
+        val secondaryColor = ContextCompat.getColor(ctx, R.color.text_foreground_secondary)
+
         val colors = DictionarySearchElementViewHolder.Colors(
             ContextCompat.getColor(ctx, R.color.text_background_primary),
             ContextCompat.getColor(ctx, R.color.text_background_primary_backup),
             ContextCompat.getColor(ctx, R.color.render_highlight),
             ContextCompat.getColor(ctx, R.color.render_pos),
-            tagColors
+            tagColors,
+            secondaryColor
         )
-
-        val primaryColor   = ContextCompat.getColor(ctx, R.color.text_foreground_primary)
-        val secondaryColor = ContextCompat.getColor(ctx, R.color.text_foreground_secondary)
 
         val entryId = args.getLong(ARG_ENTRY_ID)
         val formId = args.getLong(ARG_FORM_ID, -1).let { if (it < 0) null else it }

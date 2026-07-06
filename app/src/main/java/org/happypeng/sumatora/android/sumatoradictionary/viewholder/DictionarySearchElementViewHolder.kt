@@ -37,8 +37,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.model.intent.Dictionary
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.DictionaryPagedListAdapterIntent
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.TagSystem
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.renderGloss
-import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.renderHeadword
-import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.renderReading
+import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.renderHeadwordWithReading
 import org.happypeng.sumatora.core.dict.DictionaryQueryResult
 class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBinding,
                                         disableBookmarkButton: Boolean,
@@ -56,7 +55,8 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
                  val backupLang: Int,
                  val highlight: Int,
                  val pos: Int,
-                 val tags: TagColors) {
+                 val tags: TagColors,
+                 val secondary: Int) {
 
         class TagColors(
             val pos: Int,
@@ -220,7 +220,6 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
         // always runs on the main thread), so fetch on IO and populate when it lands. Blank the
         // fields first so a recycled view doesn't flash the previous row's content meanwhile.
         wordCardBinding.wordCardHeadword.text = ""
-        wordCardBinding.wordCardReading.visibility = View.GONE
         wordCardBinding.wordCardGloss.text = ""
         summarySubscription?.dispose()
         summarySubscription = Single.fromCallable { listSummaryFun(entry) }
@@ -233,13 +232,7 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
                     wordCardBinding.wordCardView.setBackgroundColor(colors.activeLang)
                 }
 
-                wordCardBinding.wordCardHeadword.text = renderHeadword(summary, colors)
-                if (summary.primaryReading != null) {
-                    wordCardBinding.wordCardReading.visibility = View.VISIBLE
-                    wordCardBinding.wordCardReading.text = renderReading(summary, colors)
-                } else {
-                    wordCardBinding.wordCardReading.visibility = View.GONE
-                }
+                wordCardBinding.wordCardHeadword.text = renderHeadwordWithReading(summary, colors)
                 val density = wordCardBinding.wordCardGloss.context.resources.displayMetrics.density
                 wordCardBinding.wordCardGloss.text = renderGloss(summary, colors, density, entry.deinflectionLabel)
             }
