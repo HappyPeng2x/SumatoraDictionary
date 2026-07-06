@@ -18,12 +18,15 @@ package org.happypeng.sumatora.android.sumatoradictionary.db;
 
 import androidx.annotation.Nullable;
 
-// A single row from kanjidic2.db's KanjiEntry table.
+import java.util.ArrayList;
+import java.util.List;
+
+// A character's KanjiEntry/KanjiReading/KanjiMeaning rows, assembled for display.
 public class DictionaryKanjiInfo {
     public String character;
-    public String on;
-    public String kun;
-    public String meanings; // JSON array of strings
+    public List<String> onReadings = new ArrayList<>();
+    public List<String> kunReadings = new ArrayList<>();
+    public List<String> meanings = new ArrayList<>();
 
     @Nullable public Integer strokes;
     @Nullable public Integer grade;

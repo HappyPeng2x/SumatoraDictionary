@@ -18,41 +18,27 @@ package org.happypeng.sumatora.android.sumatoradictionary.db;
 
 import androidx.room.Entity;
 
-import org.happypeng.sumatora.core.dict.DictionaryResult;
+import org.happypeng.sumatora.core.dict.DictionaryQueryResult;
 
-@Entity(primaryKeys = {"ref", "seq"})
-public class DictionarySearchElement implements DictionaryResult {
+// Per-search-session cache of query hits: entry_id/form_id + match metadata (schema v2's
+// "Query Result Shape"), not a fully assembled display row - the display layer assembles
+// Entry/EntryForm/Sense/... separately by entry_id/form_id (see EntryDetailBottomSheet).
+@Entity(primaryKeys = {"ref", "entry_id"})
+public class DictionarySearchElement implements DictionaryQueryResult {
     public int ref;
     public int entryOrder;
+    public long entry_id;
     public long seq;
-    public String readingsPrio;
-    public String readings;
-    public String writingsPrio;
-    public String writings;
-    public String pos;
-    public String xref;
-    public String ant;
-    public String misc;
-    public String lsource;
-    public String dial;
-    public String s_inf;
-    public String field;
-    public String lang;
-    public String lang_setting;
-    public String gloss;
-    public String example_sentences;
-    public String example_translations;
+    public Long form_id;
+    public String match_kind;
+    public String matched_text;
+    public String original_query;
+    public String dictionary_form;
+    public String deinflection_label;
+    public int rank;
     public long bookmark;
     public String memo;
     public String tags;
-    public String furigana;
-    public int score;
-    public String stagk;
-    public String stagr;
-    public String example_matched_tokens;
-    public String deinflection_label;
-    public boolean is_proper_noun;
-    public String proper_noun_types;
 
     public DictionarySearchElement() { }
 
@@ -60,58 +46,17 @@ public class DictionarySearchElement implements DictionaryResult {
         return entryOrder;
     }
 
-    public long getSeq() {
-        return seq;
-    }
-
-    public String getReadingsPrio() {
-        return readingsPrio;
-    }
-
-    public String getReadings() {
-        return readings;
-    }
-
-    public String getWritingsPrio() {
-        return writingsPrio;
-    }
-
-    public String getWritings() {
-        return writings;
-    }
-
-    public String getLang() {
-        return lang;
-    }
-
-    public String getLangSetting() { return lang_setting; }
-
-    public String getGloss() {
-        return gloss;
-    }
+    public long getEntryId() { return entry_id; }
+    public long getSeq() { return seq; }
+    public Long getFormId() { return form_id; }
+    public String getMatchKind() { return match_kind; }
+    public String getMatchedText() { return matched_text; }
+    public String getOriginalQuery() { return original_query; }
+    public String getDictionaryForm() { return dictionary_form; }
+    public String getDeinflectionLabel() { return deinflection_label; }
+    public int getRank() { return rank; }
 
     public long getBookmark() { return bookmark; }
     public String getMemo() { return memo; }
     public String getTags() { return tags; }
-    public String getFurigana() { return furigana; }
-
-    public String getPos() { return pos; }
-    public String getXref() { return xref; }
-    public String getAnt() { return ant; }
-    public String getMisc() { return misc; }
-    public String getLsource() { return lsource; }
-    public String getDial() { return dial; }
-    public String getS_inf() { return s_inf; }
-    public String getField() { return field; }
-
-    public String getExampleSentences() { return example_sentences; }
-    public String getExampleTranslations() { return example_translations; }
-
-    public int getScore() { return score; }
-    public String getStagk() { return stagk; }
-    public String getStagr() { return stagr; }
-    public String getExampleMatchedTokens() { return example_matched_tokens; }
-    public String getDeinflectionLabel() { return deinflection_label; }
-    public boolean isProperNoun() { return is_proper_noun; }
-    public String getProperNounTypes() { return proper_noun_types; }
 }

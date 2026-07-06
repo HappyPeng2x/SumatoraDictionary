@@ -41,8 +41,7 @@ public class DictionarySearchElementDiffUtil {
 
                 @Override
                 public boolean areContentsTheSame(@NonNull DictionarySearchElement oldItem, @NonNull DictionarySearchElement newItem) {
-                    return oldItem.getSeq() == newItem.getSeq() && oldItem.getLang().equals(newItem.getLang()) &&
-                            oldItem.getLangSetting().equals(newItem.getLangSetting()) &&
+                    return oldItem.getSeq() == newItem.getSeq() &&
                             oldItem.getBookmark() == newItem.getBookmark() &&
                             compareStrings(oldItem.memo, newItem.memo) &&
                             compareStrings(oldItem.tags, newItem.tags);

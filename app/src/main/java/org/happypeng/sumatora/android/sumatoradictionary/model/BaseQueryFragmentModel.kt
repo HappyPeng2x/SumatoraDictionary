@@ -33,10 +33,12 @@ import org.happypeng.sumatora.android.sumatoradictionary.component.PersistentDat
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmarkTag
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement
+import org.happypeng.sumatora.android.sumatoradictionary.db.EntryListSummary
 import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.DictionarySearchQueryTool
 import org.happypeng.sumatora.core.bookmark.BookmarkMergeService
+import org.happypeng.sumatora.core.dict.DictionaryQueryResult
 import org.happypeng.sumatora.core.search.TagQueryParser
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.LanguageSettingAttachedIntent
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.LanguageSettingDetachedIntent
@@ -194,6 +196,16 @@ abstract class BaseQueryFragmentModel protected constructor(
 
     val availableTagsFun: () -> List<String> = {
         persistentDatabaseComponent.database.dictionaryBookmarkTagDao().getAllTags()
+    }
+
+    // Assembles the per-row display summary (headword/furigana/tags/gloss preview) for a search
+    // hit - schema v2's DictionarySearchElement only carries entry_id/form_id/match metadata, so
+    // the card's display data is queried separately by entry_id (Database.md "Display Assembly").
+    val listSummaryFun: (DictionaryQueryResult) -> EntryListSummary = { entry ->
+        val settings = persistentDatabaseComponent.database.persistentLanguageSettingsDao()
+            .getLanguageSettingsDirect(0)
+            ?: PersistentLanguageSettings().also { it.lang = PersistentLanguageSettings.LANG_DEFAULT }
+        persistentDatabaseComponent.fetchListSummary(entry, settings)
     }
 
     private fun reduce(prev: InternalState, op: Op): InternalState {

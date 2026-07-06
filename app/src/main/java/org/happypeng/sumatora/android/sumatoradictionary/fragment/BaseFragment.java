@@ -167,6 +167,7 @@ public abstract class BaseFragment extends Fragment {
                         queryFragmentModel.getCommitBookmarksFun(),
                         queryFragmentModel.getCommitTagsFun(),
                         queryFragmentModel.getAvailableTagsFun(),
+                        queryFragmentModel.getListSummaryFun(),
                         new DictionarySearchElementViewHolder.Colors(
                                 ContextCompat.getColor(getContext(), R.color.text_background_primary),
                                 ContextCompat.getColor(getContext(), R.color.text_background_primary_backup),
@@ -182,7 +183,7 @@ public abstract class BaseFragment extends Fragment {
                                         ContextCompat.getColor(getContext(), R.color.tag_dialect)
                                 )),
                         entry -> {
-                            EntryDetailBottomSheet sheet = EntryDetailBottomSheet.Companion.newInstance(entry, currentSearchTerm, null);
+                            EntryDetailBottomSheet sheet = EntryDetailBottomSheet.Companion.newInstance(entry, null);
                             sheet.show(getChildFragmentManager(), "entry_detail");
                         });
 

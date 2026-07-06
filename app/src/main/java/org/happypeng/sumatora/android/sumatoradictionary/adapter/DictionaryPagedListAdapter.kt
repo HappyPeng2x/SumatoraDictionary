@@ -23,9 +23,11 @@ import io.reactivex.rxjava3.subjects.PublishSubject
 import org.happypeng.sumatora.android.sumatoradictionary.databinding.WordCardBinding
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElementDiffUtil
+import org.happypeng.sumatora.android.sumatoradictionary.db.EntryListSummary
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.DictionaryPagedListAdapterCloseIntent
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.DictionaryPagedListAdapterIntent
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionarySearchElementViewHolder
+import org.happypeng.sumatora.core.dict.DictionaryQueryResult
 
 fun interface OnEntryClickListener {
     fun onClick(entry: DictionarySearchElement)
@@ -37,6 +39,7 @@ class DictionaryPagedListAdapter(aDisableBookmarkButton: Boolean,
                                  commitConsumer: (Long, Long, String?) -> Unit,
                                  commitTagsConsumer: (Long, String) -> Unit,
                                  tagSuggestionsProvider: () -> List<String>,
+                                 private val listSummaryFun: (DictionaryQueryResult) -> EntryListSummary,
                                  private val holderColors: DictionarySearchElementViewHolder.Colors,
                                  private val onEntryClick: OnEntryClickListener = OnEntryClickListener {}) :
         PagedListAdapter<DictionarySearchElement?, DictionarySearchElementViewHolder>(DictionarySearchElementDiffUtil.getDiffUtil()) {
@@ -62,7 +65,7 @@ class DictionaryPagedListAdapter(aDisableBookmarkButton: Boolean,
         val wordCardBinding = WordCardBinding.inflate(layoutInflater, parent, false)
         return DictionarySearchElementViewHolder(wordCardBinding,
                 disableBookmarkButton, disableMemoEdit, disableTagEdit,
-                commitConsumer, commitTagsConsumer, tagSuggestionsProvider,
+                commitConsumer, commitTagsConsumer, tagSuggestionsProvider, listSummaryFun,
                 intentSubject, holderColors, onEntryClick)
     }
 

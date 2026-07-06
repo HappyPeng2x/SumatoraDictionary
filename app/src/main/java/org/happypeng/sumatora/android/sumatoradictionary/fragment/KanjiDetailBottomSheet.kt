@@ -35,8 +35,6 @@ import org.happypeng.sumatora.android.sumatoradictionary.R
 import org.happypeng.sumatora.android.sumatoradictionary.component.PersistentDatabaseComponent
 import org.happypeng.sumatora.android.sumatoradictionary.databinding.BottomSheetKanjiDetailBinding
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryKanjiInfo
-import org.json.JSONArray
-import org.json.JSONException
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -132,19 +130,9 @@ class KanjiDetailBottomSheet : BottomSheetDialogFragment() {
         info.freq?.let { addInfoRow("Frequency rank", it.toString()) }
         info.radical?.let { addInfoRow("Radical", it.toString()) }
 
-        val onReadings = info.on.orEmpty().split(" ").filter { it.isNotEmpty() }
-        if (onReadings.isNotEmpty()) addInfoRow("On readings", onReadings.joinToString("、"))
-
-        val kunReadings = info.kun.orEmpty().split(" ").filter { it.isNotEmpty() }
-        if (kunReadings.isNotEmpty()) addInfoRow("Kun readings", kunReadings.joinToString("、"))
-
-        val meanings = try {
-            val arr = JSONArray(info.meanings ?: "[]")
-            (0 until arr.length()).map { arr.getString(it) }
-        } catch (_: JSONException) {
-            emptyList()
-        }
-        if (meanings.isNotEmpty()) addInfoRow("Meanings", meanings.joinToString(", "))
+        if (info.onReadings.isNotEmpty()) addInfoRow("On readings", info.onReadings.joinToString("、"))
+        if (info.kunReadings.isNotEmpty()) addInfoRow("Kun readings", info.kunReadings.joinToString("、"))
+        if (info.meanings.isNotEmpty()) addInfoRow("Meanings", info.meanings.joinToString(", "))
     }
 
     private fun showNoData() {

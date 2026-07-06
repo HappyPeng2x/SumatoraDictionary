@@ -91,8 +91,8 @@ public class InstalledDictionary extends BaseDictionaryObject {
     public String getAlias() {
         String alias = type;
 
-        if (type.equals("jmdict_translation")) {
-            alias = lang;
+        if (type.equals("gloss")) {
+            alias = "gloss_" + lang;
         } else if (type.equals("tatoeba")) {
             alias = "examples_" + lang;
         }

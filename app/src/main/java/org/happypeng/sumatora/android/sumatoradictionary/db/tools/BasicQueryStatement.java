@@ -59,22 +59,20 @@ public class BasicQueryStatement extends QueryStatement {
 
         statement.bindLong(1, ref);
         statement.bindLong(2, order);
-        statement.bindString(3, languageSettings.lang);
-        statement.bindString(4, languageSettings.lang);
-        statement.bindString(5, bindTerm);
+        statement.bindString(3, term);
+        statement.bindString(4, bindTerm);
 
-        bind(statement, parameters, 6);
+        bind(statement, parameters, 5);
 
         insert = statement.executeInsert();
 
         if (backupStatement != null) {
             backupStatement.bindLong(1, ref);
             backupStatement.bindLong(2, order);
-            backupStatement.bindString(3, languageSettings.backupLang);
-            backupStatement.bindString(4, languageSettings.lang);
-            backupStatement.bindString(5, bindTerm);
+            backupStatement.bindString(3, term);
+            backupStatement.bindString(4, bindTerm);
 
-            bind(backupStatement, parameters, 6);
+            bind(backupStatement, parameters, 5);
 
             backupInsert = backupStatement.executeInsert();
 

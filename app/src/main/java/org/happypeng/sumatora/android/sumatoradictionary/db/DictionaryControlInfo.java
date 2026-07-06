@@ -16,9 +16,9 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.db;
 
-// Holds the contents of jmdict.db's DictionaryControl table, read once at startup.
+// Holds the contents of sumatora_core.db's BuildMetadata table, read once at startup.
 public class DictionaryControlInfo {
-    public static final int SUPPORTED_FORMAT_VERSION = 1;
+    public static final int SUPPORTED_FORMAT_VERSION = 2;
 
     public long buildTimestamp = 0;
     public int formatVersion = 0;

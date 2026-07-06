@@ -1,58 +1,58 @@
-<repository version="7" date="20260704">
-    <dictionary uri="dictionaries/jmdict.db.gz"
-        type="jmdict" description="Index" lang=""/>
-    <dictionary uri="dictionaries/kanjidic2.db.gz"
-        type="kanjidic2" description="Kanji data" lang=""/>
-    <dictionary uri="dictionaries/pitch.db.gz"
+<repository version="8" date="20260705">
+    <dictionary uri="dictionaries/sumatora_core.db.gz"
+        type="core" description="Index" lang=""/>
+    <dictionary uri="dictionaries/sumatora_kanji.db.gz"
+        type="kanji" description="Kanji data" lang=""/>
+    <dictionary uri="dictionaries/sumatora_pitch.db.gz"
         type="pitch" description="Pitch accent" lang=""/>
-    <dictionary uri="dictionaries/eng.db.gz"
-        type="jmdict_translation" description="English" lang="eng"/>
+    <dictionary uri="dictionaries/sumatora_gloss_eng.db.gz"
+        type="gloss" description="English" lang="eng"/>
     <dictionary
-        uri="dictionaries/ger.db.gz"
-        type="jmdict_translation" description="Deutsch" lang="ger"/>
+        uri="dictionaries/sumatora_gloss_ger.db.gz"
+        type="gloss" description="Deutsch" lang="ger"/>
     <dictionary
-        uri="dictionaries/rus.db.gz"
-        type="jmdict_translation" description="русский язык" lang="rus"/>
+        uri="dictionaries/sumatora_gloss_rus.db.gz"
+        type="gloss" description="русский язык" lang="rus"/>
     <dictionary
-        uri="dictionaries/spa.db.gz"
-        type="jmdict_translation" description="Español" lang="spa"/>
+        uri="dictionaries/sumatora_gloss_spa.db.gz"
+        type="gloss" description="Español" lang="spa"/>
     <dictionary
-        uri="dictionaries/dut.db.gz"
-        type="jmdict_translation" description="Nederlands" lang="dut"/>
+        uri="dictionaries/sumatora_gloss_dut.db.gz"
+        type="gloss" description="Nederlands" lang="dut"/>
     <dictionary
-        uri="dictionaries/hun.db.gz"
-        type="jmdict_translation" description="Magyar nyelv" lang="hun"/>
+        uri="dictionaries/sumatora_gloss_hun.db.gz"
+        type="gloss" description="Magyar nyelv" lang="hun"/>
     <dictionary
-        uri="dictionaries/swe.db.gz"
-        type="jmdict_translation" description="Svenska" lang="swe"/>
+        uri="dictionaries/sumatora_gloss_swe.db.gz"
+        type="gloss" description="Svenska" lang="swe"/>
     <dictionary
-        uri="dictionaries/fre.db.gz"
-        type="jmdict_translation" description="Français" lang="fre"/>
+        uri="dictionaries/sumatora_gloss_fre.db.gz"
+        type="gloss" description="Français" lang="fre"/>
     <dictionary
-        uri="dictionaries/slv.db.gz"
-        type="jmdict_translation" description="Slovenski jezik" lang="slv"/>
+        uri="dictionaries/sumatora_gloss_slv.db.gz"
+        type="gloss" description="Slovenski jezik" lang="slv"/>
     <dictionary
-        uri="dictionaries/examples_eng.db.gz"
+        uri="dictionaries/sumatora_examples_eng.db.gz"
         type="tatoeba" description="English examples" lang="eng" />
     <dictionary
-        uri="dictionaries/examples_fre.db.gz"
+        uri="dictionaries/sumatora_examples_fre.db.gz"
         type="tatoeba" description="French examples" lang="fre" />
     <dictionary
-        uri="dictionaries/examples_ger.db.gz"
+        uri="dictionaries/sumatora_examples_ger.db.gz"
         type="tatoeba" description="German examples" lang="ger" />
     <dictionary
-        uri="dictionaries/examples_rus.db.gz"
+        uri="dictionaries/sumatora_examples_rus.db.gz"
         type="tatoeba" description="Russian examples" lang="rus" />
     <dictionary
-        uri="dictionaries/examples_spa.db.gz"
+        uri="dictionaries/sumatora_examples_spa.db.gz"
         type="tatoeba" description="Spanish examples" lang="spa" />
     <dictionary
-        uri="dictionaries/examples_dut.db.gz"
+        uri="dictionaries/sumatora_examples_dut.db.gz"
         type="tatoeba" description="Dutch examples" lang="dut" />
     <dictionary
-        uri="dictionaries/examples_hun.db.gz"
+        uri="dictionaries/sumatora_examples_hun.db.gz"
         type="tatoeba" description="Hungarian examples" lang="hun" />
     <dictionary
-        uri="dictionaries/examples_swe.db.gz"
+        uri="dictionaries/sumatora_examples_swe.db.gz"
         type="tatoeba" description="Swedish examples" lang="swe" />
 </repository>

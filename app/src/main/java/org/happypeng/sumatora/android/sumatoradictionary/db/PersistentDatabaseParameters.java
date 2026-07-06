@@ -228,4 +228,41 @@ public abstract class PersistentDatabaseParameters {
                     + "PRIMARY KEY(`ref`, `seq`))");
         }
     };
+
+    // Schema v2 migration: DictionarySearchElement moves from a flat DictionaryEntry-shaped
+    // cache row to entry_id/form_id + match metadata (Database.md "Query Result Shape").
+    // InstalledDictionary/AssetDictionaryObject/RemoteDictionaryObject/LocalDictionaryObject
+    // hold no durable user data (just dictionary-file bookkeeping re-derived from
+    // dictionaries.xml/downloads at startup) so they're recreated empty rather than migrated;
+    // DictionaryBookmark/DictionaryBookmarkTag/PersistentSetting/PersistentLanguageSettings are
+    // untouched.
+    public static final Migration MIGRATION_11_12 = new Migration(11, 12) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            // DictionaryElement (the reverse-search staging table) is no longer needed: schema v2's
+            // leaner DictionarySearchElement means reverse gloss search can insert directly in one
+            // pass instead of staging (ref, entryOrder, seq) rows before a second join+delete pass.
+            database.execSQL("DROP TABLE IF EXISTS DictionaryElement");
+
+            database.execSQL("DROP TABLE IF EXISTS DictionarySearchElement");
+            database.execSQL("CREATE TABLE IF NOT EXISTS DictionarySearchElement ("
+                    + "`ref` INTEGER NOT NULL, `entryOrder` INTEGER NOT NULL, `entry_id` INTEGER NOT NULL, "
+                    + "`seq` INTEGER NOT NULL, `form_id` INTEGER, `match_kind` TEXT, `matched_text` TEXT, "
+                    + "`original_query` TEXT, `dictionary_form` TEXT, `deinflection_label` TEXT, "
+                    + "`rank` INTEGER NOT NULL, `bookmark` INTEGER NOT NULL, `memo` TEXT, `tags` TEXT, "
+                    + "PRIMARY KEY(`ref`, `entry_id`))");
+
+            database.execSQL("DROP TABLE IF EXISTS InstalledDictionary");
+            database.execSQL("CREATE TABLE IF NOT EXISTS InstalledDictionary (`description` TEXT, `type` TEXT NOT NULL, `lang` TEXT NOT NULL, `version` INTEGER NOT NULL, `date` INTEGER NOT NULL, `file` TEXT NOT NULL, PRIMARY KEY(`type`, `lang`))");
+
+            database.execSQL("DROP TABLE IF EXISTS AssetDictionaryObject");
+            database.execSQL("CREATE TABLE IF NOT EXISTS AssetDictionaryObject (`description` TEXT, `type` TEXT NOT NULL, `lang` TEXT NOT NULL, `version` INTEGER NOT NULL, `date` INTEGER NOT NULL, `file` TEXT NOT NULL, PRIMARY KEY(`type`, `lang`))");
+
+            database.execSQL("DROP TABLE IF EXISTS RemoteDictionaryObject");
+            database.execSQL("CREATE TABLE IF NOT EXISTS RemoteDictionaryObject (`description` TEXT, `type` TEXT NOT NULL, `lang` TEXT NOT NULL, `version` INTEGER NOT NULL, `date` INTEGER NOT NULL, `file` TEXT NOT NULL, `localFile` TEXT NOT NULL, `downloadId` INTEGER NOT NULL, PRIMARY KEY(`type`, `lang`))");
+
+            database.execSQL("DROP TABLE IF EXISTS LocalDictionaryObject");
+            database.execSQL("CREATE TABLE IF NOT EXISTS LocalDictionaryObject (`description` TEXT, `type` TEXT NOT NULL, `lang` TEXT NOT NULL, `version` INTEGER NOT NULL, `date` INTEGER NOT NULL, `file` TEXT NOT NULL, PRIMARY KEY(`type`, `lang`))");
+        }
+    };
 }

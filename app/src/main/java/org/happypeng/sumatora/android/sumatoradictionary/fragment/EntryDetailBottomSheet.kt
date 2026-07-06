@@ -49,21 +49,15 @@ import io.reactivex.rxjava3.schedulers.Schedulers
 import org.happypeng.sumatora.android.sumatoradictionary.R
 import org.happypeng.sumatora.android.sumatoradictionary.component.PersistentDatabaseComponent
 import org.happypeng.sumatora.android.sumatoradictionary.databinding.BottomSheetEntryDetailBinding
-import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement
+import org.happypeng.sumatora.android.sumatoradictionary.db.EntryDetail
+import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings
+import org.happypeng.sumatora.core.dict.DictionaryQueryResult
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionarySearchElementViewHolder
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.TagSystem
-import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.keysAt
-import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.refsAt
-import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.XrefRef
+import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.renderFuriganaSegments
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.renderHeadword
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.renderReading
 import org.happypeng.sumatora.android.superrubyspan.tools.JapaneseText
-import org.happypeng.sumatora.core.search.MatchedForm
-import org.happypeng.sumatora.core.search.MatchedFormResolver
-import org.happypeng.sumatora.jromkan.Romkan
-import org.json.JSONArray
-import org.json.JSONException
-import org.json.JSONObject
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -110,32 +104,42 @@ class EntryDetailBottomSheet : BottomSheetDialogFragment() {
         val primaryColor   = ContextCompat.getColor(ctx, R.color.text_foreground_primary)
         val secondaryColor = ContextCompat.getColor(ctx, R.color.text_foreground_secondary)
 
-        val writingsPrio = args.getString(ARG_WRITINGS_PRIO)
-        val writings     = args.getString(ARG_WRITINGS)
-        val readingsPrio = args.getString(ARG_READINGS_PRIO)
-        val readings     = args.getString(ARG_READINGS)
-        val furigana     = args.getString(ARG_FURIGANA)
-        val term         = args.getString(ARG_TERM).orEmpty()
+        val entryId = args.getLong(ARG_ENTRY_ID)
+        val formId = args.getLong(ARG_FORM_ID, -1).let { if (it < 0) null else it }
+        val isName = args.getBoolean(ARG_IS_NAME)
+        val deinflectionLabel = args.getString(ARG_DEINFLECTION_LABEL)
+        val scrollToSense = args.getInt(ARG_SCROLL_TO_SENSE, -1)
 
-        val matchedForm = MatchedFormResolver.resolve(
-            term, writingsPrio, writings, readingsPrio, readings, Romkan()
+        disposables.add(
+            Schedulers.io().scheduleDirect {
+                val settings = persistentDatabaseComponent.database.persistentLanguageSettingsDao()
+                    .getLanguageSettingsDirect(0)
+                    ?: PersistentLanguageSettings().also { it.lang = PersistentLanguageSettings.LANG_DEFAULT }
+                val detail = persistentDatabaseComponent.fetchEntryDetail(entryId, formId, isName, settings)
+                AndroidSchedulers.mainThread().scheduleDirect {
+                    if (_binding != null) {
+                        render(detail, colors, primaryColor, secondaryColor, density,
+                            deinflectionLabel, scrollToSense)
+                    }
+                }
+            }
         )
+    }
 
-        val stub = DictionarySearchElement().apply {
-            this.writingsPrio = writingsPrio
-            this.writings     = writings
-            this.readingsPrio = readingsPrio
-            this.readings     = readings
-            this.furigana     = furigana
-        }
-
+    private fun render(
+        detail: EntryDetail,
+        colors: DictionarySearchElementViewHolder.Colors,
+        primaryColor: Int, secondaryColor: Int, density: Float,
+        deinflectionLabel: String?, scrollToSense: Int
+    ) {
         // Headword with optional priority star
-        val headwordSb = SpannableStringBuilder(renderHeadword(stub, colors) { character ->
-            KanjiDetailBottomSheet.newInstance(character).show(parentFragmentManager, "kanji_detail")
-        })
+        val headwordSb = SpannableStringBuilder(
+            renderHeadword(detail.primaryText, detail.furiganaSegments, colors) { character ->
+                KanjiDetailBottomSheet.newInstance(character).show(parentFragmentManager, "kanji_detail")
+            }
+        )
         binding.entryDetailHeadword.movementMethod = android.text.method.LinkMovementMethod.getInstance()
-        val isPriority = !readingsPrio.isNullOrBlank() || !writingsPrio.isNullOrBlank()
-        if (isPriority) {
+        if (detail.isPriority) {
             val starStart = headwordSb.length
             headwordSb.append(" ★")
             headwordSb.setSpan(
@@ -149,8 +153,6 @@ class EntryDetailBottomSheet : BottomSheetDialogFragment() {
         }
         binding.entryDetailHeadword.text = headwordSb
 
-        // Gap 4 — label conjugated (deinflected) entries with the applied conjugation.
-        val deinflectionLabel = args.getString(ARG_DEINFLECTION_LABEL)
         if (!deinflectionLabel.isNullOrEmpty()) {
             val parent = binding.entryDetailHeadword.parent as? LinearLayout
             if (parent != null) {
@@ -164,58 +166,25 @@ class EntryDetailBottomSheet : BottomSheetDialogFragment() {
             }
         }
 
-        val hasWritings = !writingsPrio.isNullOrBlank() || !writings.isNullOrBlank()
-        binding.entryDetailReading.visibility = if (hasWritings) View.VISIBLE else View.GONE
-        if (hasWritings) binding.entryDetailReading.text = renderReading(stub, colors)
+        binding.entryDetailReading.visibility = if (detail.primaryReading != null) View.VISIBLE else View.GONE
+        if (detail.primaryReading != null) {
+            binding.entryDetailReading.text = renderReading(detail.primaryReading, colors)
+        }
 
-        fun firstToken(s: String?) = s.orEmpty().split(" ").firstOrNull { it.isNotEmpty() }
-        val pitchWord = firstToken(writingsPrio) ?: firstToken(writings)
-        val pitchReading = firstToken(readingsPrio) ?: firstToken(readings)
-        if (pitchReading != null) {
-            disposables.add(
-                Schedulers.io().scheduleDirect {
-                    val pitchesJson = persistentDatabaseComponent.fetchPitchAccent(pitchWord, pitchReading)
-                    AndroidSchedulers.mainThread().scheduleDirect {
-                        if (_binding != null && pitchesJson != null) {
-                            renderPitchBadges(pitchesJson)
-                        }
-                    }
-                }
+        if (detail.pitchPatterns.isNotEmpty()) {
+            renderPitchBadges(detail.pitchPatterns)
+        }
+
+        if (detail.isName) {
+            buildNameTranslations(binding.entryDetailSenses, detail, primaryColor, density)
+        } else {
+            buildSenses(binding.entryDetailSenses, detail.senseGroups, primaryColor, secondaryColor, density)
+            buildExamples(
+                binding.entryDetailExamples, binding.entryDetailExamplesHeader, binding.entryDetailExamplesDivider,
+                detail.examples, primaryColor, secondaryColor, density
             )
         }
 
-        buildSenses(
-            container      = binding.entryDetailSenses,
-            glossJson      = args.getString(ARG_GLOSS),
-            posJson        = args.getString(ARG_POS),
-            miscJson       = args.getString(ARG_MISC),
-            fieldJson      = args.getString(ARG_FIELD),
-            dialJson       = args.getString(ARG_DIAL),
-            sInfJson       = args.getString(ARG_SINF),
-            xrefJson       = args.getString(ARG_XREF),
-            antJson        = args.getString(ARG_ANT),
-            lsourceJson    = args.getString(ARG_LSOURCE),
-            stagkJson      = args.getString(ARG_STAGK),
-            stagrJson      = args.getString(ARG_STAGR),
-            matchedForm    = matchedForm,
-            primaryColor   = primaryColor,
-            secondaryColor = secondaryColor,
-            density        = density
-        )
-
-        buildExamples(
-            container            = binding.entryDetailExamples,
-            header               = binding.entryDetailExamplesHeader,
-            divider              = binding.entryDetailExamplesDivider,
-            sentencesJson        = args.getString(ARG_EXAMPLE_SENTENCES),
-            translationsJson     = args.getString(ARG_EXAMPLE_TRANSLATIONS),
-            matchedTokensJson    = args.getString(ARG_EXAMPLE_MATCHED_TOKENS),
-            primaryColor         = primaryColor,
-            secondaryColor       = secondaryColor,
-            density              = density
-        )
-
-        val scrollToSense = args.getInt(ARG_SCROLL_TO_SENSE, -1)
         if (scrollToSense > 0) {
             binding.root.post {
                 val target = binding.entryDetailSenses.findViewWithTag<View>("sense_$scrollToSense")
@@ -241,15 +210,7 @@ class EntryDetailBottomSheet : BottomSheetDialogFragment() {
     }
 
     // Renders pitch-accent pattern badges (e.g. "[0]", "[2]") after the reading line.
-    private fun renderPitchBadges(pitchesJson: String) {
-        val pitches = try {
-            val arr = JSONArray(pitchesJson)
-            (0 until arr.length()).map { arr.getInt(it) }
-        } catch (_: JSONException) {
-            return
-        }
-        if (pitches.isEmpty()) return
-
+    private fun renderPitchBadges(pitches: List<Int>) {
         val density = resources.displayMetrics.density
         val pitchColor = ContextCompat.getColor(requireContext(), R.color.tag_pos)
         val container = LinearLayout(context).apply {
@@ -286,21 +247,14 @@ class EntryDetailBottomSheet : BottomSheetDialogFragment() {
         parent.addView(container, index + 1)
     }
 
-    // Opens the cross-referenced entry [seq] in a new bottom sheet, scrolling to [sense] if given.
-    private fun openXrefTarget(seq: Long, sense: Int?) {
-        disposables.add(
-            Schedulers.io().scheduleDirect {
-                val entry = persistentDatabaseComponent.fetchEntryBySeq(seq)
-                if (entry != null) {
-                    AndroidSchedulers.mainThread().scheduleDirect {
-                        if (isAdded) {
-                            val sheet = newInstance(entry, "", sense)
-                            sheet.show(parentFragmentManager, "entry_detail")
-                        }
-                    }
-                }
-            }
-        )
+    // Opens the cross-referenced entry in a new bottom sheet, scrolling to its target sense if
+    // given. target_entry_id/preview_text are already resolved at pipeline build time (per
+    // Database.md), so this is a plain navigation - no live lookup needed.
+    private fun openXrefTarget(targetEntryId: Long, targetSenseNumber: Int?) {
+        if (isAdded) {
+            val sheet = newInstance(targetEntryId, null, false, null, targetSenseNumber)
+            sheet.show(parentFragmentManager, "entry_detail")
+        }
     }
 
     // Returns a Drawable that paints a solid strip of [widthPx] on the left edge
@@ -316,13 +270,13 @@ class EntryDetailBottomSheet : BottomSheetDialogFragment() {
     }
 
     // Rounded pill chip matching Jitendex tag style
-    private fun makeTagChip(key: String, color: Int, density: Float): TextView {
+    private fun makeTagChip(code: String, color: Int, density: Float): TextView {
         val bg = GradientDrawable().apply {
             setColor(color)
             cornerRadius = 4f * density
         }
         return TextView(context).apply {
-            text = TagSystem.label(key)
+            text = TagSystem.label(code)
             textSize = 11f
             setTextColor(Color.WHITE)
             typeface = Typeface.DEFAULT_BOLD
@@ -383,10 +337,10 @@ class EntryDetailBottomSheet : BottomSheetDialogFragment() {
         }
     }
 
-    // Like makeExtraBox, but for a single cross-reference/antonym ref: tappable (opens the
-    // target entry) when a seq was resolved, plain text otherwise.
+    // Like makeExtraBox, but for a single cross-reference/antonym: tappable (opens the target
+    // entry) when target_entry_id resolved at build time, plain text otherwise.
     private fun makeRefBox(
-        ref: XrefRef, label: String,
+        ref: EntryDetail.Xref, label: String,
         borderColor: Int, textColor: Int, density: Float
     ): View {
         val dp3 = (3 * density).toInt()
@@ -416,20 +370,23 @@ class EntryDetailBottomSheet : BottomSheetDialogFragment() {
             })
 
             addView(TextView(context).apply {
-                if (ref.seq != null) {
-                    val sb = SpannableStringBuilder(ref.text)
+                val targetEntryId = ref.targetEntryId
+                val previewSuffix = ref.previewText?.let { " ($it)" }.orEmpty()
+                if (targetEntryId != null) {
+                    val sb = SpannableStringBuilder(ref.displayText)
                     sb.setSpan(ForegroundColorSpan(ContextCompat.getColor(requireContext(), R.color.border_xref)),
                         0, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
                     sb.setSpan(UnderlineSpan(), 0, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
                     sb.setSpan(object : ClickableSpan() {
                         override fun onClick(widget: View) {
-                            openXrefTarget(ref.seq, ref.sense)
+                            openXrefTarget(targetEntryId, ref.targetSenseNumber)
                         }
                     }, 0, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                    sb.append(previewSuffix)
                     text = sb
                     movementMethod = android.text.method.LinkMovementMethod.getInstance()
                 } else {
-                    text = ref.text
+                    text = ref.displayText + previewSuffix
                 }
                 textSize = 13f
                 setTextColor(textColor)
@@ -460,87 +417,47 @@ class EntryDetailBottomSheet : BottomSheetDialogFragment() {
         else  -> code
     }
 
+    private fun buildNameTranslations(
+        container: LinearLayout, detail: EntryDetail, primaryColor: Int, density: Float
+    ) {
+        fun Int.dp() = (this * density).toInt()
+        val posColor = ContextCompat.getColor(requireContext(), R.color.tag_pos)
+
+        if (detail.nameTypeCodes.isNotEmpty()) {
+            val row = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                val lp = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+                lp.topMargin = 8.dp()
+                layoutParams = lp
+            }
+            for (code in detail.nameTypeCodes) row.addView(makeTagChip(code, posColor, density))
+            container.addView(row)
+        }
+
+        if (detail.translations.isNotEmpty()) {
+            container.addView(TextView(context).apply {
+                text = detail.translations.joinToString(", ")
+                textSize = 15f
+                setTextColor(primaryColor)
+                val lp = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+                lp.topMargin = 4.dp()
+                layoutParams = lp
+            })
+        }
+    }
+
     private fun buildSenses(
-        container: LinearLayout,
-        glossJson: String?, posJson: String?, miscJson: String?,
-        fieldJson: String?, dialJson: String?, sInfJson: String?,
-        xrefJson: String?, antJson: String?, lsourceJson: String?,
-        stagkJson: String?, stagrJson: String?, matchedForm: MatchedForm?,
+        container: LinearLayout, senseGroups: List<EntryDetail.SenseGroup>,
         primaryColor: Int, secondaryColor: Int, density: Float
     ) {
-        if (glossJson.isNullOrBlank()) return
+        if (senseGroups.isEmpty()) return
 
-        val gloss   = try { JSONArray(glossJson) }   catch (e: JSONException) { return }
-        val pos     = posJson?.let     { try { JSONArray(it) } catch (_: JSONException) { null } }
-        val misc    = miscJson?.let    { try { JSONArray(it) } catch (_: JSONException) { null } }
-        val field   = fieldJson?.let   { try { JSONArray(it) } catch (_: JSONException) { null } }
-        val dial    = dialJson?.let    { try { JSONArray(it) } catch (_: JSONException) { null } }
-        val sInf    = sInfJson?.let    { try { JSONArray(it) } catch (_: JSONException) { null } }
-        val xref    = xrefJson?.let    { try { JSONArray(it) } catch (_: JSONException) { null } }
-        val ant     = antJson?.let     { try { JSONArray(it) } catch (_: JSONException) { null } }
-        val lsource = lsourceJson?.let { try { JSONArray(it) } catch (_: JSONException) { null } }
-        val stagk   = stagkJson?.let   { try { JSONArray(it) } catch (_: JSONException) { null } }
-        val stagr   = stagrJson?.let   { try { JSONArray(it) } catch (_: JSONException) { null } }
-
-        val n = gloss.length()
-        if (n == 0) return
-
-        // Per Gap 5: a sense applies unless its stagk/stagr list is non-empty and excludes the
-        // matched form. No matched form (blank query, or nothing matched confidently) => show all.
-        fun senseApplies(i: Int): Boolean {
-            val stagkList = keysAt(stagk, i)
-            val stagrList = keysAt(stagr, i)
-            return when (matchedForm) {
-                is MatchedForm.Kanji -> stagkList.isEmpty() || stagkList.contains(matchedForm.token)
-                is MatchedForm.Kana  -> stagrList.isEmpty() || stagrList.contains(matchedForm.token)
-                null -> true
-            }
-        }
-
-        data class Sense(
-            val globalIndex: Int,
-            val text: String,
-            val notes: List<String>,
-            val xrefs: List<XrefRef>,
-            val ants: List<XrefRef>,
-            val lsources: List<JSONObject>
-        )
-        data class Group(
-            val posKeys: List<String>, val miscKeys: List<String>,
-            val fieldKeys: List<String>, val dialKeys: List<String>,
-            val senses: MutableList<Sense> = mutableListOf()
-        )
-
-        val groups = mutableListOf<Group>()
-        for (i in 0 until n) {
-            if (!senseApplies(i)) continue
-            val pk = keysAt(pos, i); val mk = keysAt(misc, i)
-            val fk = keysAt(field, i); val dk = keysAt(dial, i)
-            val lsArr = lsource?.optJSONArray(i)
-            val ls: List<JSONObject> = if (lsArr != null) {
-                (0 until lsArr.length()).mapNotNull { lsArr.optJSONObject(it) }
-            } else emptyList()
-
-            val sense = Sense(
-                globalIndex = i + 1,
-                text     = gloss.getString(i),
-                notes    = keysAt(sInf, i),
-                xrefs    = refsAt(xref, i),
-                ants     = refsAt(ant, i),
-                lsources = ls
-            )
-            val last = groups.lastOrNull()
-            if (last != null && last.posKeys == pk && last.miscKeys == mk &&
-                last.fieldKeys == fk && last.dialKeys == dk) {
-                last.senses.add(sense)
-            } else {
-                groups.add(Group(pk, mk, fk, dk, mutableListOf(sense)))
-            }
-        }
-        if (groups.isEmpty()) return
-
-        val totalSenses = n
-        val showBullet  = groups.size > 1
+        val totalSenses = senseGroups.sumOf { it.senses.size }
+        val showBullet = senseGroups.size > 1
 
         fun Int.dp() = (this * density).toInt()
 
@@ -553,11 +470,10 @@ class EntryDetailBottomSheet : BottomSheetDialogFragment() {
         val antColor    = ContextCompat.getColor(requireContext(), R.color.border_ant)
         val lsColor     = ContextCompat.getColor(requireContext(), R.color.border_lsource)
 
-        for ((groupIdx, group) in groups.withIndex()) {
-            val hasAnyTags = group.posKeys.isNotEmpty() || group.miscKeys.isNotEmpty() ||
-                             group.fieldKeys.isNotEmpty() || group.dialKeys.isNotEmpty()
+        for ((groupIdx, group) in senseGroups.withIndex()) {
+            val hasAnyTags = group.posTagCodes.isNotEmpty() || group.miscTagCodes.isNotEmpty() ||
+                             group.fieldTagCodes.isNotEmpty() || group.dialectTagCodes.isNotEmpty()
 
-            // Group header: ＊ bullet + tag chips
             if (showBullet || hasAnyTags) {
                 val headerRow = LinearLayout(context).apply {
                     orientation = LinearLayout.HORIZONTAL
@@ -585,29 +501,27 @@ class EntryDetailBottomSheet : BottomSheetDialogFragment() {
                     })
                 }
 
-                for (key in group.posKeys)   headerRow.addView(makeTagChip(key, posColor,   density))
-                for (key in group.miscKeys)  headerRow.addView(makeTagChip(key, miscColor,  density))
-                for (key in group.fieldKeys) headerRow.addView(makeTagChip(key, fieldColor, density))
-                for (key in group.dialKeys)  headerRow.addView(makeTagChip(key, dialColor,  density))
+                for (code in group.posTagCodes)     headerRow.addView(makeTagChip(code, posColor,   density))
+                for (code in group.miscTagCodes)    headerRow.addView(makeTagChip(code, miscColor,  density))
+                for (code in group.fieldTagCodes)   headerRow.addView(makeTagChip(code, fieldColor, density))
+                for (code in group.dialectTagCodes) headerRow.addView(makeTagChip(code, dialColor,  density))
 
                 container.addView(headerRow)
             }
 
-            // Senses
             for (sense in group.senses) {
-                // Gloss line: [① ]definition text
                 val glossView = TextView(context).apply {
-                    tag = "sense_${sense.globalIndex}"
+                    tag = "sense_${sense.displayIndex}"
                     val sb = SpannableStringBuilder()
                     if (totalSenses > 1) {
-                        val prefix = "${circledDigit(sense.globalIndex)} "
+                        val prefix = "${circledDigit(sense.displayIndex)} "
                         sb.append(prefix)
                         sb.setSpan(
                             StyleSpan(Typeface.BOLD), 0, prefix.length,
                             Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
                         )
                     }
-                    sb.append(sense.text)
+                    sb.append(sense.glossText.orEmpty())
                     text = sb
                     textSize = 15f
                     setTextColor(primaryColor)
@@ -621,30 +535,23 @@ class EntryDetailBottomSheet : BottomSheetDialogFragment() {
                 }
                 container.addView(glossView)
 
-                // Goldenrod box: sense notes (s_inf)
                 for (note in sense.notes) {
                     container.addView(makeExtraBox(note, "Note", noteColor, primaryColor, density))
                 }
 
-                // Blue box: cross-references (tappable when a target seq is resolved)
                 for (xr in sense.xrefs) {
                     container.addView(makeRefBox(xr, "See also", xrefColor, primaryColor, density))
                 }
 
-                // Brown box: antonyms (tappable when a target seq is resolved)
-                for (a in sense.ants) {
+                for (a in sense.antonyms) {
                     container.addView(makeRefBox(a, "Antonym", antColor, primaryColor, density))
                 }
 
-                // Purple box: language of origin (lsource)
-                for (ls in sense.lsources) {
-                    val lang   = ls.optString("lang", "")
-                    val word   = ls.optString("text", "")
-                    val wasei  = ls.optBoolean("wasei", false)
+                for (ls in sense.languageSources) {
                     val display = buildString {
-                        append(langName(lang))
-                        if (word.isNotEmpty()) append(": $word")
-                        if (wasei) append(" (wasei-eigo)")
+                        append(langName(ls.lang))
+                        if (!ls.text.isNullOrEmpty()) append(": ${ls.text}")
+                        if (ls.wasei) append(" (wasei-eigo)")
                     }
                     container.addView(makeExtraBox(display, "Language of Origin", lsColor, primaryColor, density))
                 }
@@ -654,14 +561,10 @@ class EntryDetailBottomSheet : BottomSheetDialogFragment() {
 
     private fun buildExamples(
         container: LinearLayout, header: TextView, divider: View,
-        sentencesJson: String?, translationsJson: String?, matchedTokensJson: String?,
+        examples: List<EntryDetail.Example>,
         primaryColor: Int, secondaryColor: Int, density: Float
     ) {
-        if (sentencesJson.isNullOrBlank() || translationsJson.isNullOrBlank()) return
-        val sentences    = try { JSONArray(sentencesJson)    } catch (e: JSONException) { return }
-        val translations = try { JSONArray(translationsJson) } catch (e: JSONException) { return }
-        val matchedTokens = matchedTokensJson?.let { try { JSONArray(it) } catch (_: JSONException) { null } }
-        if (sentences.length() == 0) return
+        if (examples.isEmpty()) return
 
         divider.visibility   = View.VISIBLE
         header.visibility    = View.VISIBLE
@@ -670,9 +573,7 @@ class EntryDetailBottomSheet : BottomSheetDialogFragment() {
         val exColor = ContextCompat.getColor(requireContext(), R.color.border_example)
         fun Int.dp() = (this * density).toInt()
 
-        for (i in 0 until sentences.length()) {
-            if (i >= translations.length()) break
-
+        for ((i, example) in examples.withIndex()) {
             val dp3 = (3 * density).toInt()
             val dp8 = (8 * density).toInt()
             val dp4 = (4 * density).toInt()
@@ -689,11 +590,11 @@ class EntryDetailBottomSheet : BottomSheetDialogFragment() {
                 layoutParams = lp
             }
 
-            // Japanese sentence with Tatoeba furigana
+            // Japanese sentence with pre-split furigana segments
             box.addView(TextView(context).apply {
                 val sb = SpannableStringBuilder()
-                JapaneseText.spannifyWithFurigana(sb, sentences.getString(i), 0.85f)
-                val token = matchedTokens?.optString(i)
+                renderFuriganaSegments(sb, example.segments, 0, null)
+                val token = example.matchedText
                 if (!token.isNullOrEmpty()) {
                     val start = sb.toString().indexOf(token)
                     if (start >= 0) {
@@ -710,9 +611,9 @@ class EntryDetailBottomSheet : BottomSheetDialogFragment() {
                 )
             })
 
-            // English translation
+            // Translation
             box.addView(TextView(context).apply {
-                text = translations.getString(i)
+                text = example.translation.orEmpty()
                 textSize = 12f
                 setTextColor(secondaryColor)
                 val lp = LinearLayout.LayoutParams(
@@ -728,55 +629,26 @@ class EntryDetailBottomSheet : BottomSheetDialogFragment() {
     }
 
     companion object {
-        private const val ARG_WRITINGS_PRIO       = "wp"
-        private const val ARG_WRITINGS             = "w"
-        private const val ARG_READINGS_PRIO        = "rp"
-        private const val ARG_READINGS             = "r"
-        private const val ARG_FURIGANA             = "furi"
-        private const val ARG_GLOSS                = "g"
-        private const val ARG_POS                  = "p"
-        private const val ARG_MISC                 = "m"
-        private const val ARG_FIELD                = "f"
-        private const val ARG_DIAL                 = "d"
-        private const val ARG_SINF                 = "si"
-        private const val ARG_XREF                 = "xr"
-        private const val ARG_ANT                  = "an"
-        private const val ARG_LSOURCE              = "ls"
-        private const val ARG_EXAMPLE_SENTENCES    = "es"
-        private const val ARG_EXAMPLE_TRANSLATIONS = "et"
-        private const val ARG_EXAMPLE_MATCHED_TOKENS = "emt"
-        private const val ARG_STAGK                = "sk"
-        private const val ARG_STAGR                = "sr"
-        private const val ARG_TERM                 = "term"
+        private const val ARG_ENTRY_ID             = "entry_id"
+        private const val ARG_FORM_ID              = "form_id"
+        private const val ARG_IS_NAME              = "is_name"
         private const val ARG_SCROLL_TO_SENSE      = "scroll_sense"
         private const val ARG_DEINFLECTION_LABEL   = "dl"
 
-        fun newInstance(entry: DictionarySearchElement, term: String, scrollToSense: Int? = null) =
+        fun newInstance(entryId: Long, formId: Long?, isName: Boolean,
+                        deinflectionLabel: String?, scrollToSense: Int? = null) =
             EntryDetailBottomSheet().apply {
             arguments = bundleOf(
-                ARG_WRITINGS_PRIO        to entry.writingsPrio,
-                ARG_WRITINGS             to entry.writings,
-                ARG_READINGS_PRIO        to entry.readingsPrio,
-                ARG_READINGS             to entry.readings,
-                ARG_FURIGANA             to entry.furigana,
-                ARG_GLOSS                to entry.gloss,
-                ARG_POS                  to entry.pos,
-                ARG_MISC                 to entry.misc,
-                ARG_FIELD                to entry.field,
-                ARG_DIAL                 to entry.dial,
-                ARG_SINF                 to entry.s_inf,
-                ARG_XREF                 to entry.xref,
-                ARG_ANT                  to entry.ant,
-                ARG_LSOURCE              to entry.lsource,
-                ARG_EXAMPLE_SENTENCES    to entry.example_sentences,
-                ARG_EXAMPLE_TRANSLATIONS to entry.example_translations,
-                ARG_EXAMPLE_MATCHED_TOKENS to entry.exampleMatchedTokens,
-                ARG_STAGK                to entry.stagk,
-                ARG_STAGR                to entry.stagr,
-                ARG_TERM                 to term,
-                ARG_SCROLL_TO_SENSE      to (scrollToSense ?: -1),
-                ARG_DEINFLECTION_LABEL   to entry.deinflectionLabel
+                ARG_ENTRY_ID           to entryId,
+                ARG_FORM_ID            to (formId ?: -1L),
+                ARG_IS_NAME            to isName,
+                ARG_DEINFLECTION_LABEL to deinflectionLabel,
+                ARG_SCROLL_TO_SENSE    to (scrollToSense ?: -1)
             )
         }
+
+        fun newInstance(entry: DictionaryQueryResult, scrollToSense: Int? = null) =
+            newInstance(entry.entryId, entry.formId, "name" == entry.matchKind,
+                entry.deinflectionLabel, scrollToSense)
     }
 }

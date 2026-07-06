@@ -31,6 +31,7 @@ import io.reactivex.rxjava3.subjects.Subject
 import org.happypeng.sumatora.android.sumatoradictionary.R
 import org.happypeng.sumatora.android.sumatoradictionary.databinding.WordCardBinding
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement
+import org.happypeng.sumatora.android.sumatoradictionary.db.EntryListSummary
 import org.happypeng.sumatora.android.sumatoradictionary.adapter.OnEntryClickListener
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.DictionaryPagedListAdapterCloseIntent
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.DictionaryPagedListAdapterIntent
@@ -38,6 +39,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.Ta
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.renderGloss
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.renderHeadword
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.renderReading
+import org.happypeng.sumatora.core.dict.DictionaryQueryResult
 class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBinding,
                                         disableBookmarkButton: Boolean,
                                         private val disableMemoEdit: Boolean,
@@ -45,6 +47,7 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
                                         private val commitConsumer: (Long, Long, String?) -> Unit,
                                         private val commitTagsConsumer: (Long, String) -> Unit,
                                         private val tagSuggestionsProvider: () -> List<String>,
+                                        private val listSummaryFun: (DictionaryQueryResult) -> EntryListSummary,
                                         private val intentSubject: Subject<DictionaryPagedListAdapterIntent>,
                                         private val colors: Colors,
                                         private val onEntryClick: OnEntryClickListener = OnEntryClickListener {}) : RecyclerView.ViewHolder(wordCardBinding.wordCardView) {
@@ -78,6 +81,7 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
 
     private var subscription: Disposable? = null
     private var tagLoadSubscription: Disposable? = null
+    private var summarySubscription: Disposable? = null
     // editingSeq is the single source of truth for whether the tag editor is open and for which
     // entry. Unlike isTagEditing (a boolean), it cannot be inadvertently reset by bindTo() because
     // it is only written in openTagEditor(), closeTagEditor(), and the else-branch of bindTo()
@@ -177,6 +181,8 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
         subscription = null
         tagLoadSubscription?.dispose()
         tagLoadSubscription = null
+        summarySubscription?.dispose()
+        summarySubscription = null
     }
 
     fun bindTo(entry: DictionarySearchElement) {
@@ -210,22 +216,33 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
         tagLoadSubscription?.dispose()
         tagLoadSubscription = null
 
-        if (entry.lang != entry.langSetting) {
-            wordCardBinding.wordCardView.setBackgroundColor(colors.backupLang)
-        } else {
-            wordCardBinding.wordCardView.setBackgroundColor(colors.activeLang)
-        }
+        // fetchListSummary does blocking DB I/O - Room forbids that on the main thread (bind()
+        // always runs on the main thread), so fetch on IO and populate when it lands. Blank the
+        // fields first so a recycled view doesn't flash the previous row's content meanwhile.
+        wordCardBinding.wordCardHeadword.text = ""
+        wordCardBinding.wordCardReading.visibility = View.GONE
+        wordCardBinding.wordCardGloss.text = ""
+        summarySubscription?.dispose()
+        summarySubscription = Single.fromCallable { listSummaryFun(entry) }
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe { summary ->
+                if (summary.usedBackupLang) {
+                    wordCardBinding.wordCardView.setBackgroundColor(colors.backupLang)
+                } else {
+                    wordCardBinding.wordCardView.setBackgroundColor(colors.activeLang)
+                }
 
-        wordCardBinding.wordCardHeadword.text = renderHeadword(entry, colors)
-        val hasWritings = !entry.writingsPrio.isNullOrBlank() || !entry.writings.isNullOrBlank()
-        if (hasWritings) {
-            wordCardBinding.wordCardReading.visibility = View.VISIBLE
-            wordCardBinding.wordCardReading.text = renderReading(entry, colors)
-        } else {
-            wordCardBinding.wordCardReading.visibility = View.GONE
-        }
-        val density = wordCardBinding.wordCardGloss.context.resources.displayMetrics.density
-        wordCardBinding.wordCardGloss.text = renderGloss(entry, colors, density)
+                wordCardBinding.wordCardHeadword.text = renderHeadword(summary, colors)
+                if (summary.primaryReading != null) {
+                    wordCardBinding.wordCardReading.visibility = View.VISIBLE
+                    wordCardBinding.wordCardReading.text = renderReading(summary, colors)
+                } else {
+                    wordCardBinding.wordCardReading.visibility = View.GONE
+                }
+                val density = wordCardBinding.wordCardGloss.context.resources.displayMetrics.density
+                wordCardBinding.wordCardGloss.text = renderGloss(summary, colors, density, entry.deinflectionLabel)
+            }
         wordCardBinding.wordCardContent.setOnClickListener { onEntryClick.onClick(entry) }
         if (entry.bookmark != 0L) {
             wordCardBinding.wordCardBookmarkIcon.setImageResource(R.drawable.ic_outline_bookmark_24px)

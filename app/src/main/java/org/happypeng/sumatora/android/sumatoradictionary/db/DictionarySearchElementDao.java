@@ -24,7 +24,7 @@ import androidx.room.Query;
 public interface DictionarySearchElementDao {
     @Query("SELECT * FROM DictionarySearchElement "
             + "WHERE ref=:ref "
-            + "ORDER BY entryOrder, score DESC, seq")
+            + "ORDER BY entryOrder, rank, entry_id")
     DataSource.Factory<Integer, DictionarySearchElement> getAllDetailsLivePaged(int ref);
 
     @Query("DELETE FROM DictionarySearchElement")

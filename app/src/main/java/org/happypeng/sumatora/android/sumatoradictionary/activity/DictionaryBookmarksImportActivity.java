@@ -114,6 +114,7 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
                         (seq, bookmark, memo) -> Unit.INSTANCE,
                         (seq, tags) -> Unit.INSTANCE,
                         () -> java.util.Collections.emptyList(),
+                        bookmarkImportModel.getListSummaryFun(),
                         new DictionarySearchElementViewHolder.Colors(
                                 ContextCompat.getColor(this, R.color.text_background_primary),
                                 ContextCompat.getColor(this, R.color.text_background_primary_backup),
@@ -129,7 +130,7 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
                                         ContextCompat.getColor(this, R.color.tag_dialect)
                                 )),
                         entry -> {
-                            EntryDetailBottomSheet sheet = EntryDetailBottomSheet.Companion.newInstance(entry, "", null);
+                            EntryDetailBottomSheet sheet = EntryDetailBottomSheet.Companion.newInstance(entry, null);
                             sheet.show(getSupportFragmentManager(), "entry_detail");
                         });
 
@@ -213,7 +214,7 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
                     }
 
                     for (final InstalledDictionary l : list) {
-                        if ("jmdict_translation".equals(l.type)) {
+                        if ("gloss".equals(l.type)) {
                             languagePopupMenuContent.add(l.description).setOnMenuItemClickListener(item -> {
                                 bookmarkImportModel.setLanguage(l.lang);
 

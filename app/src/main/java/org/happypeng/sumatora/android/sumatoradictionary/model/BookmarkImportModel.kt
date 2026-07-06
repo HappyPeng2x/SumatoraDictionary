@@ -32,8 +32,10 @@ import org.happypeng.sumatora.android.sumatoradictionary.component.PersistentDat
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.schedulers.Schedulers
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement
+import org.happypeng.sumatora.android.sumatoradictionary.db.EntryListSummary
 import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings
+import org.happypeng.sumatora.core.dict.DictionaryQueryResult
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.ImportCancelIntent
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.ImportCloseIntent
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.ImportCommitIntent
@@ -72,6 +74,13 @@ class BookmarkImportModel @Inject constructor(
         get() = Observable.defer {
             Observable.just(persistentDatabaseComponent.database.installedDictionaryDao().all)
         }.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
+
+    val listSummaryFun: (DictionaryQueryResult) -> EntryListSummary = { entry ->
+        val settings = persistentDatabaseComponent.database.persistentLanguageSettingsDao()
+            .getLanguageSettingsDirect(0)
+            ?: PersistentLanguageSettings().also { it.lang = PersistentLanguageSettings.LANG_DEFAULT }
+        persistentDatabaseComponent.fetchListSummary(entry, settings)
+    }
 
     fun setLanguage(language: String) {
         val settings = PersistentLanguageSettings()

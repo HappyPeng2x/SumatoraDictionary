@@ -1,0 +1,51 @@
+# Known Bugs
+
+## RecyclerView crash: "Cannot call this method while RecyclerView is computing a layout or scrolling"
+
+**Status:** pre-existing, not caused by the schema v2 migration. Confirmed via A/B: reproduces
+identically on the unmodified `BasicSearchTest` (i.e. on code from before the migration branch).
+
+**Symptom:** the app process crashes with:
+
+```
+java.lang.IllegalStateException: Cannot call this method while RecyclerView is computing a
+layout or scrolling ...RecyclerView{...} app:id/dictionary_bookmark_fragment_recyclerview,
+adapter:...DictionaryPagedListAdapter, layout:...LinearLayoutManager
+	at androidx.recyclerview.widget.RecyclerView.assertNotInLayoutOrScroll(RecyclerView.java:3051)
+	at androidx.recyclerview.widget.RecyclerView$RecyclerViewDataObserver.onItemRangeInserted(...)
+	at androidx.recyclerview.widget.RecyclerView$AdapterDataObservable.notifyItemRangeInserted(...)
+	at androidx.recyclerview.widget.RecyclerView$Adapter.notifyItemRangeInserted(...)
+	at androidx.recyclerview.widget.AdapterListUpdateCallback.onInserted(...)
+	at androidx.recyclerview.widget.BatchingListUpdateCallback.dispatchLastEvent(...)
+	at androidx.recyclerview.widget.DiffUtil$DiffResult.dispatchUpdatesTo(...)
+	at androidx.paging.PagedStorageDiffHelper.dispatchDiff(...)
+	at androidx.paging.AsyncPagedListDiffer.latchPagedList(...)
+	at androidx.paging.AsyncPagedListDiffer$2$1.run(...)
+	at android.os.Handler.handleCallback(...)
+```
+
+**How to reproduce:** on an emulator/device running API 36 (`Medium_Phone_API_36.1` AVD used
+here), type a search term into the search box, press the IME action button, then close the soft
+keyboard shortly after. Timing-sensitive - reproduced consistently in this environment, may not
+reproduce on all devices/API levels.
+
+**Likely cause:** `BaseFragment.java` subscribes `queryFragmentModel.getPagedListObservable()` and
+calls `pagedListAdapter.submitList(l)` directly (`DictionaryPagedListAdapter` extends the legacy
+`androidx.paging.PagedListAdapter`). `submitList` schedules an async `DiffUtil` computation
+(`AsyncPagedListDiffer`) that later dispatches `notifyItemRangeInserted` on the main thread's
+message queue. If that dispatch lands while `RecyclerView` is mid-layout (e.g. during the
+resize/relayout triggered by the IME closing), `RecyclerView` throws rather than deferring the
+update.
+
+**Suggested fix directions (not investigated further - out of scope for the schema v2 migration):**
+- Migrate `DictionaryPagedListAdapter`/`BaseQueryFragmentModel` from the legacy `androidx.paging`
+  (Paging 2) `PagedListAdapter`/`LivePagedListBuilder` APIs to Paging 3
+  (`androidx.paging.PagingDataAdapter` + `Pager`), which handles this kind of diff/layout race
+  internally.
+- Or, as a smaller patch: guard the `submitList` call so it's deferred (e.g.
+  `recyclerView.post { pagedListAdapter.submitList(l) }`) when the RecyclerView is currently
+  computing a layout or scrolling (`recyclerView.isComputingLayout`).
+
+**Where found:** while manually verifying the schema v2 migration (see git history around
+2026-07-06) using an instrumented diagnostic harness
+(`app/src/androidTest/.../diagnostic/SearchListScreenshotTest.java`) on a real emulator.

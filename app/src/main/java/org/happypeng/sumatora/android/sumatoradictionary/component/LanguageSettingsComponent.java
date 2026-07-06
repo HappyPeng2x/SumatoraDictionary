@@ -62,7 +62,7 @@ public class LanguageSettingsComponent {
                         final List<InstalledDictionary> dictionaries = database.installedDictionaryDao().getAll();
 
                         for (InstalledDictionary d : dictionaries) {
-                            if (d.type.equals("jmdict_translation") || d.type.equals("tatoeba")) {
+                            if (d.type.equals("gloss") || d.type.equals("tatoeba")) {
                                 if (d.lang.equals(s.lang) ||
                                         (d.lang.equals(s.backupLang))) {
                                     d.attach(database);

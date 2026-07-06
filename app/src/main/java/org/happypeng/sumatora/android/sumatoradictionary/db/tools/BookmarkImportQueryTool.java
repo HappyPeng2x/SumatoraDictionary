@@ -20,60 +20,37 @@ import androidx.annotation.WorkerThread;
 import androidx.sqlite.db.SupportSQLiteStatement;
 
 import org.happypeng.sumatora.android.sumatoradictionary.component.PersistentDatabaseComponent;
-import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings;
 
 import java.io.IOException;
-import java.util.List;
 
+// Populates DictionarySearchElement from DictionaryBookmarkImport (an in-review bookmark import
+// batch, keyed by JMdict seq like DictionaryBookmark) so the import-review UI can list the
+// entries about to be imported using the normal paged search-element display path. No form_id/
+// language dependency here - it's a listing by seq, not a text search.
 public class BookmarkImportQueryTool {
     static final String SQL_QUERY_INSERT_DISPLAY_ELEMENT =
             "INSERT OR IGNORE INTO DictionarySearchElement "
-                    + "SELECT ? AS ref, "
-                    + "0 AS entryOrder, "
-                    + "DictionaryEntry.seq, "
-                    + "DictionaryEntry.readingsPrio, "
-                    + "DictionaryEntry.readings, "
-                    + "DictionaryEntry.writingsPrio, "
-                    + "DictionaryEntry.writings, "
-                    + "DictionaryEntry.pos, "
-                    + "DictionaryEntry.xref, "
-                    + "DictionaryEntry.ant, "
-                    + "DictionaryEntry.misc, "
-                    + "DictionaryEntry.lsource, "
-                    + "DictionaryEntry.dial, "
-                    + "DictionaryEntry.s_inf, "
-                    + "DictionaryEntry.field, "
-                    + "? AS lang, "
-                    + "? AS lang_setting, "
-                    + "json_group_array(DictionaryTranslation.gloss) AS gloss, "
-                    + "%s as example_sentences, "
-                    + "%s as example_translations, "
-                    + "DictionaryBookmarkImport.bookmark, "
-                    + "DictionaryBookmarkImport.memo, "
-                    + "DictionaryBookmarkImport.tags, "
-                    + "DictionaryEntry.furigana "
-                    + "FROM jmdict.DictionaryEntry %s, "
-                    + "%s.DictionaryTranslation, "
-                    + "DictionaryBookmarkImport "
-                    + "WHERE DictionaryEntry.seq = DictionaryTranslation.seq AND "
-                    + "DictionaryEntry.seq = DictionaryBookmarkImport.seq "
-                    + "GROUP BY DictionaryEntry.seq";
+                    + "(ref, entryOrder, entry_id, seq, form_id, match_kind, original_query, matched_text, "
+                    + "dictionary_form, deinflection_label, rank, bookmark, memo, tags) "
+                    + "SELECT ? AS ref, 0 AS entryOrder, Entry.entry_id, DictionaryBookmarkImport.seq, NULL AS form_id, "
+                    + "'bookmark_import' AS match_kind, NULL AS original_query, NULL AS matched_text, "
+                    + "NULL, NULL, (0 - Entry.score) AS rank, "
+                    + "DictionaryBookmarkImport.bookmark, DictionaryBookmarkImport.memo, DictionaryBookmarkImport.tags "
+                    + "FROM DictionaryBookmarkImport "
+                    + "JOIN core.Entry ON CAST(Entry.source_key AS INTEGER) = DictionaryBookmarkImport.seq";
 
     private final PersistentDatabaseComponent persistentDatabaseComponent;
     private final int key;
-    private final PersistentLanguageSettings persistentLanguageSettings;
 
     private SupportSQLiteStatement deleteStatement;
     private SupportSQLiteStatement queryStatement;
-    private SupportSQLiteStatement queryStatementBackup;
 
     public BookmarkImportQueryTool(final PersistentDatabaseComponent persistentDatabaseComponent, final int key,
                                    final PersistentLanguageSettings persistentLanguageSettings) {
         this.persistentDatabaseComponent = persistentDatabaseComponent;
         this.key = key;
-        this.persistentLanguageSettings = persistentLanguageSettings;
 
         initialize();
     }
@@ -82,34 +59,7 @@ public class BookmarkImportQueryTool {
         final PersistentDatabase db = persistentDatabaseComponent.getDatabase();
 
         deleteStatement = db.compileStatement(DictionarySearchQueryTool.SQL_QUERY_DELETE);
-
-        final List<InstalledDictionary> installedDictionaries = db.installedDictionaryDao().getAll();
-
-        String examplesQuerySentences = "null";
-        String examplesQueryTranslations = "null";
-        String examplesLeftJoin = "";
-
-        String backupExamplesQuery = "null";
-        String backupExamplesQueryTranslations = "null";
-        String backupExamplesLeftJoin = "";
-
-        for (InstalledDictionary d : installedDictionaries) {
-            if ("tatoeba".equals(d.getType()) && persistentLanguageSettings.lang.equals(d.getLang())) {
-                examplesQuerySentences = DictionarySearchQueryTool.SQL_QUERY_EXAMPLE_SENTENCES;
-                examplesQueryTranslations = DictionarySearchQueryTool.SQL_QUERY_EXAMPLE_TRANSLATIONS;
-                examplesLeftJoin = String.format(DictionarySearchQueryTool.SQL_QUERY_JOIN_EXAMPLES, "examples_" + d.getLang());
-            }
-        }
-
-        queryStatement =
-                db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                        examplesQuerySentences, examplesQueryTranslations, examplesLeftJoin, persistentLanguageSettings.lang));
-
-        if (persistentLanguageSettings.backupLang != null) {
-            queryStatementBackup =
-                    db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT,
-                            backupExamplesQuery, backupExamplesQueryTranslations, backupExamplesLeftJoin, persistentLanguageSettings.backupLang));
-        }
+        queryStatement = db.compileStatement(SQL_QUERY_INSERT_DISPLAY_ELEMENT);
     }
 
     public void delete() {
@@ -118,23 +68,11 @@ public class BookmarkImportQueryTool {
     }
 
     public boolean execute() {
-        long backupInsert = -1;
-
         queryStatement.bindLong(1, key);
-        queryStatement.bindString(2, persistentLanguageSettings.lang);
-        queryStatement.bindString(3, persistentLanguageSettings.lang);
 
         long insert = queryStatement.executeInsert();
 
-        if (queryStatementBackup != null) {
-            queryStatementBackup.bindLong(1, key);
-            queryStatementBackup.bindString(2, persistentLanguageSettings.backupLang);
-            queryStatementBackup.bindString(3, persistentLanguageSettings.lang);
-
-            backupInsert = queryStatementBackup.executeInsert();
-        }
-
-        return (insert >= 0) || (backupInsert >= 0);
+        return insert >= 0;
     }
 
     public void close() {

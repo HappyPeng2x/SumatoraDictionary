@@ -34,7 +34,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -165,12 +164,12 @@ public abstract class PersistentDatabaseInitialization {
                 databaseInstallDir.mkdirs();
             }
 
-            InstalledDictionary jmdict = aDB.installedDictionaryDao().getForTypeLang("jmdict", "");
+            InstalledDictionary core = aDB.installedDictionaryDao().getForTypeLang("core", "");
 
-            if (jmdict == null || jmdict.version < version || jmdict.date < date) {
-                List<AssetDictionaryObject> asset_jmdict = aDB.assetDictionaryObjectDao().getAll();
+            if (core == null || core.version < version || core.date < date) {
+                List<AssetDictionaryObject> assetDictionaries = aDB.assetDictionaryObjectDao().getAll();
 
-                for (AssetDictionaryObject d : asset_jmdict) {
+                for (AssetDictionaryObject d : assetDictionaries) {
                     d.install(assetManager, databaseInstallDir.getAbsolutePath(), aDB.installedDictionaryDao());
                 }
             }
@@ -221,7 +220,6 @@ public abstract class PersistentDatabaseInitialization {
     @WorkerThread
     public static void initializeDatabase(@NonNull final Context context,
                                           @NonNull final PersistentDatabase persistentDatabase,
-                                          @NonNull final HashMap<String, String> entities,
                                           @NonNull final DictionaryControlInfo controlInfo) {
         int databaseReset = context.getResources().getInteger(R.integer.database_reset);
 
@@ -267,11 +265,12 @@ public abstract class PersistentDatabaseInitialization {
         List<InstalledDictionary> dictionaries = persistentDatabase.installedDictionaryDao().getAll();
 
         for (InstalledDictionary d : dictionaries) {
-            if (d.type.equals("jmdict") || d.type.equals("kanjidic2") || d.type.equals("pitch")) {
+            if (d.type.equals("core") || d.type.equals("kanji") || d.type.equals("pitch")
+                    || d.type.equals("suffix") || d.type.equals("names")) {
                 d.attach(persistentDatabase);
             }
 
-            if (d.type.equals("jmdict_translation") || d.type.equals("tatoeba")) {
+            if (d.type.equals("gloss") || d.type.equals("tatoeba")) {
                 if (d.lang.equals(persistentLanguageSettings.lang) ||
                         (d.lang.equals(persistentLanguageSettings.backupLang))) {
                     d.attach(persistentDatabase);
@@ -293,44 +292,25 @@ public abstract class PersistentDatabaseInitialization {
         deleteBookmarksBackup(context);
 
         try {
-            Cursor cur = persistentDatabase.getOpenHelper().getReadableDatabase().query("SELECT name, content FROM jmdict.DictionaryEntity");
-
-            if (cur != null) {
-                if (cur.getCount() > 0) {
-                    while (cur.moveToNext()) {
-                        String name = cur.getString(0);
-                        String content = cur.getString(1);
-
-                        entities.put(name, content);
-                    }
-                }
-
-                cur.close();
-            }
-        } catch (SQLException ignored) {
-
-        }
-
-        try {
-            Cursor cur = persistentDatabase.getOpenHelper().getReadableDatabase().query("SELECT control, value FROM jmdict.DictionaryControl");
+            Cursor cur = persistentDatabase.getOpenHelper().getReadableDatabase().query("SELECT key, value FROM core.BuildMetadata");
 
             if (cur != null) {
                 while (cur.moveToNext()) {
-                    String control = cur.getString(0);
-                    long value = cur.isNull(1) ? 0 : cur.getLong(1);
+                    String key = cur.getString(0);
+                    String value = cur.getString(1);
 
-                    if ("build_timestamp".equals(control)) {
-                        controlInfo.buildTimestamp = value;
-                    } else if ("format_version".equals(control)) {
-                        controlInfo.formatVersion = (int) value;
-                    } else if ("entry_count".equals(control)) {
-                        controlInfo.entryCount = (int) value;
+                    if ("build_timestamp".equals(key)) {
+                        controlInfo.buildTimestamp = Long.parseLong(value);
+                    } else if ("schema_version".equals(key)) {
+                        controlInfo.formatVersion = Integer.parseInt(value);
+                    } else if ("jmdict_entry_count".equals(key)) {
+                        controlInfo.entryCount = Integer.parseInt(value);
                     }
                 }
 
                 cur.close();
             }
-        } catch (SQLException ignored) {
+        } catch (SQLException | NumberFormatException ignored) {
 
         }
 
@@ -343,6 +323,5 @@ public abstract class PersistentDatabaseInitialization {
 
         // No persistence - clear display on initialization
         persistentDatabase.dictionarySearchElementDao().deleteAll();
-        persistentDatabase.dictionaryElementDao().deleteAll();
     }
 }

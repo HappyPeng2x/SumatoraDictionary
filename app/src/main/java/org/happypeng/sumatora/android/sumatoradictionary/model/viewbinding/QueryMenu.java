@@ -125,7 +125,7 @@ public class QueryMenu {
         Menu menu = languagePopupMenu.getMenu();
 
         for (final InstalledDictionary l : installedDictionaries) {
-            if ("jmdict_translation".equals(l.type)) {
+            if ("gloss".equals(l.type)) {
                 menu.add(l.description).setOnMenuItemClickListener(item -> {
                     consumer.change(l.lang);
 
