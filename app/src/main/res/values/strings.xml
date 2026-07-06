@@ -36,4 +36,6 @@
     <string name="tags_empty">No tags yet</string>
     <string name="tags_title">Tags</string>
     <string name="examples_header">Examples</string>
+    <string name="forms_header">Forms</string>
+    <string name="restricted_to_format">%1$s only</string>
 </resources>

@@ -36,6 +36,8 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
+import android.widget.TableLayout
+import android.widget.TableRow
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.core.os.bundleOf
@@ -183,6 +185,10 @@ class EntryDetailBottomSheet : BottomSheetDialogFragment() {
             buildExamples(
                 binding.entryDetailExamples, binding.entryDetailExamplesHeader, binding.entryDetailExamplesDivider,
                 detail.examples, primaryColor, secondaryColor, density
+            )
+            buildForms(
+                binding.entryDetailForms, binding.entryDetailFormsHeader, binding.entryDetailFormsDivider,
+                detail.forms, primaryColor, secondaryColor, density
             )
         }
 
@@ -510,6 +516,21 @@ class EntryDetailBottomSheet : BottomSheetDialogFragment() {
                 container.addView(headerRow)
             }
 
+            group.restrictionLabel?.let { label ->
+                container.addView(TextView(context).apply {
+                    text = getString(R.string.restricted_to_format, label)
+                    textSize = 12f
+                    setTextColor(secondaryColor)
+                    typeface = Typeface.create(Typeface.DEFAULT, Typeface.ITALIC)
+                    val lp = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    )
+                    lp.bottomMargin = 2.dp()
+                    layoutParams = lp
+                })
+            }
+
             for (sense in group.senses) {
                 val glossView = TextView(context).apply {
                     tag = "sense_${sense.displayIndex}"
@@ -556,8 +577,72 @@ class EntryDetailBottomSheet : BottomSheetDialogFragment() {
                     }
                     container.addView(makeExtraBox(display, "Language of Origin", lsColor, primaryColor, density))
                 }
+
+                for (example in sense.examples) {
+                    container.addView(buildExampleBox(example, primaryColor, secondaryColor, density, 8.dp()))
+                }
             }
         }
+    }
+
+    // Single bordered example box (Japanese sentence + translation), reused both for the
+    // entry-level fallback section and for examples nested directly under a sense.
+    private fun buildExampleBox(
+        example: EntryDetail.Example, primaryColor: Int, secondaryColor: Int, density: Float,
+        topMarginPx: Int
+    ): View {
+        val exColor = ContextCompat.getColor(requireContext(), R.color.border_example)
+        val dp3 = (3 * density).toInt()
+        val dp8 = (8 * density).toInt()
+        val dp4 = (4 * density).toInt()
+
+        val box = LinearLayout(context).apply {
+            orientation = LinearLayout.VERTICAL
+            background = leftBorderDrawable(exColor, dp3)
+            setPadding(dp3 + dp8, dp4, dp8, dp4)
+            val lp = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            lp.topMargin = topMarginPx
+            layoutParams = lp
+        }
+
+        // Japanese sentence with pre-split furigana segments
+        box.addView(TextView(context).apply {
+            val sb = SpannableStringBuilder()
+            renderFuriganaSegments(sb, example.segments, 0, null)
+            val token = example.matchedText
+            if (!token.isNullOrEmpty()) {
+                val start = sb.toString().indexOf(token)
+                if (start >= 0) {
+                    sb.setSpan(StyleSpan(Typeface.BOLD), start, start + token.length,
+                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                }
+            }
+            text = sb
+            textSize = 14f
+            setTextColor(primaryColor)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        })
+
+        // Translation
+        box.addView(TextView(context).apply {
+            text = example.translation.orEmpty()
+            textSize = 12f
+            setTextColor(secondaryColor)
+            val lp = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            lp.topMargin = (2 * density).toInt()
+            layoutParams = lp
+        })
+
+        return box
     }
 
     private fun buildExamples(
@@ -571,62 +656,107 @@ class EntryDetailBottomSheet : BottomSheetDialogFragment() {
         header.visibility    = View.VISIBLE
         container.visibility = View.VISIBLE
 
-        val exColor = ContextCompat.getColor(requireContext(), R.color.border_example)
-        fun Int.dp() = (this * density).toInt()
-
+        val dp8 = (8 * density).toInt()
         for ((i, example) in examples.withIndex()) {
-            val dp3 = (3 * density).toInt()
-            val dp8 = (8 * density).toInt()
-            val dp4 = (4 * density).toInt()
-
-            val box = LinearLayout(context).apply {
-                orientation = LinearLayout.VERTICAL
-                background = leftBorderDrawable(exColor, dp3)
-                setPadding(dp3 + dp8, dp4, dp8, dp4)
-                val lp = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                )
-                lp.topMargin = if (i == 0) 0 else dp8
-                layoutParams = lp
-            }
-
-            // Japanese sentence with pre-split furigana segments
-            box.addView(TextView(context).apply {
-                val sb = SpannableStringBuilder()
-                renderFuriganaSegments(sb, example.segments, 0, null)
-                val token = example.matchedText
-                if (!token.isNullOrEmpty()) {
-                    val start = sb.toString().indexOf(token)
-                    if (start >= 0) {
-                        sb.setSpan(StyleSpan(Typeface.BOLD), start, start + token.length,
-                            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                    }
-                }
-                text = sb
-                textSize = 14f
-                setTextColor(primaryColor)
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                )
-            })
-
-            // Translation
-            box.addView(TextView(context).apply {
-                text = example.translation.orEmpty()
-                textSize = 12f
-                setTextColor(secondaryColor)
-                val lp = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                )
-                lp.topMargin = 2.dp()
-                layoutParams = lp
-            })
-
-            container.addView(box)
+            container.addView(buildExampleBox(example, primaryColor, secondaryColor, density, if (i == 0) 0 else dp8))
         }
+    }
+
+    // Small colored circular badge for one forms-table cell: 優(green)/可(grey)/稀(purple) for
+    // primary/common/rare tiers - our score/is_common data can only bucket this coarsely, so
+    // e.g. multiple equally-irregular kanji spellings all render the same "rare" badge.
+    private fun badgeCell(tier: String, density: Float): View {
+        val (symbol, colorRes) = when (tier) {
+            "primary" -> "優" to R.color.tag_dialect
+            "rare"    -> "稀" to R.color.tag_domain
+            else      -> "可" to R.color.tag_pos
+        }
+        val size = (22 * density).toInt()
+        return TextView(context).apply {
+            text = symbol
+            textSize = 11f
+            setTextColor(Color.WHITE)
+            typeface = Typeface.DEFAULT_BOLD
+            gravity = android.view.Gravity.CENTER
+            background = GradientDrawable().apply {
+                setColor(ContextCompat.getColor(requireContext(), colorRes))
+                shape = GradientDrawable.OVAL
+            }
+            layoutParams = TableRow.LayoutParams(size, size).apply {
+                val m = (3 * density).toInt()
+                setMargins(m, m, m, m)
+            }
+        }
+    }
+
+    // "Forms" table: every kanji+reading combination for the entry, pivoted into a grid (columns
+    // = distinct written forms, rows = distinct readings, plus a "∅" column for kana-only
+    // readings with no kanji pairing at all).
+    private fun buildForms(
+        container: LinearLayout, header: TextView, divider: View,
+        forms: List<EntryDetail.FormRow>, primaryColor: Int, secondaryColor: Int, density: Float
+    ) {
+        if (forms.isEmpty()) return
+
+        divider.visibility   = View.VISIBLE
+        header.visibility    = View.VISIBLE
+        container.visibility = View.VISIBLE
+
+        fun Int.dp() = (this * density).toInt()
+        val kanjilessColumn = "∅"
+
+        val columns = LinkedHashSet<String>()
+        val rows = LinkedHashMap<String, MutableMap<String, String>>()
+        for (f in forms) {
+            if (f.isKanjiless) {
+                rows.getOrPut(f.text) { LinkedHashMap() }[kanjilessColumn] = f.tier
+            } else {
+                columns.add(f.text)
+                rows.getOrPut(f.reading ?: f.text) { LinkedHashMap() }[f.text] = f.tier
+            }
+        }
+        val columnList = columns.toMutableList()
+        if (rows.values.any { it.containsKey(kanjilessColumn) }) columnList.add(kanjilessColumn)
+
+        fun headerCell(text: String) = TextView(context).apply {
+            this.text = text
+            textSize = 12f
+            setTextColor(secondaryColor)
+            gravity = android.view.Gravity.CENTER
+            setPadding(8.dp(), 4.dp(), 8.dp(), 4.dp())
+        }
+
+        val table = TableLayout(context).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        }
+
+        table.addView(TableRow(context).apply {
+            addView(headerCell(""))
+            for (col in columnList) addView(headerCell(col))
+        })
+
+        for ((rowKey, cells) in rows) {
+            table.addView(TableRow(context).apply {
+                addView(TextView(context).apply {
+                    text = rowKey
+                    textSize = 14f
+                    setTextColor(primaryColor)
+                    gravity = android.view.Gravity.CENTER_VERTICAL
+                    setPadding(0, 4.dp(), 8.dp(), 4.dp())
+                })
+                for (col in columnList) {
+                    val tier = cells[col]
+                    addView(
+                        if (tier != null) badgeCell(tier, density)
+                        else TextView(context).apply { setPadding(8.dp(), 4.dp(), 8.dp(), 4.dp()) }
+                    )
+                }
+            })
+        }
+
+        container.addView(table)
     }
 
     companion object {

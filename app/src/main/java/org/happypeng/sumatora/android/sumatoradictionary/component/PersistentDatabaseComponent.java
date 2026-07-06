@@ -44,7 +44,11 @@ import org.happypeng.sumatora.core.dict.DictionaryQueryResult;
 import org.happypeng.sumatora.jromkan.Romkan;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -505,7 +509,8 @@ public class PersistentDatabaseComponent {
         List<EntryDetail.Example> result = new ArrayList<>();
         try {
             Cursor cur = readable.query(
-                    "SELECT EntryExample.example_id, EntryExample.matched_text, Example.translation "
+                    "SELECT EntryExample.example_id, EntryExample.matched_text, Example.translation, "
+                            + "EntryExample.sense_id "
                             + "FROM examples_" + lang + ".EntryExample "
                             + "JOIN examples_" + lang + ".Example ON Example.example_id = EntryExample.example_id "
                             + "WHERE EntryExample.entry_id = ? ORDER BY EntryExample.ord",
@@ -516,8 +521,90 @@ public class PersistentDatabaseComponent {
                     EntryDetail.Example example = new EntryDetail.Example();
                     example.matchedText = cur.getString(1);
                     example.translation = cur.getString(2);
+                    example.senseId = cur.isNull(3) ? null : cur.getLong(3);
                     example.segments = fetchFurigana(readable, "examples_" + lang, "ExampleSegment", "example_id", exampleId);
                     result.add(example);
+                }
+                cur.close();
+            }
+        } catch (SQLException ignored) {
+        }
+        return result;
+    }
+
+    // Sorted SenseAppliesToForm.form_id set for one sense - empty (not null) when unrestricted,
+    // so it can be compared directly against a sibling group's set for merge/label purposes.
+    @WorkerThread
+    private List<Long> fetchRestrictedFormIds(SupportSQLiteDatabase readable, long senseId) {
+        List<Long> result = new ArrayList<>();
+        try {
+            Cursor cur = readable.query(
+                    "SELECT form_id FROM core.SenseAppliesToForm WHERE sense_id = ? ORDER BY form_id",
+                    new Object[]{senseId});
+            if (cur != null) {
+                while (cur.moveToNext()) {
+                    result.add(cur.getLong(0));
+                }
+                cur.close();
+            }
+        } catch (SQLException ignored) {
+        }
+        return result;
+    }
+
+    // Human-readable readings a restricted sense group is limited to (e.g. "ばね・バネ"), built
+    // from the restricted forms' own reading (writing forms) or text (kana-only reading forms).
+    // Can't distinguish an original stagk (kanji-based) restriction from stagr (reading-based) -
+    // the generator unions both into SenseAppliesToForm - but stagr is by far the common case.
+    @WorkerThread
+    @Nullable
+    private String resolveRestrictionLabel(SupportSQLiteDatabase readable, List<Long> formIds) {
+        if (formIds.isEmpty()) {
+            return null;
+        }
+        StringBuilder placeholders = new StringBuilder();
+        Object[] args = new Object[formIds.size()];
+        for (int i = 0; i < formIds.size(); i++) {
+            if (i > 0) placeholders.append(',');
+            placeholders.append('?');
+            args[i] = formIds.get(i);
+        }
+        LinkedHashSet<String> readings = new LinkedHashSet<>();
+        try {
+            Cursor cur = readable.query(
+                    "SELECT COALESCE(reading, text) FROM core.EntryForm WHERE form_id IN (" + placeholders + ") "
+                            + "GROUP BY COALESCE(reading, text) ORDER BY MIN(ord)",
+                    args);
+            if (cur != null) {
+                while (cur.moveToNext()) {
+                    readings.add(cur.getString(0));
+                }
+                cur.close();
+            }
+        } catch (SQLException ignored) {
+        }
+        return readings.isEmpty() ? null : String.join("・", readings);
+    }
+
+    // Every kanji+reading combination for the entry, for the "forms" table - excludes
+    // is_search_only forms (JMdict sK/sk), same as the display-form picker already does.
+    @WorkerThread
+    private List<EntryDetail.FormRow> fetchEntryForms(SupportSQLiteDatabase readable, long entryId) {
+        List<EntryDetail.FormRow> result = new ArrayList<>();
+        try {
+            Cursor cur = readable.query(
+                    "SELECT text, reading, form_type, is_primary, is_common, score FROM core.EntryForm "
+                            + "WHERE entry_id = ? AND is_search_only = 0 ORDER BY ord",
+                    new Object[]{entryId});
+            if (cur != null) {
+                while (cur.moveToNext()) {
+                    String text = cur.getString(0);
+                    String reading = cur.getString(1);
+                    boolean isKanjiless = "reading".equals(cur.getString(2));
+                    boolean isPrimary = cur.getInt(3) != 0;
+                    int score = cur.getInt(5);
+                    String tier = isPrimary ? "primary" : (score < 0 ? "rare" : "common");
+                    result.add(new EntryDetail.FormRow(text, reading, isKanjiless, tier));
                 }
                 cur.close();
             }
@@ -615,6 +702,10 @@ public class PersistentDatabaseComponent {
                     }
 
                     List<EntryDetail.Sense> senses = new ArrayList<>();
+                    // SenseGroup is 1:1 with the source sense (schema-v2.md), so every sense
+                    // surviving the filter below shares the same SenseAppliesToForm set - resolve
+                    // it once from whichever sense_id is seen first.
+                    List<Long> restrictedFormIds = null;
                     Cursor senseCur = readable.query(
                             "SELECT sense_id FROM core.Sense WHERE sense_group_id = ? AND "
                                     + "(NOT EXISTS (SELECT 1 FROM core.SenseAppliesToForm a WHERE a.sense_id = Sense.sense_id) "
@@ -633,7 +724,11 @@ public class PersistentDatabaseComponent {
                             if (glossText == null) {
                                 continue;
                             }
+                            if (restrictedFormIds == null) {
+                                restrictedFormIds = fetchRestrictedFormIds(readable, senseId);
+                            }
                             EntryDetail.Sense sense = new EntryDetail.Sense();
+                            sense.senseId = senseId;
                             sense.displayIndex = ++displayIndex[0];
                             sense.glossText = glossText;
                             sense.notes = fetchStrings(readable,
@@ -649,11 +744,15 @@ public class PersistentDatabaseComponent {
                     if (senses.isEmpty()) {
                         continue;
                     }
+                    if (restrictedFormIds == null) {
+                        restrictedFormIds = Collections.emptyList();
+                    }
 
                     EntryDetail.SenseGroup lastGroup = detail.senseGroups.isEmpty() ? null
                             : detail.senseGroups.get(detail.senseGroups.size() - 1);
                     if (lastGroup != null && lastGroup.posTagCodes.equals(pos) && lastGroup.miscTagCodes.equals(misc)
-                            && lastGroup.fieldTagCodes.equals(field) && lastGroup.dialectTagCodes.equals(dialect)) {
+                            && lastGroup.fieldTagCodes.equals(field) && lastGroup.dialectTagCodes.equals(dialect)
+                            && lastGroup.restrictedFormIds.equals(restrictedFormIds)) {
                         lastGroup.senses.addAll(senses);
                     } else {
                         EntryDetail.SenseGroup newGroup = new EntryDetail.SenseGroup();
@@ -662,6 +761,8 @@ public class PersistentDatabaseComponent {
                         newGroup.fieldTagCodes = field;
                         newGroup.dialectTagCodes = dialect;
                         newGroup.senses = senses;
+                        newGroup.restrictedFormIds = restrictedFormIds;
+                        newGroup.restrictionLabel = resolveRestrictionLabel(readable, restrictedFormIds);
                         detail.senseGroups.add(newGroup);
                     }
                 }
@@ -674,7 +775,36 @@ public class PersistentDatabaseComponent {
         if (examples.isEmpty() && languageSettings.backupLang != null) {
             examples = fetchExamples(readable, languageSettings.backupLang, entryId);
         }
-        detail.examples = examples;
+        // Route each example to the sense it's linked to; anything with no sense_id (most
+        // examples today) or whose sense_id didn't survive the matched-form filter above falls
+        // back to the entry-level list rendered at the bottom, rather than guessing a sense.
+        Map<Long, EntryDetail.Sense> sensesById = new HashMap<>();
+        for (EntryDetail.SenseGroup group : detail.senseGroups) {
+            for (EntryDetail.Sense sense : group.senses) {
+                sensesById.put(sense.senseId, sense);
+            }
+        }
+        List<EntryDetail.Example> fallbackExamples = new ArrayList<>();
+        for (EntryDetail.Example example : examples) {
+            EntryDetail.Sense owner = example.senseId != null ? sensesById.get(example.senseId) : null;
+            if (owner != null) {
+                owner.examples.add(example);
+            } else {
+                fallbackExamples.add(example);
+            }
+        }
+        detail.examples = fallbackExamples;
+
+        List<EntryDetail.FormRow> forms = fetchEntryForms(readable, entryId);
+        LinkedHashSet<String> distinctWritingTexts = new LinkedHashSet<>();
+        for (EntryDetail.FormRow form : forms) {
+            if (!form.isKanjiless) {
+                distinctWritingTexts.add(form.text);
+            }
+        }
+        if (distinctWritingTexts.size() > 1) {
+            detail.forms = forms;
+        }
 
         return detail;
     }

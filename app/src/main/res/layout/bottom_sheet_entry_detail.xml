@@ -79,6 +79,38 @@
             android:orientation="vertical"
             android:visibility="gone" />
 
+        <!-- Forms table section -->
+        <View
+            android:id="@+id/entry_detail_forms_divider"
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="14dp"
+            android:layout_marginBottom="4dp"
+            android:background="@color/text_foreground_secondary"
+            android:alpha="0.3"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/entry_detail_forms_header"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="6dp"
+            app:fontFamily="sans-serif"
+            android:textColor="@color/text_foreground_secondary"
+            android:textSize="12sp"
+            android:textAllCaps="true"
+            android:letterSpacing="0.1"
+            android:text="@string/forms_header"
+            android:visibility="gone" />
+
+        <!-- Forms table is added programmatically here -->
+        <LinearLayout
+            android:id="@+id/entry_detail_forms"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone" />
+
     </LinearLayout>
 
 </androidx.core.widget.NestedScrollView>

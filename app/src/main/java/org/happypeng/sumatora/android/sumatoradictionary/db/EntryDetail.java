@@ -35,7 +35,12 @@ public class EntryDetail {
     // word entries
     public List<Integer> pitchPatterns = new ArrayList<>();
     public List<SenseGroup> senseGroups = new ArrayList<>();
+    // Fallback bucket: examples with no sense_id, or whose sense_id didn't survive the
+    // matched-form filter - rendered in their own section rather than guessed onto a sense.
     public List<Example> examples = new ArrayList<>();
+    // Every kanji+reading combination for the entry (schema-v2's EntryForm), for the "forms"
+    // table - only populated when the entry has more than one distinct written form.
+    public List<FormRow> forms = new ArrayList<>();
 
     // name entries
     public List<String> nameTypeCodes = new ArrayList<>();
@@ -47,15 +52,38 @@ public class EntryDetail {
         public List<String> fieldTagCodes = new ArrayList<>();
         public List<String> dialectTagCodes = new ArrayList<>();
         public List<Sense> senses = new ArrayList<>();
+        // Sorted SenseAppliesToForm.form_id set shared by every sense in this (possibly merged)
+        // group - empty when unrestricted. Part of the merge key so a restricted group never
+        // silently merges with an adjacent unrestricted one.
+        public List<Long> restrictedFormIds = new ArrayList<>();
+        // Human-readable readings the restriction limits this group to (e.g. "ばね・バネ"),
+        // null when unrestricted.
+        @Nullable public String restrictionLabel;
     }
 
     public static class Sense {
+        public long senseId;
         public int displayIndex;
         @Nullable public String glossText;
         public List<String> notes = new ArrayList<>();
         public List<Xref> xrefs = new ArrayList<>();
         public List<Xref> antonyms = new ArrayList<>();
         public List<LanguageSource> languageSources = new ArrayList<>();
+        public List<Example> examples = new ArrayList<>();
+    }
+
+    public static class FormRow {
+        public final String text;
+        @Nullable public final String reading;
+        public final boolean isKanjiless;
+        public final String tier;
+
+        public FormRow(String aText, @Nullable String aReading, boolean aIsKanjiless, String aTier) {
+            text = aText;
+            reading = aReading;
+            isKanjiless = aIsKanjiless;
+            tier = aTier;
+        }
     }
 
     public static class Xref {
@@ -89,5 +117,8 @@ public class EntryDetail {
         public List<EntryListSummary.FuriganaSegment> segments = new ArrayList<>();
         @Nullable public String translation;
         @Nullable public String matchedText;
+        // Set from EntryExample.sense_id at fetch time; only used transiently to route this
+        // example into its owning Sense.examples vs. the entry-level fallback list.
+        @Nullable public Long senseId;
     }
 }
