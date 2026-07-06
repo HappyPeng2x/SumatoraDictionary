@@ -24,6 +24,14 @@ package org.happypeng.sumatora.android.sumatoradictionary.db
 //
 // version/date match the bundled dictionaries.xml's repository version so "is this installed
 // pack current" compares the same way as bundled packs (InstalledDictionary.isSuperiorVersion).
+//
+// TODO: canonical dictionary hosting has moved to SumatoraIndex (see its release-pipeline.md) -
+// R.string.dictionaries_url already points there. These two URLs still point at the old
+// HappyPeng2x/SumatoraDictionary dictionaries-v8 release, which is still real/valid, so nothing
+// is broken today. Once SumatoraIndex's first automated release ships (v9+), update
+// RELEASE_BASE_URL/version/date here to match it - or, better, drop this static list entirely and
+// drive the initial-install options from the same dictionaries.xml manifest RemoteManifestFetcher
+// already fetches, so there's one source of truth instead of two.
 object OptionalDictionaryCatalog {
     private const val RELEASE_BASE_URL =
         "https://github.com/HappyPeng2x/SumatoraDictionary/releases/download/dictionaries-v8"

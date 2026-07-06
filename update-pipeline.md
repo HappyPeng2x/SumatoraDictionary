@@ -32,11 +32,17 @@ So this is less "design something new" and more "finish connecting what's there.
 
 ## Decisions made
 
-- **Hosting: GitHub Releases, unified.** Every pack (core, gloss_{lang}, pitch, kanji,
-  examples_{lang}, suffix, names) becomes a versioned Release asset - most naturally on
-  **SumatoraIndex** (the repo that produces them), since that's where a new release gets cut
-  whenever the pipeline rebuilds. Not `sumatora.happypeng.org` (the existing dormant default) -
-  moving everything to GitHub keeps one hosting story consistent with the Phase 0b decision.
+- **Hosting: GitHub Releases, unified, on SumatoraIndex.** Every pack (core, gloss_{lang}, pitch,
+  kanji, examples_{lang}, suffix, names) becomes a versioned Release asset on **SumatoraIndex**
+  (the repo that produces them), not `sumatora.happypeng.org` (the existing dormant default) and
+  not `SumatoraDictionary` (where Phase 0b's `OptionalDictionaryCatalog` pragmatically pointed
+  first, since that's where that work happened). Corrected once desktop/PWA clients entered the
+  picture: SumatoraIndex is the single upstream producer, so it's the one place every independent
+  client (Android, desktop, future PWA) should fetch from - see SumatoraIndex's
+  `release-pipeline.md` for the full reasoning and the migration from the Phase 0b URLs.
+  `R.string.dictionaries_url` now points at SumatoraIndex; `OptionalDictionaryCatalog`'s two
+  hardcoded suffix/names URLs still point at the old SumatoraDictionary release (still valid) until
+  SumatoraIndex's first automated release ships.
 - **Update trigger: automatic background check via WorkManager**, with a manual "Check Now"
   button in Settings kept regardless (auto-check shouldn't remove the ability to force it).
 
