@@ -128,8 +128,57 @@ public class PersistentDatabaseComponent {
     }
 
 
-    private static final String FORM_QUERY =
-            "SELECT text, reading, form_type, form_id FROM %s.EntryForm WHERE entry_id = ? AND is_primary = 1 LIMIT 1";
+    private static final String FORM_QUERY_PRIMARY =
+            "SELECT text, reading, form_type, form_id, is_common FROM %s.EntryForm WHERE entry_id = ? AND is_primary = 1 LIMIT 1";
+
+    // The specific form a search hit matched (DictionaryQueryResult.formId) - e.g. 発条 matched
+    // via a rK kanji spelling should still show 発条 rather than collapsing to the entry's
+    // kana-only primary reading. is_search_only forms (JMdict sK/sk) are excluded even when
+    // matched, since those exist purely to be found, not displayed.
+    private static final String FORM_QUERY_BY_ID =
+            "SELECT text, reading, form_type, form_id, is_common FROM %s.EntryForm WHERE form_id = ? AND is_search_only = 0 LIMIT 1";
+
+    private static final class DisplayForm {
+        @Nullable String text;
+        @Nullable String reading;
+        long formId = -1;
+        boolean isCommon;
+    }
+
+    // Picks the form to show as headword+reading: the form that actually matched the search hit
+    // when there is one and it's displayable, otherwise the entry's globally-designated primary
+    // form (used for match kinds with no specific form, e.g. gloss/bookmark-listing hits).
+    @WorkerThread
+    private DisplayForm fetchDisplayForm(SupportSQLiteDatabase readable, String pack, long entryId,
+                                          @Nullable Long matchedFormId) {
+        final DisplayForm result = new DisplayForm();
+        try {
+            Cursor cur = null;
+            if (matchedFormId != null) {
+                cur = readable.query(String.format(FORM_QUERY_BY_ID, pack), new Object[]{matchedFormId});
+                if (cur != null && !cur.moveToFirst()) {
+                    cur.close();
+                    cur = null;
+                }
+            }
+            if (cur == null) {
+                cur = readable.query(String.format(FORM_QUERY_PRIMARY, pack), new Object[]{entryId});
+                if (cur != null && !cur.moveToFirst()) {
+                    cur.close();
+                    cur = null;
+                }
+            }
+            if (cur != null) {
+                result.text = cur.getString(0);
+                result.reading = "writing".equals(cur.getString(2)) ? cur.getString(1) : null;
+                result.formId = cur.getLong(3);
+                result.isCommon = cur.getInt(4) != 0;
+                cur.close();
+            }
+        } catch (SQLException ignored) {
+        }
+        return result;
+    }
 
     @WorkerThread
     private List<EntryListSummary.FuriganaSegment> fetchFurigana(SupportSQLiteDatabase readable,
@@ -190,22 +239,12 @@ public class PersistentDatabaseComponent {
         summary.isName = isName;
         final String pack = isName ? "names" : "core";
 
-        long primaryFormId = -1;
-        try {
-            Cursor cur = readable.query(String.format(FORM_QUERY, pack), new Object[]{entry.getEntryId()});
-            if (cur != null) {
-                if (cur.moveToNext()) {
-                    summary.primaryText = cur.getString(0);
-                    summary.primaryReading = "writing".equals(cur.getString(2)) ? cur.getString(1) : null;
-                    primaryFormId = cur.getLong(3);
-                }
-                cur.close();
-            }
-        } catch (SQLException ignored) {
-        }
+        final DisplayForm displayForm = fetchDisplayForm(readable, pack, entry.getEntryId(), entry.getFormId());
+        summary.primaryText = displayForm.text;
+        summary.primaryReading = displayForm.reading;
 
-        if (primaryFormId >= 0) {
-            summary.furiganaSegments = fetchFurigana(readable, pack, primaryFormId);
+        if (displayForm.formId >= 0) {
+            summary.furiganaSegments = fetchFurigana(readable, pack, displayForm.formId);
         }
 
         if (isName) {
@@ -495,26 +534,13 @@ public class PersistentDatabaseComponent {
         final SupportSQLiteDatabase readable = getDatabase().getOpenHelper().getReadableDatabase();
         final String pack = isName ? "names" : "core";
 
-        long primaryFormId = -1;
-        try {
-            Cursor cur = readable.query(
-                    "SELECT text, reading, form_type, form_id, is_common FROM " + pack + ".EntryForm "
-                            + "WHERE entry_id = ? AND is_primary = 1 LIMIT 1",
-                    new Object[]{entryId});
-            if (cur != null) {
-                if (cur.moveToNext()) {
-                    detail.primaryText = cur.getString(0);
-                    detail.primaryReading = "writing".equals(cur.getString(2)) ? cur.getString(1) : null;
-                    primaryFormId = cur.getLong(3);
-                    detail.isPriority = cur.getInt(4) != 0;
-                }
-                cur.close();
-            }
-        } catch (SQLException ignored) {
-        }
+        final DisplayForm displayForm = fetchDisplayForm(readable, pack, entryId, formId);
+        detail.primaryText = displayForm.text;
+        detail.primaryReading = displayForm.reading;
+        detail.isPriority = displayForm.isCommon;
 
-        if (primaryFormId >= 0) {
-            detail.furiganaSegments = fetchFurigana(readable, pack, primaryFormId);
+        if (displayForm.formId >= 0) {
+            detail.furiganaSegments = fetchFurigana(readable, pack, displayForm.formId);
         }
 
         if (isName) {
@@ -542,7 +568,7 @@ public class PersistentDatabaseComponent {
             return detail;
         }
 
-        long pitchFormId = formId != null ? formId : primaryFormId;
+        long pitchFormId = formId != null ? formId : displayForm.formId;
         if (pitchFormId >= 0) {
             List<Integer> pitches = fetchPitchPatterns(pitchFormId);
             if (pitches != null) {
