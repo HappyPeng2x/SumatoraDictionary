@@ -154,7 +154,7 @@ public class PersistentDatabaseComponent {
     // one furigana reading, so mixing in a spelling read differently would look like it shares
     // the same pronunciation. Excludes the displayed form itself and is_search_only forms.
     private static final String FORM_QUERY_ALTERNATE_WRITINGS =
-            "SELECT text FROM %s.EntryForm WHERE entry_id = ? AND form_type = 'writing' AND is_search_only = 0 "
+            "SELECT text, form_id FROM %s.EntryForm WHERE entry_id = ? AND form_type = 'writing' AND is_search_only = 0 "
                     + "AND form_id != ? AND reading = (SELECT reading FROM %s.EntryForm WHERE form_id = ?) "
                     + "ORDER BY is_primary DESC, score DESC, ord";
 
@@ -165,14 +165,18 @@ public class PersistentDatabaseComponent {
     }
 
     @WorkerThread
-    private List<String> fetchAlternateWritings(SupportSQLiteDatabase readable, String pack, long entryId, long formId) {
-        List<String> result = new ArrayList<>();
+    private List<EntryListSummary.AlternateWriting> fetchAlternateWritings(SupportSQLiteDatabase readable, String pack,
+                                                                            long entryId, long formId) {
+        List<EntryListSummary.AlternateWriting> result = new ArrayList<>();
         try {
             Cursor cur = readable.query(String.format(FORM_QUERY_ALTERNATE_WRITINGS, pack, pack),
                     new Object[]{entryId, formId, formId});
             if (cur != null) {
                 while (cur.moveToNext()) {
-                    result.add(cur.getString(0));
+                    EntryListSummary.AlternateWriting alt = new EntryListSummary.AlternateWriting();
+                    alt.text = cur.getString(0);
+                    alt.furiganaSegments = fetchFurigana(readable, pack, cur.getLong(1));
+                    result.add(alt);
                 }
                 cur.close();
             }
@@ -392,7 +396,7 @@ public class PersistentDatabaseComponent {
         }
 
         if (displayForm.formId >= 0) {
-            summary.alternateTexts = fetchAlternateWritings(readable, pack, entry.getEntryId(), displayForm.formId);
+            summary.alternateWritings = fetchAlternateWritings(readable, pack, entry.getEntryId(), displayForm.formId);
         }
 
         fetchSenseGroupSummaries(readable, entry.getEntryId(), entry.getFormId(), languageSettings, summary);

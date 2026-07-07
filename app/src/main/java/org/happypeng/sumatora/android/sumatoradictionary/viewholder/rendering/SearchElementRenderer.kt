@@ -104,11 +104,15 @@ fun renderHeadword(summary: EntryListSummary,
                    colors: DictionarySearchElementViewHolder.Colors,
                    onKanjiClick: ((String) -> Unit)? = null): SpannableStringBuilder {
     val sb = renderHeadword(summary.primaryText, summary.furiganaSegments, colors, onKanjiClick)
-    for (alt in summary.alternateTexts) {
+    for (alt in summary.alternateWritings) {
         sb.append(" ")
         val start = sb.length
-        sb.append(alt)
-        sb.setSpan(RelativeSizeSpan(0.75f), start, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        if (alt.furiganaSegments.isNotEmpty()) {
+            renderFuriganaSegments(sb, alt.furiganaSegments, 0, onKanjiClick)
+        } else {
+            sb.append(alt.text)
+        }
+        sb.setSpan(RelativeSizeSpan(0.85f), start, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
         sb.setSpan(ForegroundColorSpan(colors.secondary), start, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
     }
     return sb

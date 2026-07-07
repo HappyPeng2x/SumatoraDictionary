@@ -42,7 +42,7 @@ public class EntryListSummary {
     // Other kanji spellings sharing primaryText's reading (e.g. 恃む/憑む next to 頼む) - shown
     // smaller/greyed alongside the headword so an alternate spelling isn't hidden until the user
     // taps into the forms table.
-    public List<String> alternateTexts = new ArrayList<>();
+    public List<AlternateWriting> alternateWritings = new ArrayList<>();
 
     // Word entries: every sense group (pos/misc/field/dialect tags shared by the senses in it),
     // each with all of its senses - a gloss/reverse-search hit on any sense stays visible here,
@@ -62,5 +62,10 @@ public class EntryListSummary {
     public static class SenseSummary {
         public int displayIndex;
         public String glossText;
+    }
+
+    public static class AlternateWriting {
+        public String text;
+        public List<FuriganaSegment> furiganaSegments = new ArrayList<>();
     }
 }
