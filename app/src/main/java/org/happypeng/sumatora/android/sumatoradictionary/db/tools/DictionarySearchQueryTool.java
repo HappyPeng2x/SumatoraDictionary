@@ -99,6 +99,13 @@ public class DictionarySearchQueryTool {
 
     // Basic tier: exact/prefix/substring x writing/kana x prio/nonprio against SearchTerm, joined
     // back to Entry for the bookmark star. %s: FROM-clause tables, WHERE-clause match condition.
+    //
+    // A single entry_id can be reachable through several form_ids that all carry the identical
+    // matched text but different readings (e.g. 二 as a bare kanji pairs with に/ふた/ふ/ふう, all
+    // spelled 二) - INSERT OR IGNORE's (ref, entry_id) primary key means only the first such row
+    // survives, and without an ORDER BY "first" is whatever order SQLite's query plan happens to
+    // produce, which is not guaranteed stable. The ORDER BY makes the entry's designated primary
+    // form win deterministically instead of an arbitrary reading.
     private static final String SQL_QUERY_BASIC_TIER =
             "INSERT OR IGNORE INTO DictionarySearchElement "
                     + "(ref, entryOrder, entry_id, seq, form_id, match_kind, original_query, matched_text, "
@@ -110,8 +117,10 @@ public class DictionarySearchQueryTool {
                     + "IFNULL(DictionaryBookmark.bookmark, 0), DictionaryBookmark.memo, DictionaryBookmark.tags "
                     + "FROM %s "
                     + "JOIN core.Entry ON Entry.entry_id = SearchTerm.entry_id "
+                    + "LEFT JOIN core.EntryForm ON EntryForm.form_id = SearchTerm.form_id "
                     + BOOKMARK_JOIN
-                    + "WHERE (%s) AND " + BOOKMARKS_WHERE_CLAUSE;
+                    + "WHERE (%s) AND " + BOOKMARKS_WHERE_CLAUSE + " "
+                    + "ORDER BY IFNULL(EntryForm.is_primary, 0) DESC, IFNULL(EntryForm.score, 0) DESC, IFNULL(EntryForm.ord, 0)";
 
     private static final String FROM_CORE_SEARCH_TERM = "core.SearchTerm";
     private static final String FROM_SUFFIX_SEARCH_TERM =
