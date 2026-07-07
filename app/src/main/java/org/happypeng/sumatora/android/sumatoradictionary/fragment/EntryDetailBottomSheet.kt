@@ -35,6 +35,7 @@ import android.text.style.UnderlineSpan
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TableLayout
 import android.widget.TableRow
@@ -675,6 +676,11 @@ class EntryDetailBottomSheet : BottomSheetDialogFragment() {
     // Small colored circular badge for one forms-table cell: 優(green)/可(grey)/稀(purple) for
     // primary/common/rare tiers - our score/is_common data can only bucket this coarsely, so
     // e.g. multiple equally-irregular kanji spellings all render the same "rare" badge.
+    //
+    // Wrapped in a FrameLayout because TableRow ignores a cell's own requested width during
+    // layout and stretches every cell in a column to match that column's widest cell (here, the
+    // kanji header text) - without the wrapper the badge itself gets stretched into an oval whose
+    // width tracks the column's kanji spelling length instead of staying a fixed circle.
     private fun badgeCell(tier: String, density: Float): View {
         val (symbol, colorRes) = when (tier) {
             "primary" -> "優" to R.color.tag_dialect
@@ -682,7 +688,7 @@ class EntryDetailBottomSheet : BottomSheetDialogFragment() {
             else      -> "可" to R.color.tag_pos
         }
         val size = (22 * density).toInt()
-        return TextView(context).apply {
+        val badge = TextView(context).apply {
             text = symbol
             textSize = 11f
             setTextColor(Color.WHITE)
@@ -692,7 +698,13 @@ class EntryDetailBottomSheet : BottomSheetDialogFragment() {
                 setColor(ContextCompat.getColor(requireContext(), colorRes))
                 shape = GradientDrawable.OVAL
             }
-            layoutParams = TableRow.LayoutParams(size, size).apply {
+            layoutParams = FrameLayout.LayoutParams(size, size, android.view.Gravity.CENTER)
+        }
+        return FrameLayout(requireContext()).apply {
+            addView(badge)
+            layoutParams = TableRow.LayoutParams(
+                TableRow.LayoutParams.WRAP_CONTENT, TableRow.LayoutParams.WRAP_CONTENT
+            ).apply {
                 val m = (3 * density).toInt()
                 setMargins(m, m, m, m)
             }
