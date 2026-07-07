@@ -725,13 +725,24 @@ public class PersistentDatabaseComponent {
 
     // Every kanji+reading combination for the entry, for the "forms" table - excludes
     // is_search_only forms (JMdict sK/sk), same as the display-form picker already does.
+    // Kana-only ("∅" column) rows are also excluded unless some sense actually carries JMdict's
+    // "uk" (usually kana) tag - every reading gets a bare form_type='reading' row regardless of
+    // real-world usage (it exists so kana-only search works even for kanji-only words), so
+    // without the uk signal the "∅" column would falsely suggest the word is commonly written
+    // without its kanji.
     @WorkerThread
     private List<EntryDetail.FormRow> fetchEntryForms(SupportSQLiteDatabase readable, long entryId) {
         List<EntryDetail.FormRow> result = new ArrayList<>();
         try {
             Cursor cur = readable.query(
                     "SELECT text, reading, form_type, is_primary, is_common, score FROM core.EntryForm "
-                            + "WHERE entry_id = ? AND is_search_only = 0 ORDER BY ord",
+                            + "WHERE entry_id = ? AND is_search_only = 0 "
+                            + "AND (form_type != 'reading' OR EXISTS ("
+                            + "SELECT 1 FROM core.SenseGroupTag "
+                            + "JOIN core.SenseGroup ON SenseGroup.sense_group_id = SenseGroupTag.sense_group_id "
+                            + "JOIN core.Tag ON Tag.tag_id = SenseGroupTag.tag_id "
+                            + "WHERE SenseGroup.entry_id = EntryForm.entry_id AND Tag.code = 'uk')) "
+                            + "ORDER BY ord",
                     new Object[]{entryId});
             if (cur != null) {
                 while (cur.moveToNext()) {
@@ -937,14 +948,22 @@ public class PersistentDatabaseComponent {
         }
         detail.examples = fallbackExamples;
 
+        // Show the table whenever there's more than one way to write OR more than one way to
+        // read this entry - a single kanji spelling with several readings (e.g. 今日/きょう・
+        // こんにち) has the exact same "which combo is common vs. rare" question as several
+        // kanji spellings sharing one reading, just along the other axis.
         List<EntryDetail.FormRow> forms = fetchEntryForms(readable, entryId);
         LinkedHashSet<String> distinctWritingTexts = new LinkedHashSet<>();
+        LinkedHashSet<String> distinctReadings = new LinkedHashSet<>();
         for (EntryDetail.FormRow form : forms) {
-            if (!form.isKanjiless) {
+            if (form.isKanjiless) {
+                distinctReadings.add(form.text);
+            } else {
                 distinctWritingTexts.add(form.text);
+                distinctReadings.add(form.reading);
             }
         }
-        if (distinctWritingTexts.size() > 1) {
+        if (distinctWritingTexts.size() > 1 || distinctReadings.size() > 1) {
             detail.forms = forms;
         }
 
