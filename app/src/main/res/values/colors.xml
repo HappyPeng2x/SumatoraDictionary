@@ -21,7 +21,6 @@
 
     <color name="text_navigation">@color/white</color>
 
-    <color name="render_highlight">#ccffcc</color>
     <color name="render_pos">#3333aa</color>
     <color name="render_pos_chip_bg">#E8E8F8</color>
 

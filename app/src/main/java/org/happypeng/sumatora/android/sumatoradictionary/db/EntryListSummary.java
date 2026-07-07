@@ -38,15 +38,29 @@ public class EntryListSummary {
     public boolean isName;
 
     @Nullable public String primaryText;
-    @Nullable public String primaryReading;
     public List<FuriganaSegment> furiganaSegments = new ArrayList<>();
+    // Other kanji spellings sharing primaryText's reading (e.g. 恃む/憑む next to 頼む) - shown
+    // smaller/greyed alongside the headword so an alternate spelling isn't hidden until the user
+    // taps into the forms table.
+    public List<String> alternateTexts = new ArrayList<>();
 
-    // Word entries: pos/misc/field/dialect tag codes for the entry's first sense group.
-    public List<String> tagCodes = new ArrayList<>();
-    @Nullable public String glossPreview;
+    // Word entries: every sense group (pos/misc/field/dialect tags shared by the senses in it),
+    // each with all of its senses - a gloss/reverse-search hit on any sense stays visible here,
+    // not just a first-sense preview.
+    public List<SenseGroupSummary> senseGroups = new ArrayList<>();
     public boolean usedBackupLang;
 
     // Name entries: name_type tag codes, plus the flat NameTranslation list.
     public List<String> nameTypeCodes = new ArrayList<>();
     public List<String> translations = new ArrayList<>();
+
+    public static class SenseGroupSummary {
+        public List<String> tagCodes = new ArrayList<>();
+        public List<SenseSummary> senses = new ArrayList<>();
+    }
+
+    public static class SenseSummary {
+        public int displayIndex;
+        public String glossText;
+    }
 }

@@ -118,7 +118,6 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
                         new DictionarySearchElementViewHolder.Colors(
                                 ContextCompat.getColor(this, R.color.text_background_primary),
                                 ContextCompat.getColor(this, R.color.text_background_primary_backup),
-                                ContextCompat.getColor(this, R.color.render_highlight),
                                 ContextCompat.getColor(this, R.color.render_pos),
                                 new DictionarySearchElementViewHolder.Colors.TagColors(
                                         ContextCompat.getColor(this, R.color.tag_pos),

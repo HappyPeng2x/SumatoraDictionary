@@ -28,6 +28,11 @@ import android.text.style.ForegroundColorSpan
 import android.text.style.RelativeSizeSpan
 import android.text.style.StyleSpan
 import android.view.View
+import android.widget.TableLayout
+import android.widget.TableRow
+import android.widget.TextView
+import androidx.core.content.ContextCompat
+import org.happypeng.sumatora.android.sumatoradictionary.R
 import org.happypeng.sumatora.android.sumatoradictionary.db.EntryListSummary
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionarySearchElementViewHolder
 import org.happypeng.sumatora.android.superrubyspan.SuperReplacementSpan
@@ -84,50 +89,27 @@ fun renderHeadword(primaryText: String?, furiganaSegments: List<EntryListSummary
     val sb = SpannableStringBuilder()
     if (!primaryText.isNullOrBlank()) {
         if (furiganaSegments.isNotEmpty()) {
-            renderFuriganaSegments(sb, furiganaSegments, colors.highlight, onKanjiClick)
+            renderFuriganaSegments(sb, furiganaSegments, 0, onKanjiClick)
         } else {
-            val start = sb.length
             sb.append(primaryText)
-            sb.setSpan(BackgroundColorSpan(colors.highlight), start, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
         }
     }
     return sb
 }
 
+// List-row headword: the primary form, plus any alternate kanji spellings sharing its reading
+// trailing in smaller grey text - e.g. "頼む 恃む 憑む" - so an alternate spelling isn't hidden
+// until the user taps into the detail sheet's forms table.
 fun renderHeadword(summary: EntryListSummary,
                    colors: DictionarySearchElementViewHolder.Colors,
-                   onKanjiClick: ((String) -> Unit)? = null): SpannableStringBuilder =
-    renderHeadword(summary.primaryText, summary.furiganaSegments, colors, onKanjiClick)
-
-fun renderReading(primaryReading: String?,
-                  colors: DictionarySearchElementViewHolder.Colors): SpannableStringBuilder {
-    val sb = SpannableStringBuilder()
-    primaryReading?.let {
+                   onKanjiClick: ((String) -> Unit)? = null): SpannableStringBuilder {
+    val sb = renderHeadword(summary.primaryText, summary.furiganaSegments, colors, onKanjiClick)
+    for (alt in summary.alternateTexts) {
+        sb.append(" ")
         val start = sb.length
-        sb.append(it)
-        sb.setSpan(BackgroundColorSpan(colors.highlight), start, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-    }
-    return sb
-}
-
-fun renderReading(summary: EntryListSummary,
-                  colors: DictionarySearchElementViewHolder.Colors): SpannableStringBuilder =
-    renderReading(summary.primaryReading, colors)
-
-// Search-list row: headword and reading share one line (reading trails the headword, smaller
-// and in the secondary color) instead of stacking on their own row, so the row's width isn't
-// spent on two short lines that leave the rest of the line empty.
-fun renderHeadwordWithReading(summary: EntryListSummary,
-                              colors: DictionarySearchElementViewHolder.Colors,
-                              onKanjiClick: ((String) -> Unit)? = null): SpannableStringBuilder {
-    val sb = renderHeadword(summary, colors, onKanjiClick)
-    if (!summary.primaryReading.isNullOrBlank()) {
-        sb.append("  ")
-        val start = sb.length
-        sb.append(summary.primaryReading)
-        sb.setSpan(RelativeSizeSpan(0.8f), start, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        sb.append(alt)
+        sb.setSpan(RelativeSizeSpan(0.75f), start, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
         sb.setSpan(ForegroundColorSpan(colors.secondary), start, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-        sb.setSpan(BackgroundColorSpan(colors.highlight), start, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
     }
     return sb
 }
@@ -152,35 +134,81 @@ private fun appendTagPills(sb: SpannableStringBuilder, codes: List<String>,
     sb.append("\n")
 }
 
-private fun renderNameGloss(summary: EntryListSummary,
-                            colors: DictionarySearchElementViewHolder.Colors,
-                            density: Float): SpannableStringBuilder {
-    val sb = SpannableStringBuilder()
-    appendTagPills(sb, summary.nameTypeCodes, colors, density)
-    sb.append(summary.translations.joinToString(", "))
-    return sb
+private fun circledDigit(n: Int): String = when {
+    n in 1..20  -> String(charArrayOf(('①'.code + n - 1).toChar()))  // ①–⑳
+    n in 21..35 -> String(charArrayOf(('㉑'.code + n - 21).toChar())) // ㉑–㉟
+    else        -> "($n)"
 }
 
-fun renderGloss(summary: EntryListSummary,
-                colors: DictionarySearchElementViewHolder.Colors,
-                density: Float,
-                deinflectionLabel: String? = null): SpannableStringBuilder {
-    if (summary.isName) {
-        return renderNameGloss(summary, colors, density)
-    }
-
-    val sb = SpannableStringBuilder()
+// One TableRow per sense group: column 1 = tag pills (reusing appendTagPills' existing pill
+// spans, just targeting a cell TextView instead of the old monolithic gloss TextView), column 2
+// = that group's sense(s), numbered globally across the entry so a gloss/reverse-search hit on
+// any sense is still visible - not just a first-sense preview. Name entries synthesize a single
+// row from their flat name-type-tags + translations so the same grid path covers both shapes.
+fun buildSenseRows(
+    container: TableLayout,
+    summary: EntryListSummary,
+    colors: DictionarySearchElementViewHolder.Colors,
+    density: Float,
+    deinflectionLabel: String? = null
+) {
+    val context = container.context
 
     deinflectionLabel?.let { label ->
-        val start = sb.length
-        sb.append(label)
-        sb.setSpan(StyleSpan(Typeface.ITALIC), start, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-        sb.setSpan(ForegroundColorSpan(Color.GRAY), start, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-        sb.append("\n")
+        container.addView(TextView(context).apply {
+            val sb = SpannableStringBuilder(label)
+            sb.setSpan(StyleSpan(Typeface.ITALIC), 0, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            sb.setSpan(ForegroundColorSpan(Color.GRAY), 0, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            text = sb
+            textSize = 13f
+        })
     }
 
-    appendTagPills(sb, summary.tagCodes, colors, density)
-    summary.glossPreview?.let { sb.append(it) }
+    if (summary.isName) {
+        if (summary.nameTypeCodes.isEmpty() && summary.translations.isEmpty()) return
+        container.addView(TableRow(context).apply {
+            addView(tagCell(context, summary.nameTypeCodes, colors, density))
+            addView(senseCell(context, summary.translations.joinToString(", ")))
+        })
+        return
+    }
 
-    return sb
+    val totalSenses = summary.senseGroups.sumOf { it.senses.size }
+    for (group in summary.senseGroups) {
+        val senseText = group.senses.joinToString("\n") { sense ->
+            if (totalSenses > 1) "${circledDigit(sense.displayIndex)} ${sense.glossText}" else sense.glossText
+        }
+        container.addView(TableRow(context).apply {
+            addView(tagCell(context, group.tagCodes, colors, density))
+            addView(senseCell(context, senseText))
+        })
+    }
 }
+
+private fun tagCell(context: android.content.Context, codes: List<String>,
+                     colors: DictionarySearchElementViewHolder.Colors, density: Float): TextView {
+    val sb = SpannableStringBuilder()
+    appendTagPills(sb, codes, colors, density)
+    // appendTagPills ends with a trailing "\n" meant to separate a tag line from the text that
+    // used to follow it in the same TextView - here tags and sense text are separate grid cells,
+    // so that trailing newline would just leave empty space at the bottom of this cell.
+    if (sb.isNotEmpty() && sb.last() == '\n') {
+        sb.delete(sb.length - 1, sb.length)
+    }
+    return TextView(context).apply {
+        text = sb
+        textSize = 13f
+        val lp = TableRow.LayoutParams(
+            TableRow.LayoutParams.WRAP_CONTENT, TableRow.LayoutParams.WRAP_CONTENT
+        )
+        lp.marginEnd = (8 * density).toInt()
+        layoutParams = lp
+    }
+}
+
+private fun senseCell(context: android.content.Context, text: String): TextView =
+    TextView(context).apply {
+        this.text = text
+        textSize = 14f
+        setTextColor(ContextCompat.getColor(context, R.color.text_foreground_primary))
+    }

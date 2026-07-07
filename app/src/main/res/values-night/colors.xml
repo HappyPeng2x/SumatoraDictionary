@@ -10,7 +10,6 @@
     <color name="primaryDark">@color/blue_700</color>
     <color name="textPrimary">@color/text_foreground_primary</color>
 
-    <color name="render_highlight">#004400</color>
     <color name="render_pos">@color/primary</color>
     <color name="render_pos_chip_bg">#1E1C36</color>
 

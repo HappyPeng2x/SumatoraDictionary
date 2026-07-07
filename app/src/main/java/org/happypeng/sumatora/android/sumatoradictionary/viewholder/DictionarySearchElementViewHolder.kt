@@ -36,8 +36,8 @@ import org.happypeng.sumatora.android.sumatoradictionary.adapter.OnEntryClickLis
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.DictionaryPagedListAdapterCloseIntent
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.DictionaryPagedListAdapterIntent
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.TagSystem
-import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.renderGloss
-import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.renderHeadwordWithReading
+import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.buildSenseRows
+import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.renderHeadword
 import org.happypeng.sumatora.core.dict.DictionaryQueryResult
 class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBinding,
                                         disableBookmarkButton: Boolean,
@@ -53,7 +53,6 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
 
     class Colors(val activeLang: Int,
                  val backupLang: Int,
-                 val highlight: Int,
                  val pos: Int,
                  val tags: TagColors,
                  val secondary: Int) {
@@ -220,7 +219,7 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
         // always runs on the main thread), so fetch on IO and populate when it lands. Blank the
         // fields first so a recycled view doesn't flash the previous row's content meanwhile.
         wordCardBinding.wordCardHeadword.text = ""
-        wordCardBinding.wordCardGloss.text = ""
+        wordCardBinding.wordCardSenses.removeAllViews()
         summarySubscription?.dispose()
         summarySubscription = Single.fromCallable { listSummaryFun(entry) }
             .subscribeOn(Schedulers.io())
@@ -232,9 +231,10 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
                     wordCardBinding.wordCardView.setBackgroundColor(colors.activeLang)
                 }
 
-                wordCardBinding.wordCardHeadword.text = renderHeadwordWithReading(summary, colors)
-                val density = wordCardBinding.wordCardGloss.context.resources.displayMetrics.density
-                wordCardBinding.wordCardGloss.text = renderGloss(summary, colors, density, entry.deinflectionLabel)
+                wordCardBinding.wordCardHeadword.text = renderHeadword(summary, colors)
+                val density = wordCardBinding.wordCardSenses.context.resources.displayMetrics.density
+                wordCardBinding.wordCardSenses.removeAllViews()
+                buildSenseRows(wordCardBinding.wordCardSenses, summary, colors, density, entry.deinflectionLabel)
             }
         wordCardBinding.wordCardContent.setOnClickListener { onEntryClick.onClick(entry) }
         if (entry.bookmark != 0L) {

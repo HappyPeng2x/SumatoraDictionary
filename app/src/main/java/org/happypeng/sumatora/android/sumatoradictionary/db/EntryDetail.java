@@ -28,7 +28,6 @@ public class EntryDetail {
     public boolean isName;
 
     @Nullable public String primaryText;
-    @Nullable public String primaryReading;
     public boolean isPriority;
     public List<EntryListSummary.FuriganaSegment> furiganaSegments = new ArrayList<>();
 

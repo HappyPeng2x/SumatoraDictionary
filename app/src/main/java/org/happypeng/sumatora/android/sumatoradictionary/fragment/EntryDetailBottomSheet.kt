@@ -58,7 +58,6 @@ import org.happypeng.sumatora.android.sumatoradictionary.viewholder.DictionarySe
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.TagSystem
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.renderFuriganaSegments
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.renderHeadword
-import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.renderReading
 import org.happypeng.sumatora.android.superrubyspan.tools.JapaneseText
 import javax.inject.Inject
 
@@ -101,7 +100,6 @@ class EntryDetailBottomSheet : BottomSheetDialogFragment() {
         val colors = DictionarySearchElementViewHolder.Colors(
             ContextCompat.getColor(ctx, R.color.text_background_primary),
             ContextCompat.getColor(ctx, R.color.text_background_primary_backup),
-            ContextCompat.getColor(ctx, R.color.render_highlight),
             ContextCompat.getColor(ctx, R.color.render_pos),
             tagColors,
             secondaryColor
@@ -169,11 +167,6 @@ class EntryDetailBottomSheet : BottomSheetDialogFragment() {
             }
         }
 
-        binding.entryDetailReading.visibility = if (detail.primaryReading != null) View.VISIBLE else View.GONE
-        if (detail.primaryReading != null) {
-            binding.entryDetailReading.text = renderReading(detail.primaryReading, colors)
-        }
-
         if (detail.pitchPatterns.isNotEmpty()) {
             renderPitchBadges(detail.pitchPatterns)
         }
@@ -216,7 +209,7 @@ class EntryDetailBottomSheet : BottomSheetDialogFragment() {
         _binding = null
     }
 
-    // Renders pitch-accent pattern badges (e.g. "[0]", "[2]") after the reading line.
+    // Renders pitch-accent pattern badges (e.g. "[0]", "[2]") after the headword line.
     private fun renderPitchBadges(pitches: List<Int>) {
         val density = resources.displayMetrics.density
         val pitchColor = ContextCompat.getColor(requireContext(), R.color.tag_pos)
@@ -249,8 +242,8 @@ class EntryDetailBottomSheet : BottomSheetDialogFragment() {
             })
         }
 
-        val parent = binding.entryDetailReading.parent as? LinearLayout ?: return
-        val index = parent.indexOfChild(binding.entryDetailReading)
+        val parent = binding.entryDetailHeadword.parent as? LinearLayout ?: return
+        val index = parent.indexOfChild(binding.entryDetailHeadword)
         parent.addView(container, index + 1)
     }
 

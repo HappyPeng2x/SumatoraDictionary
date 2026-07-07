@@ -171,7 +171,6 @@ public abstract class BaseFragment extends Fragment {
                         new DictionarySearchElementViewHolder.Colors(
                                 ContextCompat.getColor(getContext(), R.color.text_background_primary),
                                 ContextCompat.getColor(getContext(), R.color.text_background_primary_backup),
-                                ContextCompat.getColor(getContext(), R.color.render_highlight),
                                 ContextCompat.getColor(getContext(), R.color.render_pos),
                                 new DictionarySearchElementViewHolder.Colors.TagColors(
                                         ContextCompat.getColor(getContext(), R.color.tag_pos),

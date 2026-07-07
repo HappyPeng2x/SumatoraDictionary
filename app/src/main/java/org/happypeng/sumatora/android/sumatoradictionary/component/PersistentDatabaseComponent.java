@@ -150,11 +150,35 @@ public class PersistentDatabaseComponent {
                     + "WHERE entry_id = ? AND form_type = 'writing' AND reading = ? AND is_search_only = 0 "
                     + "ORDER BY is_primary DESC, score DESC, ord LIMIT 1";
 
+    // Other kanji spellings sharing the exact reading being displayed - the list row only shows
+    // one furigana reading, so mixing in a spelling read differently would look like it shares
+    // the same pronunciation. Excludes the displayed form itself and is_search_only forms.
+    private static final String FORM_QUERY_ALTERNATE_WRITINGS =
+            "SELECT text FROM %s.EntryForm WHERE entry_id = ? AND form_type = 'writing' AND is_search_only = 0 "
+                    + "AND form_id != ? AND reading = (SELECT reading FROM %s.EntryForm WHERE form_id = ?) "
+                    + "ORDER BY is_primary DESC, score DESC, ord";
+
     private static final class DisplayForm {
         @Nullable String text;
-        @Nullable String reading;
         long formId = -1;
         boolean isCommon;
+    }
+
+    @WorkerThread
+    private List<String> fetchAlternateWritings(SupportSQLiteDatabase readable, String pack, long entryId, long formId) {
+        List<String> result = new ArrayList<>();
+        try {
+            Cursor cur = readable.query(String.format(FORM_QUERY_ALTERNATE_WRITINGS, pack, pack),
+                    new Object[]{entryId, formId, formId});
+            if (cur != null) {
+                while (cur.moveToNext()) {
+                    result.add(cur.getString(0));
+                }
+                cur.close();
+            }
+        } catch (SQLException ignored) {
+        }
+        return result;
     }
 
     // Picks the form to show as headword+reading: the form that actually matched the search hit
@@ -195,7 +219,6 @@ public class PersistentDatabaseComponent {
             }
             if (cur != null) {
                 result.text = cur.getString(0);
-                result.reading = "writing".equals(cur.getString(2)) ? cur.getString(1) : null;
                 result.formId = cur.getLong(3);
                 result.isCommon = cur.getInt(4) != 0;
                 cur.close();
@@ -231,31 +254,102 @@ public class PersistentDatabaseComponent {
         return segments;
     }
 
-    // Fetches a first gloss + rank-0 sense's tags for entryId in the given gloss_{lang} pack.
-    // Returns false (no mutation) if that pack isn't attached or has nothing for this entry.
+    // Lean analog of fetchEntryDetail()'s sense-group loop for a search-result list row: same
+    // grouping/merge/filter rules (SenseGroup tags, matched-form sense filter via
+    // SenseAppliesToForm, restricted-form-id merge key so a restricted group never silently
+    // merges with an adjacent unrestricted one) but only tags + gloss text - no
+    // notes/xrefs/language-sources/examples, and every sense is kept (not just the first) so a
+    // gloss/reverse-search hit on any sense stays visible in the row that matched it.
     @WorkerThread
-    private boolean fetchGlossPreview(SupportSQLiteDatabase readable, String lang, long entryId, EntryListSummary summary) {
-        try {
-            Cursor cur = readable.query(
-                    "SELECT SenseGloss.text FROM gloss_" + lang + ".Sense "
-                            + "JOIN gloss_" + lang + ".SenseGloss ON SenseGloss.sense_id = Sense.sense_id "
-                            + "WHERE Sense.entry_id = ? ORDER BY Sense.ord, SenseGloss.ord LIMIT 1",
-                    new Object[]{entryId});
-            if (cur != null) {
-                if (cur.moveToNext()) {
-                    summary.glossPreview = cur.getString(0);
-                }
-                cur.close();
-            }
-        } catch (SQLException e) {
-            return false;
+    private void fetchSenseGroupSummaries(SupportSQLiteDatabase readable, long entryId, @Nullable Long formId,
+                                          PersistentLanguageSettings languageSettings, EntryListSummary summary) {
+        String effectiveLang = null;
+        if (glossHasEntry(readable, languageSettings.lang, entryId)) {
+            effectiveLang = languageSettings.lang;
+        } else if (languageSettings.backupLang != null && glossHasEntry(readable, languageSettings.backupLang, entryId)) {
+            effectiveLang = languageSettings.backupLang;
+            summary.usedBackupLang = true;
         }
-        return summary.glossPreview != null;
+        final String glossLang = effectiveLang;
+        if (glossLang == null) {
+            return;
+        }
+
+        int[] displayIndex = {0};
+        EntryListSummary.SenseGroupSummary lastGroup = null;
+        List<Long> lastRestrictedFormIds = null;
+        try {
+            Cursor groupCur = readable.query(
+                    "SELECT sense_group_id FROM core.SenseGroup WHERE entry_id = ? ORDER BY ord",
+                    new Object[]{entryId});
+            if (groupCur != null) {
+                while (groupCur.moveToNext()) {
+                    long groupId = groupCur.getLong(0);
+
+                    List<String> tags = fetchStrings(readable,
+                            "SELECT Tag.code FROM core.SenseGroupTag JOIN core.Tag ON Tag.tag_id = SenseGroupTag.tag_id "
+                                    + "WHERE SenseGroupTag.sense_group_id = ? ORDER BY Tag.sort_order",
+                            groupId);
+
+                    List<EntryListSummary.SenseSummary> senses = new ArrayList<>();
+                    List<Long> restrictedFormIds = null;
+                    Cursor senseCur = readable.query(
+                            "SELECT sense_id FROM core.Sense WHERE sense_group_id = ? AND "
+                                    + "(NOT EXISTS (SELECT 1 FROM core.SenseAppliesToForm a WHERE a.sense_id = Sense.sense_id) "
+                                    + "OR ? IS NULL "
+                                    + "OR EXISTS (SELECT 1 FROM core.SenseAppliesToForm a WHERE a.sense_id = Sense.sense_id AND a.form_id = ?)) "
+                                    + "ORDER BY ord",
+                            new Object[]{groupId, formId, formId});
+                    if (senseCur != null) {
+                        while (senseCur.moveToNext()) {
+                            long senseId = senseCur.getLong(0);
+                            String glossText = fetchGlossText(readable, glossLang, senseId);
+                            if (glossText == null && languageSettings.backupLang != null
+                                    && !languageSettings.backupLang.equals(glossLang)) {
+                                glossText = fetchGlossText(readable, languageSettings.backupLang, senseId);
+                            }
+                            if (glossText == null) {
+                                continue;
+                            }
+                            if (restrictedFormIds == null) {
+                                restrictedFormIds = fetchRestrictedFormIds(readable, senseId);
+                            }
+                            EntryListSummary.SenseSummary sense = new EntryListSummary.SenseSummary();
+                            sense.displayIndex = ++displayIndex[0];
+                            sense.glossText = glossText;
+                            senses.add(sense);
+                        }
+                        senseCur.close();
+                    }
+
+                    if (senses.isEmpty()) {
+                        continue;
+                    }
+                    if (restrictedFormIds == null) {
+                        restrictedFormIds = Collections.emptyList();
+                    }
+
+                    if (lastGroup != null && lastGroup.tagCodes.equals(tags)
+                            && lastRestrictedFormIds.equals(restrictedFormIds)) {
+                        lastGroup.senses.addAll(senses);
+                    } else {
+                        EntryListSummary.SenseGroupSummary newGroup = new EntryListSummary.SenseGroupSummary();
+                        newGroup.tagCodes = tags;
+                        newGroup.senses = senses;
+                        summary.senseGroups.add(newGroup);
+                        lastGroup = newGroup;
+                        lastRestrictedFormIds = restrictedFormIds;
+                    }
+                }
+                groupCur.close();
+            }
+        } catch (SQLException ignored) {
+        }
     }
 
     // Assembles the lean per-row summary a search-result card needs: primary headword + furigana,
-    // first sense-group's tags, and a one-line gloss preview (falling back to the backup language
-    // if the primary language has nothing for this entry). Proper names use their own pack/tables.
+    // and every sense group (tags + all senses), falling back to the backup language if the
+    // primary language has nothing for this entry. Proper names use their own pack/tables.
     @WorkerThread
     public EntryListSummary fetchListSummary(DictionaryQueryResult entry, PersistentLanguageSettings languageSettings) {
         final EntryListSummary summary = new EntryListSummary();
@@ -266,7 +360,6 @@ public class PersistentDatabaseComponent {
 
         final DisplayForm displayForm = fetchDisplayForm(readable, pack, entry.getEntryId(), entry.getFormId());
         summary.primaryText = displayForm.text;
-        summary.primaryReading = displayForm.reading;
 
         if (displayForm.formId >= 0) {
             summary.furiganaSegments = fetchFurigana(readable, pack, displayForm.formId);
@@ -298,26 +391,11 @@ public class PersistentDatabaseComponent {
             return summary;
         }
 
-        try {
-            Cursor cur = readable.query(
-                    "SELECT Tag.code FROM core.SenseGroup "
-                            + "JOIN core.SenseGroupTag ON SenseGroupTag.sense_group_id = SenseGroup.sense_group_id "
-                            + "JOIN core.Tag ON Tag.tag_id = SenseGroupTag.tag_id "
-                            + "WHERE SenseGroup.entry_id = ? "
-                            + "AND SenseGroup.ord = (SELECT MIN(ord) FROM core.SenseGroup WHERE entry_id = ?) "
-                            + "ORDER BY Tag.sort_order",
-                    new Object[]{entry.getEntryId(), entry.getEntryId()});
-            if (cur != null) {
-                while (cur.moveToNext()) summary.tagCodes.add(cur.getString(0));
-                cur.close();
-            }
-        } catch (SQLException ignored) {
+        if (displayForm.formId >= 0) {
+            summary.alternateTexts = fetchAlternateWritings(readable, pack, entry.getEntryId(), displayForm.formId);
         }
 
-        if (!fetchGlossPreview(readable, languageSettings.lang, entry.getEntryId(), summary)
-                && languageSettings.backupLang != null) {
-            summary.usedBackupLang = fetchGlossPreview(readable, languageSettings.backupLang, entry.getEntryId(), summary);
-        }
+        fetchSenseGroupSummaries(readable, entry.getEntryId(), entry.getFormId(), languageSettings, summary);
 
         return summary;
     }
@@ -644,7 +722,6 @@ public class PersistentDatabaseComponent {
 
         final DisplayForm displayForm = fetchDisplayForm(readable, pack, entryId, formId);
         detail.primaryText = displayForm.text;
-        detail.primaryReading = displayForm.reading;
         detail.isPriority = displayForm.isCommon;
 
         if (displayForm.formId >= 0) {

@@ -34,15 +34,11 @@
                 android:textStyle="bold"
                 tools:text="大きい・大きな  おおきい・おおきな" />
 
-            <TextView
-                android:id="@+id/word_card_gloss"
+            <TableLayout
+                android:id="@+id/word_card_senses"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                app:fontFamily="sans-serif"
-                android:textColor="@color/text_foreground_primary"
-                android:textSize="14sp"
-                tools:text="1. large, big, great" />
+                android:layout_marginTop="4dp" />
 
             <EditText
                 android:id="@+id/word_card_memo"
