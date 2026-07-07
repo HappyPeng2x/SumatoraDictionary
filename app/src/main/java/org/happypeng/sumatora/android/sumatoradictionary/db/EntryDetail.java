@@ -30,6 +30,12 @@ public class EntryDetail {
     @Nullable public String primaryText;
     public boolean isPriority;
     public List<EntryListSummary.FuriganaSegment> furiganaSegments = new ArrayList<>();
+    // The reading actually matched/promoted for primaryText (bold in the headword line), plus
+    // any other readings the same kanji spelling can take (smaller) - furigana alone only shows
+    // the matched reading, and the forms table further below requires scrolling to discover the
+    // rest, so both are surfaced right on the headword line too, same as the list row.
+    @Nullable public String primaryReading;
+    public List<String> alternateReadings = new ArrayList<>();
 
     // word entries
     public List<Integer> pitchPatterns = new ArrayList<>();

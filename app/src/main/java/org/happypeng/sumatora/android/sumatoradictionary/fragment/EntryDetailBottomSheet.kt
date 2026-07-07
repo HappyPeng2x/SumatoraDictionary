@@ -133,12 +133,29 @@ class EntryDetailBottomSheet : BottomSheetDialogFragment() {
         primaryColor: Int, secondaryColor: Int, density: Float,
         deinflectionLabel: String?, scrollToSense: Int
     ) {
-        // Headword with optional priority star
+        // Headword, matched/promoted reading (bold) plus any other readings the same kanji
+        // spelling can take (smaller) - same treatment as the search-result list row, since
+        // furigana alone only shows the matched reading and the forms table further down
+        // requires scrolling to discover the rest. Optional priority star at the end.
         val headwordSb = SpannableStringBuilder(
             renderHeadword(detail.primaryText, detail.furiganaSegments, colors) { character ->
                 KanjiDetailBottomSheet.newInstance(character).show(parentFragmentManager, "kanji_detail")
             }
         )
+        detail.primaryReading?.let { reading ->
+            headwordSb.append("   ")
+            val start = headwordSb.length
+            headwordSb.append(reading)
+            headwordSb.setSpan(StyleSpan(Typeface.BOLD), start, headwordSb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            headwordSb.setSpan(ForegroundColorSpan(colors.pos), start, headwordSb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        }
+        for (altReading in detail.alternateReadings) {
+            headwordSb.append(" ")
+            val start = headwordSb.length
+            headwordSb.append(altReading)
+            headwordSb.setSpan(RelativeSizeSpan(0.85f), start, headwordSb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            headwordSb.setSpan(ForegroundColorSpan(colors.pos), start, headwordSb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        }
         binding.entryDetailHeadword.movementMethod = android.text.method.LinkMovementMethod.getInstance()
         if (detail.isPriority) {
             val starStart = headwordSb.length

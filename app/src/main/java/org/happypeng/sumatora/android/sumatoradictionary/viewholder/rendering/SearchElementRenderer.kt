@@ -97,9 +97,12 @@ fun renderHeadword(primaryText: String?, furiganaSegments: List<EntryListSummary
     return sb
 }
 
-// List-row headword: the primary form, plus any alternate kanji spellings sharing its reading
-// trailing in smaller grey text - e.g. "頼む 恃む 憑む" - so an alternate spelling isn't hidden
-// until the user taps into the detail sheet's forms table.
+// List-row headword: the primary form, then any alternate kanji spellings sharing its reading in
+// smaller grey text, then the matched/promoted reading in bold (plus any other readings the same
+// kanji spelling can take, smaller) - e.g. "頼む 恃む 憑む たのむ". Furigana alone only ever shows
+// the matched reading, so a search hit on a different valid reading of the same kanji (e.g. 二
+// also reads ふた/ふ/ふう) would otherwise be invisible short of opening the detail sheet's forms
+// table.
 fun renderHeadword(summary: EntryListSummary,
                    colors: DictionarySearchElementViewHolder.Colors,
                    onKanjiClick: ((String) -> Unit)? = null): SpannableStringBuilder {
@@ -114,6 +117,20 @@ fun renderHeadword(summary: EntryListSummary,
         }
         sb.setSpan(RelativeSizeSpan(0.92f), start, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
         sb.setSpan(ForegroundColorSpan(colors.secondary), start, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+    }
+    summary.primaryReading?.let { reading ->
+        sb.append("   ")
+        val start = sb.length
+        sb.append(reading)
+        sb.setSpan(StyleSpan(Typeface.BOLD), start, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        sb.setSpan(ForegroundColorSpan(colors.pos), start, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+    }
+    for (altReading in summary.alternateReadings) {
+        sb.append(" ")
+        val start = sb.length
+        sb.append(altReading)
+        sb.setSpan(RelativeSizeSpan(0.85f), start, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        sb.setSpan(ForegroundColorSpan(colors.pos), start, sb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
     }
     return sb
 }

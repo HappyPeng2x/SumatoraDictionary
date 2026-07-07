@@ -39,6 +39,12 @@ public class EntryListSummary {
 
     @Nullable public String primaryText;
     public List<FuriganaSegment> furiganaSegments = new ArrayList<>();
+    // The reading actually matched/promoted for primaryText (bold), plus any other readings the
+    // same kanji spelling can take (e.g. 二 also reads ふた/ふ/ふう) - furigana alone only shows
+    // the matched reading, so a different valid reading the search could have hit would otherwise
+    // be invisible short of opening the detail sheet's forms table.
+    @Nullable public String primaryReading;
+    public List<String> alternateReadings = new ArrayList<>();
     // Other kanji spellings sharing primaryText's reading (e.g. 恃む/憑む next to 頼む) - shown
     // smaller/greyed alongside the headword so an alternate spelling isn't hidden until the user
     // taps into the forms table.

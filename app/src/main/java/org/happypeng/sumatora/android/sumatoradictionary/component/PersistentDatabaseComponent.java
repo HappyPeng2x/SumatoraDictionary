@@ -158,8 +158,18 @@ public class PersistentDatabaseComponent {
                     + "AND form_id != ? AND reading = (SELECT reading FROM %s.EntryForm WHERE form_id = ?) "
                     + "ORDER BY is_primary DESC, score DESC, ord";
 
+    // Other readings the displayed kanji spelling itself can take (e.g. 二 also reads ふた/ふ/ふう) -
+    // the search could have hit any of them, but furigana only ever shows the one that was
+    // actually matched/promoted, so a different valid reading would otherwise be invisible short
+    // of opening the detail sheet's forms table.
+    private static final String FORM_QUERY_ALTERNATE_READINGS =
+            "SELECT reading FROM %s.EntryForm WHERE entry_id = ? AND form_type = 'writing' AND text = ? "
+                    + "AND is_search_only = 0 AND reading != ? "
+                    + "ORDER BY is_primary DESC, score DESC, ord";
+
     private static final class DisplayForm {
         @Nullable String text;
+        @Nullable String reading;
         long formId = -1;
         boolean isCommon;
     }
@@ -177,6 +187,24 @@ public class PersistentDatabaseComponent {
                     alt.text = cur.getString(0);
                     alt.furiganaSegments = fetchFurigana(readable, pack, cur.getLong(1));
                     result.add(alt);
+                }
+                cur.close();
+            }
+        } catch (SQLException ignored) {
+        }
+        return result;
+    }
+
+    @WorkerThread
+    private List<String> fetchAlternateReadings(SupportSQLiteDatabase readable, String pack,
+                                                 long entryId, String text, String matchedReading) {
+        List<String> result = new ArrayList<>();
+        try {
+            Cursor cur = readable.query(String.format(FORM_QUERY_ALTERNATE_READINGS, pack),
+                    new Object[]{entryId, text, matchedReading});
+            if (cur != null) {
+                while (cur.moveToNext()) {
+                    result.add(cur.getString(0));
                 }
                 cur.close();
             }
@@ -223,6 +251,7 @@ public class PersistentDatabaseComponent {
             }
             if (cur != null) {
                 result.text = cur.getString(0);
+                result.reading = "writing".equals(cur.getString(2)) ? cur.getString(1) : null;
                 result.formId = cur.getLong(3);
                 result.isCommon = cur.getInt(4) != 0;
                 cur.close();
@@ -364,6 +393,7 @@ public class PersistentDatabaseComponent {
 
         final DisplayForm displayForm = fetchDisplayForm(readable, pack, entry.getEntryId(), entry.getFormId());
         summary.primaryText = displayForm.text;
+        summary.primaryReading = displayForm.reading;
 
         if (displayForm.formId >= 0) {
             summary.furiganaSegments = fetchFurigana(readable, pack, displayForm.formId);
@@ -397,6 +427,10 @@ public class PersistentDatabaseComponent {
 
         if (displayForm.formId >= 0) {
             summary.alternateWritings = fetchAlternateWritings(readable, pack, entry.getEntryId(), displayForm.formId);
+        }
+        if (displayForm.text != null && displayForm.reading != null) {
+            summary.alternateReadings = fetchAlternateReadings(readable, pack, entry.getEntryId(),
+                    displayForm.text, displayForm.reading);
         }
 
         fetchSenseGroupSummaries(readable, entry.getEntryId(), entry.getFormId(), languageSettings, summary);
@@ -726,6 +760,7 @@ public class PersistentDatabaseComponent {
 
         final DisplayForm displayForm = fetchDisplayForm(readable, pack, entryId, formId);
         detail.primaryText = displayForm.text;
+        detail.primaryReading = displayForm.reading;
         detail.isPriority = displayForm.isCommon;
 
         if (displayForm.formId >= 0) {
@@ -755,6 +790,11 @@ public class PersistentDatabaseComponent {
             } catch (SQLException ignored) {
             }
             return detail;
+        }
+
+        if (displayForm.text != null && displayForm.reading != null) {
+            detail.alternateReadings = fetchAlternateReadings(readable, pack, entryId,
+                    displayForm.text, displayForm.reading);
         }
 
         long pitchFormId = formId != null ? formId : displayForm.formId;
