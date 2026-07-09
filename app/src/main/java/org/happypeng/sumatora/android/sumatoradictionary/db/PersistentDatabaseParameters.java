@@ -196,11 +196,11 @@ public abstract class PersistentDatabaseParameters {
         }
     };
 
-    // Squashes what were originally five separate migrations (9->10 through 13->14) into one:
-    // versions 10-13 only ever existed in unreleased development builds between v0.4.7.6 (the
-    // last shipped release, schema v9) and the next release, so no installed database is sitting
-    // at any of those intermediate versions - only v9 (real users) or v14 (fresh installs) exist
-    // in the wild. Net effect across all five:
+    // Squashes what were originally five separate migrations (formerly numbered 9->10 through
+    // 13->14) into one, renumbered straight to 10: those intermediate versions only ever existed
+    // in unreleased development builds between v0.4.7.6 (the last shipped release, schema v9) and
+    // the next release, so no installed database is sitting at any of them - only v9 (real users)
+    // or this squashed v10 (fresh installs) exist in the wild. Net effect across all five:
     //
     // - DictionaryElement (reverse-search staging table) is no longer needed: schema v2's leaner
     //   DictionarySearchElement inserts directly instead of staging (ref, entryOrder, seq) rows.
@@ -216,7 +216,7 @@ public abstract class PersistentDatabaseParameters {
     //   (see OptionalDictionaryCatalog).
     // - DictionaryBookmark/DictionaryBookmarkTag/PersistentSetting/PersistentLanguageSettings are
     //   untouched.
-    public static final Migration MIGRATION_9_14 = new Migration(9, 14) {
+    public static final Migration MIGRATION_9_10 = new Migration(9, 10) {
         @Override
         public void migrate(@NonNull SupportSQLiteDatabase database) {
             database.execSQL("DROP TABLE IF EXISTS DictionaryElement");
