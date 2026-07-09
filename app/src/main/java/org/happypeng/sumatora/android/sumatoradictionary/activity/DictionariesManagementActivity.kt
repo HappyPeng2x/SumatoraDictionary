@@ -21,13 +21,15 @@ import android.content.Context
 import android.os.Bundle
 import android.util.Log
 import android.view.View
-import android.widget.Button
+import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.work.WorkInfo
+import com.google.android.material.button.MaterialButton
 import dagger.hilt.android.AndroidEntryPoint
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Completable
@@ -41,6 +43,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary
 import org.happypeng.sumatora.android.sumatoradictionary.db.OptionalDictionaryCatalog
 import org.happypeng.sumatora.android.sumatoradictionary.db.RemoteDictionaryObject
 import org.happypeng.sumatora.android.sumatoradictionary.update.DictionaryUpdateWorker
+import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.DictionaryManagementRenderer
 import java.io.File
 import javax.inject.Inject
 
@@ -64,8 +67,9 @@ class DictionariesManagementActivity : AppCompatActivity() {
     private lateinit var removeAdapter: DictionaryObjectAdapter<InstalledDictionary>
     private lateinit var installEmpty: TextView
     private lateinit var removeEmpty: TextView
-    private lateinit var installedSummary: TextView
-    private lateinit var checkUpdatesButton: Button
+    private lateinit var installedContainer: LinearLayout
+    private lateinit var checkUpdatesButton: MaterialButton
+    private lateinit var checkUpdatesSpinner: ProgressBar
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -78,12 +82,14 @@ class DictionariesManagementActivity : AppCompatActivity() {
 
         installEmpty = findViewById(R.id.activity_dictionaries_management_install_empty)
         removeEmpty = findViewById(R.id.activity_dictionaries_management_remove_empty)
-        installedSummary = findViewById(R.id.activity_dictionaries_management_installed_summary)
+        installedContainer = findViewById(R.id.activity_dictionaries_management_installed_container)
         checkUpdatesButton = findViewById(R.id.activity_dictionaries_management_check_updates)
+        checkUpdatesSpinner = findViewById(R.id.activity_dictionaries_management_check_updates_spinner)
 
         checkUpdatesButton.setOnClickListener {
             checkUpdatesButton.isEnabled = false
             checkUpdatesButton.setText(R.string.checking_for_updates)
+            checkUpdatesSpinner.visibility = View.VISIBLE
             DictionaryUpdateWorker.enqueueNow(this)
         }
 
@@ -91,6 +97,7 @@ class DictionariesManagementActivity : AppCompatActivity() {
             if (workInfos.any { it.state.isFinished }) {
                 checkUpdatesButton.isEnabled = true
                 checkUpdatesButton.setText(R.string.check_for_updates)
+                checkUpdatesSpinner.visibility = View.GONE
                 refresh()
             }
         }
@@ -143,26 +150,19 @@ class DictionariesManagementActivity : AppCompatActivity() {
                     OptionalDictionaryCatalog.ALL.any { it.type == row.type }
                 }
 
-                val summary = installed.sortedWith(compareBy({ it.type }, { it.lang }))
-                    .joinToString("\n") { row ->
-                        val pending = if (row.hasPendingUpdate())
-                            " (update v${row.pendingVersion} ready - restart to apply)" else ""
-                        "${row.description}: v${row.version}, ${row.date}$pending"
-                    }
-
-                Triple(available, installedOptional, summary)
+                Triple(available, installedOptional, installed)
             }
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(
-                    { (available, installedOptional, summary) ->
+                    { (available, installedOptional, installed) ->
                         installAdapter.submitList(available)
                         installEmpty.visibility = if (available.isEmpty()) View.VISIBLE else View.GONE
 
                         removeAdapter.submitList(installedOptional)
                         removeEmpty.visibility = if (installedOptional.isEmpty()) View.VISIBLE else View.GONE
 
-                        installedSummary.text = summary
+                        DictionaryManagementRenderer.buildInstalledRows(installedContainer, installed)
                     },
                     { e -> Log.e(TAG, "Failed to refresh dictionary lists", e) }
                 )

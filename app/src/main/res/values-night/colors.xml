@@ -26,6 +26,14 @@
     <color name="example_box_bg">#1E2228</color>
     <color name="example_box_border">#3A3A3A</color>
 
+    <!-- Dictionary management: per-pack status pills -->
+    <color name="dict_status_ok">#66BB6A</color>
+    <color name="dict_status_ok_bg">#1B3320</color>
+    <color name="dict_status_pending">#64B5F6</color>
+    <color name="dict_status_pending_bg">#1A2733</color>
+    <color name="dict_card_bg">#232323</color>
+    <color name="dict_card_stroke">#3A3A3A</color>
+
     <!-- Text -->
     <color name="text_foreground_primary">#aaaaaa</color>
     <color name="text_foreground_secondary">#888888</color>
