@@ -16,6 +16,7 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.db
 
+import androidx.lifecycle.LiveData
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
@@ -25,6 +26,9 @@ import androidx.room.Query
 interface CachedManifestEntryDao {
     @Query("SELECT * FROM CachedManifestEntry")
     fun getAll(): List<CachedManifestEntry>
+
+    @Query("SELECT * FROM CachedManifestEntry")
+    fun getAllLive(): LiveData<List<CachedManifestEntry>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insertAll(entries: List<CachedManifestEntry>)

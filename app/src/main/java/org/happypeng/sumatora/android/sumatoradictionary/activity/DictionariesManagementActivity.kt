@@ -26,6 +26,8 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.MediatorLiveData
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.work.WorkInfo
@@ -68,6 +70,9 @@ class DictionariesManagementActivity : AppCompatActivity() {
     private lateinit var installEmpty: TextView
     private lateinit var removeEmpty: TextView
     private lateinit var installedContainer: LinearLayout
+    private lateinit var downloadingCard: View
+    private lateinit var downloadingContainer: LinearLayout
+    private lateinit var statusPill: TextView
     private lateinit var checkUpdatesButton: MaterialButton
     private lateinit var checkUpdatesSpinner: ProgressBar
 
@@ -83,6 +88,9 @@ class DictionariesManagementActivity : AppCompatActivity() {
         installEmpty = findViewById(R.id.activity_dictionaries_management_install_empty)
         removeEmpty = findViewById(R.id.activity_dictionaries_management_remove_empty)
         installedContainer = findViewById(R.id.activity_dictionaries_management_installed_container)
+        downloadingCard = findViewById(R.id.activity_dictionaries_management_downloading_card)
+        downloadingContainer = findViewById(R.id.activity_dictionaries_management_downloading_container)
+        statusPill = findViewById(R.id.activity_dictionaries_management_status)
         checkUpdatesButton = findViewById(R.id.activity_dictionaries_management_check_updates)
         checkUpdatesSpinner = findViewById(R.id.activity_dictionaries_management_check_updates_spinner)
 
@@ -98,7 +106,8 @@ class DictionariesManagementActivity : AppCompatActivity() {
                 checkUpdatesButton.isEnabled = true
                 checkUpdatesButton.setText(R.string.check_for_updates)
                 checkUpdatesSpinner.visibility = View.GONE
-                refresh()
+                // No explicit refresh() needed - the manifest fetch this triggered writes to
+                // CachedManifestEntry, which the LiveData mediator below already reacts to.
             }
         }
 
@@ -122,7 +131,17 @@ class DictionariesManagementActivity : AppCompatActivity() {
             adapter = removeAdapter
         }
 
-        refresh()
+        // Every write this screen can trigger (a fresh install, a background update landing, a
+        // manifest re-fetch) lands in one of these three tables - react to any of them changing
+        // instead of manually calling refresh() after each individual action. This also means a
+        // download that completes via DictionaryDownloadCompleteReceiver (a separate broadcast
+        // receiver, possibly while this screen was backgrounded) is picked up automatically.
+        val db = persistentDatabaseComponent.database
+        val invalidated = MediatorLiveData<Unit>()
+        invalidated.addSource(db.installedDictionaryDao().getAllLive()) { invalidated.value = Unit }
+        invalidated.addSource(db.remoteDictionaryObjectDao().getAllLive()) { invalidated.value = Unit }
+        invalidated.addSource(db.cachedManifestEntryDao().getAllLive()) { invalidated.value = Unit }
+        invalidated.observe(this) { refresh() }
     }
 
     override fun onSupportNavigateUp(): Boolean {
@@ -130,16 +149,22 @@ class DictionariesManagementActivity : AppCompatActivity() {
         return true
     }
 
+    private data class RenderState(
+        val available: List<RemoteDictionaryObject>,
+        val installedOptional: List<InstalledDictionary>,
+        val installed: List<InstalledDictionary>,
+        val downloading: List<RemoteDictionaryObject>,
+        val pendingUpdate: Boolean
+    )
+
     private fun refresh() {
         disposables.add(
             Single.fromCallable {
                 val db = persistentDatabaseComponent.database
                 val installed = db.installedDictionaryDao().all
                 val installedTypes = installed.map { it.type }.toSet()
-                val downloadingTypes = db.remoteDictionaryObjectDao().all
-                    .filter { it.downloadId > -1 }
-                    .map { it.type }
-                    .toSet()
+                val downloading = db.remoteDictionaryObjectDao().all.filter { it.downloadId > -1 }
+                val downloadingTypes = downloading.map { it.type }.toSet()
 
                 val installedCore = installed.firstOrNull { it.type == "core" }
                 val cachedManifest = db.cachedManifestEntryDao().getAll()
@@ -154,19 +179,37 @@ class DictionariesManagementActivity : AppCompatActivity() {
                     row.type in OptionalDictionaryCatalog.OPTIONAL_TYPES
                 }
 
-                Triple(available, installedOptional, installed)
+                RenderState(
+                    available, installedOptional, installed, downloading,
+                    pendingUpdate = installed.any { it.hasPendingUpdate() }
+                )
             }
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(
-                    { (available, installedOptional, installed) ->
-                        installAdapter.submitList(available)
-                        installEmpty.visibility = if (available.isEmpty()) View.VISIBLE else View.GONE
+                    { state ->
+                        installAdapter.submitList(state.available)
+                        installEmpty.visibility = if (state.available.isEmpty()) View.VISIBLE else View.GONE
 
-                        removeAdapter.submitList(installedOptional)
-                        removeEmpty.visibility = if (installedOptional.isEmpty()) View.VISIBLE else View.GONE
+                        removeAdapter.submitList(state.installedOptional)
+                        removeEmpty.visibility = if (state.installedOptional.isEmpty()) View.VISIBLE else View.GONE
 
-                        DictionaryManagementRenderer.buildInstalledRows(installedContainer, installed)
+                        DictionaryManagementRenderer.buildInstalledRows(installedContainer, state.installed)
+
+                        downloadingCard.visibility = if (state.downloading.isEmpty()) View.GONE else View.VISIBLE
+                        DictionaryManagementRenderer.buildDownloadingRows(downloadingContainer, state.downloading)
+
+                        statusPill.text = getString(
+                            if (state.pendingUpdate) R.string.dictionary_status_update_ready
+                            else R.string.dictionary_status_up_to_date
+                        )
+                        statusPill.setTextColor(ContextCompat.getColor(
+                            this, if (state.pendingUpdate) R.color.dict_status_pending else R.color.dict_status_ok
+                        ))
+                        statusPill.background = ContextCompat.getDrawable(
+                            this,
+                            if (state.pendingUpdate) R.drawable.bg_status_pill_pending else R.drawable.bg_status_pill_ok
+                        )
                     },
                     { e -> Log.e(TAG, "Failed to refresh dictionary lists", e) }
                 )
@@ -189,7 +232,7 @@ class DictionariesManagementActivity : AppCompatActivity() {
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(
-                    { refresh() },
+                    {},
                     { e -> Log.e(TAG, "Failed to start download for ${entry.type}", e) }
                 )
         )
@@ -206,7 +249,7 @@ class DictionariesManagementActivity : AppCompatActivity() {
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(
-                    { refresh() },
+                    {},
                     { e -> Log.e(TAG, "Failed to remove ${entry.type}", e) }
                 )
         )
