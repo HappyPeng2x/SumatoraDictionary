@@ -141,13 +141,17 @@ class DictionariesManagementActivity : AppCompatActivity() {
                     .map { it.type }
                     .toSet()
 
-                val available = OptionalDictionaryCatalog.ALL
+                val installedCore = installed.firstOrNull { it.type == "core" }
+                val cachedManifest = db.cachedManifestEntryDao().getAll()
+                val catalog = OptionalDictionaryCatalog.resolve(installedCore, cachedManifest)
+
+                val available = catalog
                     .filter { it.type !in installedTypes && it.type !in downloadingTypes }
                     .map {
-                        RemoteDictionaryObject(it.url, it.description, it.type, "", it.version, it.date)
+                        RemoteDictionaryObject(it.url, it.description, it.type, "", it.version, it.date, it.sha256)
                     }
                 val installedOptional = installed.filter { row ->
-                    OptionalDictionaryCatalog.ALL.any { it.type == row.type }
+                    row.type in OptionalDictionaryCatalog.OPTIONAL_TYPES
                 }
 
                 Triple(available, installedOptional, installed)

@@ -20,6 +20,7 @@ import android.app.DownloadManager
 import android.content.Context
 import android.util.Log
 import androidx.annotation.WorkerThread
+import org.happypeng.sumatora.android.sumatoradictionary.db.CachedManifestEntry
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase
 import java.io.File
 
@@ -35,6 +36,14 @@ object DictionaryUpdateChecker {
         val remoteEntries = RemoteManifestFetcher.fetch(manifestUrl) ?: return 0
         val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         val downloadDir = File(context.getExternalFilesDir(null), "downloads").apply { mkdirs() }
+
+        // Keep a snapshot of the manifest we just saw so OptionalDictionaryCatalog can offer
+        // not-yet-installed optional packs versioned to match whatever core version ends up
+        // installed, instead of a hardcoded version that goes stale after an update.
+        db.cachedManifestEntryDao().clear()
+        db.cachedManifestEntryDao().insertAll(remoteEntries.map {
+            CachedManifestEntry(it.type, it.lang, it.description, it.file, it.version, it.date, it.sha256)
+        })
 
         var enqueued = 0
 

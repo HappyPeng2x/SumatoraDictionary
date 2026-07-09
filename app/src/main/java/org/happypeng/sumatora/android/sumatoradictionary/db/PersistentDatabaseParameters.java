@@ -281,4 +281,14 @@ public abstract class PersistentDatabaseParameters {
             database.execSQL("CREATE TABLE IF NOT EXISTS RemoteDictionaryObject (`description` TEXT, `type` TEXT NOT NULL, `lang` TEXT NOT NULL, `version` INTEGER NOT NULL, `date` INTEGER NOT NULL, `file` TEXT NOT NULL, `localFile` TEXT NOT NULL, `downloadId` INTEGER NOT NULL, `sha256` TEXT NOT NULL DEFAULT '', PRIMARY KEY(`type`, `lang`))");
         }
     };
+
+    // CachedManifestEntry stores the last dictionaries.xml fetched by DictionaryUpdateChecker so
+    // the optional-pack install screen can offer packs versioned to match the installed core -
+    // see OptionalDictionaryCatalog.
+    public static final Migration MIGRATION_13_14 = new Migration(13, 14) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL("CREATE TABLE IF NOT EXISTS CachedManifestEntry (`type` TEXT NOT NULL, `lang` TEXT NOT NULL, `description` TEXT, `url` TEXT NOT NULL, `version` INTEGER NOT NULL, `date` INTEGER NOT NULL, `sha256` TEXT NOT NULL, PRIMARY KEY(`type`, `lang`))");
+        }
+    };
 }

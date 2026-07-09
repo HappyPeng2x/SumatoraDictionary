@@ -27,7 +27,8 @@ import androidx.room.RoomDatabase;
         RemoteDictionaryObject.class,
         LocalDictionaryObject.class,
         AssetDictionaryObject.class,
-        PersistentLanguageSettings.class}, version = 13)
+        PersistentLanguageSettings.class,
+        CachedManifestEntry.class}, version = 14)
 abstract public class PersistentDatabase extends RoomDatabase {
     public abstract PersistentSettingsDao persistentSettingsDao();
     public abstract DictionaryBookmarkDao dictionaryBookmarkDao();
@@ -39,4 +40,5 @@ abstract public class PersistentDatabase extends RoomDatabase {
     public abstract AssetDictionaryObjectDao assetDictionaryObjectDao();
     public abstract PersistentLanguageSettingsDao persistentLanguageSettingsDao();
     public abstract DictionarySearchElementDao dictionarySearchElementDao();
+    public abstract CachedManifestEntryDao cachedManifestEntryDao();
 }
