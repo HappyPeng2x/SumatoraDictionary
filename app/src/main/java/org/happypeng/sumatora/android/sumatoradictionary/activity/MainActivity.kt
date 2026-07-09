@@ -327,7 +327,7 @@ class MainActivity : AppCompatActivity(), SettingsFragment.SettingsFragmentActio
 
     // SettingsFragment.SettingsFragmentActions
     override fun displayLog() {
-        // No log viewer in this build.
+        startActivity(Intent(this, DebugLogActivity::class.java))
     }
 
     override fun manageDictionaries() {

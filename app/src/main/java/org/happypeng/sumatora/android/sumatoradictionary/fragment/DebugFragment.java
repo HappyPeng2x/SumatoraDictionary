@@ -68,7 +68,6 @@ public class DebugFragment extends Fragment {
         activity.setSupportActionBar(tb);
 
         final ActionBar actionBar = activity.getSupportActionBar();
-        actionBar.setHomeAsUpIndicator(R.drawable.ic_menu_white_24dp);
         actionBar.setDisplayHomeAsUpEnabled(true);
 
         setHasOptionsMenu(true);
