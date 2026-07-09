@@ -149,10 +149,14 @@
         </provider>
 
         <!-- Manifest-registered (not runtime-only) so a download started from the Settings
-             screen still gets installed even if the app process was killed while it ran. -->
+             screen still gets installed even if the app process was killed while it ran.
+             Must be exported: DownloadManager runs as a separate system app/uid and delivers
+             this as a targeted broadcast from outside our uid, which the framework refuses to
+             a non-exported receiver. Safe to export because DOWNLOAD_COMPLETE is an OS-protected
+             broadcast action - only the real DownloadManager service can send it. -->
         <receiver
             android:name=".receiver.DictionaryDownloadCompleteReceiver"
-            android:exported="false">
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.DOWNLOAD_COMPLETE" />
             </intent-filter>
