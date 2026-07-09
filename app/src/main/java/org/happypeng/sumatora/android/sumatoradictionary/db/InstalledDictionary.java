@@ -124,6 +124,14 @@ public class InstalledDictionary extends BaseDictionaryObject {
     @WorkerThread
     public void attach(RoomDatabase aDB) {
         if (!isAttached(aDB)) {
+            int attachedCount = AttachedDatabases.getAttachedDictionaryCount(aDB);
+
+            if (attachedCount >= AttachedDatabases.SQLITE_MAX_ATTACHED) {
+                throw new IllegalStateException("Cannot attach dictionary '" + getAlias() +
+                        "': SQLite's limit of " + AttachedDatabases.SQLITE_MAX_ATTACHED +
+                        " attached databases has been reached (" + attachedCount + " currently attached)");
+            }
+
             SupportSQLiteDatabase db = aDB.getOpenHelper().getWritableDatabase();
 
             db.execSQL("ATTACH '" + file + "' AS " + getAlias());

@@ -24,6 +24,9 @@ import java.util.LinkedList;
 import java.util.List;
 
 public class AttachedDatabases {
+    // Compile-time SQLite default (SQLITE_MAX_ATTACHED); requery/sqlite-android doesn't override it.
+    public static final int SQLITE_MAX_ATTACHED = 10;
+
     public static List<String> getAttachedDatabases(final RoomDatabase aDB) {
         LinkedList<String> databases = new LinkedList<>();
         Cursor cur = aDB.getOpenHelper().getReadableDatabase().query("PRAGMA database_list");
@@ -33,5 +36,19 @@ public class AttachedDatabases {
         }
 
         return databases;
+    }
+
+    // PRAGMA database_list always includes "main" and "temp", which don't count against
+    // SQLITE_MAX_ATTACHED - only actual ATTACHed schemas do.
+    public static int getAttachedDictionaryCount(final RoomDatabase aDB) {
+        int count = 0;
+
+        for (String name : getAttachedDatabases(aDB)) {
+            if (!name.equals("main") && !name.equals("temp")) {
+                count++;
+            }
+        }
+
+        return count;
     }
 }
