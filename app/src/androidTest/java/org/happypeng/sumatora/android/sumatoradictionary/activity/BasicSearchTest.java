@@ -107,7 +107,9 @@ public class BasicSearchTest {
         Assume.assumeTrue("activity lost window focus after search",
                 mActivityTestRule.getActivity().hasWindowFocus());
 
-        onView(withText(containsString("私 【わたし")))
+        // Headword row is "私   わたし" (bold reading, no brackets) - see
+        // SearchElementRenderer.renderHeadword.
+        onView(withText(containsString("私   わたし")))
                 .check(matches(isDisplayed()));
 
         onView(withId(R.id.dictionary_bookmark_fragment_search_status))

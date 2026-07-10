@@ -98,21 +98,23 @@ public class DictionariesManagementScreenshotTest {
         Thread.sleep(1000);
 
         activityRule.getActivity().runOnUiThread(() -> {
-            android.widget.TextView summary = activityRule.getActivity()
-                    .findViewById(R.id.activity_dictionaries_management_installed_summary);
-            Log.i(TAG, "installed summary text: " + summary.getText());
+            android.widget.TextView status = activityRule.getActivity()
+                    .findViewById(R.id.activity_dictionaries_management_status);
+            Log.i(TAG, "status pill text: " + status.getText());
         });
 
         screenshot("dictionaries_management_check_updates.png");
 
-        // Two rows share the dictionary_card_install id (one per card layout instance), so a
-        // plain Espresso withId() match is ambiguous - click the first row's button directly.
+        // Rows are built programmatically (see DictionaryManagementRenderer) into one flat
+        // container instead of a RecyclerView, and the install button carries no fixed id - find
+        // the first one by its content description instead.
         activityRule.getActivity().runOnUiThread(() -> {
-            androidx.recyclerview.widget.RecyclerView rv = activityRule.getActivity()
-                    .findViewById(R.id.activity_dictionaries_management_install_rv);
-            android.view.View firstRow = rv.getLayoutManager().findViewByPosition(0);
-            if (firstRow != null) {
-                firstRow.findViewById(R.id.dictionary_card_install).performClick();
+            android.view.ViewGroup container = activityRule.getActivity()
+                    .findViewById(R.id.activity_dictionaries_management_container);
+            android.view.View installButton = findByContentDescription(
+                    container, activityRule.getActivity().getString(R.string.install_icon_description));
+            if (installButton != null) {
+                installButton.performClick();
             } else {
                 Log.e(TAG, "no available-dictionary row found to click");
             }
@@ -150,6 +152,22 @@ public class DictionariesManagementScreenshotTest {
         }
 
         screenshot("dictionaries_management_final.png");
+    }
+
+    private static android.view.View findByContentDescription(android.view.ViewGroup root, CharSequence desc) {
+        for (int i = 0; i < root.getChildCount(); i++) {
+            android.view.View child = root.getChildAt(i);
+            if (desc.equals(child.getContentDescription())) {
+                return child;
+            }
+            if (child instanceof android.view.ViewGroup) {
+                android.view.View found = findByContentDescription((android.view.ViewGroup) child, desc);
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        return null;
     }
 
     private void screenshot(String fileName) throws Exception {

@@ -191,11 +191,20 @@ public class SchemaV2QueryDiagnosticTest {
                     break;
                 }
                 EntryListSummary summary = dbComponent.fetchListSummary(r, languageSettings);
+                List<String> tagCodes = new ArrayList<>();
+                String glossPreview = "";
+                if (!summary.senseGroups.isEmpty()) {
+                    EntryListSummary.SenseGroupSummary firstGroup = summary.senseGroups.get(0);
+                    tagCodes = firstGroup.tagCodes;
+                    if (!firstGroup.senses.isEmpty()) {
+                        glossPreview = firstGroup.senses.get(0).glossText;
+                    }
+                }
                 Log.i(TAG, "  entry_id=" + r.getEntryId() + " form_id=" + r.getFormId()
                         + " seq=" + r.getSeq() + " match=" + r.getMatchKind() + " rank=" + r.getRank()
                         + " dictForm=" + r.getDictionaryForm() + " deinflect=" + r.getDeinflectionLabel()
                         + " || headword=" + summary.primaryText + " reading=" + summary.primaryReading
-                        + " tags=" + summary.tagCodes + " gloss=" + summary.glossPreview
+                        + " tags=" + tagCodes + " gloss=" + glossPreview
                         + " nameTypes=" + summary.nameTypeCodes + " translations=" + summary.translations
                         + " backupLang=" + summary.usedBackupLang);
                 shown++;
