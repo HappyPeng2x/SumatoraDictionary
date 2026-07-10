@@ -8,21 +8,15 @@
     <string name="bookmark_icon_description">Bookmark icon</string>
     <string name="install_icon_description">Install</string>
     <string name="delete_icon_description">Delete</string>
-    <string name="dictionary_card_description">Description</string>
     <string name="manage_dictionaries_title">Manage dictionaries</string>
-    <string name="available_dictionaries_header">Available to download</string>
-    <string name="installed_optional_dictionaries_header">Installed</string>
-    <string name="no_optional_dictionaries_available">All optional dictionaries are installed.</string>
-    <string name="no_optional_dictionaries_installed">No optional dictionaries installed yet.</string>
     <string name="dictionary_update_ready_title">Dictionary update ready</string>
     <string name="dictionary_update_ready_text">Restart Sumatora to apply the %1$s update</string>
     <string name="check_for_updates">Check for updates</string>
-    <string name="installed_dictionaries_header">Installed dictionaries</string>
+    <string name="dictionaries_header">Dictionaries</string>
     <string name="checking_for_updates">Checking for updates…</string>
     <string name="dictionary_status_up_to_date">Up to date</string>
     <string name="dictionary_status_update_ready">Update ready · restart to apply</string>
     <string name="dictionary_status_downloading">Downloading…</string>
-    <string name="downloading_dictionaries_header">Downloading</string>
     <string name="dictionary_version_caption">v%1$d · %2$s</string>
 
     <string name="tag_icon_description">Tag icon</string>
