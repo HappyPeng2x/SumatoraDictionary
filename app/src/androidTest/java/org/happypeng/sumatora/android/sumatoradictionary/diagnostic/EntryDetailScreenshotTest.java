@@ -28,6 +28,8 @@ import androidx.test.rule.ActivityTestRule;
 import org.happypeng.sumatora.android.sumatoradictionary.R;
 import org.happypeng.sumatora.android.sumatoradictionary.activity.MainActivity;
 import org.happypeng.sumatora.android.sumatoradictionary.component.PersistentDatabaseComponent;
+import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings;
+import org.happypeng.sumatora.android.sumatoradictionary.db.tools.DictionarySearchQueryTool;
 import org.happypeng.sumatora.android.sumatoradictionary.fragment.EntryDetailBottomSheet;
 import org.junit.Assume;
 import org.junit.Before;
@@ -43,7 +45,7 @@ import javax.inject.Inject;
 import dagger.hilt.android.testing.HiltAndroidRule;
 import dagger.hilt.android.testing.HiltAndroidTest;
 
-// Not a correctness test - renders EntryDetailBottomSheet for a fixed entry and screenshots it so
+// Not a correctness test - renders EntryDetailBottomSheet for a real entry and screenshots it so
 // the migrated UI can be eyeballed. Pull with:
 //   adb pull /sdcard/Pictures/entry_detail_preview.png
 @HiltAndroidTest
@@ -68,15 +70,55 @@ public class EntryDetailScreenshotTest {
                 dbComponent.getDatabase().installedDictionaryDao().getAll().isEmpty());
     }
 
+    // Resolves 掛ける's entry/form id by running a real search instead of hardcoding a snapshot -
+    // entry_id/form_id are assigned by whichever SumatoraIndex build produced the installed core
+    // dictionary and are not guaranteed stable across a rebuild (confirmed: a previously-hardcoded
+    // id here silently drifted to point at an unrelated entry with no examples after a background
+    // dictionary update promoted a newer build, which is what made this test flaky - see BUGS.md
+    // history around 2026-07-11). Mirrors SchemaV2QueryDiagnosticTest.dumpEntryDetail().
+    private long[] findKakeruEntryAndForm() {
+        PersistentLanguageSettings settings = dbComponent.getDatabase()
+                .persistentLanguageSettingsDao().getLanguageSettingsDirect(0);
+        if (settings == null) {
+            settings = new PersistentLanguageSettings();
+            settings.lang = PersistentLanguageSettings.LANG_DEFAULT;
+        }
+
+        DictionarySearchQueryTool tool = new DictionarySearchQueryTool(dbComponent, 9500, settings);
+        try {
+            int max = tool.getCount("掛ける");
+            for (int i = 0; i < max; i++) {
+                tool.execute("掛ける", i, false, false);
+            }
+
+            android.database.Cursor cur = dbComponent.getDatabase().getOpenHelper().getReadableDatabase().query(
+                    "SELECT entry_id, form_id FROM DictionarySearchElement WHERE ref = 9500 "
+                            + "ORDER BY entryOrder, rank, entry_id LIMIT 1");
+            try {
+                if (cur.moveToFirst()) {
+                    long entryId = cur.getLong(0);
+                    long formId = cur.isNull(1) ? -1 : cur.getLong(1);
+                    return new long[]{entryId, formId};
+                }
+                return null;
+            } finally {
+                cur.close();
+            }
+        } finally {
+            tool.delete();
+            tool.close();
+        }
+    }
+
     @Test
     public void screenshotEntryDetail() throws Exception {
         activityRule.launchActivity(null);
         MainActivity activity = activityRule.getActivity();
 
-        // entry_id/form_id for 掛ける's exact-match entry, taken from SchemaV2QueryDiagnosticTest's
-        // last run (top hit for the term "掛ける").
-        long entryId = 775312;
-        long formId = 1458865;
+        long[] hit = findKakeruEntryAndForm();
+        Assume.assumeNotNull("skipped: no hit for 掛ける on this device's dictionary", hit);
+        long entryId = hit[0];
+        long formId = hit[1];
 
         Thread.sleep(3000);
 
