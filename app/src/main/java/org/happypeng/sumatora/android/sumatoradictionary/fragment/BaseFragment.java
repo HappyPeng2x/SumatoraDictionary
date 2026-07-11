@@ -38,6 +38,7 @@ import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import org.happypeng.sumatora.android.sumatoradictionary.R;
 import org.happypeng.sumatora.android.sumatoradictionary.activity.MainActivity;
@@ -187,8 +188,25 @@ public abstract class BaseFragment extends Fragment {
                             sheet.show(getChildFragmentManager(), "entry_detail");
                         });
 
-        viewAutoDisposable.add(queryFragmentModel.getPagedListObservable().subscribe(l ->
-                pagedListAdapter.submitList(l)));
+        // submitList() schedules an async DiffUtil computation whose result later dispatches
+        // notifyItemRangeInserted on the main thread's message queue (AsyncPagedListDiffer). If
+        // that dispatch lands while the RecyclerView is mid-layout (e.g. resizing as the IME
+        // closes), RecyclerView throws instead of deferring - see BUGS.md. Defer to the next
+        // frame via post() when that's the case rather than submitting straight away.
+        viewAutoDisposable.add(queryFragmentModel.getPagedListObservable().subscribe(l -> {
+            RecyclerView recyclerView = viewBinding.dictionaryBookmarkFragmentRecyclerview;
+            if (recyclerView.isComputingLayout()) {
+                // post() isn't covered by viewAutoDisposable's unsubscribe-on-destroy the way this
+                // lambda otherwise is, so re-check for a fragment torn down in the meantime.
+                recyclerView.post(() -> {
+                    if (pagedListAdapter != null) {
+                        pagedListAdapter.submitList(l);
+                    }
+                });
+            } else {
+                pagedListAdapter.submitList(l);
+            }
+        }));
 
         viewBinding.dictionaryBookmarkFragmentRecyclerview.setAdapter(pagedListAdapter);
 
