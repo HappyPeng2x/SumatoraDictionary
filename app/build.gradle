@@ -19,8 +19,8 @@ android {
         applicationId "org.happypeng.sumatora.android.sumatoradictionary"
         minSdkVersion 21
         targetSdkVersion 35
-        versionCode 37
-        versionName "0.4.7.6"
+        versionCode 38
+        versionName "0.5.0-beta1"
         multiDexEnabled true
 
         compileOptions {
@@ -80,6 +80,13 @@ android {
         buildConfig true
     }
 
+    // Exposes the exported Room schema JSONs (app/schemas, written by room.schemaLocation above)
+    // as androidTest assets so MigrationTestHelper can build a real historical database to
+    // migrate from - see PersistentDatabaseMigrationTest.
+    sourceSets {
+        androidTest.assets.srcDirs += files("$projectDir/schemas".toString())
+    }
+
     applicationVariants.all { variant ->
         variant.outputs.all {
             outputFileName = "SumatoraDictionary-${variant.mergedFlavor.versionName}.apk"
@@ -117,6 +124,7 @@ dependencies {
     kapt "androidx.room:room-compiler:$room_version"
     implementation "androidx.room:room-ktx:$room_version"
     implementation "androidx.room:room-rxjava3:$room_version"
+    androidTestImplementation "androidx.room:room-testing:$room_version"
 
     implementation "androidx.paging:paging-runtime:2.1.2"
     implementation "androidx.paging:paging-common:2.1.2"

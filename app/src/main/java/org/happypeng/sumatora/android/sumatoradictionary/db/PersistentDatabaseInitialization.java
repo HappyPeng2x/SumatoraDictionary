@@ -34,8 +34,10 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 
 import static org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabaseParameters.DATABASE_NAME;
 
@@ -178,6 +180,42 @@ public abstract class PersistentDatabaseInitialization {
         }
     }
 
+    // MIGRATION_9_10 (see PersistentDatabaseParameters) recreates InstalledDictionary from scratch
+    // (DROP TABLE, not an incremental ALTER) as part of the schema v1 -> v2 rework, since the old
+    // rows (type="jmdict"/"jmdict_translation") pointed at files in a format the new query code
+    // can't read anyway. That means a user upgrading from 0.4.7.6 loses the DB rows for their old
+    // packs, but the backing .db files those rows pointed at are untouched by a SQL migration and
+    // would otherwise leak on disk forever with nothing left to reference them. Reconcile by
+    // directory scan instead of by DB row: delete anything in the install directory that no
+    // currently-tracked InstalledDictionary (including a pending-update file) points at.
+    // Package-private (not private) so PersistentDatabaseInitializationTest can exercise it
+    // directly.
+    @WorkerThread
+    static void cleanupOrphanedDictionaryFiles(@NonNull final Context aApp,
+                                               @NonNull final PersistentDatabase aDB) {
+        File databaseRoot = aApp.getDatabasePath(DATABASE_NAME).getParentFile();
+        File installDir = new File(databaseRoot, "dictionaries");
+        File[] files = installDir.listFiles();
+
+        if (files == null) {
+            return;
+        }
+
+        Set<String> referenced = new HashSet<>();
+        for (InstalledDictionary d : aDB.installedDictionaryDao().getAll()) {
+            referenced.add(d.file);
+            if (d.pendingFile != null) {
+                referenced.add(d.pendingFile);
+            }
+        }
+
+        for (File f : files) {
+            if (!referenced.contains(f.getAbsolutePath())) {
+                f.delete();
+            }
+        }
+    }
+
     @WorkerThread
     private static List<DictionaryBookmark> readBackupBookmarks(@NonNull Context aApp) {
         File bookmarksBackup = new File(aApp.getFilesDir(), "bookmarks_backup.xml");
@@ -267,6 +305,7 @@ public abstract class PersistentDatabaseInitialization {
         context.deleteDatabase(DATABASE_NAME);
 
         updateDictionaries(context, persistentDatabase);
+        cleanupOrphanedDictionaryFiles(context, persistentDatabase);
 
         PersistentLanguageSettings persistentLanguageSettings =
                 persistentDatabase.persistentLanguageSettingsDao().getLanguageSettingsDirect(0);
