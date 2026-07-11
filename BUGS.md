@@ -2,8 +2,10 @@
 
 ## RecyclerView crash: "Cannot call this method while RecyclerView is computing a layout or scrolling"
 
-**Status:** pre-existing, not caused by the schema v2 migration. Confirmed via A/B: reproduces
-identically on the unmodified `BasicSearchTest` (i.e. on code from before the migration branch).
+**Status:** fixed in `BaseFragment.java` (2026-07-11) - `submitList()` is now deferred via
+`RecyclerView.post()` when `isComputingLayout()` is true, per the smaller-patch direction below.
+The underlying legacy Paging 2 -> Paging 3 migration described below is still worth doing at some
+point but is no longer blocking. Section kept for context on the original repro/diagnosis.
 
 **Symptom:** the app process crashes with:
 
