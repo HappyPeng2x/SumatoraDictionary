@@ -2,18 +2,18 @@
 
 ## Search screen
 
-![](/screenshots/Screenshot_1551520549.png)
+![](/screenshots/search_screen.png)
 
 ## Search from romaji
 
-![](/screenshots/Screenshot_1581404254.png)
+![](/screenshots/search_from_romaji.png)
 
 ## Reverse search
 
 ![](/screenshots/Screenshot_1581404274.png)
 
 ## Multilingual search
-![](/screenshots/Screenshot_1561880402.png)
+![](/screenshots/multilingual_search.png)
 
 ## Search from other apps
 
@@ -25,11 +25,15 @@
 
 ## Navigation drawer
 
-![](/screenshots/Screenshot_1551520634.png)
+![](/screenshots/navigation_drawer.png)
+
+## Entry detail
+
+![](/screenshots/entry_detail.png)
 
 ## Bookmarks
 
-![](/screenshots/Screenshot_1551520596.png)
+![](/screenshots/bookmarks.png)
 
 ## Bookmarks export
 
@@ -45,4 +49,4 @@
 
 ## Dark mode
 
-![](/screenshots/Screenshot_1606555631.png)
+![](/screenshots/dark_mode.png)
