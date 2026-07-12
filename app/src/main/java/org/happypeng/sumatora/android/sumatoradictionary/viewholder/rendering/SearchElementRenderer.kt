@@ -175,6 +175,11 @@ fun buildSenseRows(
 ) {
     val context = container.context
 
+    // Column 1 (sense text) must be marked shrinkable, or TableLayout gives it its full
+    // unwrapped preferred width - the row then overflows past the card's right edge instead
+    // of wrapping, since a plain TableRow/TableLayout never wraps a column on its own.
+    container.setColumnShrinkable(1, true)
+
     deinflectionLabel?.let { label ->
         container.addView(TextView(context).apply {
             val sb = SpannableStringBuilder(label)
@@ -232,4 +237,8 @@ private fun senseCell(context: android.content.Context, text: String): TextView 
         this.text = text
         textSize = 14f
         setTextColor(ContextCompat.getColor(context, R.color.text_foreground_primary))
+        // Explicit weighted width, matching tagCell's pattern of setting layoutParams itself
+        // rather than relying on TableRow's WRAP_CONTENT/WRAP_CONTENT default - this is the
+        // column setColumnShrinkable(1, true) above applies to.
+        layoutParams = TableRow.LayoutParams(0, TableRow.LayoutParams.WRAP_CONTENT, 1f)
     }
