@@ -16,6 +16,7 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.viewholder
 
+import android.content.res.ColorStateList
 import android.text.InputType
 import android.view.inputmethod.EditorInfo
 import android.view.LayoutInflater
@@ -23,6 +24,7 @@ import android.view.View
 import android.widget.ArrayAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.chip.Chip
+import com.google.android.material.color.MaterialColors
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.disposables.Disposable
@@ -239,8 +241,12 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
         wordCardBinding.wordCardContent.setOnClickListener { onEntryClick.onClick(entry) }
         if (entry.bookmark != 0L) {
             wordCardBinding.wordCardBookmarkIcon.setImageResource(R.drawable.ic_outline_bookmark_24px)
+            wordCardBinding.wordCardBookmarkIcon.imageTintList = ColorStateList.valueOf(
+                MaterialColors.getColor(wordCardBinding.wordCardBookmarkIcon, com.google.android.material.R.attr.colorPrimary))
         } else {
             wordCardBinding.wordCardBookmarkIcon.setImageResource(R.drawable.ic_outline_bookmark_border_24px)
+            wordCardBinding.wordCardBookmarkIcon.imageTintList = ColorStateList.valueOf(
+                MaterialColors.getColor(wordCardBinding.wordCardBookmarkIcon, com.google.android.material.R.attr.colorOnSurfaceVariant))
         }
 
         wordCardBinding.wordCardBookmarkIcon.setOnClickListener {
