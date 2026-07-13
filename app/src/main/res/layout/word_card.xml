@@ -10,18 +10,19 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical">
+        android:orientation="horizontal">
 
         <LinearLayout
             android:id="@+id/word_card_content"
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
+            android:layout_weight="1"
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:background="?android:selectableItemBackground"
             android:paddingStart="10dp"
-            android:paddingEnd="10dp"
+            android:paddingEnd="6dp"
             android:paddingTop="8dp"
-            android:paddingBottom="2dp">
+            android:paddingBottom="8dp">
 
             <TextView
                 android:id="@+id/word_card_headword"
@@ -85,20 +86,17 @@
         </LinearLayout>
 
         <LinearLayout
-            android:id="@+id/word_card_actions"
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="end|center_vertical"
-            android:paddingEnd="2dp"
-            android:paddingBottom="2dp">
+            android:orientation="vertical"
+            android:paddingTop="4dp">
 
             <ImageButton
                 android:id="@+id/word_card_bookmark_icon"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:background="?android:selectableItemBackgroundBorderless"
-                android:padding="8dp"
+                android:padding="6dp"
                 android:contentDescription="@string/bookmark_icon_description"
                 android:tint="?attr/colorOnSurfaceVariant"
                 android:src="@drawable/ic_outline_bookmark_border_24px"/>
@@ -108,7 +106,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:background="?android:selectableItemBackgroundBorderless"
-                android:padding="8dp"
+                android:padding="6dp"
                 android:contentDescription="@string/bookmark_icon_description"
                 android:tint="?attr/colorOnSurfaceVariant"
                 android:src="@drawable/ic_edit_24px"/>
@@ -118,7 +116,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:background="?android:selectableItemBackgroundBorderless"
-                android:padding="8dp"
+                android:padding="6dp"
                 android:contentDescription="@string/bookmark_icon_description"
                 android:tint="?attr/colorOnSurfaceVariant"
                 android:src="@drawable/ic_delete_24px"
@@ -129,7 +127,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:background="?android:selectableItemBackgroundBorderless"
-                android:padding="8dp"
+                android:padding="6dp"
                 android:contentDescription="@string/tag_icon_description"
                 android:tint="?attr/colorOnSurfaceVariant"
                 android:src="@drawable/ic_outline_class_24px"/>
