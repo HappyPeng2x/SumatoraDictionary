@@ -10,7 +10,8 @@
         android:id="@+id/tags_fragment_toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        android:background="@color/toolbar"
+        android:background="?attr/colorSurface"
+        android:elevation="2dp"
         android:theme="@style/DictionariesManagementToolbarTheme"
         app:title="@string/tags_title" />
 

@@ -1,53 +1,49 @@
 <?xml version="1.0" encoding="utf-8"?>
-
-<androidx.percentlayout.widget.PercentRelativeLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/navigation_drawer_header"
-    android:layout_width="wrap_content"
+    android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:background="?attr/colorPrimaryContainer"
+    android:orientation="vertical"
+    android:gravity="start|bottom"
+    android:paddingStart="24dp"
+    android:paddingEnd="24dp"
+    android:paddingTop="32dp"
+    android:paddingBottom="20dp"
     tools:context="org.happypeng.sumatora.android.sumatoradictionary.activity.MainActivity">
 
     <FrameLayout
-        android:id="@+id/navigation_drawer_header_clickable"
-        android:clickable="true"
-        android:foreground="@drawable/nav_drawer_header_foreground"
-        app:layout_aspectRatio="178%"
-        app:layout_widthPercent="100%"
-        android:layout_height="0dp"
-        android:layout_width="0dp">
+        android:layout_width="52dp"
+        android:layout_height="52dp"
+        android:background="@drawable/bg_nav_header_icon">
 
         <ImageView
-            android:id="@+id/navigation_drawer_user_account_picture_cover"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:scaleType="centerCrop"
-            android:src="@drawable/blake_meyer_423494_unsplash_lowres"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_gravity="center"
+            android:src="@drawable/ic_sumatora_icon"
             tools:ignore="ContentDescription" />
 
     </FrameLayout>
 
-    <LinearLayout
-        android:id="@+id/navigation_drawer_account_section"
-        android:paddingBottom="@dimen/spacing_8"
-        android:paddingStart="@dimen/vertical_keyline_first"
-        android:paddingEnd="@dimen/vertical_keyline_first"
-        android:paddingLeft="@dimen/vertical_keyline_first"
-        android:paddingRight="@dimen/vertical_keyline_first"
-        android:gravity="bottom"
-        android:orientation="vertical"
-        app:layout_aspectRatio="178%"
-        app:layout_widthPercent="100%"
-        android:layout_height="0dp"
-        android:layout_width="0dp">
+    <TextView
+        android:id="@+id/navigation_drawer_account_information_display_name"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:text="@string/app_name"
+        android:textColor="?attr/colorOnPrimaryContainer"
+        android:textSize="22sp"
+        android:textStyle="bold" />
 
-            <TextView
-                android:id="@+id/navigation_drawer_account_information_display_name"
-                style="@style/Body2.White.Primary"
-                android:text="@string/app_name"
-                android:textSize="25sp"/>
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:alpha="0.75"
+        android:text="@string/nav_drawer_subtitle"
+        android:textColor="?attr/colorOnPrimaryContainer"
+        android:textSize="13sp" />
 
-    </LinearLayout>
-
-</androidx.percentlayout.widget.PercentRelativeLayout>
+</LinearLayout>

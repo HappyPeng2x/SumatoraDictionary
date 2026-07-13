@@ -95,7 +95,7 @@ public class QueryMenu {
     public static void colorMenu(@NonNull Menu aMenu, @NonNull Context context) {
         TypedValue typedValue = new TypedValue();
 
-        TypedArray a = context.obtainStyledAttributes(typedValue.data, new int[] { androidx.appcompat.R.attr.colorButtonNormal });
+        TypedArray a = context.obtainStyledAttributes(typedValue.data, new int[] { com.google.android.material.R.attr.colorOnSurfaceVariant });
         int color = a.getColor(0, 0);
 
         a.recycle();

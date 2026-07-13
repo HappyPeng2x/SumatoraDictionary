@@ -1,9 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#3F51B5</color>
-    <color name="toolbar">#3F51B5</color>
-    <color name="colorPrimaryDark">#303F9F</color>
-    <color name="colorAccent">#FF4081</color>
+    <!-- Material 3 color roles (light), derived from an indigo seed. -->
+    <color name="md_primary">#4355B9</color>
+    <color name="md_on_primary">#FFFFFF</color>
+    <color name="md_primary_container">#DEE0FF</color>
+    <color name="md_on_primary_container">#000B61</color>
+    <color name="md_secondary">#5B5D72</color>
+    <color name="md_on_secondary">#FFFFFF</color>
+    <color name="md_secondary_container">#E0E1F9</color>
+    <color name="md_on_secondary_container">#181A2C</color>
+    <color name="md_surface">#FBF8FF</color>
+    <color name="md_on_surface">#1B1B1F</color>
+    <color name="md_surface_variant">#E4E1EC</color>
+    <color name="md_on_surface_variant">#46464F</color>
+    <color name="md_outline">#767680</color>
+    <color name="md_outline_variant">#C7C5D0</color>
+    <color name="md_background">#FBF8FF</color>
+    <color name="md_on_background">#1B1B1F</color>
+
+    <!-- Legacy AppCompat theme attrs, kept for widgets/code that still read them directly. -->
+    <color name="colorPrimary">@color/md_primary</color>
+    <color name="colorPrimaryDark">@color/md_surface</color>
+    <color name="colorAccent">@color/md_primary</color>
 
     <!-- App Main Palette -->
     <color name="primary">@color/blue_500</color>
@@ -18,8 +36,6 @@
     <color name="text_background_primary_backup">#aaaaaa</color>
 
     <color name="text_background_memo">#ffffcc</color>
-
-    <color name="text_navigation">@color/white</color>
 
     <color name="render_pos">#3333aa</color>
     <color name="render_pos_chip_bg">#E8E8F8</color>

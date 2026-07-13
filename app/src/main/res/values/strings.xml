@@ -26,6 +26,7 @@
     <string name="delete">Delete</string>
 
     <!-- Navigation Drawer -->
+    <string name="nav_drawer_subtitle">Japanese Dictionary</string>
     <string name="nav_drawer_item_home">Home</string>
     <string name="nav_drawer_item_bookmarks">Bookmarks</string>
     <string name="nav_drawer_item_tags">Tags</string>

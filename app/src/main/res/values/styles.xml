@@ -1,18 +1,56 @@
 <resources>
 
     <!-- Base application theme. -->
-    <style name="AppTheme" parent="Theme.MaterialComponents.DayNight.NoActionBar.Bridge">
-        <item name="colorPrimary">@color/colorPrimary</item>
+    <style name="AppTheme" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/md_primary</item>
+        <item name="colorOnPrimary">@color/md_on_primary</item>
+        <item name="colorPrimaryContainer">@color/md_primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/md_on_primary_container</item>
+        <item name="colorSecondary">@color/md_secondary</item>
+        <item name="colorOnSecondary">@color/md_on_secondary</item>
+        <item name="colorSecondaryContainer">@color/md_secondary_container</item>
+        <item name="colorOnSecondaryContainer">@color/md_on_secondary_container</item>
+        <item name="colorSurface">@color/md_surface</item>
+        <item name="colorOnSurface">@color/md_on_surface</item>
+        <item name="colorSurfaceVariant">@color/md_surface_variant</item>
+        <item name="colorOnSurfaceVariant">@color/md_on_surface_variant</item>
+        <item name="colorOutline">@color/md_outline</item>
+        <item name="colorOutlineVariant">@color/md_outline_variant</item>
+        <item name="android:colorBackground">@color/md_background</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
         <item name="colorAccent">@color/colorAccent</item>
+        <item name="searchViewStyle">@style/Widget.Sumatora.SearchView</item>
+        <item name="android:windowLightStatusBar">@bool/is_light_status_bar</item>
+        <item name="android:windowLightNavigationBar">@bool/is_light_status_bar</item>
+        <item name="android:navigationBarColor">?attr/colorPrimaryDark</item>
     </style>
 
     <style name="AppTheme.AboutActivity" parent="Theme.MaterialComponents.DayNight.DarkActionBar" />
 
     <style name="DictionariesManagementToolbarTheme" parent="">
-        <item name="android:textColorPrimary">@color/text_navigation</item>
-        <item name="colorControlNormal">@color/text_navigation</item>
-        <item name="colorPrimary">@color/text_navigation</item>
+        <item name="android:textColorPrimary">?attr/colorOnSurface</item>
+        <item name="colorControlNormal">?attr/colorOnSurfaceVariant</item>
+        <item name="colorPrimary">?attr/colorOnSurface</item>
+    </style>
+
+    <!-- Persistent rounded search field instead of the stock flat AppCompat SearchView. -->
+    <style name="Widget.Sumatora.SearchView" parent="Widget.AppCompat.SearchView">
+        <item name="queryBackground">@drawable/bg_search_field</item>
+        <item name="submitBackground">@drawable/bg_search_field</item>
+    </style>
+
+    <!-- Pill-shaped selected-item indicator for the nav drawer, and rounded leading edge for
+         the drawer panel itself - the modern replacement for a flat rectangular highlight. -->
+    <style name="ShapeAppearance.Sumatora.NavigationItem" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">24dp</item>
+    </style>
+
+    <style name="ShapeAppearanceOverlay.Sumatora.NavigationDrawer" parent="">
+        <item name="cornerSizeTopLeft">0dp</item>
+        <item name="cornerSizeBottomLeft">0dp</item>
+        <item name="cornerSizeTopRight">16dp</item>
+        <item name="cornerSizeBottomRight">16dp</item>
     </style>
 
     <!-- Text -->
@@ -24,20 +62,6 @@
     <style name="Body2" parent="TextAppearance.AppCompat.Body2">
         <item name="android:layout_height">wrap_content</item>
         <item name="android:layout_width">wrap_content</item>
-    </style>
-
-    <style name="Body1.White" />
-
-    <style name="Body2.White" />
-
-    <style name="Body2.Black" />
-
-    <style name="Body1.White.Primary">
-        <item name="android:textColor">@color/text_navigation</item>
-    </style>
-
-    <style name="Body2.White.Primary">
-        <item name="android:textColor">@color/text_navigation</item>
     </style>
 
 </resources>

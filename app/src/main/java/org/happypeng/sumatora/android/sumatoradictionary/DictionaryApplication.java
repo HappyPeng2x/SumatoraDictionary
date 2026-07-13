@@ -22,6 +22,8 @@ import androidx.hilt.work.HiltWorkerFactory;
 import androidx.multidex.MultiDexApplication;
 import androidx.work.Configuration;
 
+import com.google.android.material.color.DynamicColors;
+
 import org.happypeng.sumatora.android.sumatoradictionary.update.DictionaryUpdateWorker;
 
 import javax.inject.Inject;
@@ -38,6 +40,10 @@ public class DictionaryApplication extends MultiDexApplication implements Config
     @Override
     public void onCreate() {
         super.onCreate();
+
+        // Android 12+: derive the app's colors from the user's wallpaper instead of the
+        // static palette in styles.xml. No-op on older versions.
+        DynamicColors.applyToActivitiesIfAvailable(this);
 
         if (BuildConfig.DEBUG) {
             StrictMode.setThreadPolicy(new StrictMode.ThreadPolicy.Builder()

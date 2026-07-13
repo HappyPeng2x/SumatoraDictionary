@@ -19,10 +19,20 @@
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
         android:layout_gravity="start"
+        android:background="?attr/colorSurface"
         android:maxWidth="@dimen/navigation_drawer_max_width"
         app:elevation="@dimen/elevation_nav_drawer"
         app:headerLayout="@layout/navigation_drawer_header"
         app:menu="@menu/navigation_menu"
+        app:itemIconTint="@color/nav_item_tint"
+        app:itemTextColor="@color/nav_item_tint"
+        app:itemShapeAppearance="@style/ShapeAppearance.Sumatora.NavigationItem"
+        app:itemShapeFillColor="@color/nav_item_shape_fill"
+        app:itemShapeInsetStart="12dp"
+        app:itemShapeInsetEnd="12dp"
+        app:itemShapeInsetTop="4dp"
+        app:itemShapeInsetBottom="4dp"
+        app:shapeAppearanceOverlay="@style/ShapeAppearanceOverlay.Sumatora.NavigationDrawer"
         android:fitsSystemWindows="false" />
 
 </androidx.drawerlayout.widget.DrawerLayout>
