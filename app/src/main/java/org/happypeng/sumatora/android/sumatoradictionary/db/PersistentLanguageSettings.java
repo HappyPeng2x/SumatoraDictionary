@@ -17,6 +17,7 @@
 package org.happypeng.sumatora.android.sumatoradictionary.db;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.room.Entity;
 
 @Entity(primaryKeys = {"ref"})
@@ -26,7 +27,7 @@ public class PersistentLanguageSettings {
 
     public int ref;
     public @NonNull String lang;
-    public String backupLang;
+    public @Nullable String backupLang;
 
     public PersistentLanguageSettings() {
         lang = "";

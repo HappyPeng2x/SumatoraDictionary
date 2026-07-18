@@ -20,6 +20,7 @@ import android.content.res.AssetManager;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.annotation.WorkerThread;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.room.Entity;
@@ -83,7 +84,7 @@ public class InstalledDictionary extends BaseDictionaryObject {
     // version of this pack but hasn't promoted it yet - the live SQLite connection may already
     // have `file` ATTACHed, so swapping in `pendingFile` only happens in the reconciliation step
     // at the next cold start (PersistentDatabaseInitialization), never while attached.
-    public String pendingFile;
+    @Nullable public String pendingFile;
     public Integer pendingVersion;
     public Integer pendingDate;
 

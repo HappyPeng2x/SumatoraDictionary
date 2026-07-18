@@ -42,7 +42,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.RemoteDictionaryObje
 data class DictionaryManagementRow(
     val type: String,
     val lang: String,
-    val description: String,
+    val description: String?,
     val version: Int,
     val date: Int,
     val installed: InstalledDictionary?,
@@ -109,7 +109,7 @@ object DictionaryManagementRenderer {
             } else {
                 container.addView(buildGroupHeader(context, density, typeLabel(type)))
                 for (row in groupRows) {
-                    container.addView(buildRow(context, density, row.description, row, onInstall, onDelete))
+                    container.addView(buildRow(context, density, row.description ?: row.lang, row, onInstall, onDelete))
                 }
             }
 

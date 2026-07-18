@@ -1,7 +1,6 @@
 apply plugin: 'com.android.application'
-apply plugin: 'kotlin-android'
-apply plugin: 'kotlin-kapt'
 apply plugin: 'kotlin-parcelize'
+apply plugin: 'com.google.devtools.ksp'
 apply plugin: 'dagger.hilt.android.plugin'
 
 def keystorePropertiesFile = rootProject.file("keystore.properties")
@@ -26,16 +25,6 @@ android {
         compileOptions {
             sourceCompatibility JavaVersion.VERSION_1_8
             targetCompatibility JavaVersion.VERSION_1_8
-        }
-
-        kotlinOptions {
-            jvmTarget = '1.8'
-        }
-
-        javaCompileOptions {
-            annotationProcessorOptions {
-                arguments += ["room.schemaLocation":"$projectDir/schemas".toString()]
-            }
         }
 
         testInstrumentationRunner "org.happypeng.sumatora.android.sumatoradictionary.CustomTestRunner"
@@ -63,7 +52,7 @@ android {
             buildConfigField("boolean", "DEBUG_DB_MIGRATION", "false")
             buildConfigField("boolean", "DEBUG_BASE_FRAGMENT", "false")
             minifyEnabled true
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
         debug {
             buildConfigField("boolean", "DEBUG_MESSAGE", "true")
@@ -86,10 +75,20 @@ android {
     sourceSets {
         androidTest.assets.srcDirs += files("$projectDir/schemas".toString())
     }
+}
 
-    applicationVariants.all { variant ->
-        variant.outputs.all {
-            outputFileName = "SumatoraDictionary-${variant.mergedFlavor.versionName}.apk"
+// Room's schema export location - with KSP (as opposed to kapt/javac), this must be
+// configured via the `ksp {}` extension rather than javaCompileOptions.annotationProcessorOptions.
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas".toString())
+}
+
+// Replaces the old `applicationVariants.all { variant -> variant.outputs.all { ... } }` API,
+// which was removed under AGP 9's new Variant API / newDsl.
+androidComponents {
+    onVariants(selector().all()) { variant ->
+        variant.outputs.each { output ->
+            output.outputFileName.set(output.versionName.map { versionName -> "SumatoraDictionary-${versionName}.apk" })
         }
     }
 }
@@ -120,7 +119,7 @@ dependencies {
 
     def room_version = "2.6.1"
     implementation "androidx.room:room-runtime:$room_version"
-    kapt "androidx.room:room-compiler:$room_version"
+    ksp "androidx.room:room-compiler:$room_version"
     implementation "androidx.room:room-ktx:$room_version"
     implementation "androidx.room:room-rxjava3:$room_version"
     androidTestImplementation "androidx.room:room-testing:$room_version"
@@ -134,17 +133,15 @@ dependencies {
     implementation 'com.github.HappyPeng2x:SuperRubySpan:v0.2.1'
 
     // Hilt
-    implementation 'com.google.dagger:hilt-android:2.51.1'
-    kapt 'com.google.dagger:hilt-android-compiler:2.51.1'
-    annotationProcessor 'com.google.dagger:hilt-android-compiler:2.51.1'
+    implementation 'com.google.dagger:hilt-android:2.60.1'
+    ksp 'com.google.dagger:hilt-android-compiler:2.60.1'
 
     // Hilt Testing
-    androidTestImplementation 'com.google.dagger:hilt-android-testing:2.51.1'
-    kaptAndroidTest 'com.google.dagger:hilt-android-compiler:2.51.1'
-    androidTestAnnotationProcessor 'com.google.dagger:hilt-android-compiler:2.51.1'
+    androidTestImplementation 'com.google.dagger:hilt-android-testing:2.60.1'
+    kspAndroidTest 'com.google.dagger:hilt-android-compiler:2.60.1'
 
     implementation 'androidx.hilt:hilt-navigation-fragment:1.2.0'
-    kapt 'androidx.hilt:hilt-compiler:1.2.0'
+    ksp 'androidx.hilt:hilt-compiler:1.2.0'
 
     // Background dictionary update checks (see update-pipeline.md)
     implementation 'androidx.work:work-runtime-ktx:2.9.0'

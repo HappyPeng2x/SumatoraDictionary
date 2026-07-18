@@ -17,6 +17,7 @@
 package org.happypeng.sumatora.android.sumatoradictionary.db.tools;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.DiffUtil;
 
 import org.xmlpull.v1.XmlPullParser;
@@ -29,7 +30,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 public class BaseDictionaryObject {
-    public String description;
+    @Nullable public String description;
     @NonNull public String type;
     @NonNull public String lang;
     public int version;

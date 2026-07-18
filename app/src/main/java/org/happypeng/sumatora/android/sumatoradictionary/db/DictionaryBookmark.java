@@ -16,6 +16,7 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.db;
 
+import androidx.annotation.Nullable;
 import androidx.room.Entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -35,10 +36,10 @@ public class DictionaryBookmark {
     public long bookmark;
 
     @JsonProperty("memo")
-    public String memo;
+    @Nullable public String memo;
 
     @JsonProperty("tags")
-    public String tags;
+    @Nullable public String tags;
 
     public DictionaryBookmark() {}
 

@@ -16,6 +16,7 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.db;
 
+import androidx.annotation.Nullable;
 import androidx.room.Entity;
 
 import org.happypeng.sumatora.core.dict.DictionaryQueryResult;
@@ -29,16 +30,16 @@ public class DictionarySearchElement implements DictionaryQueryResult {
     public int entryOrder;
     public long entry_id;
     public long seq;
-    public Long form_id;
-    public String match_kind;
-    public String matched_text;
-    public String original_query;
-    public String dictionary_form;
-    public String deinflection_label;
+    @Nullable public Long form_id;
+    @Nullable public String match_kind;
+    @Nullable public String matched_text;
+    @Nullable public String original_query;
+    @Nullable public String dictionary_form;
+    @Nullable public String deinflection_label;
     public int rank;
     public long bookmark;
-    public String memo;
-    public String tags;
+    @Nullable public String memo;
+    @Nullable public String tags;
 
     public DictionarySearchElement() { }
 
