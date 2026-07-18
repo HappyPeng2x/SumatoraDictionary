@@ -188,6 +188,11 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
 
     fun bindTo(entry: DictionarySearchElement) {
         val wasEditingSameEntry = editingSeq == entry.seq
+        // Same seq means this is a rebind of the entry already showing here (e.g. a bookmark/memo/
+        // tag change triggered a DB refresh), not a recycled holder receiving a different row.
+        // The headword/senses only depend on static dictionary content keyed by seq, so they don't
+        // need to be cleared and refetched in that case - avoids a visible blank-then-repaint blink.
+        val isSameEntryRebind = currentEntry?.seq == entry.seq
         currentEntry = entry
         isRebindingSameEntry = wasEditingSameEntry
         subscription?.dispose()
@@ -220,24 +225,28 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
         // fetchListSummary does blocking DB I/O - Room forbids that on the main thread (bind()
         // always runs on the main thread), so fetch on IO and populate when it lands. Blank the
         // fields first so a recycled view doesn't flash the previous row's content meanwhile.
-        wordCardBinding.wordCardHeadword.text = ""
-        wordCardBinding.wordCardSenses.removeAllViews()
-        summarySubscription?.dispose()
-        summarySubscription = Single.fromCallable { listSummaryFun(entry) }
-            .subscribeOn(Schedulers.io())
-            .observeOn(AndroidSchedulers.mainThread())
-            .subscribe { summary ->
-                if (summary.usedBackupLang) {
-                    wordCardBinding.wordCardView.setBackgroundColor(colors.backupLang)
-                } else {
-                    wordCardBinding.wordCardView.setBackgroundColor(colors.activeLang)
-                }
+        // Skipped entirely on a same-entry rebind, since the summary can't have changed and
+        // clearing it would just blink the content that's already correctly on screen.
+        if (!isSameEntryRebind) {
+            wordCardBinding.wordCardHeadword.text = ""
+            wordCardBinding.wordCardSenses.removeAllViews()
+            summarySubscription?.dispose()
+            summarySubscription = Single.fromCallable { listSummaryFun(entry) }
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe { summary ->
+                    if (summary.usedBackupLang) {
+                        wordCardBinding.wordCardView.setBackgroundColor(colors.backupLang)
+                    } else {
+                        wordCardBinding.wordCardView.setBackgroundColor(colors.activeLang)
+                    }
 
-                wordCardBinding.wordCardHeadword.text = renderHeadword(summary, colors)
-                val density = wordCardBinding.wordCardSenses.context.resources.displayMetrics.density
-                wordCardBinding.wordCardSenses.removeAllViews()
-                buildSenseRows(wordCardBinding.wordCardSenses, summary, colors, density, entry.deinflectionLabel)
-            }
+                    wordCardBinding.wordCardHeadword.text = renderHeadword(summary, colors)
+                    val density = wordCardBinding.wordCardSenses.context.resources.displayMetrics.density
+                    wordCardBinding.wordCardSenses.removeAllViews()
+                    buildSenseRows(wordCardBinding.wordCardSenses, summary, colors, density, entry.deinflectionLabel)
+                }
+        }
         wordCardBinding.wordCardContent.setOnClickListener { onEntryClick.onClick(entry) }
         if (entry.bookmark != 0L) {
             wordCardBinding.wordCardBookmarkIcon.setImageResource(R.drawable.ic_outline_bookmark_24px)

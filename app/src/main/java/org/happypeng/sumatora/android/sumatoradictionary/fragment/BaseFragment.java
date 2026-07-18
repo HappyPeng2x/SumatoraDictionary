@@ -39,6 +39,7 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.recyclerview.widget.SimpleItemAnimator;
 
 import org.happypeng.sumatora.android.sumatoradictionary.R;
 import org.happypeng.sumatora.android.sumatoradictionary.activity.MainActivity;
@@ -212,6 +213,18 @@ public abstract class BaseFragment extends Fragment {
                 pagedListAdapter.submitList(l);
             }
         }));
+
+        // Bookmark/memo/tag edits rebind only the single affected row (see
+        // DictionarySearchElementDiffUtil). By default RecyclerView.ItemAnimator does not reuse
+        // the existing ViewHolder for a changed item - it cross-fades the old ViewHolder out and
+        // a freshly bound one in, which is what reads as the row "flickering". Since bindTo()
+        // already re-renders the row's content synchronously in place, there is nothing to
+        // meaningfully cross-fade; disabling change animations makes RecyclerView rebind the same
+        // ViewHolder instead of swapping it.
+        RecyclerView.ItemAnimator itemAnimator = viewBinding.dictionaryBookmarkFragmentRecyclerview.getItemAnimator();
+        if (itemAnimator instanceof SimpleItemAnimator) {
+            ((SimpleItemAnimator) itemAnimator).setSupportsChangeAnimations(false);
+        }
 
         viewBinding.dictionaryBookmarkFragmentRecyclerview.setAdapter(pagedListAdapter);
 
