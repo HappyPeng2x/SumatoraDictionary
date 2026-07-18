@@ -53,7 +53,7 @@ public class AboutActivity extends MaterialAboutActivity {
                 .addCard(new MaterialAboutCard.Builder()
                         .addItem(new MaterialAboutTitleItem.Builder()
                                 .text("Sumatora Dictionary")
-                                .icon(R.drawable.ic_sumatora_icon)
+                                .icon(R.drawable.ic_sumatora_logo)
                                 .build())
                         .addItem(new MaterialAboutActionItem.Builder()
                                 .text("Version")

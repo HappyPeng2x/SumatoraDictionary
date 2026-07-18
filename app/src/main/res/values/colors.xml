@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- App icon -->
+    <color name="sumatora_icon_background">#D41610</color>
+
     <!-- Material 3 color roles (light), derived from an indigo seed. -->
     <color name="md_primary">#4355B9</color>
     <color name="md_on_primary">#FFFFFF</color>

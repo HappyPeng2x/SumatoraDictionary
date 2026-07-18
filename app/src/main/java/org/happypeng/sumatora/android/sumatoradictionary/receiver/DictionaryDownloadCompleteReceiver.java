@@ -194,7 +194,7 @@ public class DictionaryDownloadCompleteReceiver extends BroadcastReceiver {
         Notification notification = new Notification.Builder(context, UPDATE_CHANNEL_ID)
                 .setContentTitle(context.getString(R.string.dictionary_update_ready_title))
                 .setContentText(context.getString(R.string.dictionary_update_ready_text, remote.description))
-                .setSmallIcon(R.drawable.ic_sumatora_icon)
+                .setSmallIcon(R.drawable.ic_sumatora_monochrome)
                 .setAutoCancel(true)
                 .build();
 
