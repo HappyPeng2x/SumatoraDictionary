@@ -80,7 +80,11 @@ public class SettingsFragment extends Fragment {
         activity.setSupportActionBar(tb);
 
         final ActionBar actionBar = activity.getSupportActionBar();
-        actionBar.setHomeAsUpIndicator(R.drawable.ic_menu_white_24dp);
+        final android.graphics.drawable.Drawable homeIndicator =
+                androidx.core.content.ContextCompat.getDrawable(activity, R.drawable.ic_menu_white_24dp).mutate();
+        homeIndicator.setTint(com.google.android.material.color.MaterialColors.getColor(
+                tb, com.google.android.material.R.attr.colorOnSurfaceVariant));
+        actionBar.setHomeAsUpIndicator(homeIndicator);
         actionBar.setDisplayHomeAsUpEnabled(true);
 
         view.findViewById(R.id.settings_display_log).setOnClickListener(new View.OnClickListener() {
