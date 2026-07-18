@@ -138,7 +138,12 @@ public abstract class BaseFragment extends Fragment {
         setHasOptionsMenu(true);
 
         final ActionBar actionBar = ((AppCompatActivity) getActivity()).getSupportActionBar();
-        actionBar.setHomeAsUpIndicator(R.drawable.ic_menu_white_24dp);
+        final android.graphics.drawable.Drawable homeIndicator =
+                ContextCompat.getDrawable(getActivity(), R.drawable.ic_menu_white_24dp).mutate();
+        homeIndicator.setTint(com.google.android.material.color.MaterialColors.getColor(
+                viewBinding.dictionaryBookmarkFragmentToolbar,
+                com.google.android.material.R.attr.colorOnSurfaceVariant));
+        actionBar.setHomeAsUpIndicator(homeIndicator);
         actionBar.setDisplayHomeAsUpEnabled(true);
 
         viewBinding.dictionaryBookmarkFragmentToolbar.setTitle(queryFragmentModel.getTitle());
