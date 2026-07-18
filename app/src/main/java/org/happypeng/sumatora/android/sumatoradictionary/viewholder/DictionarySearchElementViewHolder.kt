@@ -16,15 +16,14 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.viewholder
 
-import android.content.res.ColorStateList
 import android.text.InputType
 import android.view.inputmethod.EditorInfo
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.ArrayAdapter
+import android.widget.PopupMenu
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.chip.Chip
-import com.google.android.material.color.MaterialColors
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.disposables.Disposable
@@ -42,7 +41,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.bu
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.renderHeadword
 import org.happypeng.sumatora.core.dict.DictionaryQueryResult
 class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBinding,
-                                        disableBookmarkButton: Boolean,
+                                        private val disableBookmarkButton: Boolean,
                                         private val disableMemoEdit: Boolean,
                                         private val disableTagEdit: Boolean,
                                         private val commitConsumer: (Long, Long, String?) -> Unit,
@@ -96,22 +95,11 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
     private var currentEntry: DictionarySearchElement? = null
 
     private fun openMemo() {
-        wordCardBinding.wordCardMemo.visibility = View.VISIBLE
-        wordCardBinding.wordCardMemoIcon.visibility = View.GONE
-
-        if (!disableMemoEdit) {
-            wordCardBinding.wordCardDeleteMemoIcon.visibility = View.VISIBLE
-        }
+        wordCardBinding.wordCardMemoRow.visibility = View.VISIBLE
     }
 
     private fun closeMemo() {
-        wordCardBinding.wordCardMemo.visibility = View.GONE
-
-        if (!disableMemoEdit) {
-            wordCardBinding.wordCardMemoIcon.visibility = View.VISIBLE
-        }
-
-        wordCardBinding.wordCardDeleteMemoIcon.visibility = View.GONE
+        wordCardBinding.wordCardMemoRow.visibility = View.GONE
         wordCardBinding.wordCardMemo.setText("")
     }
 
@@ -248,21 +236,8 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
                 }
         }
         wordCardBinding.wordCardContent.setOnClickListener { onEntryClick.onClick(entry) }
-        if (entry.bookmark != 0L) {
-            wordCardBinding.wordCardBookmarkIcon.setImageResource(R.drawable.ic_outline_bookmark_24px)
-            wordCardBinding.wordCardBookmarkIcon.imageTintList = ColorStateList.valueOf(
-                MaterialColors.getColor(wordCardBinding.wordCardBookmarkIcon, com.google.android.material.R.attr.colorPrimary))
-        } else {
-            wordCardBinding.wordCardBookmarkIcon.setImageResource(R.drawable.ic_outline_bookmark_border_24px)
-            wordCardBinding.wordCardBookmarkIcon.imageTintList = ColorStateList.valueOf(
-                MaterialColors.getColor(wordCardBinding.wordCardBookmarkIcon, com.google.android.material.R.attr.colorOnSurfaceVariant))
-        }
-
-        wordCardBinding.wordCardBookmarkIcon.setOnClickListener {
-            commitConsumer.invoke(entry.seq,
-                if (entry.bookmark > 0) 0 else 1,
-                wordCardBinding.wordCardMemo.editableText.toString())
-        }
+        wordCardBinding.wordCardBookmarkBadge.visibility =
+            if (entry.bookmark != 0L) View.VISIBLE else View.GONE
 
         val memo = entry.memo
         if (memo != null && "" != memo) {
@@ -278,11 +253,6 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
             if ("" != entry.memo && entry.memo != null) {
                 commitConsumer.invoke(entry.seq, entry.bookmark, "")
             }
-        }
-
-        wordCardBinding.wordCardMemoIcon.setOnClickListener {
-            openMemo()
-            wordCardBinding.wordCardMemo.requestFocus()
         }
 
         wordCardBinding.wordCardMemo.setOnFocusChangeListener { _, hasFocus ->
@@ -313,13 +283,44 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
             rebuildChips(closeable = false)
         }
 
-        wordCardBinding.wordCardTagIcon.setOnClickListener {
-            if (editingSeq != null) {
-                closeTagEditor(entry)
-            } else {
-                openTagEditor()
-                wordCardBinding.wordCardTagInput.requestFocus()
+        wordCardBinding.wordCardOverflowIcon.setOnClickListener { anchor ->
+            val popup = PopupMenu(anchor.context, anchor)
+            val menu = popup.menu
+
+            if (!disableBookmarkButton) {
+                val bookmarkLabel = if (entry.bookmark != 0L)
+                    R.string.action_remove_bookmark else R.string.action_add_bookmark
+                menu.add(bookmarkLabel).setOnMenuItemClickListener {
+                    commitConsumer.invoke(entry.seq,
+                        if (entry.bookmark > 0) 0 else 1,
+                        wordCardBinding.wordCardMemo.editableText.toString())
+                    true
+                }
             }
+
+            if (!disableMemoEdit) {
+                menu.add(R.string.action_memo).setOnMenuItemClickListener {
+                    openMemo()
+                    wordCardBinding.wordCardMemo.requestFocus()
+                    true
+                }
+            }
+
+            if (!disableTagEdit) {
+                val tagLabel = if (editingSeq != null)
+                    R.string.action_done_editing_tags else R.string.action_edit_tags
+                menu.add(tagLabel).setOnMenuItemClickListener {
+                    if (editingSeq != null) {
+                        closeTagEditor(entry)
+                    } else {
+                        openTagEditor()
+                        wordCardBinding.wordCardTagInput.requestFocus()
+                    }
+                    true
+                }
+            }
+
+            popup.show()
         }
 
         wordCardBinding.wordCardTagInput.setOnEditorActionListener { _, actionId, _ ->
@@ -347,17 +348,13 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
     }
 
     init {
-        if (disableBookmarkButton) {
-            wordCardBinding.wordCardBookmarkIcon.visibility = View.GONE
-        }
-
         if (disableMemoEdit) {
-            wordCardBinding.wordCardMemoIcon.visibility = View.GONE
+            wordCardBinding.wordCardDeleteMemoIcon.visibility = View.GONE
             wordCardBinding.wordCardMemo.inputType = InputType.TYPE_NULL
         }
 
-        if (disableTagEdit) {
-            wordCardBinding.wordCardTagIcon.visibility = View.GONE
+        if (disableBookmarkButton && disableMemoEdit && disableTagEdit) {
+            wordCardBinding.wordCardOverflowIcon.visibility = View.GONE
         }
     }
 }
