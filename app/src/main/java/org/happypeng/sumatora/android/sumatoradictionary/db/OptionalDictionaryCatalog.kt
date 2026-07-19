@@ -22,17 +22,20 @@ package org.happypeng.sumatora.android.sumatoradictionary.db
 //
 // suffix/names are built against core's word-id space, so an optional pack must always come from
 // the same release as the installed core dictionary - see the conversation that led to this file
-// (Sumatora chat, 2026-07-10). LEGACY is a one-time pin to the pre-SumatoraIndex v8 release: the
-// only version where this held (the bundled assets/dictionaries.xml never lists suffix/names, and
-// no fetched manifest exists yet). From v9 onward the unified dictionaries.xml already carries
-// suffix/names alongside core with one shared repository version, so resolve() sources them from
-// CachedManifestEntry - populated by DictionaryUpdateChecker every time it fetches that manifest -
-// filtered down to whatever version the installed core dictionary actually is. That keeps the two
-// versioned in lockstep automatically instead of relying on a developer remembering to bump a
-// hardcoded number every release.
+// (Sumatora chat, 2026-07-10). Once DictionaryUpdateChecker has fetched a manifest whose
+// suffix/names entries match the installed core's (version, date), resolve() sources them from
+// CachedManifestEntry, keeping the two in lockstep automatically. Before that first fetch ever
+// completes - including the very first app launch - there's nothing in CachedManifestEntry yet, so
+// fallback() derives a same-vintage URL from the *installed* core's own version instead of a
+// separately hardcoded one: a hardcoded fallback already went stale once this way (pinned to
+// dictionaries-v8 on this repo while the bundled core had moved on to v11 on SumatoraIndex), and
+// nothing enforces a developer updating it in lockstep with assets/dictionaries.xml. Every
+// SumatoraIndex release republishes suffix/names alongside core under the same
+// dictionaries-v{version} tag (see release-pipeline.md), so this always has a matching pack to
+// point at.
 object OptionalDictionaryCatalog {
-    private const val LEGACY_RELEASE_BASE_URL =
-        "https://github.com/HappyPeng2x/SumatoraDictionary/releases/download/dictionaries-v8"
+    private const val RELEASE_BASE_URL =
+        "https://github.com/HappyPeng2x/SumatoraIndex/releases/download"
 
     val OPTIONAL_TYPES = setOf("suffix", "names")
 
@@ -45,35 +48,46 @@ object OptionalDictionaryCatalog {
         val sha256: String = ""
     )
 
-    private val LEGACY: List<Entry> = listOf(
-        Entry(
-            type = "suffix",
-            description = "Substring search",
-            url = "$LEGACY_RELEASE_BASE_URL/sumatora_search_suffix.db.gz",
-            version = 8,
-            date = 20260705
-        ),
-        Entry(
-            type = "names",
-            description = "Proper names (JMnedict)",
-            url = "$LEGACY_RELEASE_BASE_URL/sumatora_names.db.gz",
-            version = 8,
-            date = 20260705
-        )
-    )
+    // No sha256: this version's manifest was never fetched, so there's nothing to verify the
+    // download against. DictionaryDownloadCompleteReceiver already treats an empty sha256 as
+    // "skip verification".
+    private fun fallback(installedCore: InstalledDictionary): List<Entry> {
+        val baseUrl = "$RELEASE_BASE_URL/dictionaries-v${installedCore.version}"
 
-    // installedCore is null before the first-run reconciliation ever completes - treat that the
-    // same as "no manifest fetch has ever happened" and fall back to LEGACY.
+        return listOf(
+            Entry(
+                type = "suffix",
+                description = "Substring search",
+                url = "$baseUrl/sumatora_search_suffix.db.gz",
+                version = installedCore.version,
+                date = installedCore.date
+            ),
+            Entry(
+                type = "names",
+                description = "Proper names (JMnedict)",
+                url = "$baseUrl/sumatora_names.db.gz",
+                version = installedCore.version,
+                date = installedCore.date
+            )
+        )
+    }
+
+    // installedCore is null before the first-run reconciliation ever completes - there's no core
+    // version to derive a fallback from yet, so offer nothing rather than guessing.
     fun resolve(installedCore: InstalledDictionary?, cached: List<CachedManifestEntry>): List<Entry> {
+        if (installedCore == null) {
+            return emptyList()
+        }
+
         val cachedOptional = cached.filter { it.type in OPTIONAL_TYPES }
 
-        val matchesInstalledCore = installedCore != null && cachedOptional.isNotEmpty() &&
+        val matchesInstalledCore = cachedOptional.isNotEmpty() &&
                 cachedOptional.all { it.version == installedCore.version && it.date == installedCore.date }
 
         return if (matchesInstalledCore) {
             cachedOptional.map { Entry(it.type, it.description ?: "", it.url, it.version, it.date, it.sha256) }
         } else {
-            LEGACY
+            fallback(installedCore)
         }
     }
 }
