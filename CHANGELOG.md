@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.5.0-beta2] - 2026-07-20
+
+### Search and bookmarks
+
+- Fixed entries staying permanently blank, and sluggish scrolling, when fast-scrolling through a
+  very large result set (e.g. a bookmark list of several thousand entries): dozens of rows
+  binding at once each queued their own live per-row database fetch, and those fetches piled up
+  contending over the single database connection. Every search tier (bookmark/tag listing,
+  exact/prefix/substring, gloss reverse-search, deinflection, proper nouns, and the bookmark
+  import preview) now assembles a row's full display payload as part of the same query that finds
+  it, so scrolling never triggers a separate per-row fetch. This replaces the per-row live fetch
+  and its LRU cache introduced in 0.5.0-beta1.
+
 ## [0.5.0-beta1] - 2026-07-19
 
 The biggest release since the initial JMdict-based app: the dictionary engine moved to
