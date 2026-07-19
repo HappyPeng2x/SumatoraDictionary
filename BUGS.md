@@ -1,5 +1,19 @@
 # Known Bugs
 
+## EntryDetailScreenshotTest hang (resolved)
+
+**Status:** resolved as of 2026-07-19, re-enabled (`@Ignore` removed). The render() hang reported
+on 2026-07-12 no longer reproduces - most likely fixed as a side effect of that day's
+search-result performance work, which cut `fetchEntryDetail`'s per-entry query count roughly in
+half and fixed several missing-index full-table-scan query plans elsewhere in the same DB
+connection. The one remaining failure once render() was confirmed fast and correct was in the
+test itself, not the app: it anchored its second screenshot's scroll on
+`entry_detail_examples_header`, which is only visible for entries with entry-level "fallback"
+examples (see `PersistentDatabaseComponent.fetchEntryDetail`'s `fallbackExamples`) - an entry like
+掛ける, where every example now resolves to a specific sense and renders inline
+(`EntryDetailBottomSheet.buildSenses`), legitimately leaves that section `GONE`. Fixed by swiping
+the scroll container directly instead of anchoring on a section that isn't always present.
+
 ## RecyclerView crash: "Cannot call this method while RecyclerView is computing a layout or scrolling"
 
 **Status:** fixed in `BaseFragment.java` (2026-07-11) - `submitList()` is now deferred via

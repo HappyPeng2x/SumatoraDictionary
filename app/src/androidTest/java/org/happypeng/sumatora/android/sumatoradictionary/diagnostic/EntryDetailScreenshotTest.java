@@ -34,7 +34,6 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.tools.DictionarySear
 import org.happypeng.sumatora.android.sumatoradictionary.fragment.EntryDetailBottomSheet;
 import org.junit.Assume;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -50,18 +49,6 @@ import dagger.hilt.android.testing.HiltAndroidTest;
 // Not a correctness test - renders EntryDetailBottomSheet for a real entry and screenshots it so
 // the migrated UI can be eyeballed. Pull with:
 //   adb pull /sdcard/Pictures/entry_detail_preview.png
-@Ignore(
-    "EntryDetailBottomSheet's render() reliably never completes in this test as of 2026-07-12 -"
-        + " confirmed via logcat that dictionary attach finishes in milliseconds, then the"
-        + " headword TextView (the first thing render() populates) still has empty text 60+"
-        + " seconds later (waitForNonEmptyText below times out even at 60_000ms). This is a"
-        + " genuine hang, not slow-cold-start flakiness (that theory was tested and ruled out) -"
-        + " likely a deadlock/contention issue specific to this test's threading (it queries the"
-        + " Room DB directly on the instrumentation thread via findKakeruEntryAndForm() while"
-        + " EntryDetailBottomSheet's own Schedulers.io() chain tries to use the same singleton"
-        + " PersistentDatabaseComponent concurrently), not investigated further. Re-enable once"
-        + " that's root-caused - do not just bump the timeout again."
-)
 @HiltAndroidTest
 @RunWith(AndroidJUnit4ClassRunner.class)
 public class EntryDetailScreenshotTest {
@@ -151,12 +138,16 @@ public class EntryDetailScreenshotTest {
 
         screenshot("entry_detail_preview.png");
 
-        Espresso.onView(ViewMatchers.withId(R.id.entry_detail_examples_header))
-                .perform(ViewActions.scrollTo());
+        // Scroll toward the bottom of the sheet for the second screenshot. Used to anchor on
+        // entry_detail_examples_header first, but that section is only shown for examples that
+        // didn't resolve to a specific sense (see PersistentDatabaseComponent.fetchEntryDetail's
+        // fallbackExamples) - an entry whose examples all attached to a sense (like 掛ける's
+        // currently do; see buildSenses) leaves it GONE, which made scrollTo() fail even though
+        // rendering itself was fine. Swiping the scroll container directly gets to the bottom
+        // regardless of which sections this particular entry has.
+        Espresso.onView(ViewMatchers.isAssignableFrom(androidx.core.widget.NestedScrollView.class))
+                .perform(ViewActions.swipeUp());
         Thread.sleep(500);
-        // scrollTo() only brings the header into view; swipe the scroll container itself (which
-        // is ~100% on-screen, unlike the partially-visible examples child) to see the example
-        // boxes below it.
         Espresso.onView(ViewMatchers.isAssignableFrom(androidx.core.widget.NestedScrollView.class))
                 .perform(ViewActions.swipeUp());
         Thread.sleep(500);

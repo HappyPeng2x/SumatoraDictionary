@@ -15,6 +15,12 @@ display was redesigned around it, and dictionary packs are no longer static APK 
 - Entries now show a forms table for multi-reading words, per-sense example sentences,
   sense-restriction labels, and every valid reading (not just the one that matched).
 - Fixed blank senses when an entry mixes gloss languages per sense.
+- Fixed slow, blank-then-appear rendering when scrolling through many search results: three
+  missing indices caused full-table-scan query plans, and a GLOB pattern built in SQL (instead of
+  bound as a plain parameter) defeated SQLite's prefix-seek optimization on nearly every
+  prefix/substring search. Search-result rendering also now batches its per-row queries into a
+  handful of consolidated round trips instead of one query per gloss/furigana/form, and caches
+  computed row summaries.
 
 ### Redesigned entry display
 
@@ -32,6 +38,10 @@ display was redesigned around it, and dictionary packs are no longer static APK 
   a status per pack, and downloads in progress are visible instead of silently disappearing from
   the list until they finish.
 - Fixed dictionary update downloads silently failing to install.
+- Fixed the substring-search/proper-names packs offering a stale, wrong-repo download URL
+  (pinned to an old pre-SumatoraIndex release) whenever they're installed before the first
+  background manifest check completes, which could pair them with a bundled core dictionary from
+  an incompatible build.
 
 ### Other
 
