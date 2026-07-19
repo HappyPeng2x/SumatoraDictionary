@@ -31,6 +31,7 @@ import org.junit.runner.RunWith;
 import java.io.IOException;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 // Exercises the exact upgrade path a real 0.4.7.6 install goes through: schema v9 (the last
 // released version, per git tag fdroid-0.4.7.6) -> v10 (this build), via the squashed
@@ -80,5 +81,44 @@ public class PersistentDatabaseMigrationTest {
         installedCursor.moveToFirst();
         assertEquals(0, installedCursor.getInt(0));
         installedCursor.close();
+    }
+
+    // MIGRATION_10_11 adds DictionarySearchElement.render_json (see PersistentDatabaseParameters)
+    // so every search tier can precompute its row's list-card display payload at insert time
+    // instead of a separate live per-row fetch at bind time - see
+    // DictionarySearchQueryTool.buildRenderJsonExpr. It's a plain ADD COLUMN, so this checks a
+    // pre-migration row survives untouched (with render_json defaulting to NULL) and that the new
+    // column actually accepts data afterward.
+    @Test
+    public void migrate10To11_addsRenderJsonColumnAndPreservesExistingRows() throws IOException {
+        SupportSQLiteDatabase v10 = helper.createDatabase(TEST_DB, 10);
+        v10.execSQL("INSERT INTO DictionarySearchElement "
+                + "(ref, entryOrder, entry_id, seq, form_id, match_kind, original_query, matched_text, "
+                + "dictionary_form, deinflection_label, rank, bookmark, memo, tags) "
+                + "VALUES (1, 0, 42, 1001, NULL, 'bookmark', '', '', NULL, NULL, 0, 1, NULL, NULL)");
+        v10.close();
+
+        // Throws if the post-migration schema doesn't match what Room expects for version 11
+        // (app/schemas/.../11.json) - that's the main safety net here.
+        SupportSQLiteDatabase v11 = helper.runMigrationsAndValidate(
+                TEST_DB, 11, true, PersistentDatabaseParameters.MIGRATION_10_11);
+
+        Cursor preMigrationRow = v11.query("SELECT entry_id, seq, render_json FROM DictionarySearchElement WHERE entry_id = 42");
+        assertEquals(1, preMigrationRow.getCount());
+        preMigrationRow.moveToFirst();
+        assertEquals(42, preMigrationRow.getInt(0));
+        assertEquals(1001, preMigrationRow.getInt(1));
+        assertTrue(preMigrationRow.isNull(2));
+        preMigrationRow.close();
+
+        v11.execSQL("INSERT INTO DictionarySearchElement "
+                + "(ref, entryOrder, entry_id, seq, form_id, match_kind, original_query, matched_text, "
+                + "dictionary_form, deinflection_label, rank, bookmark, memo, tags, render_json) "
+                + "VALUES (2, 0, 43, 1002, NULL, 'bookmark', '', '', NULL, NULL, 0, 1, NULL, NULL, '{\"primaryText\":\"test\"}')");
+
+        Cursor newRow = v11.query("SELECT render_json FROM DictionarySearchElement WHERE entry_id = 43");
+        newRow.moveToFirst();
+        assertEquals("{\"primaryText\":\"test\"}", newRow.getString(0));
+        newRow.close();
     }
 }

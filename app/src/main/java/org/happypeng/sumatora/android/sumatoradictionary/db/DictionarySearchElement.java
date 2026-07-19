@@ -22,8 +22,10 @@ import androidx.room.Entity;
 import org.happypeng.sumatora.core.dict.DictionaryQueryResult;
 
 // Per-search-session cache of query hits: entry_id/form_id + match metadata (schema v2's
-// "Query Result Shape"), not a fully assembled display row - the display layer assembles
-// Entry/EntryForm/Sense/... separately by entry_id/form_id (see EntryDetailBottomSheet).
+// "Query Result Shape"), plus render_json - the list-card display payload every search tier
+// precomputes at insert time (see DictionarySearchQueryTool.buildRenderJsonExpr). The *detail*
+// view (tapping into an entry) still assembles Entry/EntryForm/Sense/... separately by
+// entry_id/form_id (see EntryDetailBottomSheet) rather than reusing render_json.
 @Entity(primaryKeys = {"ref", "entry_id"})
 public class DictionarySearchElement implements DictionaryQueryResult {
     public int ref;
@@ -40,6 +42,10 @@ public class DictionarySearchElement implements DictionaryQueryResult {
     public long bookmark;
     @Nullable public String memo;
     @Nullable public String tags;
+    // Fully-assembled render payload (headword/furigana/senses or name translations), precomputed
+    // at insert time by every search tier - see DictionarySearchQueryTool.buildRenderJsonExpr /
+    // buildNameRenderJsonExpr and PersistentDatabaseComponent.parsePrecomputedSummary.
+    @Nullable public String render_json;
 
     public DictionarySearchElement() { }
 

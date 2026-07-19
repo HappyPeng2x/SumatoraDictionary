@@ -30,6 +30,7 @@ import io.reactivex.rxjava3.disposables.Disposable
 import io.reactivex.rxjava3.schedulers.Schedulers
 import io.reactivex.rxjava3.subjects.Subject
 import org.happypeng.sumatora.android.sumatoradictionary.R
+import org.happypeng.sumatora.android.sumatoradictionary.component.PersistentDatabaseComponent
 import org.happypeng.sumatora.android.sumatoradictionary.databinding.WordCardBinding
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement
 import org.happypeng.sumatora.android.sumatoradictionary.db.EntryListSummary
@@ -39,7 +40,6 @@ import org.happypeng.sumatora.android.sumatoradictionary.model.intent.Dictionary
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.TagSystem
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.buildSenseRows
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.renderHeadword
-import org.happypeng.sumatora.core.dict.DictionaryQueryResult
 class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBinding,
                                         private val disableBookmarkButton: Boolean,
                                         private val disableMemoEdit: Boolean,
@@ -47,7 +47,6 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
                                         private val commitConsumer: (Long, Long, String?) -> Unit,
                                         private val commitTagsConsumer: (Long, String) -> Unit,
                                         private val tagSuggestionsProvider: () -> List<String>,
-                                        private val listSummaryFun: (DictionaryQueryResult) -> EntryListSummary,
                                         private val intentSubject: Subject<DictionaryPagedListAdapterIntent>,
                                         private val colors: Colors,
                                         private val onEntryClick: OnEntryClickListener = OnEntryClickListener {}) : RecyclerView.ViewHolder(wordCardBinding.wordCardView) {
@@ -81,7 +80,6 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
 
     private var subscription: Disposable? = null
     private var tagLoadSubscription: Disposable? = null
-    private var summarySubscription: Disposable? = null
     // editingSeq is the single source of truth for whether the tag editor is open and for which
     // entry. Unlike isTagEditing (a boolean), it cannot be inadvertently reset by bindTo() because
     // it is only written in openTagEditor(), closeTagEditor(), and the else-branch of bindTo()
@@ -170,8 +168,6 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
         subscription = null
         tagLoadSubscription?.dispose()
         tagLoadSubscription = null
-        summarySubscription?.dispose()
-        summarySubscription = null
     }
 
     fun bindTo(entry: DictionarySearchElement) {
@@ -210,30 +206,21 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
         tagLoadSubscription?.dispose()
         tagLoadSubscription = null
 
-        // fetchListSummary does blocking DB I/O - Room forbids that on the main thread (bind()
-        // always runs on the main thread), so fetch on IO and populate when it lands. Blank the
-        // fields first so a recycled view doesn't flash the previous row's content meanwhile.
-        // Skipped entirely on a same-entry rebind, since the summary can't have changed and
-        // clearing it would just blink the content that's already correctly on screen.
+        // Every tier's search query precomputes the row's render payload at insert time
+        // (render_json - see DictionarySearchQueryTool.buildRenderJsonExpr) via the same
+        // json_group_array()-packed correlated subqueries PersistentDatabaseComponent's detail
+        // queries use, so this is pure JSON parsing with no DB access - safe to do synchronously
+        // right here on the main thread. Skipped entirely on a same-entry rebind, since the
+        // summary can't have changed and re-parsing would just blink the content that's already
+        // correctly on screen.
         if (!isSameEntryRebind) {
-            wordCardBinding.wordCardHeadword.text = ""
-            wordCardBinding.wordCardSenses.removeAllViews()
-            summarySubscription?.dispose()
-            summarySubscription = Single.fromCallable { listSummaryFun(entry) }
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe { summary ->
-                    if (summary.usedBackupLang) {
-                        wordCardBinding.wordCardView.setBackgroundColor(colors.backupLang)
-                    } else {
-                        wordCardBinding.wordCardView.setBackgroundColor(colors.activeLang)
-                    }
-
-                    wordCardBinding.wordCardHeadword.text = renderHeadword(summary, colors)
-                    val density = wordCardBinding.wordCardSenses.context.resources.displayMetrics.density
-                    wordCardBinding.wordCardSenses.removeAllViews()
-                    buildSenseRows(wordCardBinding.wordCardSenses, summary, colors, density, entry.deinflectionLabel)
-                }
+            val precomputed = entry.render_json?.let { PersistentDatabaseComponent.parsePrecomputedSummary(it) }
+            if (precomputed != null) {
+                bindSummary(precomputed, entry)
+            } else {
+                wordCardBinding.wordCardHeadword.text = ""
+                wordCardBinding.wordCardSenses.removeAllViews()
+            }
         }
         wordCardBinding.wordCardContent.setOnClickListener { onEntryClick.onClick(entry) }
         wordCardBinding.wordCardBookmarkBadge.visibility =
@@ -335,6 +322,19 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
         wordCardBinding.wordCardTagInput.setOnItemClickListener { _, _, _, _ ->
             wordCardBinding.wordCardTagInput.post { addPendingTag() }
         }
+    }
+
+    private fun bindSummary(summary: EntryListSummary, entry: DictionarySearchElement) {
+        if (summary.usedBackupLang) {
+            wordCardBinding.wordCardView.setBackgroundColor(colors.backupLang)
+        } else {
+            wordCardBinding.wordCardView.setBackgroundColor(colors.activeLang)
+        }
+
+        wordCardBinding.wordCardHeadword.text = renderHeadword(summary, colors)
+        val density = wordCardBinding.wordCardSenses.context.resources.displayMetrics.density
+        wordCardBinding.wordCardSenses.removeAllViews()
+        buildSenseRows(wordCardBinding.wordCardSenses, summary, colors, density, entry.deinflectionLabel)
     }
 
     private fun addPendingTag() {

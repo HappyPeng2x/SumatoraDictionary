@@ -24,11 +24,11 @@ import androidx.test.internal.runner.junit4.AndroidJUnit4ClassRunner;
 
 import org.happypeng.sumatora.android.sumatoradictionary.component.PersistentDatabaseComponent;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryKanjiInfo;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
 import org.happypeng.sumatora.android.sumatoradictionary.db.EntryDetail;
 import org.happypeng.sumatora.android.sumatoradictionary.db.EntryListSummary;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.DictionarySearchQueryTool;
-import org.happypeng.sumatora.core.dict.DictionaryQueryResult;
 import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
@@ -126,12 +126,12 @@ public class SchemaV2QueryDiagnosticTest {
     @Test
     public void dumpEntryDetail() {
         Log.i(TAG, "===== entry detail deep-dive: 掛ける (many senses/xrefs) =====");
-        List<DictionaryQueryResult> hits = runSearch("掛ける");
+        List<DictionarySearchElement> hits = runSearch("掛ける");
         if (hits.isEmpty()) {
             Log.i(TAG, "  no hits for 掛ける - skipping detail dump");
             return;
         }
-        DictionaryQueryResult top = hits.get(0);
+        DictionarySearchElement top = hits.get(0);
         EntryDetail detail = dbComponent.fetchEntryDetail(top.getEntryId(), top.getFormId(), false, languageSettings);
         Log.i(TAG, "headword=" + detail.primaryText + " reading=" + detail.primaryReading
                 + " isPriority=" + detail.isPriority + " pitch=" + detail.pitchPatterns);
@@ -167,9 +167,9 @@ public class SchemaV2QueryDiagnosticTest {
     }
 
     // Runs every tier for [term] against a fresh DictionarySearchQueryTool (plus the proper-noun
-    // and deinflection passes), then dumps the resulting DictionarySearchElement rows joined
-    // through fetchListSummary. Returns the raw hits for further inspection by other tests.
-    private List<DictionaryQueryResult> runSearch(String term) {
+    // and deinflection passes), then dumps the resulting DictionarySearchElement rows' precomputed
+    // render_json. Returns the raw hits for further inspection by other tests.
+    private List<DictionarySearchElement> runSearch(String term) {
         int ref = refCounter++;
         DictionarySearchQueryTool tool = new DictionarySearchQueryTool(dbComponent, ref, languageSettings);
         try {
@@ -180,17 +180,22 @@ public class SchemaV2QueryDiagnosticTest {
             tool.executeProperNouns(term);
             tool.executeDeinflection(term);
 
-            List<DictionaryQueryResult> results = fetchRawResults(ref);
+            List<DictionarySearchElement> results = fetchRawResults(ref);
             if (results.isEmpty()) {
                 Log.i(TAG, "  (no hits)");
             }
             int shown = 0;
-            for (DictionaryQueryResult r : results) {
+            for (DictionarySearchElement r : results) {
                 if (shown >= 8) {
                     Log.i(TAG, "  ... (" + (results.size() - shown) + " more)");
                     break;
                 }
-                EntryListSummary summary = dbComponent.fetchListSummary(r, languageSettings);
+                EntryListSummary summary = r.render_json != null
+                        ? PersistentDatabaseComponent.parsePrecomputedSummary(r.render_json)
+                        : null;
+                if (summary == null) {
+                    summary = new EntryListSummary();
+                }
                 List<String> tagCodes = new ArrayList<>();
                 String glossPreview = "";
                 if (!summary.senseGroups.isEmpty()) {
@@ -216,43 +221,34 @@ public class SchemaV2QueryDiagnosticTest {
         }
     }
 
-    private List<DictionaryQueryResult> fetchRawResults(int ref) {
-        List<DictionaryQueryResult> results = new ArrayList<>();
+    // Returns real DictionarySearchElement rows (not just the DictionaryQueryResult metadata
+    // shape) since render_json - the precomputed display payload every search tier now writes at
+    // insert time (see DictionarySearchQueryTool.buildRenderJsonExpr) - lives only on that entity.
+    private List<DictionarySearchElement> fetchRawResults(int ref) {
+        List<DictionarySearchElement> results = new ArrayList<>();
         SupportSQLiteDatabase readable = dbComponent.getDatabase().getOpenHelper().getReadableDatabase();
         Cursor cur = readable.query(
                 "SELECT entry_id, seq, form_id, match_kind, matched_text, original_query, "
-                        + "dictionary_form, deinflection_label, rank, bookmark, memo, tags "
+                        + "dictionary_form, deinflection_label, rank, bookmark, memo, tags, render_json "
                         + "FROM DictionarySearchElement WHERE ref = ? ORDER BY entryOrder, rank, entry_id",
                 new Object[]{ref});
         if (cur != null) {
             while (cur.moveToNext()) {
-                final long entryId = cur.getLong(0);
-                final long seq = cur.getLong(1);
-                final Long formId = cur.isNull(2) ? null : cur.getLong(2);
-                final String matchKind = cur.getString(3);
-                final String matchedText = cur.getString(4);
-                final String originalQuery = cur.getString(5);
-                final String dictionaryForm = cur.getString(6);
-                final String deinflectionLabel = cur.getString(7);
-                final int rank = cur.getInt(8);
-                final long bookmark = cur.getLong(9);
-                final String memo = cur.getString(10);
-                final String tags = cur.getString(11);
-
-                results.add(new DictionaryQueryResult() {
-                    @Override public long getEntryId() { return entryId; }
-                    @Override public long getSeq() { return seq; }
-                    @Override public Long getFormId() { return formId; }
-                    @Override public String getMatchKind() { return matchKind; }
-                    @Override public String getMatchedText() { return matchedText; }
-                    @Override public String getOriginalQuery() { return originalQuery; }
-                    @Override public String getDictionaryForm() { return dictionaryForm; }
-                    @Override public String getDeinflectionLabel() { return deinflectionLabel; }
-                    @Override public int getRank() { return rank; }
-                    @Override public long getBookmark() { return bookmark; }
-                    @Override public String getMemo() { return memo; }
-                    @Override public String getTags() { return tags; }
-                });
+                DictionarySearchElement element = new DictionarySearchElement();
+                element.entry_id = cur.getLong(0);
+                element.seq = cur.getLong(1);
+                element.form_id = cur.isNull(2) ? null : cur.getLong(2);
+                element.match_kind = cur.getString(3);
+                element.matched_text = cur.getString(4);
+                element.original_query = cur.getString(5);
+                element.dictionary_form = cur.getString(6);
+                element.deinflection_label = cur.getString(7);
+                element.rank = cur.getInt(8);
+                element.bookmark = cur.getLong(9);
+                element.memo = cur.getString(10);
+                element.tags = cur.getString(11);
+                element.render_json = cur.getString(12);
+                results.add(element);
             }
             cur.close();
         }

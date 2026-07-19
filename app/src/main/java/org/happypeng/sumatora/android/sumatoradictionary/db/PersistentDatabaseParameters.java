@@ -244,4 +244,15 @@ public abstract class PersistentDatabaseParameters {
             database.execSQL("CREATE TABLE IF NOT EXISTS CachedManifestEntry (`type` TEXT NOT NULL, `lang` TEXT NOT NULL, `description` TEXT, `url` TEXT NOT NULL, `version` INTEGER NOT NULL, `date` INTEGER NOT NULL, `sha256` TEXT NOT NULL, PRIMARY KEY(`type`, `lang`))");
         }
     };
+
+    // Every search-result row now carries its fully-assembled render payload (headword, furigana,
+    // alt writings/readings, sense groups or name translations) as one JSON blob computed at
+    // insert time via joins - see DictionarySearchQueryTool.buildRenderJsonExpr - instead of each
+    // row triggering a separate live query when it scrolls into view.
+    public static final Migration MIGRATION_10_11 = new Migration(10, 11) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE DictionarySearchElement ADD COLUMN render_json TEXT");
+        }
+    };
 }

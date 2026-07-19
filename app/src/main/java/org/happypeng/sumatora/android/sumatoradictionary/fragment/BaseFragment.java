@@ -174,7 +174,6 @@ public abstract class BaseFragment extends Fragment {
                         queryFragmentModel.getCommitBookmarksFun(),
                         queryFragmentModel.getCommitTagsFun(),
                         queryFragmentModel.getAvailableTagsFun(),
-                        queryFragmentModel.getListSummaryFun(),
                         new DictionarySearchElementViewHolder.Colors(
                                 ContextCompat.getColor(getContext(), R.color.text_background_primary),
                                 ContextCompat.getColor(getContext(), R.color.text_background_primary_backup),

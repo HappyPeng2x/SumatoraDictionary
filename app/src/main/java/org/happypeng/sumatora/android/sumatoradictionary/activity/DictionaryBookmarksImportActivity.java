@@ -114,7 +114,6 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
                         (seq, bookmark, memo) -> Unit.INSTANCE,
                         (seq, tags) -> Unit.INSTANCE,
                         () -> java.util.Collections.emptyList(),
-                        bookmarkImportModel.getListSummaryFun(),
                         new DictionarySearchElementViewHolder.Colors(
                                 ContextCompat.getColor(this, R.color.text_background_primary),
                                 ContextCompat.getColor(this, R.color.text_background_primary_backup),

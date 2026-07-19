@@ -32,10 +32,8 @@ import org.happypeng.sumatora.android.sumatoradictionary.component.PersistentDat
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.schedulers.Schedulers
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement
-import org.happypeng.sumatora.android.sumatoradictionary.db.EntryListSummary
 import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings
-import org.happypeng.sumatora.core.dict.DictionaryQueryResult
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.ImportCancelIntent
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.ImportCloseIntent
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.ImportCommitIntent
@@ -74,16 +72,6 @@ class BookmarkImportModel @Inject constructor(
         get() = Observable.defer {
             Observable.just(persistentDatabaseComponent.database.installedDictionaryDao().all)
         }.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
-
-    // Kept in sync by the persistentLanguageSettings subscription in init{} instead of being
-    // queried fresh from the DB on every row bind.
-    @Volatile
-    private var cachedLanguageSettings: PersistentLanguageSettings =
-        PersistentLanguageSettings().also { it.lang = PersistentLanguageSettings.LANG_DEFAULT }
-
-    val listSummaryFun: (DictionaryQueryResult) -> EntryListSummary = { entry ->
-        persistentDatabaseComponent.fetchListSummary(entry, cachedLanguageSettings)
-    }
 
     fun setLanguage(language: String) {
         val settings = PersistentLanguageSettings()
@@ -136,10 +124,7 @@ class BookmarkImportModel @Inject constructor(
         processIntents(languageSettingsComponent.persistentLanguageSettings.map {
             when (it) {
                 is LanguageSettingDetachedIntent -> ImportLanguageSettingDetachedIntent
-                is LanguageSettingAttachedIntent -> {
-                    cachedLanguageSettings = it.languageSettings
-                    ImportLanguageSettingAttachedIntent(it.languageSettings)
-                }
+                is LanguageSettingAttachedIntent -> ImportLanguageSettingAttachedIntent(it.languageSettings)
             }
         })
         processIntents(clearedObservable.map { ImportCloseIntent })
