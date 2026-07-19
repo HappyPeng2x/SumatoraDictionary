@@ -62,8 +62,12 @@ public class DictionarySearchQueryTool {
     private static final String SCRIPT_WRITING = "writing";
     private static final String SCRIPT_KANA = "kana";
 
+    // Casting DictionaryBookmark.seq to TEXT (not Entry.source_key to INTEGER) keeps
+    // Entry.source_key bare so EntrySourceKeyOnly can be used for the join - see the query-plan
+    // audit this fixed. Doesn't matter for correctness which side the cast is on (source_key is
+    // always a plain decimal string), only for whether the indexed column stays seekable.
     private static final String BOOKMARK_JOIN =
-            "LEFT JOIN DictionaryBookmark ON DictionaryBookmark.seq = CAST(Entry.source_key AS INTEGER) ";
+            "LEFT JOIN DictionaryBookmark ON Entry.source_key = CAST(DictionaryBookmark.seq AS TEXT) ";
 
     private static final String BOOKMARKS_WHERE_CLAUSE =
             "((? = 0 AND ? = 0) OR (((? AND IFNULL(DictionaryBookmark.bookmark, 0) > 0) OR (? AND DictionaryBookmark.memo IS NOT NULL AND DictionaryBookmark.memo != ''))))";
@@ -94,7 +98,7 @@ public class DictionarySearchQueryTool {
                     + "NULL, NULL, (0 - Entry.score) AS rank, "
                     + "DictionaryBookmark.bookmark, DictionaryBookmark.memo, DictionaryBookmark.tags "
                     + "FROM DictionaryBookmark "
-                    + "JOIN core.Entry ON CAST(Entry.source_key AS INTEGER) = DictionaryBookmark.seq "
+                    + "JOIN core.Entry ON Entry.source_key = CAST(DictionaryBookmark.seq AS TEXT) "
                     + "WHERE %s";
 
     // Basic tier: exact/prefix/substring x writing/kana x prio/nonprio against SearchTerm, joined
@@ -274,13 +278,13 @@ public class DictionarySearchQueryTool {
                 basicTierWhere("= ?", SCRIPT_KANA, false, false, false));
 
         final SupportSQLiteStatement queryPrefixPrioWriting = compileBasic(db, "prefix", FROM_CORE_SEARCH_TERM,
-                basicTierWhere("GLOB ? || '*'", SCRIPT_WRITING, true, true, false));
+                basicTierWhere("GLOB ?", SCRIPT_WRITING, true, true, false));
         final SupportSQLiteStatement queryPrefixPrioReading = compileBasic(db, "prefix", FROM_CORE_SEARCH_TERM,
-                basicTierWhere("GLOB ? || '*'", SCRIPT_KANA, true, true, false));
+                basicTierWhere("GLOB ?", SCRIPT_KANA, true, true, false));
         final SupportSQLiteStatement queryPrefixNonPrioWriting = compileBasic(db, "prefix", FROM_CORE_SEARCH_TERM,
-                basicTierWhere("GLOB ? || '*'", SCRIPT_WRITING, false, true, false));
+                basicTierWhere("GLOB ?", SCRIPT_WRITING, false, true, false));
         final SupportSQLiteStatement queryPrefixNonPrioReading = compileBasic(db, "prefix", FROM_CORE_SEARCH_TERM,
-                basicTierWhere("GLOB ? || '*'", SCRIPT_KANA, false, true, false));
+                basicTierWhere("GLOB ?", SCRIPT_KANA, false, true, false));
 
         final SupportSQLiteStatement querySubstringPrioWriting;
         final SupportSQLiteStatement querySubstringPrioReading;
@@ -288,13 +292,13 @@ public class DictionarySearchQueryTool {
         final SupportSQLiteStatement querySubstringNonPrioReading;
         if (suffixInstalled) {
             querySubstringPrioWriting = db.compileStatement(String.format(SQL_QUERY_BASIC_TIER, "substring",
-                    FROM_SUFFIX_SEARCH_TERM, substringWhere("SearchSuffix.suffix GLOB ? || '*'", SCRIPT_WRITING, true)));
+                    FROM_SUFFIX_SEARCH_TERM, substringWhere("SearchSuffix.suffix GLOB ?", SCRIPT_WRITING, true)));
             querySubstringPrioReading = db.compileStatement(String.format(SQL_QUERY_BASIC_TIER, "substring",
-                    FROM_SUFFIX_SEARCH_TERM, substringWhere("SearchSuffix.suffix GLOB ? || '*'", SCRIPT_KANA, true)));
+                    FROM_SUFFIX_SEARCH_TERM, substringWhere("SearchSuffix.suffix GLOB ?", SCRIPT_KANA, true)));
             querySubstringNonPrioWriting = db.compileStatement(String.format(SQL_QUERY_BASIC_TIER, "substring",
-                    FROM_SUFFIX_SEARCH_TERM, substringWhere("SearchSuffix.suffix GLOB ? || '*'", SCRIPT_WRITING, false)));
+                    FROM_SUFFIX_SEARCH_TERM, substringWhere("SearchSuffix.suffix GLOB ?", SCRIPT_WRITING, false)));
             querySubstringNonPrioReading = db.compileStatement(String.format(SQL_QUERY_BASIC_TIER, "substring",
-                    FROM_SUFFIX_SEARCH_TERM, substringWhere("SearchSuffix.suffix GLOB ? || '*'", SCRIPT_KANA, false)));
+                    FROM_SUFFIX_SEARCH_TERM, substringWhere("SearchSuffix.suffix GLOB ?", SCRIPT_KANA, false)));
         } else {
             querySubstringPrioWriting = db.compileStatement(SQL_NOOP_INSERT);
             querySubstringPrioReading = db.compileStatement(SQL_NOOP_INSERT);
@@ -325,7 +329,7 @@ public class DictionarySearchQueryTool {
         deleteByTagStatement = db.compileStatement(
                 "DELETE FROM DictionarySearchElement WHERE ref = ? AND entry_id NOT IN ("
                         + "SELECT Entry.entry_id FROM core.Entry "
-                        + "JOIN DictionaryBookmarkTag ON DictionaryBookmarkTag.seq = CAST(Entry.source_key AS INTEGER) "
+                        + "JOIN DictionaryBookmarkTag ON Entry.source_key = CAST(DictionaryBookmarkTag.seq AS TEXT) "
                         + "WHERE DictionaryBookmarkTag.tag = ?)");
 
         countByRefStatement = db.compileStatement(
@@ -333,13 +337,13 @@ public class DictionarySearchQueryTool {
 
         if (namesInstalled) {
             properNounExactWriting = new BasicQueryStatement(database, key, ORDER_PROPER_NOUN_EXACT, persistentLanguageSettings,
-                    db.compileStatement(String.format(SQL_QUERY_PROPER_NOUN, SCRIPT_WRITING, "= ?")), null, false, romkan);
+                    db.compileStatement(String.format(SQL_QUERY_PROPER_NOUN, SCRIPT_WRITING, "= ?")), null, false, "", romkan);
             properNounExactReading = new BasicQueryStatement(database, key, ORDER_PROPER_NOUN_EXACT, persistentLanguageSettings,
-                    db.compileStatement(String.format(SQL_QUERY_PROPER_NOUN, SCRIPT_KANA, "= ?")), null, true, romkan);
+                    db.compileStatement(String.format(SQL_QUERY_PROPER_NOUN, SCRIPT_KANA, "= ?")), null, true, "", romkan);
             properNounBeginWriting = new BasicQueryStatement(database, key, ORDER_PROPER_NOUN_BEGIN, persistentLanguageSettings,
-                    db.compileStatement(String.format(SQL_QUERY_PROPER_NOUN, SCRIPT_WRITING, "GLOB ? || '*'")), null, false, romkan);
+                    db.compileStatement(String.format(SQL_QUERY_PROPER_NOUN, SCRIPT_WRITING, "GLOB ?")), null, false, "*", romkan);
             properNounBeginReading = new BasicQueryStatement(database, key, ORDER_PROPER_NOUN_BEGIN, persistentLanguageSettings,
-                    db.compileStatement(String.format(SQL_QUERY_PROPER_NOUN, SCRIPT_KANA, "GLOB ? || '*'")), null, true, romkan);
+                    db.compileStatement(String.format(SQL_QUERY_PROPER_NOUN, SCRIPT_KANA, "GLOB ?")), null, true, "*", romkan);
         }
 
         // Deinflection doesn't split prio/nonprio (a conjugated hit is a conjugated hit regardless
@@ -349,21 +353,21 @@ public class DictionarySearchQueryTool {
 
         statements = new QueryStatement[15];
 
-        statements[0] = new BasicQueryStatement(database, key, ORDER_BOOKMARK_LISTING, persistentLanguageSettings, queryBookmarkListing, null, false, romkan);
-        statements[1] = new BasicQueryStatement(database, key, ORDER_EXACT_PRIO_WRITING, persistentLanguageSettings, queryExactPrioWriting, null, false, romkan);
-        statements[2] = new BasicQueryStatement(database, key, ORDER_EXACT_PRIO_KANA, persistentLanguageSettings, queryExactPrioReading, null, true, romkan);
-        statements[3] = new BasicQueryStatement(database, key, ORDER_EXACT_NONPRIO_WRITING, persistentLanguageSettings, queryExactNonPrioWriting, null, false, romkan);
-        statements[4] = new BasicQueryStatement(database, key, ORDER_EXACT_NONPRIO_KANA, persistentLanguageSettings, queryExactNonPrioReading, null, true, romkan);
-        statements[5] = new BasicQueryStatement(database, key, ORDER_PREFIX_PRIO_WRITING, persistentLanguageSettings, queryPrefixPrioWriting, null, false, romkan);
-        statements[6] = new BasicQueryStatement(database, key, ORDER_PREFIX_PRIO_KANA, persistentLanguageSettings, queryPrefixPrioReading, null, true, romkan);
-        statements[7] = new BasicQueryStatement(database, key, ORDER_PREFIX_NONPRIO_WRITING, persistentLanguageSettings, queryPrefixNonPrioWriting, null, false, romkan);
-        statements[8] = new BasicQueryStatement(database, key, ORDER_PREFIX_NONPRIO_KANA, persistentLanguageSettings, queryPrefixNonPrioReading, null, true, romkan);
-        statements[9] = new BasicQueryStatement(database, key, ORDER_SUBSTRING_PRIO_WRITING, persistentLanguageSettings, querySubstringPrioWriting, null, false, romkan);
-        statements[10] = new BasicQueryStatement(database, key, ORDER_SUBSTRING_PRIO_KANA, persistentLanguageSettings, querySubstringPrioReading, null, true, romkan);
-        statements[11] = new BasicQueryStatement(database, key, ORDER_SUBSTRING_NONPRIO_WRITING, persistentLanguageSettings, querySubstringNonPrioWriting, null, false, romkan);
-        statements[12] = new BasicQueryStatement(database, key, ORDER_SUBSTRING_NONPRIO_KANA, persistentLanguageSettings, querySubstringNonPrioReading, null, true, romkan);
-        statements[13] = new BasicQueryStatement(database, key, ORDER_GLOSS_EXACT, persistentLanguageSettings, queryGlossExact, queryGlossExactBackup, false, romkan);
-        statements[14] = new BasicQueryStatement(database, key, ORDER_GLOSS_PREFIX, persistentLanguageSettings, queryGlossPrefix, queryGlossPrefixBackup, false, romkan);
+        statements[0] = new BasicQueryStatement(database, key, ORDER_BOOKMARK_LISTING, persistentLanguageSettings, queryBookmarkListing, null, false, "", romkan);
+        statements[1] = new BasicQueryStatement(database, key, ORDER_EXACT_PRIO_WRITING, persistentLanguageSettings, queryExactPrioWriting, null, false, "", romkan);
+        statements[2] = new BasicQueryStatement(database, key, ORDER_EXACT_PRIO_KANA, persistentLanguageSettings, queryExactPrioReading, null, true, "", romkan);
+        statements[3] = new BasicQueryStatement(database, key, ORDER_EXACT_NONPRIO_WRITING, persistentLanguageSettings, queryExactNonPrioWriting, null, false, "", romkan);
+        statements[4] = new BasicQueryStatement(database, key, ORDER_EXACT_NONPRIO_KANA, persistentLanguageSettings, queryExactNonPrioReading, null, true, "", romkan);
+        statements[5] = new BasicQueryStatement(database, key, ORDER_PREFIX_PRIO_WRITING, persistentLanguageSettings, queryPrefixPrioWriting, null, false, "*", romkan);
+        statements[6] = new BasicQueryStatement(database, key, ORDER_PREFIX_PRIO_KANA, persistentLanguageSettings, queryPrefixPrioReading, null, true, "*", romkan);
+        statements[7] = new BasicQueryStatement(database, key, ORDER_PREFIX_NONPRIO_WRITING, persistentLanguageSettings, queryPrefixNonPrioWriting, null, false, "*", romkan);
+        statements[8] = new BasicQueryStatement(database, key, ORDER_PREFIX_NONPRIO_KANA, persistentLanguageSettings, queryPrefixNonPrioReading, null, true, "*", romkan);
+        statements[9] = new BasicQueryStatement(database, key, ORDER_SUBSTRING_PRIO_WRITING, persistentLanguageSettings, querySubstringPrioWriting, null, false, "*", romkan);
+        statements[10] = new BasicQueryStatement(database, key, ORDER_SUBSTRING_PRIO_KANA, persistentLanguageSettings, querySubstringPrioReading, null, true, "*", romkan);
+        statements[11] = new BasicQueryStatement(database, key, ORDER_SUBSTRING_NONPRIO_WRITING, persistentLanguageSettings, querySubstringNonPrioWriting, null, false, "*", romkan);
+        statements[12] = new BasicQueryStatement(database, key, ORDER_SUBSTRING_NONPRIO_KANA, persistentLanguageSettings, querySubstringNonPrioReading, null, true, "*", romkan);
+        statements[13] = new BasicQueryStatement(database, key, ORDER_GLOSS_EXACT, persistentLanguageSettings, queryGlossExact, queryGlossExactBackup, false, "", romkan);
+        statements[14] = new BasicQueryStatement(database, key, ORDER_GLOSS_PREFIX, persistentLanguageSettings, queryGlossPrefix, queryGlossPrefixBackup, false, "", romkan);
     }
 
     private static String substringWhere(final String matchOp, final String script, final boolean prio) {

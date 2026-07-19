@@ -28,6 +28,15 @@ import java.util.List;
 
 public class BasicQueryStatement extends QueryStatement {
     private final boolean kana;
+    // Appended to the bound term before it reaches the compiled statement's GLOB placeholder -
+    // "" for an exact ('=') tier, "*" for a prefix ('GLOB ?') tier. Deliberately NOT done as
+    // `GLOB ? || '*'` in the SQL itself: SQLite's LIKE/GLOB prefix optimization (turning the scan
+    // into an index range seek) only fires when the pattern reaching the opcode is a plain bound
+    // parameter, not a computed expression - concatenating the wildcard in SQL silently defeats it
+    // and forces a full table scan of SearchTerm (or SearchSuffix) on every prefix/substring tier,
+    // i.e. on nearly every search. Building the full pattern here keeps the bind position a plain
+    // string parameter, so the index gets used. See the query-plan audit this fixed.
+    private final String patternSuffix;
     private final Romkan romkan;
     final int order;
 
@@ -36,10 +45,11 @@ public class BasicQueryStatement extends QueryStatement {
                                 final PersistentLanguageSettings aLanguageSettings,
                                 final SupportSQLiteStatement aStatement,
                                 final SupportSQLiteStatement aBackupStatement,
-                                boolean aKana, final Romkan aRomkan) {
+                                boolean aKana, final String aPatternSuffix, final Romkan aRomkan) {
         super(aDB, aRef, aLanguageSettings, aStatement, aBackupStatement);
 
         kana = aKana;
+        patternSuffix = aPatternSuffix;
         romkan = aRomkan;
         order = aOrder;
     }
@@ -57,10 +67,12 @@ public class BasicQueryStatement extends QueryStatement {
             bindTerm = romkan.to_katakana(romkan.to_hepburn(bindTerm));
         }
 
+        final String matchTerm = bindTerm + patternSuffix;
+
         statement.bindLong(1, ref);
         statement.bindLong(2, order);
         statement.bindString(3, term);
-        statement.bindString(4, bindTerm);
+        statement.bindString(4, matchTerm);
 
         bind(statement, parameters, 5);
 
@@ -70,7 +82,7 @@ public class BasicQueryStatement extends QueryStatement {
             backupStatement.bindLong(1, ref);
             backupStatement.bindLong(2, order);
             backupStatement.bindString(3, term);
-            backupStatement.bindString(4, bindTerm);
+            backupStatement.bindString(4, matchTerm);
 
             bind(backupStatement, parameters, 5);
 

@@ -23,12 +23,18 @@ import android.database.SQLException;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.WorkerThread;
+import androidx.collection.LruCache;
 import androidx.lifecycle.LiveData;
+import androidx.paging.DataSource;
 import androidx.paging.LivePagedListBuilder;
 import androidx.paging.PagedList;
 import androidx.room.Room;
 import androidx.room.RoomDatabase;
 import androidx.sqlite.db.SupportSQLiteDatabase;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryControlInfo;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryKanjiInfo;
@@ -46,9 +52,13 @@ import org.happypeng.sumatora.jromkan.Romkan;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -150,10 +160,14 @@ public class PersistentDatabaseComponent {
     // Other kanji spellings sharing the exact reading being displayed - the list row only shows
     // one furigana reading, so mixing in a spelling read differently would look like it shares
     // the same pronunciation. Excludes the displayed form itself and is_search_only forms.
+    // Furigana is joined in directly (grouped in code below) instead of a separate query per
+    // alternate writing - same batching rationale as fetchSenseGroupSummaries().
     private static final String FORM_QUERY_ALTERNATE_WRITINGS =
-            "SELECT text, form_id FROM %s.EntryForm WHERE entry_id = ? AND form_type = 'writing' AND is_search_only = 0 "
-                    + "AND form_id != ? AND reading = (SELECT reading FROM %s.EntryForm WHERE form_id = ?) "
-                    + "ORDER BY is_primary DESC, score DESC, ord";
+            "SELECT ef.text, ef.form_id, ffs.base, ffs.ruby FROM %s.EntryForm ef "
+                    + "LEFT JOIN %s.FormFuriganaSegment ffs ON ffs.form_id = ef.form_id "
+                    + "WHERE ef.entry_id = ? AND ef.form_type = 'writing' AND ef.is_search_only = 0 "
+                    + "AND ef.form_id != ? AND ef.reading = (SELECT reading FROM %s.EntryForm WHERE form_id = ?) "
+                    + "ORDER BY ef.is_primary DESC, ef.score DESC, ef.ord, ffs.ord";
 
     // Other readings the displayed kanji spelling itself can take (e.g. 二 also reads ふた/ふ/ふう) -
     // the search could have hit any of them, but furigana only ever shows the one that was
@@ -175,15 +189,24 @@ public class PersistentDatabaseComponent {
     private List<EntryListSummary.AlternateWriting> fetchAlternateWritings(SupportSQLiteDatabase readable, String pack,
                                                                             long entryId, long formId) {
         List<EntryListSummary.AlternateWriting> result = new ArrayList<>();
+        Map<Long, EntryListSummary.AlternateWriting> byFormId = new LinkedHashMap<>();
         try {
-            Cursor cur = readable.query(String.format(FORM_QUERY_ALTERNATE_WRITINGS, pack, pack),
+            Cursor cur = readable.query(String.format(FORM_QUERY_ALTERNATE_WRITINGS, pack, pack, pack),
                     new Object[]{entryId, formId, formId});
             if (cur != null) {
                 while (cur.moveToNext()) {
-                    EntryListSummary.AlternateWriting alt = new EntryListSummary.AlternateWriting();
-                    alt.text = cur.getString(0);
-                    alt.furiganaSegments = fetchFurigana(readable, pack, cur.getLong(1));
-                    result.add(alt);
+                    long altFormId = cur.getLong(1);
+                    EntryListSummary.AlternateWriting alt = byFormId.get(altFormId);
+                    if (alt == null) {
+                        alt = new EntryListSummary.AlternateWriting();
+                        alt.text = cur.getString(0);
+                        byFormId.put(altFormId, alt);
+                        result.add(alt);
+                    }
+                    final String base = cur.getString(2);
+                    if (base != null) {
+                        alt.furiganaSegments.add(new EntryListSummary.FuriganaSegment(base, cur.getString(3)));
+                    }
                 }
                 cur.close();
             }
@@ -284,119 +307,104 @@ public class PersistentDatabaseComponent {
         return segments;
     }
 
-    // Lean analog of fetchEntryDetail()'s sense-group loop for a search-result list row: same
-    // grouping/merge/filter rules (SenseGroup tags, matched-form sense filter via
-    // SenseAppliesToForm, restricted-form-id merge key so a restricted group never silently
-    // merges with an adjacent unrestricted one) but only tags + gloss text - no
-    // notes/xrefs/language-sources/examples, and every sense is kept (not just the first) so a
-    // gloss/reverse-search hit on any sense stays visible in the row that matched it.
-    @WorkerThread
-    private void fetchSenseGroupSummaries(SupportSQLiteDatabase readable, long entryId, @Nullable Long formId,
-                                          PersistentLanguageSettings languageSettings, EntryListSummary summary) {
-        String effectiveLang = null;
-        if (glossHasEntry(readable, languageSettings.lang, entryId)) {
-            effectiveLang = languageSettings.lang;
-        } else if (languageSettings.backupLang != null && glossHasEntry(readable, languageSettings.backupLang, entryId)) {
-            effectiveLang = languageSettings.backupLang;
-            summary.usedBackupLang = true;
+
+    // fetchListSummary() runs on every visible search-result row on every scroll (see
+    // fetchSenseGroupSummaries()'s comment), and its result only depends on the entry/form being
+    // displayed and the active language settings - none of which change while a row sits on
+    // screen or when the same entry is scrolled back into view. Caching it means a fling back up
+    // to already-seen results, or re-binding a recycled holder to an entry already computed this
+    // session, is free instead of re-running the whole query cascade.
+    private final LruCache<SummaryCacheKey, EntryListSummary> listSummaryCache = new LruCache<>(500);
+
+    private static final class SummaryCacheKey {
+        final long entryId;
+        final long formId;
+        final boolean isName;
+        final String lang;
+        @Nullable final String backupLang;
+
+        SummaryCacheKey(long entryId, long formId, boolean isName, String lang, @Nullable String backupLang) {
+            this.entryId = entryId;
+            this.formId = formId;
+            this.isName = isName;
+            this.lang = lang;
+            this.backupLang = backupLang;
         }
-        final String glossLang = effectiveLang;
-        if (glossLang == null) {
-            return;
+
+        @Override
+        public boolean equals(Object o) {
+            if (!(o instanceof SummaryCacheKey)) return false;
+            SummaryCacheKey other = (SummaryCacheKey) o;
+            return entryId == other.entryId && formId == other.formId && isName == other.isName
+                    && Objects.equals(lang, other.lang) && Objects.equals(backupLang, other.backupLang);
         }
 
-        int[] displayIndex = {0};
-        EntryListSummary.SenseGroupSummary lastGroup = null;
-        List<Long> lastRestrictedFormIds = null;
-        try {
-            Cursor groupCur = readable.query(
-                    "SELECT sense_group_id FROM core.SenseGroup WHERE entry_id = ? ORDER BY ord",
-                    new Object[]{entryId});
-            if (groupCur != null) {
-                while (groupCur.moveToNext()) {
-                    long groupId = groupCur.getLong(0);
-
-                    List<String> tags = fetchStrings(readable,
-                            "SELECT Tag.code FROM core.SenseGroupTag JOIN core.Tag ON Tag.tag_id = SenseGroupTag.tag_id "
-                                    + "WHERE SenseGroupTag.sense_group_id = ? ORDER BY Tag.sort_order",
-                            groupId);
-
-                    List<EntryListSummary.SenseSummary> senses = new ArrayList<>();
-                    List<Long> restrictedFormIds = null;
-                    Cursor senseCur = readable.query(
-                            "SELECT sense_id FROM core.Sense WHERE sense_group_id = ? AND "
-                                    + "(NOT EXISTS (SELECT 1 FROM core.SenseAppliesToForm a WHERE a.sense_id = Sense.sense_id) "
-                                    + "OR ? IS NULL "
-                                    + "OR EXISTS (SELECT 1 FROM core.SenseAppliesToForm a WHERE a.sense_id = Sense.sense_id AND a.form_id = ?)) "
-                                    + "ORDER BY ord",
-                            new Object[]{groupId, formId, formId});
-                    if (senseCur != null) {
-                        while (senseCur.moveToNext()) {
-                            long senseId = senseCur.getLong(0);
-                            String glossText = fetchGlossText(readable, glossLang, senseId);
-                            if (glossText == null && languageSettings.backupLang != null
-                                    && !languageSettings.backupLang.equals(glossLang)) {
-                                glossText = fetchGlossText(readable, languageSettings.backupLang, senseId);
-                            }
-                            if (glossText == null) {
-                                continue;
-                            }
-                            if (restrictedFormIds == null) {
-                                restrictedFormIds = fetchRestrictedFormIds(readable, senseId);
-                            }
-                            EntryListSummary.SenseSummary sense = new EntryListSummary.SenseSummary();
-                            sense.displayIndex = ++displayIndex[0];
-                            sense.glossText = glossText;
-                            senses.add(sense);
-                        }
-                        senseCur.close();
-                    }
-
-                    if (senses.isEmpty()) {
-                        continue;
-                    }
-                    if (restrictedFormIds == null) {
-                        restrictedFormIds = Collections.emptyList();
-                    }
-
-                    if (lastGroup != null && lastGroup.tagCodes.equals(tags)
-                            && lastRestrictedFormIds.equals(restrictedFormIds)) {
-                        lastGroup.senses.addAll(senses);
-                    } else {
-                        EntryListSummary.SenseGroupSummary newGroup = new EntryListSummary.SenseGroupSummary();
-                        newGroup.tagCodes = tags;
-                        newGroup.senses = senses;
-                        summary.senseGroups.add(newGroup);
-                        lastGroup = newGroup;
-                        lastRestrictedFormIds = restrictedFormIds;
-                    }
-                }
-                groupCur.close();
-            }
-        } catch (SQLException ignored) {
+        @Override
+        public int hashCode() {
+            return Objects.hash(entryId, formId, isName, lang, backupLang);
         }
     }
 
-    // Assembles the lean per-row summary a search-result card needs: primary headword + furigana,
-    // and every sense group (tags + all senses), falling back to the backup language if the
-    // primary language has nothing for this entry. Proper names use their own pack/tables.
     @WorkerThread
     public EntryListSummary fetchListSummary(DictionaryQueryResult entry, PersistentLanguageSettings languageSettings) {
+        final SummaryCacheKey key = new SummaryCacheKey(entry.getEntryId(),
+                entry.getFormId() != null ? entry.getFormId() : -1L,
+                "name".equals(entry.getMatchKind()), languageSettings.lang, languageSettings.backupLang);
+        final EntryListSummary cached = listSummaryCache.get(key);
+        if (cached != null) {
+            return cached;
+        }
+        final EntryListSummary summary = fetchListSummaryUncached(entry, languageSettings);
+        listSummaryCache.put(key, summary);
+        return summary;
+    }
+
+    // Furigana + alternate-writings (each with its own furigana) + alternate-readings for the
+    // resolved display form, in one round trip instead of three. json() wraps the nested
+    // furigana_json column so json_object() embeds it as a real nested array instead of a
+    // double-encoded string - see the query-plan audit this design came out of. Binding formId=-1
+    // (the DisplayForm default) or a null text/reading naturally yields empty arrays rather than
+    // needing separate Java-side guards, since no real row matches those values.
+    private static final String QUERY_ENTRY_CARD_CLUSTER =
+            "SELECT "
+                    + "(SELECT json_group_array(json_array(base, ruby)) FROM core.FormFuriganaSegment "
+                    + "WHERE form_id = ? ORDER BY ord), "
+                    + "(SELECT json_group_array(json_object('text', alt.text, 'furigana', json(alt.furigana_json))) FROM ("
+                    + "SELECT ef.text AS text, "
+                    + "(SELECT json_group_array(json_array(ffs.base, ffs.ruby)) FROM core.FormFuriganaSegment ffs "
+                    + "WHERE ffs.form_id = ef.form_id ORDER BY ffs.ord) AS furigana_json "
+                    + "FROM core.EntryForm ef "
+                    + "WHERE ef.entry_id = ? AND ef.form_type = 'writing' AND ef.is_search_only = 0 "
+                    + "AND ef.form_id != ? AND ef.reading = (SELECT reading FROM core.EntryForm WHERE form_id = ?) "
+                    + "ORDER BY ef.is_primary DESC, ef.score DESC, ef.ord) AS alt), "
+                    + "(SELECT json_group_array(reading) FROM core.EntryForm WHERE entry_id = ? AND form_type = 'writing' "
+                    + "AND text = ? AND is_search_only = 0 AND reading != ? "
+                    + "ORDER BY is_primary DESC, score DESC, ord)";
+
+    // Assembles the lean per-row summary a search-result card needs, live, in ~4-6 queries
+    // instead of one query per group/sense (see fetchSenseGroupSummaries()'s history) or a
+    // precomputed pack (see the entrycards/sensecards investigation this replaced - reverted
+    // because the root cause turned out to be two missing indices and one bad GLOB pattern, not
+    // the live-query architecture itself; fixing those made this fast enough that doubling the
+    // app's bundled dictionary size for a precomputed cache stopped being worth it). Furigana/
+    // alternate-writings/alternate-readings and the whole sense-group cluster are each fetched as
+    // one round trip using json_group_array() to pack multiple logical result sets into one row,
+    // instead of one query per result set - see QUERY_ENTRY_CARD_CLUSTER and the sense cluster
+    // query below.
+    @WorkerThread
+    private EntryListSummary fetchListSummaryUncached(DictionaryQueryResult entry, PersistentLanguageSettings languageSettings) {
         final EntryListSummary summary = new EntryListSummary();
         final SupportSQLiteDatabase readable = getDatabase().getOpenHelper().getReadableDatabase();
         final boolean isName = "name".equals(entry.getMatchKind());
         summary.isName = isName;
-        final String pack = isName ? "names" : "core";
-
-        final DisplayForm displayForm = fetchDisplayForm(readable, pack, entry.getEntryId(), entry.getFormId());
-        summary.primaryText = displayForm.text;
-        summary.primaryReading = displayForm.reading;
-
-        if (displayForm.formId >= 0) {
-            summary.furiganaSegments = fetchFurigana(readable, pack, displayForm.formId);
-        }
 
         if (isName) {
+            final DisplayForm displayForm = fetchDisplayForm(readable, "names", entry.getEntryId(), entry.getFormId());
+            summary.primaryText = displayForm.text;
+            summary.primaryReading = displayForm.reading;
+            if (displayForm.formId >= 0) {
+                summary.furiganaSegments = fetchFurigana(readable, "names", displayForm.formId);
+            }
             try {
                 Cursor cur = readable.query(
                         "SELECT Tag.code FROM names.EntryTag "
@@ -422,17 +430,265 @@ public class PersistentDatabaseComponent {
             return summary;
         }
 
-        if (displayForm.formId >= 0) {
-            summary.alternateWritings = fetchAlternateWritings(readable, pack, entry.getEntryId(), displayForm.formId);
-        }
-        if (displayForm.text != null && displayForm.reading != null) {
-            summary.alternateReadings = fetchAlternateReadings(readable, pack, entry.getEntryId(),
-                    displayForm.text, displayForm.reading);
+        final DisplayForm displayForm = fetchDisplayForm(readable, "core", entry.getEntryId(), entry.getFormId());
+        summary.primaryText = displayForm.text;
+        summary.primaryReading = displayForm.reading;
+
+        try {
+            Cursor cur = readable.query(QUERY_ENTRY_CARD_CLUSTER, new Object[]{
+                    displayForm.formId,
+                    entry.getEntryId(), displayForm.formId, displayForm.formId,
+                    entry.getEntryId(), displayForm.text, displayForm.reading});
+            if (cur != null) {
+                if (cur.moveToFirst()) {
+                    summary.furiganaSegments = cur.isNull(0) ? new ArrayList<>() : parseFuriganaJson(cur.getString(0));
+                    summary.alternateWritings = cur.isNull(1) ? new ArrayList<>() : parseAlternateWritingsJson(cur.getString(1));
+                    summary.alternateReadings = cur.isNull(2) ? new ArrayList<>() : parseStringArrayJson(cur.getString(2));
+                }
+                cur.close();
+            }
+        } catch (SQLException ignored) {
         }
 
         fetchSenseGroupSummaries(readable, entry.getEntryId(), entry.getFormId(), languageSettings, summary);
 
         return summary;
+    }
+
+    // Sense-group cluster: same grouping/merge/filter rules as before (SenseGroup tags,
+    // matched-form sense filter via SenseAppliesToForm, restricted-form-id merge key so a
+    // restricted group never silently merges with an adjacent unrestricted one), but the four
+    // inputs the merge loop needs (sense rows, tags by group, gloss by sense, restricted forms by
+    // sense) are fetched as one round trip via json_group_array() instead of one query per input
+    // (or one query per sense group, before that). glossHasEntry()'s pair of existence checks
+    // stay separate small queries since which one succeeds decides which gloss pack alias to bind
+    // into the SQL text below - that can't be a bind parameter.
+    @WorkerThread
+    private void fetchSenseGroupSummaries(SupportSQLiteDatabase readable, long entryId, @Nullable Long formId,
+                                          PersistentLanguageSettings languageSettings, EntryListSummary summary) {
+        String effectiveLang = null;
+        if (glossHasEntry(readable, languageSettings.lang, entryId)) {
+            effectiveLang = languageSettings.lang;
+        } else if (languageSettings.backupLang != null && glossHasEntry(readable, languageSettings.backupLang, entryId)) {
+            effectiveLang = languageSettings.backupLang;
+            summary.usedBackupLang = true;
+        }
+        final String glossLang = effectiveLang;
+        if (glossLang == null) {
+            return;
+        }
+        final String backupLang = languageSettings.backupLang != null
+                && !languageSettings.backupLang.equals(glossLang) ? languageSettings.backupLang : null;
+
+        final String backupClause = backupLang != null
+                ? "(SELECT json_group_array(json_array(g2.sense_id, g2.text)) FROM gloss_" + backupLang + ".SenseGloss g2 "
+                        + "JOIN core.Sense s2 ON s2.sense_id = g2.sense_id "
+                        + "JOIN core.SenseGroup sg2 ON sg2.sense_group_id = s2.sense_group_id "
+                        + "WHERE sg2.entry_id = ? ORDER BY g2.sense_id, g2.ord)"
+                : "NULL";
+        final String query = "SELECT "
+                + "(SELECT json_group_array(json_array(sg.sense_group_id, s.sense_id)) FROM core.Sense s "
+                + "JOIN core.SenseGroup sg ON sg.sense_group_id = s.sense_group_id "
+                + "WHERE sg.entry_id = ? AND "
+                + "(NOT EXISTS (SELECT 1 FROM core.SenseAppliesToForm a WHERE a.sense_id = s.sense_id) "
+                + "OR ? IS NULL "
+                + "OR EXISTS (SELECT 1 FROM core.SenseAppliesToForm a WHERE a.sense_id = s.sense_id AND a.form_id = ?)) "
+                + "ORDER BY sg.ord, s.ord), "
+                + "(SELECT json_group_array(json_array(sgt.sense_group_id, t.code)) FROM core.SenseGroupTag sgt "
+                + "JOIN core.Tag t ON t.tag_id = sgt.tag_id "
+                + "WHERE sgt.sense_group_id IN (SELECT sense_group_id FROM core.SenseGroup WHERE entry_id = ?) "
+                + "ORDER BY sgt.sense_group_id, t.sort_order), "
+                + "(SELECT json_group_array(json_array(g.sense_id, g.text)) FROM gloss_" + glossLang + ".SenseGloss g "
+                + "JOIN core.Sense s ON s.sense_id = g.sense_id "
+                + "JOIN core.SenseGroup sg ON sg.sense_group_id = s.sense_group_id "
+                + "WHERE sg.entry_id = ? ORDER BY g.sense_id, g.ord), "
+                + backupClause + ", "
+                + "(SELECT json_group_array(json_array(a.sense_id, a.form_id)) FROM core.SenseAppliesToForm a "
+                + "JOIN core.Sense s ON s.sense_id = a.sense_id "
+                + "JOIN core.SenseGroup sg ON sg.sense_group_id = s.sense_group_id "
+                + "WHERE sg.entry_id = ?)";
+        final Object[] params = backupLang != null
+                ? new Object[]{entryId, formId, formId, entryId, entryId, entryId, entryId}
+                : new Object[]{entryId, formId, formId, entryId, entryId, entryId};
+
+        List<long[]> senseRows = new ArrayList<>();
+        Map<Long, List<String>> tagsByGroup = Collections.emptyMap();
+        Map<Long, List<String>> glossBySense = Collections.emptyMap();
+        Map<Long, List<String>> glossBySenseBackup = Collections.emptyMap();
+        Map<Long, List<Long>> restrictedFormsBySense = Collections.emptyMap();
+        try {
+            Cursor cur = readable.query(query, params);
+            if (cur != null) {
+                if (cur.moveToFirst()) {
+                    senseRows = parseLongPairArray(cur.getString(0));
+                    tagsByGroup = parseLongToStringListMap(cur.getString(1));
+                    glossBySense = parseLongToStringListMap(cur.getString(2));
+                    if (!cur.isNull(3)) {
+                        glossBySenseBackup = parseLongToStringListMap(cur.getString(3));
+                    }
+                    restrictedFormsBySense = parseLongToLongListMap(cur.getString(4));
+                }
+                cur.close();
+            }
+        } catch (SQLException ignored) {
+            return;
+        }
+        if (senseRows.isEmpty()) {
+            return;
+        }
+
+        int[] displayIndex = {0};
+        EntryListSummary.SenseGroupSummary lastGroup = null;
+        List<Long> lastRestrictedFormIds = null;
+
+        long currentGroupId = 0;
+        List<String> currentTags = Collections.emptyList();
+        List<EntryListSummary.SenseSummary> currentSenses = new ArrayList<>();
+        List<Long> currentRestrictedFormIds = null;
+        boolean groupOpen = false;
+
+        for (long[] row : senseRows) {
+            long groupId = row[0];
+            long senseId = row[1];
+
+            if (groupOpen && groupId != currentGroupId) {
+                if (!currentSenses.isEmpty()) {
+                    List<Long> restrictedFormIds = currentRestrictedFormIds != null
+                            ? currentRestrictedFormIds : Collections.emptyList();
+                    if (lastGroup != null && lastGroup.tagCodes.equals(currentTags)
+                            && lastRestrictedFormIds.equals(restrictedFormIds)) {
+                        lastGroup.senses.addAll(currentSenses);
+                    } else {
+                        EntryListSummary.SenseGroupSummary newGroup = new EntryListSummary.SenseGroupSummary();
+                        newGroup.tagCodes = currentTags;
+                        newGroup.senses = currentSenses;
+                        summary.senseGroups.add(newGroup);
+                        lastGroup = newGroup;
+                        lastRestrictedFormIds = restrictedFormIds;
+                    }
+                }
+                groupOpen = false;
+            }
+            if (!groupOpen) {
+                currentGroupId = groupId;
+                currentTags = tagsByGroup.getOrDefault(groupId, Collections.emptyList());
+                currentSenses = new ArrayList<>();
+                currentRestrictedFormIds = null;
+                groupOpen = true;
+            }
+
+            List<String> glossTexts = glossBySense.get(senseId);
+            if ((glossTexts == null || glossTexts.isEmpty()) && backupLang != null) {
+                glossTexts = glossBySenseBackup.get(senseId);
+            }
+            if (glossTexts == null || glossTexts.isEmpty()) {
+                continue;
+            }
+            if (currentRestrictedFormIds == null) {
+                currentRestrictedFormIds = restrictedFormsBySense.getOrDefault(senseId, Collections.emptyList());
+            }
+            EntryListSummary.SenseSummary sense = new EntryListSummary.SenseSummary();
+            sense.displayIndex = ++displayIndex[0];
+            sense.glossText = String.join("; ", glossTexts);
+            currentSenses.add(sense);
+        }
+        if (groupOpen && !currentSenses.isEmpty()) {
+            List<Long> restrictedFormIds = currentRestrictedFormIds != null
+                    ? currentRestrictedFormIds : Collections.emptyList();
+            if (lastGroup != null && lastGroup.tagCodes.equals(currentTags)
+                    && lastRestrictedFormIds.equals(restrictedFormIds)) {
+                lastGroup.senses.addAll(currentSenses);
+            } else {
+                EntryListSummary.SenseGroupSummary newGroup = new EntryListSummary.SenseGroupSummary();
+                newGroup.tagCodes = currentTags;
+                newGroup.senses = currentSenses;
+                summary.senseGroups.add(newGroup);
+            }
+        }
+    }
+
+    private static List<long[]> parseLongPairArray(String json) {
+        List<long[]> result = new ArrayList<>();
+        try {
+            JSONArray arr = new JSONArray(json);
+            for (int i = 0; i < arr.length(); i++) {
+                JSONArray pair = arr.getJSONArray(i);
+                result.add(new long[]{pair.getLong(0), pair.getLong(1)});
+            }
+        } catch (JSONException ignored) {
+        }
+        return result;
+    }
+
+    private static Map<Long, List<String>> parseLongToStringListMap(String json) {
+        Map<Long, List<String>> result = new LinkedHashMap<>();
+        try {
+            JSONArray arr = new JSONArray(json);
+            for (int i = 0; i < arr.length(); i++) {
+                JSONArray pair = arr.getJSONArray(i);
+                result.computeIfAbsent(pair.getLong(0), k -> new ArrayList<>()).add(pair.getString(1));
+            }
+        } catch (JSONException ignored) {
+        }
+        return result;
+    }
+
+    private static Map<Long, List<Long>> parseLongToLongListMap(String json) {
+        Map<Long, List<Long>> result = new LinkedHashMap<>();
+        try {
+            JSONArray arr = new JSONArray(json);
+            for (int i = 0; i < arr.length(); i++) {
+                JSONArray pair = arr.getJSONArray(i);
+                result.computeIfAbsent(pair.getLong(0), k -> new ArrayList<>()).add(pair.getLong(1));
+            }
+        } catch (JSONException ignored) {
+        }
+        return result;
+    }
+
+    private static List<EntryListSummary.FuriganaSegment> parseFuriganaJsonArray(JSONArray arr) throws JSONException {
+        List<EntryListSummary.FuriganaSegment> result = new ArrayList<>();
+        for (int i = 0; i < arr.length(); i++) {
+            JSONArray seg = arr.getJSONArray(i);
+            result.add(new EntryListSummary.FuriganaSegment(seg.getString(0), seg.isNull(1) ? null : seg.getString(1)));
+        }
+        return result;
+    }
+
+    private static List<EntryListSummary.FuriganaSegment> parseFuriganaJson(String json) {
+        try {
+            return parseFuriganaJsonArray(new JSONArray(json));
+        } catch (JSONException e) {
+            return new ArrayList<>();
+        }
+    }
+
+    private static List<EntryListSummary.AlternateWriting> parseAlternateWritingsJson(String json) {
+        List<EntryListSummary.AlternateWriting> result = new ArrayList<>();
+        try {
+            JSONArray arr = new JSONArray(json);
+            for (int i = 0; i < arr.length(); i++) {
+                JSONObject obj = arr.getJSONObject(i);
+                EntryListSummary.AlternateWriting alt = new EntryListSummary.AlternateWriting();
+                alt.text = obj.getString("text");
+                alt.furiganaSegments = parseFuriganaJsonArray(obj.getJSONArray("furigana"));
+                result.add(alt);
+            }
+        } catch (JSONException ignored) {
+        }
+        return result;
+    }
+
+    private static List<String> parseStringArrayJson(String json) {
+        List<String> result = new ArrayList<>();
+        try {
+            JSONArray arr = new JSONArray(json);
+            for (int i = 0; i < arr.length(); i++) {
+                result.add(arr.getString(i));
+            }
+        } catch (JSONException ignored) {
+        }
+        return result;
     }
 
     @WorkerThread
@@ -973,7 +1229,38 @@ public class PersistentDatabaseComponent {
                         .setPrefetchDistance(PAGE_SIZE)
                         .setPageSize(PREFETCH_DISTANCE).build();
 
-        return new LivePagedListBuilder<>(database.dictionarySearchElementDao().getAllDetailsLivePaged(key), pagedListConfig)
+        // mapByPage's function runs on Paging's own loading thread and, critically, blocks that
+        // page's delivery to the PagedList until it returns - fine for a static list, but this
+        // fragment's result set grows as the user scrolls (see Op.Scroll below), and every insert
+        // into DictionarySearchElement invalidates Room's DataSource and forces a full reload of
+        // everything loaded so far. A first attempt called fetchListSummary() synchronously here
+        // and it backfired badly: each of those frequent reloads then had to finish summarizing
+        // its *entire* re-loaded range before Paging would hand back a single row, so scrolling
+        // looked frozen and then a huge backlog of rows would land all at once. Firing the warm-up
+        // on a background executor and returning the page immediately keeps page delivery
+        // (and thus scrolling) decoupled from summary computation - it's still a best-effort
+        // head start on the common case, and a no-op on the fetchListSummary() cache when it
+        // doesn't win the race, i.e. no worse than computing it at bind time.
+        final DataSource.Factory<Integer, DictionarySearchElement> sourceFactory =
+                database.dictionarySearchElementDao().getAllDetailsLivePaged(key)
+                        .mapByPage(this::prefetchListSummariesAsync);
+
+        return new LivePagedListBuilder<>(sourceFactory, pagedListConfig)
                 .setBoundaryCallback(boundaryCallback).build();
+    }
+
+    private final Executor summaryPrefetchExecutor = Executors.newSingleThreadExecutor();
+
+    private List<DictionarySearchElement> prefetchListSummariesAsync(List<DictionarySearchElement> page) {
+        summaryPrefetchExecutor.execute(() -> {
+            final PersistentLanguageSettings settings = database.persistentLanguageSettingsDao()
+                    .getLanguageSettingsDirect(0);
+            if (settings != null) {
+                for (DictionarySearchElement element : page) {
+                    fetchListSummary(element, settings);
+                }
+            }
+        });
+        return page;
     }
 }

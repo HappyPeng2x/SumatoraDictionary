@@ -198,14 +198,18 @@ abstract class BaseQueryFragmentModel protected constructor(
         persistentDatabaseComponent.database.dictionaryBookmarkTagDao().getAllTags()
     }
 
+    // Kept in sync by the persistentLanguageSettings subscription below instead of being queried
+    // fresh from the DB on every row bind - listSummaryFun runs once per visible search-result
+    // row on every scroll, so a redundant DAO round trip there was pure per-row overhead.
+    @Volatile
+    private var cachedLanguageSettings: PersistentLanguageSettings =
+        PersistentLanguageSettings().also { it.lang = PersistentLanguageSettings.LANG_DEFAULT }
+
     // Assembles the per-row display summary (headword/furigana/tags/gloss preview) for a search
     // hit - schema v2's DictionarySearchElement only carries entry_id/form_id/match metadata, so
     // the card's display data is queried separately by entry_id (Database.md "Display Assembly").
     val listSummaryFun: (DictionaryQueryResult) -> EntryListSummary = { entry ->
-        val settings = persistentDatabaseComponent.database.persistentLanguageSettingsDao()
-            .getLanguageSettingsDirect(0)
-            ?: PersistentLanguageSettings().also { it.lang = PersistentLanguageSettings.LANG_DEFAULT }
-        persistentDatabaseComponent.fetchListSummary(entry, settings)
+        persistentDatabaseComponent.fetchListSummary(entry, cachedLanguageSettings)
     }
 
     private fun reduce(prev: InternalState, op: Op): InternalState {
@@ -361,7 +365,10 @@ abstract class BaseQueryFragmentModel protected constructor(
             .takeUntil(closedSubject)
             .subscribe { intent ->
                 when (intent) {
-                    is LanguageSettingAttachedIntent -> opsSubject.onNext(Op.LanguageAttached(intent.languageSettings))
+                    is LanguageSettingAttachedIntent -> {
+                        cachedLanguageSettings = intent.languageSettings
+                        opsSubject.onNext(Op.LanguageAttached(intent.languageSettings))
+                    }
                     is LanguageSettingDetachedIntent -> opsSubject.onNext(Op.LanguageDetached)
                 }
             }
