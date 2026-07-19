@@ -34,3 +34,13 @@
 
 # Keep Bookmark model so R8 does not strip fields accessed only via Jackson reflection.
 -keep class org.happypeng.sumatora.core.bookmark.Bookmark { *; }
+
+# Room instantiates its generated *_Impl database classes by reflection (Room.databaseBuilder ->
+# Class.forName(...).getDeclaredConstructor()), including androidx.work's internal WorkDatabase -
+# with nothing in app code referencing the generated class by name, R8 can strip its no-arg
+# constructor as unused. Broke release-build launch entirely (crashed in Application.onCreate
+# with "NoSuchMethodException: androidx.work.impl.WorkDatabase_Impl.<init>") before this was added.
+-keep class * extends androidx.room.RoomDatabase
+-keepclassmembers class * extends androidx.room.RoomDatabase {
+    <init>(...);
+}
