@@ -130,8 +130,20 @@ public class DictionariesManagementScreenshotTest {
                     + " localFile=" + r.localFile + " url=" + r.file);
         }
 
-        // Give DownloadManager a real chance to hit the network (or fail fast if unreachable).
-        Thread.sleep(15000);
+        // DictionaryDownloadCompleteReceiver always deletes this pack's RemoteDictionaryObject row
+        // once it finishes processing the completed download (success, checksum failure, or
+        // download failure) - poll for that instead of a fixed sleep. A ~100MB compressed pack can
+        // take far longer to download and decompress than any fixed budget depending on the
+        // runner's network/CPU, and this diagnostic test used to be a no-op in CI because the pack
+        // it installs pointed at a dead release URL - see CHANGELOG/BUGS.md history around
+        // 2026-07-19 - so a real download+install was never actually exercised here before.
+        // Bounded generously (diagnostic test, not a tight unit test) so a genuine network problem
+        // still lets the test finish instead of hanging CI.
+        long downloadDeadline = System.currentTimeMillis() + 180_000;
+        while (System.currentTimeMillis() < downloadDeadline
+                && !dbComponent.getDatabase().remoteDictionaryObjectDao().getAll().isEmpty()) {
+            Thread.sleep(1000);
+        }
 
         android.app.DownloadManager downloadManager = (android.app.DownloadManager)
                 activityRule.getActivity().getSystemService(android.content.Context.DOWNLOAD_SERVICE);
@@ -152,6 +164,25 @@ public class DictionariesManagementScreenshotTest {
         }
 
         screenshot("dictionaries_management_final.png");
+
+        uninstallOptionalPacks();
+    }
+
+    // This test installs a real optional pack (suffix/names) via a real network download - remove
+    // it afterward regardless of outcome, so it can't leak into later tests in the same
+    // instrumentation run. Those tests don't expect an optional pack to be present and will
+    // exercise real substring/names-tier queries against it once InstalledDictionaryDao reports it
+    // installed (see CHANGELOG/BUGS.md history around 2026-07-19).
+    private void uninstallOptionalPacks() {
+        org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase db = dbComponent.getDatabase();
+        for (org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary d : db.installedDictionaryDao().getAll()) {
+            if (!org.happypeng.sumatora.android.sumatoradictionary.db.OptionalDictionaryCatalog.INSTANCE.getOPTIONAL_TYPES().contains(d.type)) {
+                continue;
+            }
+            d.detach(db);
+            new java.io.File(d.file).delete();
+            db.installedDictionaryDao().delete(d);
+        }
     }
 
     private static android.view.View findByContentDescription(android.view.ViewGroup root, CharSequence desc) {
