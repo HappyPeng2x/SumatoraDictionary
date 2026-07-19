@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.5.0-beta1] - unreleased
+## [0.5.0-beta1] - 2026-07-19
 
 The biggest release since the initial JMdict-based app: the dictionary engine moved to
 [SumatoraIndex](https://github.com/HappyPeng2x/SumatoraIndex)'s normalized schema, entry
