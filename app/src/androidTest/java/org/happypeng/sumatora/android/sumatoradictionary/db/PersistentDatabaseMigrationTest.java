@@ -121,4 +121,41 @@ public class PersistentDatabaseMigrationTest {
         assertEquals("{\"primaryText\":\"test\"}", newRow.getString(0));
         newRow.close();
     }
+
+    // MIGRATION_11_12 adds RemoteDictionaryObject.failed (see PersistentDatabaseParameters) so
+    // DictionaryDownloadCompleteReceiver can persist a failed download's row instead of deleting
+    // it - see DictionaryDownloadCompleteReceiverFailureTest for the receiver-side behavior this
+    // column enables. Plain ADD COLUMN, so this just checks a pre-migration row survives with
+    // failed defaulting to 0 and that the new column accepts data afterward.
+    @Test
+    public void migrate11To12_addsFailedColumnAndPreservesExistingRows() throws IOException {
+        SupportSQLiteDatabase v11 = helper.createDatabase(TEST_DB, 11);
+        v11.execSQL("INSERT INTO RemoteDictionaryObject "
+                + "(localFile, downloadId, sha256, description, type, lang, version, date, file) "
+                + "VALUES ('', 42, '', 'Test pack', 'gloss', 'fre', 12, 20260719, 'https://example.invalid/x.gz')");
+        v11.close();
+
+        // Throws if the post-migration schema doesn't match what Room expects for version 12
+        // (app/schemas/.../12.json) - that's the main safety net here.
+        SupportSQLiteDatabase v12 = helper.runMigrationsAndValidate(
+                TEST_DB, 12, true, PersistentDatabaseParameters.MIGRATION_11_12);
+
+        Cursor preMigrationRow = v12.query(
+                "SELECT type, lang, downloadId, failed FROM RemoteDictionaryObject WHERE type = 'gloss'");
+        assertEquals(1, preMigrationRow.getCount());
+        preMigrationRow.moveToFirst();
+        assertEquals("fre", preMigrationRow.getString(1));
+        assertEquals(42, preMigrationRow.getInt(2));
+        assertEquals(0, preMigrationRow.getInt(3));
+        preMigrationRow.close();
+
+        v12.execSQL("UPDATE RemoteDictionaryObject SET downloadId = -1, failed = 1 WHERE type = 'gloss'");
+
+        Cursor updatedRow = v12.query(
+                "SELECT downloadId, failed FROM RemoteDictionaryObject WHERE type = 'gloss'");
+        updatedRow.moveToFirst();
+        assertEquals(-1, updatedRow.getInt(0));
+        assertEquals(1, updatedRow.getInt(1));
+        updatedRow.close();
+    }
 }

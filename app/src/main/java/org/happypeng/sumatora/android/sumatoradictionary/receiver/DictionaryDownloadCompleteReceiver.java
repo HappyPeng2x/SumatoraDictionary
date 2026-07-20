@@ -26,6 +26,7 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.util.Log;
 
+import androidx.annotation.VisibleForTesting;
 import androidx.annotation.WorkerThread;
 
 import org.happypeng.sumatora.android.sumatoradictionary.R;
@@ -83,8 +84,12 @@ public class DictionaryDownloadCompleteReceiver extends BroadcastReceiver {
         }).start();
     }
 
+    // Package-private (not private) so DictionaryDownloadCompleteReceiverFailureTest can drive the
+    // failure/success handling directly instead of fighting goAsync()/protected-broadcast delivery
+    // through a manually constructed BroadcastReceiver.
+    @VisibleForTesting
     @WorkerThread
-    private void handleDownloadComplete(Context context, long downloadId) {
+    void handleDownloadComplete(Context context, long downloadId) {
         final DownloadManager downloadManager =
                 (DownloadManager) context.getSystemService(Context.DOWNLOAD_SERVICE);
         final boolean succeeded = downloadSucceeded(downloadManager, downloadId);
