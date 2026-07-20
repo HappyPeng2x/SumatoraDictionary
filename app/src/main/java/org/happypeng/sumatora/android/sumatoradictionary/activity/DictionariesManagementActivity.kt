@@ -16,14 +16,19 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.activity
 
+import android.Manifest
 import android.app.DownloadManager
 import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import androidx.core.content.ContextCompat
@@ -67,9 +72,21 @@ class DictionariesManagementActivity : AppCompatActivity() {
     private lateinit var checkUpdatesButton: MaterialButton
     private lateinit var checkUpdatesSpinner: ProgressBar
 
+    // Without this, DictionaryDownloadCompleteReceiver's success/failure notifications silently
+    // no-op on API 33+ - the on-screen failed/retry state still works either way, but a background
+    // download's outcome would otherwise never reach a user who navigated away from this screen.
+    private val notificationPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_dictionaries_management)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+            != PackageManager.PERMISSION_GRANTED) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
 
         val toolbar = findViewById<Toolbar>(R.id.activity_dictionaries_management_toolbar)
         setSupportActionBar(toolbar)
@@ -127,15 +144,19 @@ class DictionariesManagementActivity : AppCompatActivity() {
                 val db = persistentDatabaseComponent.database
                 val installed = db.installedDictionaryDao().all
                 val installedKeys = installed.map { it.type to it.lang }.toSet()
-                val downloading = db.remoteDictionaryObjectDao().all.filter { it.downloadId > -1 }
+                val allRemote = db.remoteDictionaryObjectDao().all
+                val downloading = allRemote.filter { it.downloadId > -1 }
                 val downloadingKeys = downloading.map { it.type to it.lang }.toSet()
+                val failed = allRemote.filter { it.downloadId <= -1 && it.failed }
+                val failedKeys = failed.map { it.type to it.lang }.toSet()
 
                 val installedCore = installed.firstOrNull { it.type == "core" }
                 val cachedManifest = db.cachedManifestEntryDao().getAll()
                 val catalog = OptionalDictionaryCatalog.resolve(installedCore, cachedManifest)
 
                 val available = catalog
-                    .filter { (it.type to it.lang) !in installedKeys && (it.type to it.lang) !in downloadingKeys }
+                    .filter { (it.type to it.lang) !in installedKeys && (it.type to it.lang) !in downloadingKeys
+                            && (it.type to it.lang) !in failedKeys }
                     .map {
                         RemoteDictionaryObject(it.url, it.description, it.type, it.lang, it.version, it.date, it.sha256)
                     }
@@ -152,6 +173,12 @@ class DictionariesManagementActivity : AppCompatActivity() {
                         add(DictionaryManagementRow(
                             entry.type, entry.lang, entry.description, entry.version, entry.date,
                             installed = null, remote = entry, downloading = true
+                        ))
+                    }
+                    for (entry in failed.filter { (it.type to it.lang) !in installedKeys }) {
+                        add(DictionaryManagementRow(
+                            entry.type, entry.lang, entry.description, entry.version, entry.date,
+                            installed = null, remote = entry, downloading = false, failed = true
                         ))
                     }
                     for (entry in available) {
@@ -171,7 +198,8 @@ class DictionariesManagementActivity : AppCompatActivity() {
                         DictionaryManagementRenderer.buildRows(
                             container, state.rows,
                             onInstall = { entry -> startDownload(entry) },
-                            onDelete = { entry -> removeInstalled(entry) }
+                            onDelete = { entry -> removeInstalled(entry) },
+                            onRetry = { entry -> startDownload(entry) }
                         )
 
                         statusPill.text = getString(
@@ -208,7 +236,16 @@ class DictionariesManagementActivity : AppCompatActivity() {
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(
                     {},
-                    { e -> Log.e(TAG, "Failed to start download for ${entry.type}", e) }
+                    { e ->
+                        Log.e(TAG, "Failed to start download for ${entry.type}", e)
+                        // entry.download() throwing before enqueue (e.g. no external storage)
+                        // never reaches DictionaryDownloadCompleteReceiver, so nothing else would
+                        // ever tell the user the tap didn't do anything - surface it here instead.
+                        Toast.makeText(
+                            this, getString(R.string.dictionary_download_failed_text, entry.description),
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
                 )
         )
     }

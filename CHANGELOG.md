@@ -1,5 +1,22 @@
 # Changelog
 
+## [Unreleased]
+
+### Dictionary downloads
+
+- Fixed a failed optional-pack download (bad network, checksum mismatch, storage full) silently
+  reverting to "not installed" with no explanation - `DictionaryDownloadCompleteReceiver` used to
+  delete the in-progress row on failure, the same as on success, so the row just quietly dropped
+  off the "Downloading…" state. It now persists a "Download failed · tap to retry" state instead
+  (`RemoteDictionaryObject.failed`, schema v12), with a matching retry affordance in
+  "Manage dictionaries", and posts a notification on both success and failure for fresh installs
+  (previously only a background update to an already-installed pack posted one). The app now also
+  requests the notification permission from "Manage dictionaries" so those notifications aren't
+  silently dropped on Android 13+.
+- Note: `DownloadManager` itself still has no timeout and can sit paused indefinitely with no
+  network at all, showing "Downloading…" the whole time - a genuinely stuck download (as opposed
+  to one that fails outright) still isn't distinguishable from a slow one. Not addressed here.
+
 ## [0.5.0-beta2] - 2026-07-20
 
 ### Search and bookmarks

@@ -255,4 +255,15 @@ public abstract class PersistentDatabaseParameters {
             database.execSQL("ALTER TABLE DictionarySearchElement ADD COLUMN render_json TEXT");
         }
     };
+
+    // DictionaryDownloadCompleteReceiver used to delete a RemoteDictionaryObject row on download
+    // or checksum failure, same as on success - so a failed download silently reverted to "not
+    // installed" with no indication anything went wrong. It now keeps the row and marks it failed
+    // so the "Manage dictionaries" screen can show a retry affordance instead.
+    public static final Migration MIGRATION_11_12 = new Migration(11, 12) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE RemoteDictionaryObject ADD COLUMN failed INTEGER NOT NULL DEFAULT 0");
+        }
+    };
 }

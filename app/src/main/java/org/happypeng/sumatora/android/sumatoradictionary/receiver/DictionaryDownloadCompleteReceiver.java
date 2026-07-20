@@ -94,23 +94,36 @@ public class DictionaryDownloadCompleteReceiver extends BroadcastReceiver {
                 db.remoteDictionaryObjectDao().getAllForDownloadId(downloadId);
 
         for (RemoteDictionaryObject remote : matches) {
+            boolean installOk = false;
+
             if (!succeeded) {
                 Log.e(TAG, "Download failed for " + remote.type + "/" + remote.lang);
             } else if (!verifyChecksum(remote)) {
                 Log.e(TAG, "Checksum mismatch for " + remote.type + "/" + remote.lang + ", discarding download");
             } else {
-                install(context, db, remote);
+                installOk = install(context, db, remote);
             }
 
             if (!remote.localFile.isEmpty()) {
                 new File(remote.localFile).delete();
             }
-            db.remoteDictionaryObjectDao().delete(remote);
+
+            if (installOk) {
+                db.remoteDictionaryObjectDao().delete(remote);
+            } else {
+                // Keep the row instead of deleting it, so DictionariesManagementActivity can show
+                // a "failed, tap to retry" state rather than the row just silently reverting to
+                // "not installed" with no explanation (see download() resetting this on retry).
+                remote.downloadId = -1;
+                remote.failed = true;
+                db.remoteDictionaryObjectDao().insert(remote);
+                postDownloadFailedNotification(context, remote);
+            }
         }
     }
 
     @WorkerThread
-    private void install(Context context, PersistentDatabase db, RemoteDictionaryObject remote) {
+    private boolean install(Context context, PersistentDatabase db, RemoteDictionaryObject remote) {
         File databaseRoot =
                 context.getDatabasePath(PersistentDatabaseParameters.PERSISTENT_DATABASE_NAME).getParentFile();
         File installDir = new File(databaseRoot, "dictionaries");
@@ -126,12 +139,13 @@ public class DictionaryDownloadCompleteReceiver extends BroadcastReceiver {
             InstalledDictionary installed = remote.getLocalDictionaryObject().install(installDir);
             if (installed == null) {
                 Log.e(TAG, "Failed to decompress downloaded pack for " + remote.type + "/" + remote.lang);
-                return;
+                return false;
             }
 
             db.installedDictionaryDao().insert(installed);
             installed.attach(db);
-            return;
+            postDownloadCompleteNotification(context, remote);
+            return true;
         }
 
         // Updating a pack that may already be ATTACHed to the live connection - decompress under a
@@ -140,7 +154,7 @@ public class DictionaryDownloadCompleteReceiver extends BroadcastReceiver {
         InstalledDictionary pending = remote.getLocalDictionaryObject().install(installDir, true);
         if (pending == null) {
             Log.e(TAG, "Failed to decompress downloaded update for " + remote.type + "/" + remote.lang);
-            return;
+            return false;
         }
 
         existing.pendingFile = pending.file;
@@ -149,6 +163,7 @@ public class DictionaryDownloadCompleteReceiver extends BroadcastReceiver {
         db.installedDictionaryDao().insert(existing);
 
         postUpdateReadyNotification(context, remote);
+        return true;
     }
 
     @WorkerThread
@@ -183,6 +198,30 @@ public class DictionaryDownloadCompleteReceiver extends BroadcastReceiver {
 
     @WorkerThread
     private void postUpdateReadyNotification(Context context, RemoteDictionaryObject remote) {
+        notify(context, remote,
+                context.getString(R.string.dictionary_update_ready_title),
+                context.getString(R.string.dictionary_update_ready_text, remote.description));
+    }
+
+    // Fresh optional-pack installs (suffix/names/gloss/tatoeba - see DictionariesManagementActivity)
+    // previously posted nothing on success, unlike the update-existing-pack path above - if the
+    // user navigated away while it downloaded, there was no signal at all that it had finished.
+    @WorkerThread
+    private void postDownloadCompleteNotification(Context context, RemoteDictionaryObject remote) {
+        notify(context, remote,
+                context.getString(R.string.dictionary_download_complete_title),
+                context.getString(R.string.dictionary_download_complete_text, remote.description));
+    }
+
+    @WorkerThread
+    private void postDownloadFailedNotification(Context context, RemoteDictionaryObject remote) {
+        notify(context, remote,
+                context.getString(R.string.dictionary_download_failed_title),
+                context.getString(R.string.dictionary_download_failed_text, remote.description));
+    }
+
+    @WorkerThread
+    private void notify(Context context, RemoteDictionaryObject remote, String title, String text) {
         NotificationManager notificationManager = context.getSystemService(NotificationManager.class);
         if (notificationManager == null) {
             return;
@@ -192,8 +231,8 @@ public class DictionaryDownloadCompleteReceiver extends BroadcastReceiver {
                 UPDATE_CHANNEL_ID, "Dictionary updates", NotificationManager.IMPORTANCE_DEFAULT));
 
         Notification notification = new Notification.Builder(context, UPDATE_CHANNEL_ID)
-                .setContentTitle(context.getString(R.string.dictionary_update_ready_title))
-                .setContentText(context.getString(R.string.dictionary_update_ready_text, remote.description))
+                .setContentTitle(title)
+                .setContentText(text)
                 .setSmallIcon(R.drawable.ic_sumatora_monochrome)
                 .setAutoCancel(true)
                 .build();

@@ -33,6 +33,10 @@ public class RemoteDictionaryObject extends BaseDictionaryObject {
     public @NonNull String localFile;
     public long downloadId;
     public @NonNull String sha256;
+    // Set by DictionaryDownloadCompleteReceiver when the download or its checksum fails, instead
+    // of deleting the row - lets the UI show a "failed, tap to retry" state rather than silently
+    // reverting to "not installed" with no explanation. Cleared by download() below on retry.
+    public boolean failed;
 
     public RemoteDictionaryObject() {
         super();
@@ -40,6 +44,7 @@ public class RemoteDictionaryObject extends BaseDictionaryObject {
         localFile = "";
         downloadId = -1;
         sha256 = "";
+        failed = false;
     }
 
     public void setLocalFile(@NonNull String aLocalFile) {
@@ -85,6 +90,7 @@ public class RemoteDictionaryObject extends BaseDictionaryObject {
         File fLocalFile = new File(aDownloadDir,type + "-" + lang + ".db.gz");
 
         localFile = fLocalFile.getAbsolutePath();
+        failed = false;
 
         DownloadManager.Request request=new DownloadManager.Request(Uri.parse(file))
                 .setTitle(description)// Title of the Download Notification

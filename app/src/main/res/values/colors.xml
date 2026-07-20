@@ -68,6 +68,7 @@
     <color name="dict_status_ok_bg">#E3F2E1</color>
     <color name="dict_status_pending">#1565C0</color>
     <color name="dict_status_pending_bg">#E3EDFB</color>
+    <color name="dict_status_error">#C62828</color>
     <color name="dict_card_bg">#F7F7F9</color>
     <color name="dict_card_stroke">#E0E0E0</color>
 

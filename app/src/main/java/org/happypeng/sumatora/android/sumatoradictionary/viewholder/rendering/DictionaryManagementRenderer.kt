@@ -37,8 +37,10 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.RemoteDictionaryObje
 // currently in. Exactly one of [installed]/[remote] is meaningful for that state:
 //  - installed only, not downloading: a bundled or optional pack that's in place.
 //  - installed set and downloading: an installed pack whose background update is in flight.
-//  - remote only, not downloading: an optional pack offered but not yet installed.
+//  - remote only, not downloading, not failed: an optional pack offered but not yet installed.
 //  - remote only, downloading: an optional pack being installed for the first time.
+//  - remote only, failed: a download or checksum/decompress failure DictionaryDownloadCompleteReceiver
+//    persisted instead of silently discarding, so the row can offer a retry.
 data class DictionaryManagementRow(
     val type: String,
     val lang: String,
@@ -47,7 +49,8 @@ data class DictionaryManagementRow(
     val date: Int,
     val installed: InstalledDictionary?,
     val remote: RemoteDictionaryObject?,
-    val downloading: Boolean
+    val downloading: Boolean,
+    val failed: Boolean = false
 )
 
 // Builds a single flat "Dictionaries" list for DictionariesManagementActivity, grouped by type,
@@ -89,7 +92,8 @@ object DictionaryManagementRenderer {
         container: LinearLayout,
         rows: List<DictionaryManagementRow>,
         onInstall: (RemoteDictionaryObject) -> Unit,
-        onDelete: (InstalledDictionary) -> Unit
+        onDelete: (InstalledDictionary) -> Unit,
+        onRetry: (RemoteDictionaryObject) -> Unit
     ) {
         container.removeAllViews()
         val context = container.context
@@ -105,11 +109,11 @@ object DictionaryManagementRenderer {
             val (type, groupRows) = group
 
             if (groupRows.size == 1) {
-                container.addView(buildRow(context, density, typeLabel(type), groupRows[0], onInstall, onDelete))
+                container.addView(buildRow(context, density, typeLabel(type), groupRows[0], onInstall, onDelete, onRetry))
             } else {
                 container.addView(buildGroupHeader(context, density, typeLabel(type)))
                 for (row in groupRows) {
-                    container.addView(buildRow(context, density, row.description ?: row.lang, row, onInstall, onDelete))
+                    container.addView(buildRow(context, density, row.description ?: row.lang, row, onInstall, onDelete, onRetry))
                 }
             }
 
@@ -141,7 +145,8 @@ object DictionaryManagementRenderer {
         title: String,
         row: DictionaryManagementRow,
         onInstall: (RemoteDictionaryObject) -> Unit,
-        onDelete: (InstalledDictionary) -> Unit
+        onDelete: (InstalledDictionary) -> Unit,
+        onRetry: (RemoteDictionaryObject) -> Unit
     ): View {
         val description = TextView(context).apply {
             text = title
@@ -150,14 +155,21 @@ object DictionaryManagementRenderer {
             typeface = Typeface.DEFAULT_BOLD
         }
         val caption = TextView(context).apply {
-            if (row.downloading) {
-                text = context.getString(R.string.dictionary_status_downloading)
-                setTextColor(ContextCompat.getColor(context, R.color.dict_status_pending))
-            } else {
-                text = context.getString(
-                    R.string.dictionary_version_caption, row.version, formatDate(row.date)
-                )
-                setTextColor(ContextCompat.getColor(context, R.color.text_foreground_secondary))
+            when {
+                row.downloading -> {
+                    text = context.getString(R.string.dictionary_status_downloading)
+                    setTextColor(ContextCompat.getColor(context, R.color.dict_status_pending))
+                }
+                row.failed -> {
+                    text = context.getString(R.string.dictionary_status_failed)
+                    setTextColor(ContextCompat.getColor(context, R.color.dict_status_error))
+                }
+                else -> {
+                    text = context.getString(
+                        R.string.dictionary_version_caption, row.version, formatDate(row.date)
+                    )
+                    setTextColor(ContextCompat.getColor(context, R.color.text_foreground_secondary))
+                }
             }
             textSize = 12f
         }
@@ -175,6 +187,11 @@ object DictionaryManagementRenderer {
                     marginStart = 12.dp(density)
                 }
             }
+            row.failed && row.remote != null ->
+                actionButton(
+                    context, density, R.drawable.ic_refresh_24px, R.color.dict_status_error,
+                    R.string.retry_icon_description
+                ) { onRetry(row.remote) }
             row.installed != null && OptionalDictionaryCatalog.isOptional(row.type, row.lang) ->
                 actionButton(
                     context, density, R.drawable.ic_delete_24px, R.color.tag_register,
