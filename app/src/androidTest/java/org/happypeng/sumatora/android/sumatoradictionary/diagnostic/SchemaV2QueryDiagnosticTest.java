@@ -179,6 +179,12 @@ public class SchemaV2QueryDiagnosticTest {
             }
             tool.executeProperNouns(term);
             tool.executeDeinflection(term);
+            // render_json is left NULL by the tier inserts now (see backfillRenderJson) - render
+            // everything matched for this diagnostic ref so the logged output below still shows
+            // headword/senses instead of blanks. A large bound is fine here: this is a manual
+            // diagnostic run against a handful of terms, not the paged-scroll path the bound exists
+            // to protect.
+            tool.backfillRenderJson(10000);
 
             List<DictionarySearchElement> results = fetchRawResults(ref);
             if (results.isEmpty()) {

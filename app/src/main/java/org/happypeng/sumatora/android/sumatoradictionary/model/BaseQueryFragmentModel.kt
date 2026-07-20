@@ -64,6 +64,17 @@ abstract class BaseQueryFragmentModel protected constructor(
     savedState: QueryState?
 ) : ViewModel() {
 
+    private companion object {
+        // How many not-yet-rendered rows to backfill per match-finding step (LanguageAttached, a
+        // fresh search, scrolling further, reopening the search box). Sized well above the paged
+        // list's own page size (PersistentDatabaseComponent.PREFETCH_DISTANCE = 50) as headroom so
+        // ordinary scrolling doesn't outrun it - see DictionarySearchQueryTool.backfillRenderJson
+        // for why this needs to be bounded at all instead of just rendering everything a tier
+        // matched. Cheap even at this size (~a few ms) now that the missing Sense.sense_group_id
+        // index that made per-row rendering expensive is fixed (dictionaries-v12).
+        const val RENDER_BACKFILL_LIMIT = 200
+    }
+
     // Internal operation sealed class replaces Intent→Action→Result layers.
     private sealed class Op {
         class LanguageAttached(val settings: PersistentLanguageSettings) : Op()
@@ -241,6 +252,7 @@ abstract class BaseQueryFragmentModel protected constructor(
                         found = queryTool.executeProperNouns(prev.plainTerm) || found
                         found = queryTool.executeDeinflection(prev.plainTerm) || found
                     }
+                    queryTool.backfillRenderJson(RENDER_BACKFILL_LIMIT)
                 }
                 prev.copy(queryTool = queryTool, currentQuery = current, found = found,
                     searching = false, languageSettings = op.settings, ready = true,
@@ -266,6 +278,7 @@ abstract class BaseQueryFragmentModel protected constructor(
                         found = tool.executeProperNouns(prev.plainTerm) || found
                         found = tool.executeDeinflection(prev.plainTerm) || found
                     }
+                    tool.backfillRenderJson(RENDER_BACKFILL_LIMIT)
                 }
                 prev.copy(currentQuery = current, found = found, searching = false,
                     setIntent = false, clearSearchBox = false)
@@ -277,6 +290,7 @@ abstract class BaseQueryFragmentModel protected constructor(
                         tool.delete()
                         if (filterBookmarks || filterMemos) {
                             tool.execute("", 0, filterBookmarks, filterMemos, emptyList())
+                            tool.backfillRenderJson(RENDER_BACKFILL_LIMIT)
                             current = 1
                         }
                     }
@@ -295,6 +309,7 @@ abstract class BaseQueryFragmentModel protected constructor(
                     if (prev.plainTerm.isEmpty() && prev.tags.isEmpty()) {
                         tool.delete()
                         tool.execute("", 0, filterBookmarks, filterMemos, emptyList())
+                        tool.backfillRenderJson(RENDER_BACKFILL_LIMIT)
                     } else {
                         val rawDb = db.openHelper.writableDatabase
                         rawDb.execSQL(
@@ -326,6 +341,7 @@ abstract class BaseQueryFragmentModel protected constructor(
                         found = tool.execute(prev.plainTerm, current, filterBookmarks, filterMemos, prev.tags)
                         current++
                     }
+                    tool.backfillRenderJson(RENDER_BACKFILL_LIMIT)
                 }
                 prev.copy(currentQuery = current, found = prev.found || found, searching = false,
                     setIntent = false, clearSearchBox = false)

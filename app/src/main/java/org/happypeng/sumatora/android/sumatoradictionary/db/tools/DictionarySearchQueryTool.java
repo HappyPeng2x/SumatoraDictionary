@@ -17,6 +17,7 @@
 package org.happypeng.sumatora.android.sumatoradictionary.db.tools;
 
 import androidx.annotation.Nullable;
+import androidx.annotation.WorkerThread;
 import androidx.sqlite.db.SupportSQLiteDatabase;
 import androidx.sqlite.db.SupportSQLiteStatement;
 
@@ -89,14 +90,25 @@ public class DictionarySearchQueryTool {
             "DictionaryBookmark.tags IS NOT NULL AND DictionaryBookmark.tags != ''";
 
     // Bookmark/tag listing: term is empty, list only bookmarked/annotated entries. No FTS/SearchTerm
-    // involved at all - just Entry joined straight to DictionaryBookmark. Like every other tier,
-    // this also computes and stores the row's full render payload (render_json - see
-    // buildRenderJsonExpr) at insert time, via the same kind of json_group_array()-packed
-    // correlated subqueries a per-row live fetch would otherwise need - evaluated once per matched
-    // row here instead of once per visible row at bind time. This is the tier a huge bookmark list
-    // actually hits, so it's the one where a per-row live-fetch's fling/scroll thread pile-up
-    // (racing over PersistentDatabaseComponent's single, non-WAL connection) was originally
-    // reproduced and eliminated outright by precomputing here instead.
+    // involved at all - just Entry joined straight to DictionaryBookmark.
+    //
+    // render_json starts NULL here, like every other tier - see backfillRenderJson() below. It used
+    // to be computed inline in this same INSERT (one json_group_array()-packed correlated-subquery
+    // pass per matched row, via buildRenderJsonExpr), which fixed a real bug (fast-scrolling a huge
+    // bookmark list piled up dozens of concurrent per-row live fetches on
+    // PersistentDatabaseComponent's single non-WAL connection) but at a cost nobody noticed at the
+    // time: a broad tier (a short/common query, or a large bookmark list) could match thousands of
+    // rows, and every one of them paid that ~15-subquery cost immediately, unconditionally, the
+    // moment the tier ran - not just the handful about to be shown. Measured against the real
+    // dictionary: ~90us/row with render_json inline vs ~5us/row without, so a single scroll event
+    // reaching a broad tier (easily 5,000-12,000 rows for a one-character kana query) cost
+    // 500-1000ms+ of synchronous work. The real root cause of the *original* per-row-live-fetch jank
+    // turned out to be a missing index (Sense.sense_group_id - see SumatoraIndex commit
+    // "Add three missing indices..."), fixed there and shipped in dictionaries-v12; with that in
+    // place, bounding render_json to the page actually being displayed (backfillRenderJson) keeps
+    // every tier's own match-finding cheap regardless of breadth, without reintroducing the
+    // many-small-concurrent-queries pattern that caused the original bug (backfill is one batched
+    // statement per call, not one query per row).
     private static final String SQL_QUERY_BOOKMARK_LISTING =
             "INSERT OR IGNORE INTO DictionarySearchElement "
                     + "(ref, entryOrder, entry_id, seq, form_id, match_kind, original_query, matched_text, "
@@ -105,7 +117,7 @@ public class DictionarySearchQueryTool {
                     + "'bookmark' AS match_kind, ? AS original_query, ? AS matched_text, "
                     + "NULL, NULL, (0 - Entry.score) AS rank, "
                     + "DictionaryBookmark.bookmark, DictionaryBookmark.memo, DictionaryBookmark.tags, "
-                    + "%s "
+                    + "NULL AS render_json "
                     + "FROM DictionaryBookmark "
                     + "JOIN core.Entry ON Entry.source_key = CAST(DictionaryBookmark.seq AS TEXT) "
                     + "WHERE %s";
@@ -265,7 +277,7 @@ public class DictionarySearchQueryTool {
                     + "'%s' AS match_kind, ? AS original_query, SearchTerm.term AS matched_text, "
                     + "NULL, NULL, (0 - Entry.score) AS rank, "
                     + "IFNULL(DictionaryBookmark.bookmark, 0), DictionaryBookmark.memo, DictionaryBookmark.tags, "
-                    + "%s "
+                    + "NULL AS render_json "
                     + "FROM %s "
                     + "JOIN core.Entry ON Entry.entry_id = SearchTerm.entry_id "
                     + "LEFT JOIN core.EntryForm ON EntryForm.form_id = SearchTerm.form_id "
@@ -290,7 +302,7 @@ public class DictionarySearchQueryTool {
                     + "'gloss' AS match_kind, ? AS original_query, SenseGloss.text AS matched_text, "
                     + "NULL, NULL, MIN(Sense.ord) AS rank, "
                     + "IFNULL(DictionaryBookmark.bookmark, 0), DictionaryBookmark.memo, DictionaryBookmark.tags, "
-                    + "%s "
+                    + "NULL AS render_json "
                     + "FROM %s.GlossSearchFts "
                     + "JOIN %s.SenseGloss ON SenseGloss.rowid = GlossSearchFts.rowid "
                     + "JOIN %s.Sense ON Sense.sense_id = SenseGloss.sense_id "
@@ -311,7 +323,7 @@ public class DictionarySearchQueryTool {
                     + "'deinflection' AS match_kind, ? AS original_query, SearchTerm.term AS matched_text, "
                     + "? AS dictionary_form, ? AS deinflection_label, (0 - Entry.score) AS rank, "
                     + "IFNULL(DictionaryBookmark.bookmark, 0), DictionaryBookmark.memo, DictionaryBookmark.tags, "
-                    + "%s "
+                    + "NULL AS render_json "
                     + "FROM core.SearchTerm "
                     + "JOIN core.Entry ON Entry.entry_id = SearchTerm.entry_id "
                     + BOOKMARK_JOIN
@@ -328,12 +340,39 @@ public class DictionarySearchQueryTool {
                     + "SELECT ? AS ref, ? AS entryOrder, SearchTerm.entry_id, 0, SearchTerm.form_id, "
                     + "'name' AS match_kind, ? AS original_query, SearchTerm.term AS matched_text, "
                     + "NULL, NULL, 0 AS rank, 0, NULL, NULL, "
-                    + "%s "
+                    + "NULL AS render_json "
                     + "FROM names.SearchTerm "
                     + "WHERE SearchTerm.script = '%s' AND SearchTerm.normalized %s";
 
     static final String SQL_QUERY_DELETE =
             "DELETE FROM DictionarySearchElement WHERE ref = ?";
+
+    // Fills in render_json for rows that already matched (any tier) but haven't been rendered yet,
+    // bounded to `limit` rows in the same order the UI displays them - see the comment on
+    // SQL_QUERY_BOOKMARK_LISTING for why this is a separate bounded pass instead of computing
+    // render_json inline at match time. Two variants because core-pack rows (bookmark/basic/
+    // deinflection/gloss tiers) and names-pack rows (proper noun tier) resolve their render payload
+    // against different attached databases (core vs names); match_kind='name' distinguishes them.
+    // "rowid IN (SELECT ... LIMIT ?)" is how a bounded UPDATE is expressed in stock SQLite, which
+    // doesn't support UPDATE ... ORDER BY ... LIMIT directly.
+    private static final String SQL_QUERY_BACKFILL_RENDER =
+            "UPDATE DictionarySearchElement SET render_json = %s "
+                    + "WHERE rowid IN (SELECT rowid FROM DictionarySearchElement "
+                    + "WHERE ref = ? AND render_json IS NULL AND match_kind %s "
+                    + "ORDER BY entryOrder, rank LIMIT ?)";
+
+    // buildRenderJsonExpr/buildNameRenderJsonExpr are written as SELECT-list column expressions
+    // ("(...) AS render_json") for their other caller (BookmarkImportQueryTool, which still computes
+    // render_json eagerly at insert time - it's a small one-shot import preview, not the high-volume
+    // scroll path this file's tiers are on, so the tradeoff that motivated bounding it here doesn't
+    // apply there). SQL_QUERY_BACKFILL_RENDER's SET target can't carry a trailing alias, so strip it
+    // here rather than changing the shared builders' contract.
+    private static String asUpdateExpr(final String selectListExpr) {
+        final String suffix = ") AS render_json";
+        return selectListExpr.endsWith(suffix)
+                ? selectListExpr.substring(0, selectListExpr.length() - suffix.length()) + ")"
+                : selectListExpr;
+    }
 
     protected final PersistentDatabaseComponent persistentDatabase;
 
@@ -351,6 +390,9 @@ public class DictionarySearchQueryTool {
     private SupportSQLiteStatement deinflectWritingPrioStatement;
     private SupportSQLiteStatement deinflectReadingPrioStatement;
     private Romkan romkanRef;
+
+    private SupportSQLiteStatement backfillCoreStatement;
+    private SupportSQLiteStatement backfillNamesStatement;
 
     private final int key;
 
@@ -394,9 +436,9 @@ public class DictionarySearchQueryTool {
         return sb.toString();
     }
 
-    private SupportSQLiteStatement compileBasic(final SupportSQLiteDatabase db, final String renderJsonExpr,
+    private SupportSQLiteStatement compileBasic(final SupportSQLiteDatabase db,
                                                  final String matchKind, final String fromClause, final String whereClause) {
-        return db.compileStatement(String.format(SQL_QUERY_BASIC_TIER, matchKind, renderJsonExpr, fromClause, whereClause));
+        return db.compileStatement(String.format(SQL_QUERY_BASIC_TIER, matchKind, fromClause, whereClause));
     }
 
     private void initialize() {
@@ -416,37 +458,27 @@ public class DictionarySearchQueryTool {
         final String glossAliasOrNull = glossInstalled ? glossAlias(persistentLanguageSettings.lang) : null;
         final String backupGlossAliasOrNull = glossBackupInstalled ? glossAlias(persistentLanguageSettings.backupLang) : null;
 
-        // No matched form_id on these rows (bookmark listing, gloss hits) - always renders off the
-        // entry's primary form. Same lang/backupLang pair regardless of which gloss tier (main or
-        // backup) actually matched - see buildRenderJsonExpr's comment on why that's correct.
-        final String entryOnlyRenderJsonExpr = buildRenderJsonExpr("Entry.entry_id", null, glossAliasOrNull, backupGlossAliasOrNull);
-        // Matched form_id known (SearchTerm.form_id) - basic tier and deinflection both search
-        // core.SearchTerm/suffix.SearchTerm the same way, so they share this one expression.
-        final String matchedFormRenderJsonExpr = buildRenderJsonExpr("SearchTerm.entry_id", "SearchTerm.form_id",
-                glossAliasOrNull, backupGlossAliasOrNull);
-        final String properNounRenderJsonExpr = buildNameRenderJsonExpr("SearchTerm.entry_id", "SearchTerm.form_id");
-
         deleteStatement = db.compileStatement(SQL_QUERY_DELETE);
 
         final SupportSQLiteStatement queryBookmarkListing =
-                db.compileStatement(String.format(SQL_QUERY_BOOKMARK_LISTING, entryOnlyRenderJsonExpr, BOOKMARKS_WHERE_CLAUSE));
+                db.compileStatement(String.format(SQL_QUERY_BOOKMARK_LISTING, BOOKMARKS_WHERE_CLAUSE));
 
-        final SupportSQLiteStatement queryExactPrioWriting = compileBasic(db, matchedFormRenderJsonExpr, "exact", FROM_CORE_SEARCH_TERM,
+        final SupportSQLiteStatement queryExactPrioWriting = compileBasic(db, "exact", FROM_CORE_SEARCH_TERM,
                 basicTierWhere("= ?", SCRIPT_WRITING, true, false, false));
-        final SupportSQLiteStatement queryExactPrioReading = compileBasic(db, matchedFormRenderJsonExpr, "exact", FROM_CORE_SEARCH_TERM,
+        final SupportSQLiteStatement queryExactPrioReading = compileBasic(db, "exact", FROM_CORE_SEARCH_TERM,
                 basicTierWhere("= ?", SCRIPT_KANA, true, false, false));
-        final SupportSQLiteStatement queryExactNonPrioWriting = compileBasic(db, matchedFormRenderJsonExpr, "exact", FROM_CORE_SEARCH_TERM,
+        final SupportSQLiteStatement queryExactNonPrioWriting = compileBasic(db, "exact", FROM_CORE_SEARCH_TERM,
                 basicTierWhere("= ?", SCRIPT_WRITING, false, false, false));
-        final SupportSQLiteStatement queryExactNonPrioReading = compileBasic(db, matchedFormRenderJsonExpr, "exact", FROM_CORE_SEARCH_TERM,
+        final SupportSQLiteStatement queryExactNonPrioReading = compileBasic(db, "exact", FROM_CORE_SEARCH_TERM,
                 basicTierWhere("= ?", SCRIPT_KANA, false, false, false));
 
-        final SupportSQLiteStatement queryPrefixPrioWriting = compileBasic(db, matchedFormRenderJsonExpr, "prefix", FROM_CORE_SEARCH_TERM,
+        final SupportSQLiteStatement queryPrefixPrioWriting = compileBasic(db, "prefix", FROM_CORE_SEARCH_TERM,
                 basicTierWhere("GLOB ?", SCRIPT_WRITING, true, true, false));
-        final SupportSQLiteStatement queryPrefixPrioReading = compileBasic(db, matchedFormRenderJsonExpr, "prefix", FROM_CORE_SEARCH_TERM,
+        final SupportSQLiteStatement queryPrefixPrioReading = compileBasic(db, "prefix", FROM_CORE_SEARCH_TERM,
                 basicTierWhere("GLOB ?", SCRIPT_KANA, true, true, false));
-        final SupportSQLiteStatement queryPrefixNonPrioWriting = compileBasic(db, matchedFormRenderJsonExpr, "prefix", FROM_CORE_SEARCH_TERM,
+        final SupportSQLiteStatement queryPrefixNonPrioWriting = compileBasic(db, "prefix", FROM_CORE_SEARCH_TERM,
                 basicTierWhere("GLOB ?", SCRIPT_WRITING, false, true, false));
-        final SupportSQLiteStatement queryPrefixNonPrioReading = compileBasic(db, matchedFormRenderJsonExpr, "prefix", FROM_CORE_SEARCH_TERM,
+        final SupportSQLiteStatement queryPrefixNonPrioReading = compileBasic(db, "prefix", FROM_CORE_SEARCH_TERM,
                 basicTierWhere("GLOB ?", SCRIPT_KANA, false, true, false));
 
         final SupportSQLiteStatement querySubstringPrioWriting;
@@ -454,13 +486,13 @@ public class DictionarySearchQueryTool {
         final SupportSQLiteStatement querySubstringNonPrioWriting;
         final SupportSQLiteStatement querySubstringNonPrioReading;
         if (suffixInstalled) {
-            querySubstringPrioWriting = db.compileStatement(String.format(SQL_QUERY_BASIC_TIER, "substring", matchedFormRenderJsonExpr,
+            querySubstringPrioWriting = db.compileStatement(String.format(SQL_QUERY_BASIC_TIER, "substring",
                     FROM_SUFFIX_SEARCH_TERM, substringWhere("SearchSuffix.suffix GLOB ?", SCRIPT_WRITING, true)));
-            querySubstringPrioReading = db.compileStatement(String.format(SQL_QUERY_BASIC_TIER, "substring", matchedFormRenderJsonExpr,
+            querySubstringPrioReading = db.compileStatement(String.format(SQL_QUERY_BASIC_TIER, "substring",
                     FROM_SUFFIX_SEARCH_TERM, substringWhere("SearchSuffix.suffix GLOB ?", SCRIPT_KANA, true)));
-            querySubstringNonPrioWriting = db.compileStatement(String.format(SQL_QUERY_BASIC_TIER, "substring", matchedFormRenderJsonExpr,
+            querySubstringNonPrioWriting = db.compileStatement(String.format(SQL_QUERY_BASIC_TIER, "substring",
                     FROM_SUFFIX_SEARCH_TERM, substringWhere("SearchSuffix.suffix GLOB ?", SCRIPT_WRITING, false)));
-            querySubstringNonPrioReading = db.compileStatement(String.format(SQL_QUERY_BASIC_TIER, "substring", matchedFormRenderJsonExpr,
+            querySubstringNonPrioReading = db.compileStatement(String.format(SQL_QUERY_BASIC_TIER, "substring",
                     FROM_SUFFIX_SEARCH_TERM, substringWhere("SearchSuffix.suffix GLOB ?", SCRIPT_KANA, false)));
         } else {
             querySubstringPrioWriting = db.compileStatement(SQL_NOOP_INSERT);
@@ -470,24 +502,24 @@ public class DictionarySearchQueryTool {
         }
 
         final SupportSQLiteStatement queryGlossExact = glossInstalled
-                ? db.compileStatement(String.format(SQL_QUERY_GLOSS_TIER, entryOnlyRenderJsonExpr, glossAlias(persistentLanguageSettings.lang),
+                ? db.compileStatement(String.format(SQL_QUERY_GLOSS_TIER, glossAlias(persistentLanguageSettings.lang),
                         glossAlias(persistentLanguageSettings.lang), glossAlias(persistentLanguageSettings.lang), "?"))
                 : db.compileStatement(SQL_NOOP_INSERT);
         final SupportSQLiteStatement queryGlossExactBackup = glossBackupInstalled
-                ? db.compileStatement(String.format(SQL_QUERY_GLOSS_TIER, entryOnlyRenderJsonExpr, glossAlias(persistentLanguageSettings.backupLang),
+                ? db.compileStatement(String.format(SQL_QUERY_GLOSS_TIER, glossAlias(persistentLanguageSettings.backupLang),
                         glossAlias(persistentLanguageSettings.backupLang), glossAlias(persistentLanguageSettings.backupLang), "?"))
                 : null;
 
         final SupportSQLiteStatement queryGlossPrefix = glossInstalled
-                ? db.compileStatement(String.format(SQL_QUERY_GLOSS_TIER, entryOnlyRenderJsonExpr, glossAlias(persistentLanguageSettings.lang),
+                ? db.compileStatement(String.format(SQL_QUERY_GLOSS_TIER, glossAlias(persistentLanguageSettings.lang),
                         glossAlias(persistentLanguageSettings.lang), glossAlias(persistentLanguageSettings.lang), "? || '*'"))
                 : db.compileStatement(SQL_NOOP_INSERT);
         final SupportSQLiteStatement queryGlossPrefixBackup = glossBackupInstalled
-                ? db.compileStatement(String.format(SQL_QUERY_GLOSS_TIER, entryOnlyRenderJsonExpr, glossAlias(persistentLanguageSettings.backupLang),
+                ? db.compileStatement(String.format(SQL_QUERY_GLOSS_TIER, glossAlias(persistentLanguageSettings.backupLang),
                         glossAlias(persistentLanguageSettings.backupLang), glossAlias(persistentLanguageSettings.backupLang), "? || '*'"))
                 : null;
 
-        tagOnlyStatement = db.compileStatement(String.format(SQL_QUERY_BOOKMARK_LISTING, entryOnlyRenderJsonExpr, SQL_TAG_ONLY_WHERE_CLAUSE));
+        tagOnlyStatement = db.compileStatement(String.format(SQL_QUERY_BOOKMARK_LISTING, SQL_TAG_ONLY_WHERE_CLAUSE));
 
         deleteByTagStatement = db.compileStatement(
                 "DELETE FROM DictionarySearchElement WHERE ref = ? AND entry_id NOT IN ("
@@ -500,19 +532,35 @@ public class DictionarySearchQueryTool {
 
         if (namesInstalled) {
             properNounExactWriting = new BasicQueryStatement(database, key, ORDER_PROPER_NOUN_EXACT, persistentLanguageSettings,
-                    db.compileStatement(String.format(SQL_QUERY_PROPER_NOUN, properNounRenderJsonExpr, SCRIPT_WRITING, "= ?")), null, false, "", romkan);
+                    db.compileStatement(String.format(SQL_QUERY_PROPER_NOUN, SCRIPT_WRITING, "= ?")), null, false, "", romkan);
             properNounExactReading = new BasicQueryStatement(database, key, ORDER_PROPER_NOUN_EXACT, persistentLanguageSettings,
-                    db.compileStatement(String.format(SQL_QUERY_PROPER_NOUN, properNounRenderJsonExpr, SCRIPT_KANA, "= ?")), null, true, "", romkan);
+                    db.compileStatement(String.format(SQL_QUERY_PROPER_NOUN, SCRIPT_KANA, "= ?")), null, true, "", romkan);
             properNounBeginWriting = new BasicQueryStatement(database, key, ORDER_PROPER_NOUN_BEGIN, persistentLanguageSettings,
-                    db.compileStatement(String.format(SQL_QUERY_PROPER_NOUN, properNounRenderJsonExpr, SCRIPT_WRITING, "GLOB ?")), null, false, "*", romkan);
+                    db.compileStatement(String.format(SQL_QUERY_PROPER_NOUN, SCRIPT_WRITING, "GLOB ?")), null, false, "*", romkan);
             properNounBeginReading = new BasicQueryStatement(database, key, ORDER_PROPER_NOUN_BEGIN, persistentLanguageSettings,
-                    db.compileStatement(String.format(SQL_QUERY_PROPER_NOUN, properNounRenderJsonExpr, SCRIPT_KANA, "GLOB ?")), null, true, "*", romkan);
+                    db.compileStatement(String.format(SQL_QUERY_PROPER_NOUN, SCRIPT_KANA, "GLOB ?")), null, true, "*", romkan);
         }
 
         // Deinflection doesn't split prio/nonprio (a conjugated hit is a conjugated hit regardless
         // of headword priority) - just script (writing/kana).
-        deinflectWritingPrioStatement = db.compileStatement(String.format(SQL_QUERY_DEINFLECTION, matchedFormRenderJsonExpr, SCRIPT_WRITING));
-        deinflectReadingPrioStatement = db.compileStatement(String.format(SQL_QUERY_DEINFLECTION, matchedFormRenderJsonExpr, SCRIPT_KANA));
+        deinflectWritingPrioStatement = db.compileStatement(String.format(SQL_QUERY_DEINFLECTION, SCRIPT_WRITING));
+        deinflectReadingPrioStatement = db.compileStatement(String.format(SQL_QUERY_DEINFLECTION, SCRIPT_KANA));
+
+        // Backfill: entry_id/form_id are now columns on the already-inserted row rather than
+        // SearchTerm's, so this is one shared expression for every core-pack tier (bookmark listing
+        // and gloss hits leave form_id NULL, which buildChosenFormIdExpr already resolves to "use
+        // the entry's primary form" - the same fallback buildRenderJsonExpr already implements for a
+        // literal null matchedFormIdExpr, just now driven by the column's runtime value instead of
+        // a compile-time branch).
+        final String backfillCoreRenderExpr = asUpdateExpr(buildRenderJsonExpr(
+                "DictionarySearchElement.entry_id", "DictionarySearchElement.form_id", glossAliasOrNull, backupGlossAliasOrNull));
+        backfillCoreStatement = db.compileStatement(String.format(SQL_QUERY_BACKFILL_RENDER, backfillCoreRenderExpr, "!= 'name'"));
+
+        if (namesInstalled) {
+            final String backfillNamesRenderExpr = asUpdateExpr(buildNameRenderJsonExpr(
+                    "DictionarySearchElement.entry_id", "DictionarySearchElement.form_id"));
+            backfillNamesStatement = db.compileStatement(String.format(SQL_QUERY_BACKFILL_RENDER, backfillNamesRenderExpr, "= 'name'"));
+        }
 
         statements = new QueryStatement[15];
 
@@ -674,6 +722,24 @@ public class DictionarySearchQueryTool {
         return statement.executeInsert();
     }
 
+    // Renders up to `limit` already-matched-but-unrendered rows, in display order - see
+    // SQL_QUERY_BACKFILL_RENDER. Call after every match-finding step (LanguageAttached, a fresh
+    // search, scrolling further, reopening the search box) so the rows about to be shown have a
+    // render_json by the time the paged list actually reads them; safe and cheap to call
+    // redundantly since render_json IS NULL naturally makes it a no-op once nothing needs it.
+    @WorkerThread
+    public void backfillRenderJson(int limit) {
+        backfillCoreStatement.bindLong(1, key);
+        backfillCoreStatement.bindLong(2, limit);
+        backfillCoreStatement.execute();
+
+        if (backfillNamesStatement != null) {
+            backfillNamesStatement.bindLong(1, key);
+            backfillNamesStatement.bindLong(2, limit);
+            backfillNamesStatement.execute();
+        }
+    }
+
     public void close() {
         if (statements != null) {
             for (QueryStatement s : statements) {
@@ -711,6 +777,11 @@ public class DictionarySearchQueryTool {
         closeQuietly(deinflectReadingPrioStatement);
         deinflectWritingPrioStatement = null;
         deinflectReadingPrioStatement = null;
+
+        closeQuietly(backfillCoreStatement);
+        closeQuietly(backfillNamesStatement);
+        backfillCoreStatement = null;
+        backfillNamesStatement = null;
     }
 
     private static void closeStatement(QueryStatement statement) {
