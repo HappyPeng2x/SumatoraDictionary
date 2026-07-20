@@ -9,6 +9,7 @@
     <string name="install_icon_description">Install</string>
     <string name="delete_icon_description">Delete</string>
     <string name="manage_dictionaries_title">Manage dictionaries</string>
+    <string name="language_menu_more">More languages…</string>
     <string name="dictionary_update_ready_title">Dictionary update ready</string>
     <string name="dictionary_update_ready_text">Restart Sumatora to apply the %1$s update</string>
     <string name="check_for_updates">Check for updates</string>

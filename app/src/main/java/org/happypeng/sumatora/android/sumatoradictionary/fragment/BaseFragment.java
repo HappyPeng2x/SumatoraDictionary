@@ -42,6 +42,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.SimpleItemAnimator;
 
 import org.happypeng.sumatora.android.sumatoradictionary.R;
+import org.happypeng.sumatora.android.sumatoradictionary.activity.DictionariesManagementActivity;
 import org.happypeng.sumatora.android.sumatoradictionary.activity.MainActivity;
 import org.happypeng.sumatora.android.sumatoradictionary.adapter.DictionaryPagedListAdapter;
 import org.happypeng.sumatora.android.sumatoradictionary.databinding.FragmentDictionaryQueryBinding;
@@ -59,6 +60,7 @@ import java.util.regex.Pattern;
 
 import dagger.hilt.android.AndroidEntryPoint;
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
+import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.core.Single;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
 import io.reactivex.rxjava3.disposables.Disposable;
@@ -255,14 +257,18 @@ public abstract class BaseFragment extends Fragment {
         queryMenu.searchView.setIconifiedByDefault(queryFragmentModel.getSearchIconifiedByDefault());
         queryMenu.shareBookmarks.setVisible(queryFragmentModel.getShareButtonVisible());
 
-        viewAutoDisposable.add(queryFragmentModel.getInstalledDictionaries()
-                .subscribe(l -> queryMenu.addLanguageMenu(getContext(), l,
+        viewAutoDisposable.add(Observable.combineLatest(
+                queryFragmentModel.getInstalledDictionaries(),
+                queryFragmentModel.getMoreLanguagesAvailable(),
+                android.util.Pair::new)
+                .subscribe(state -> queryMenu.addLanguageMenu(getContext(), state.first, state.second,
                         new QueryMenu.LanguageChangeCallback() {
                             @Override
                             public void change(String language) {
                                 queryFragmentModel.setLanguage(language);
                             }
-                        })));
+                        },
+                        () -> startActivity(new Intent(getActivity(), DictionariesManagementActivity.class)))));
 
         viewAutoDisposable.add(queryFragmentModel.states()
                 .filter(s -> s.getLanguage() != null)

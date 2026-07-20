@@ -30,10 +30,12 @@ import org.happypeng.sumatora.android.sumatoradictionary.component.BookmarkCompo
 import org.happypeng.sumatora.android.sumatoradictionary.component.BookmarkShareComponent
 import org.happypeng.sumatora.android.sumatoradictionary.component.LanguageSettingsComponent
 import org.happypeng.sumatora.android.sumatoradictionary.component.PersistentDatabaseComponent
+import org.happypeng.sumatora.android.sumatoradictionary.db.CachedManifestEntry
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmarkTag
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement
 import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary
+import org.happypeng.sumatora.android.sumatoradictionary.db.OptionalDictionaryCatalog
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.DictionarySearchQueryTool
 import org.happypeng.sumatora.core.bookmark.BookmarkMergeService
@@ -112,10 +114,28 @@ abstract class BaseQueryFragmentModel protected constructor(
     private val pagedListSubject: Subject<PagedList<DictionarySearchElement>> = BehaviorSubject.create()
     val pagedListObservable: Observable<PagedList<DictionarySearchElement>> = pagedListSubject
 
+    // Flowable (not a one-shot query) so the language picker (BaseFragment.onCreateOptionsMenu)
+    // picks up a pack installed later via DictionariesManagementActivity without needing the
+    // fragment recreated.
     val installedDictionaries: Observable<List<InstalledDictionary>>
-        get() = Observable.defer {
-            Observable.just(persistentDatabaseComponent.database.installedDictionaryDao().all)
-        }.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
+        get() = persistentDatabaseComponent.database.installedDictionaryDao().allFlowable
+            .toObservable()
+            .subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
+
+    // Drives the language picker's "More languages…" entry - true only once there's at least one
+    // gloss pack the catalog can offer that isn't installed yet, so the entry disappears once
+    // every published language has been downloaded.
+    val moreLanguagesAvailable: Observable<Boolean>
+        get() = Observable.combineLatest(
+            persistentDatabaseComponent.database.installedDictionaryDao().allFlowable.toObservable(),
+            persistentDatabaseComponent.database.cachedManifestEntryDao().getAllFlowable().toObservable(),
+            { installed: List<InstalledDictionary>, cached: List<CachedManifestEntry> ->
+                val installedCore = installed.firstOrNull { it.type == "core" }
+                val installedGlossLangs = installed.filter { it.type == "gloss" }.map { it.lang }.toSet()
+                OptionalDictionaryCatalog.resolve(installedCore, cached)
+                    .any { it.type == "gloss" && it.lang !in installedGlossLangs }
+            }
+        ).subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
 
     private val statesObservable: Observable<QueryState>
 

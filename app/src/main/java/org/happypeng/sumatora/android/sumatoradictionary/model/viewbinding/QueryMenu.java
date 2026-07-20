@@ -115,7 +115,9 @@ public class QueryMenu {
 
     public void addLanguageMenu(final Context context,
                                 final List<InstalledDictionary> installedDictionaries,
-                                final LanguageChangeCallback consumer) {
+                                final boolean showMoreLanguages,
+                                final LanguageChangeCallback consumer,
+                                final Runnable onMoreLanguages) {
         PopupMenu languagePopupMenu = new PopupMenu(context, languageMenuText);
 
         languageMenuText.setOnClickListener(v -> {
@@ -132,6 +134,16 @@ public class QueryMenu {
                     return false;
                 });
             }
+        }
+
+        // Only shown once there's a published gloss pack that isn't installed yet (see
+        // BaseQueryFragmentModel.moreLanguagesAvailable) - hidden once every language is installed.
+        if (showMoreLanguages) {
+            menu.add(context.getString(R.string.language_menu_more)).setOnMenuItemClickListener(item -> {
+                onMoreLanguages.run();
+
+                return false;
+            });
         }
     }
 }

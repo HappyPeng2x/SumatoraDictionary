@@ -21,6 +21,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import io.reactivex.rxjava3.core.Flowable
 
 @Dao
 interface CachedManifestEntryDao {
@@ -29,6 +30,11 @@ interface CachedManifestEntryDao {
 
     @Query("SELECT * FROM CachedManifestEntry")
     fun getAllLive(): LiveData<List<CachedManifestEntry>>
+
+    // Backs BaseQueryFragmentModel.moreLanguagesAvailable - see InstalledDictionaryDao.getAllFlowable
+    // for why a Flowable instead of getAllLive here.
+    @Query("SELECT * FROM CachedManifestEntry")
+    fun getAllFlowable(): Flowable<List<CachedManifestEntry>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insertAll(entries: List<CachedManifestEntry>)

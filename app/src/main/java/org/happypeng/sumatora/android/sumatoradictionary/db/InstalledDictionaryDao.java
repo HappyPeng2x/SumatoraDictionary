@@ -25,6 +25,8 @@ import androidx.room.Query;
 
 import java.util.List;
 
+import io.reactivex.rxjava3.core.Flowable;
+
 @Dao
 public interface InstalledDictionaryDao {
     @Query("SELECT * FROM InstalledDictionary")
@@ -32,6 +34,13 @@ public interface InstalledDictionaryDao {
 
     @Query("SELECT * FROM InstalledDictionary")
     LiveData<List<InstalledDictionary>> getAllLive();
+
+    // Backs the search screen's language picker (BaseQueryFragmentModel.installedDictionaries) -
+    // Room re-emits automatically whenever InstalledDictionary changes (e.g. a pack downloaded via
+    // DictionariesManagementActivity, a separate Activity), so a newly installed language shows up
+    // in the picker without needing the fragment recreated or an explicit invalidateOptionsMenu().
+    @Query("SELECT * FROM InstalledDictionary")
+    Flowable<List<InstalledDictionary>> getAllFlowable();
 
     @Delete
     void delete(InstalledDictionary aAction);
