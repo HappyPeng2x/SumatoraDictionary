@@ -25,3 +25,4 @@ out/
 
 # CI release-launch smoke check output (.github/scripts/check-release-launch.sh)
 /release-launch-logcat.txt
+/ui_dump.xml

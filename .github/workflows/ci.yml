@@ -84,3 +84,11 @@ jobs:
           name: release-launch-logcat
           path: release-launch-logcat.txt
           if-no-files-found: ignore
+
+      - name: Upload release launch UI dump
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-launch-ui-dump
+          path: ui_dump.xml
+          if-no-files-found: ignore
