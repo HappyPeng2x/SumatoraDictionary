@@ -42,8 +42,20 @@ android {
 
     buildTypes {
         release {
+            // Falls back to the debug key when there's no real keystore.properties (CI, or a dev
+            // machine that isn't set up for signing) so `assembleRelease` still produces something
+            // installable - that's what lets CI actually install+launch the minified build to catch
+            // R8 stripping real distribution builds have hit before (e.g. Room's _Impl classes
+            // getting stripped, crashing on launch), instead of only checking that it compiles.
+            // A real release for distribution must have keystore.properties present, which routes
+            // back to the real signingConfigs.release below - if you're doing a real release and
+            // see the debug-signing warning at build time, keystore.properties isn't being picked up.
             if (keystorePropertiesFile.exists()) {
                 signingConfig signingConfigs.release
+            } else {
+                logger.warn("WARNING: keystore.properties not found - release build type will be " +
+                        "signed with the DEBUG key. Fine for CI/local testing; NOT fine for a real release.")
+                signingConfig signingConfigs.debug
             }
             buildConfigField("boolean", "DEBUG_MESSAGE", "false")
             buildConfigField("boolean", "DEBUG_QUERYTOOL", "false")
