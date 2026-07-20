@@ -175,7 +175,7 @@ object DictionaryManagementRenderer {
                     marginStart = 12.dp(density)
                 }
             }
-            row.installed != null && row.type in OptionalDictionaryCatalog.OPTIONAL_TYPES ->
+            row.installed != null && OptionalDictionaryCatalog.isOptional(row.type, row.lang) ->
                 actionButton(
                     context, density, R.drawable.ic_delete_24px, R.color.tag_register,
                     R.string.delete_icon_description

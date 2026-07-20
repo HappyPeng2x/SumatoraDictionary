@@ -176,7 +176,7 @@ public class DictionariesManagementScreenshotTest {
     private void uninstallOptionalPacks() {
         org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase db = dbComponent.getDatabase();
         for (org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary d : db.installedDictionaryDao().getAll()) {
-            if (!org.happypeng.sumatora.android.sumatoradictionary.db.OptionalDictionaryCatalog.INSTANCE.getOPTIONAL_TYPES().contains(d.type)) {
+            if (!org.happypeng.sumatora.android.sumatoradictionary.db.OptionalDictionaryCatalog.INSTANCE.isOptional(d.type, d.lang)) {
                 continue;
             }
             d.detach(db);

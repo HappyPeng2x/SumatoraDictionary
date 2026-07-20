@@ -46,7 +46,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.Di
 import java.io.File
 import javax.inject.Inject
 
-// Lets the user download the optional search_suffix/names packs (not bundled - see
+// Lets the user download the optional search_suffix/names/gloss/tatoeba packs (not bundled - see
 // android-app-to-jitendex.md/update-pipeline.md) and remove them again. Reuses the
 // RemoteDictionaryObject -> LocalDictionaryObject -> InstalledDictionary pipeline; the actual
 // install-on-download-complete step happens in DictionaryDownloadCompleteReceiver.
@@ -135,9 +135,9 @@ class DictionariesManagementActivity : AppCompatActivity() {
                 val catalog = OptionalDictionaryCatalog.resolve(installedCore, cachedManifest)
 
                 val available = catalog
-                    .filter { (it.type to "") !in installedKeys && (it.type to "") !in downloadingKeys }
+                    .filter { (it.type to it.lang) !in installedKeys && (it.type to it.lang) !in downloadingKeys }
                     .map {
-                        RemoteDictionaryObject(it.url, it.description, it.type, "", it.version, it.date, it.sha256)
+                        RemoteDictionaryObject(it.url, it.description, it.type, it.lang, it.version, it.date, it.sha256)
                     }
 
                 val rows = buildList {
