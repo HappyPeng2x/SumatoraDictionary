@@ -12,6 +12,21 @@
   import preview) now assembles a row's full display payload as part of the same query that finds
   it, so scrolling never triggers a separate per-row fetch. This replaces the per-row live fetch
   and its LRU cache introduced in 0.5.0-beta1.
+- Fixed search getting progressively slower the further down the results you scrolled: the fix
+  above computed every matched row's full display payload (headword, furigana, senses, tags)
+  eagerly for an *entire* search tier the moment it ran, so a broad tier (a short/common query, or
+  a large bookmark list) paid that cost for thousands of rows at once instead of just the ~50 about
+  to be shown. The real root cause turned out to be a missing database index
+  (`Sense.sense_group_id`, now shipped in dictionaries-v12 - bundled core.db updated accordingly),
+  which made per-row rendering expensive in the first place. With that fixed, rendering is now
+  bounded to roughly a page at a time (`DictionarySearchQueryTool.backfillRenderJson`), and finding
+  matches (cheap) is fully decoupled from rendering them (bounded).
+  Measured on an emulator against the real dictionary, for a one-character kana query matching
+  13,142 entries: eager whole-tier rendering (the pre-fix approach, reconstructed for comparison)
+  took **4638ms**; bounded rendering of the same tier's first page took **34ms** - about **135x**
+  faster for reaching a broad tier, with every further page through it costing ~34ms instead of
+  being free-but-already-paid-for upfront. See `SearchTierPerformanceTest`, which keeps these
+  numbers honest going forward.
 
 ## [0.5.0-beta1] - 2026-07-19
 
