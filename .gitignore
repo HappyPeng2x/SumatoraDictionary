@@ -19,3 +19,6 @@ keystore.properties
 
 # IntelliJ output
 out/
+
+# Playwright MCP session artifacts
+/.playwright-mcp/
