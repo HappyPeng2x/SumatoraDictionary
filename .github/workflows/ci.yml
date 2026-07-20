@@ -67,41 +67,7 @@ jobs:
           script: |
             ./gradlew :app:connectedDebugAndroidTest --stacktrace
             ./gradlew :app:assembleRelease --stacktrace
-
-            # There's no real signing key in CI (keystore.properties is gitignored), so the release
-            # build type falls back to debug signing - see app/build.gradle. That's enough to
-            # actually install and launch the minified build, which is what catches R8 stripping
-            # something a build-time-only check (just running assembleRelease) can't: the app has
-            # shipped a release build that crashed immediately on launch before (Room's _Impl
-            # classes got stripped) while assembleRelease itself succeeded.
-            PKG=org.happypeng.sumatora.android.sumatoradictionary
-            adb uninstall "$PKG" || true
-            adb install -r app/build/outputs/apk/release/*.apk
-            adb logcat -c
-            adb shell am start -W -n "$PKG/.activity.MainActivity"
-
-            resumed=0
-            for i in $(seq 1 30); do
-              adb logcat -d > release-launch-logcat.txt
-              if grep -q "FATAL EXCEPTION" release-launch-logcat.txt; then
-                echo "Release build crashed on launch:"
-                cat release-launch-logcat.txt
-                exit 1
-              fi
-              if adb shell dumpsys activity activities | grep -qE "(m|top)ResumedActivity.*MainActivity"; then
-                resumed=1
-                break
-              fi
-              sleep 2
-            done
-            adb logcat -d > release-launch-logcat.txt
-
-            if [ "$resumed" != "1" ]; then
-              echo "Release build's MainActivity never became resumed within the timeout:"
-              cat release-launch-logcat.txt
-              exit 1
-            fi
-            echo "Release build (minified, debug-signed) launched MainActivity successfully."
+            bash .github/scripts/check-release-launch.sh
 
       - name: Upload instrumented test reports
         if: always()
