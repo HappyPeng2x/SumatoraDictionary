@@ -20,10 +20,12 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.DividerItemDecoration
+import com.google.android.material.color.MaterialColors
 import dagger.hilt.android.AndroidEntryPoint
 import io.reactivex.rxjava3.disposables.CompositeDisposable
 import org.happypeng.sumatora.android.sumatoradictionary.R
@@ -49,9 +51,17 @@ class TagsFragment : Fragment() {
         val binding = FragmentTagsBinding.inflate(inflater, container, false)
 
         (activity as AppCompatActivity).setSupportActionBar(binding.tagsFragmentToolbar)
+        // ic_outline_menu_24px has a hardcoded black fill - untinted, it disappears against
+        // colorSurface's near-black night-mode value. Every sibling fragment (BaseFragment,
+        // SettingsFragment) re-tints its hamburger icon to the theme-aware colorOnSurfaceVariant
+        // for exactly this reason; this one was missing that step.
+        val homeIndicator =
+            ContextCompat.getDrawable(activity as AppCompatActivity, R.drawable.ic_outline_menu_24px)!!.mutate()
+        homeIndicator.setTint(MaterialColors.getColor(
+            binding.tagsFragmentToolbar, com.google.android.material.R.attr.colorOnSurfaceVariant))
         (activity as AppCompatActivity).supportActionBar?.apply {
             setDisplayHomeAsUpEnabled(true)
-            setHomeAsUpIndicator(R.drawable.ic_outline_menu_24px)
+            setHomeAsUpIndicator(homeIndicator)
         }
 
         adapter = TagsAdapter { tag ->

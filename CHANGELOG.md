@@ -28,6 +28,14 @@
   row can be rebound out from under an in-progress selection, and the row itself is already a
   tap target for opening the entry.
 
+### Theming
+
+- Fixed the Tags screen's hamburger menu icon being invisible in dark mode ("black on black") -
+  `TagsFragment` set it from the raw drawable resource, which has a hardcoded black fill, instead
+  of tinting it to the theme-aware `colorOnSurfaceVariant` the way every sibling screen
+  (Home/Bookmarks via `BaseFragment`, Settings) already does. Untinted, it rendered fine against
+  light mode's near-white toolbar but disappeared against dark mode's near-black one.
+
 ## [0.5.0-beta2] - 2026-07-20
 
 ### Search and bookmarks
