@@ -40,6 +40,7 @@
     <string name="action_memo">Memo</string>
     <string name="action_edit_tags">Edit tags</string>
     <string name="action_done_editing_tags">Done editing tags</string>
+    <string name="copied_to_clipboard">Copied to clipboard</string>
 
     <!-- Navigation Drawer -->
     <string name="nav_drawer_subtitle">Japanese Dictionary</string>

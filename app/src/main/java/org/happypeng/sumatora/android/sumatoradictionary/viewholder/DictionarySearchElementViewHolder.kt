@@ -16,12 +16,17 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.viewholder
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.os.Build
 import android.text.InputType
 import android.view.inputmethod.EditorInfo
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.PopupMenu
+import android.widget.Toast
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.chip.Chip
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
@@ -91,6 +96,11 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
     private var isRebindingSameEntry = false
     private val currentTags = mutableListOf<String>()
     private var currentEntry: DictionarySearchElement? = null
+    // Plain-text rendering of the currently bound row, refreshed alongside the headword/senses in
+    // bindSummary() - text selection inside a RecyclerView row fights row recycling (a rebind can
+    // rewrite the headword/senses out from under an in-progress selection) and the row's own click
+    // listener below, so rows offer a long-press-to-copy affordance instead of native selection.
+    private var currentCopyText: String? = null
 
     private fun openMemo() {
         wordCardBinding.wordCardMemoRow.visibility = View.VISIBLE
@@ -220,9 +230,11 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
             } else {
                 wordCardBinding.wordCardHeadword.text = ""
                 wordCardBinding.wordCardSenses.removeAllViews()
+                currentCopyText = null
             }
         }
         wordCardBinding.wordCardContent.setOnClickListener { onEntryClick.onClick(entry) }
+        wordCardBinding.wordCardContent.setOnLongClickListener { view -> copyCurrentEntryToClipboard(view) }
         wordCardBinding.wordCardBookmarkBadge.visibility =
             if (entry.bookmark != 0L) View.VISIBLE else View.GONE
 
@@ -335,6 +347,35 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
         val density = wordCardBinding.wordCardSenses.context.resources.displayMetrics.density
         wordCardBinding.wordCardSenses.removeAllViews()
         buildSenseRows(wordCardBinding.wordCardSenses, summary, colors, density, entry.deinflectionLabel)
+        currentCopyText = buildCopyText(summary)
+    }
+
+    // Plain-text equivalent of what bindSummary just rendered as spans/table rows - headword,
+    // matched reading, and every visible gloss - for the long-press-to-copy affordance below.
+    private fun buildCopyText(summary: EntryListSummary): String {
+        val parts = mutableListOf<String>()
+        summary.primaryText?.takeIf { it.isNotBlank() }?.let { parts.add(it) }
+        summary.primaryReading?.let { parts.add(it) }
+        val glosses = if (summary.isName) {
+            summary.translations
+        } else {
+            summary.senseGroups.flatMap { it.senses }.mapNotNull { it.glossText }
+        }
+        if (glosses.isNotEmpty()) parts.add(glosses.joinToString("; "))
+        return parts.joinToString(" - ")
+    }
+
+    private fun copyCurrentEntryToClipboard(view: View): Boolean {
+        val text = currentCopyText?.takeIf { it.isNotEmpty() } ?: return false
+        val clipboard = view.context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+            ?: return false
+        clipboard.setPrimaryClip(ClipData.newPlainText(text, text))
+        // Android 13+ (API 33) already shows its own system confirmation when the clipboard
+        // changes - a second Toast here would just be a redundant, stale-looking duplicate.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            Toast.makeText(view.context, R.string.copied_to_clipboard, Toast.LENGTH_SHORT).show()
+        }
+        return true
     }
 
     private fun addPendingTag() {

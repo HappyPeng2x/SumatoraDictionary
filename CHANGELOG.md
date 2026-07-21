@@ -17,6 +17,17 @@
   network at all, showing "Downloading…" the whole time - a genuinely stuck download (as opposed
   to one that fails outright) still isn't distinguishable from a slow one. Not addressed here.
 
+### Copy/paste
+
+- Fixed copy/paste not really working from entries: no `TextView` in the app ever enabled text
+  selection, and there was no clipboard code anywhere, so long-press never did anything.
+  Entry detail (headword, glosses, examples, forms table, notes/xrefs/language-source boxes) is
+  now selectable via native long-press, coexisting with the existing tap-to-open-kanji-detail and
+  tap-to-follow-xref spans. Search-result rows use a long-press-to-copy affordance instead of
+  native selection (copies headword + reading + glosses to the clipboard) since a `RecyclerView`
+  row can be rebound out from under an in-progress selection, and the row itself is already a
+  tap target for opening the entry.
+
 ## [0.5.0-beta2] - 2026-07-20
 
 ### Search and bookmarks

@@ -158,6 +158,11 @@ class EntryDetailBottomSheet : BottomSheetDialogFragment() {
             headwordSb.setSpan(ForegroundColorSpan(colors.pos), start, headwordSb.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
         }
         binding.entryDetailHeadword.movementMethod = android.text.method.LinkMovementMethod.getInstance()
+        // Coexists fine with the ClickableSpan/LinkMovementMethod above - tapping a kanji span
+        // still opens its detail sheet, long-pressing elsewhere in the headword starts a native
+        // text selection. Unlike search-result rows (see DictionarySearchElementViewHolder), this
+        // view isn't inside a RecyclerView, so there's no row-recycling to fight a selection.
+        binding.entryDetailHeadword.setTextIsSelectable(true)
         if (detail.isPriority) {
             val starStart = headwordSb.length
             headwordSb.append(" ★")
@@ -347,6 +352,7 @@ class EntryDetailBottomSheet : BottomSheetDialogFragment() {
                 text = content
                 textSize = 13f
                 setTextColor(textColor)
+                setTextIsSelectable(true)
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT
@@ -408,6 +414,7 @@ class EntryDetailBottomSheet : BottomSheetDialogFragment() {
                 }
                 textSize = 13f
                 setTextColor(textColor)
+                setTextIsSelectable(true)
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT
@@ -459,6 +466,7 @@ class EntryDetailBottomSheet : BottomSheetDialogFragment() {
                 text = detail.translations.joinToString(", ")
                 textSize = 15f
                 setTextColor(primaryColor)
+                setTextIsSelectable(true)
                 val lp = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
                 )
@@ -558,6 +566,7 @@ class EntryDetailBottomSheet : BottomSheetDialogFragment() {
                     text = sb
                     textSize = 15f
                     setTextColor(primaryColor)
+                    setTextIsSelectable(true)
                     val lp = LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT,
                         LinearLayout.LayoutParams.WRAP_CONTENT
@@ -634,6 +643,7 @@ class EntryDetailBottomSheet : BottomSheetDialogFragment() {
             text = sb
             textSize = 14f
             setTextColor(primaryColor)
+            setTextIsSelectable(true)
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
@@ -645,6 +655,7 @@ class EntryDetailBottomSheet : BottomSheetDialogFragment() {
             text = example.translation.orEmpty()
             textSize = 12f
             setTextColor(secondaryColor)
+            setTextIsSelectable(true)
             val lp = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
@@ -744,6 +755,7 @@ class EntryDetailBottomSheet : BottomSheetDialogFragment() {
             this.text = text
             textSize = 12f
             setTextColor(secondaryColor)
+            setTextIsSelectable(true)
             gravity = android.view.Gravity.CENTER
             setPadding(8.dp(), 4.dp(), 8.dp(), 4.dp())
         }
@@ -765,6 +777,7 @@ class EntryDetailBottomSheet : BottomSheetDialogFragment() {
                     text = rowKey
                     textSize = 14f
                     setTextColor(primaryColor)
+                    setTextIsSelectable(true)
                     gravity = android.view.Gravity.CENTER_VERTICAL
                     setPadding(0, 4.dp(), 8.dp(), 4.dp())
                 })
