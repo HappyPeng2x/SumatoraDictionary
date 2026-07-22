@@ -16,6 +16,9 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.db.tools;
 
+import android.database.Cursor;
+import android.database.SQLException;
+
 import androidx.annotation.Nullable;
 import androidx.annotation.WorkerThread;
 import androidx.sqlite.db.SupportSQLiteDatabase;
@@ -181,8 +184,17 @@ public class DictionarySearchQueryTool {
                         + "OR " + matchedFormIdExpr + " IS NULL "
                         + "OR EXISTS (SELECT 1 FROM core.SenseAppliesToForm a WHERE a.sense_id = s.sense_id AND a.form_id = " + matchedFormIdExpr + "))";
 
+        // Every gloss_xx/examples_xx cross-pack join below goes through Sense.entry_source_key +
+        // Sense.source_ord (denormalized copies of Entry.source_key / the original per-entry sense
+        // index - see sumatora_schema.py on SumatoraIndex), never a raw sense_id/entry_id equality
+        // check: entry_id/sense_id are plain rowids reassigned from scratch on every SumatoraIndex
+        // build, so an optional pack installed from one release joined against a core pack from a
+        // later one can't rely on the two files' numbering agreeing (DictionariesManagementActivity
+        // /update-pipeline.md is what keeps them in lockstep in the common case, but a user offline
+        // right after an app upgrade can easily have a stale optional pack attached for a while).
         final String usedBackupLangExpr = glossAlias == null ? "1"
-                : "CASE WHEN EXISTS(SELECT 1 FROM " + glossAlias + ".Sense WHERE entry_id = " + entryIdExpr + ") THEN 0 ELSE 1 END";
+                : "CASE WHEN EXISTS(SELECT 1 FROM " + glossAlias + ".Sense WHERE entry_source_key = "
+                        + "(SELECT source_key FROM core.Entry WHERE entry_id = " + entryIdExpr + ")) THEN 0 ELSE 1 END";
         final String senseRowsExpr = glossAlias == null ? "NULL"
                 : "(SELECT json_group_array(json_array(sg.sense_group_id, s.sense_id)) FROM core.Sense s "
                         + "JOIN core.SenseGroup sg ON sg.sense_group_id = s.sense_group_id "
@@ -194,15 +206,17 @@ public class DictionarySearchQueryTool {
                         + "WHERE sgt.sense_group_id IN (SELECT sense_group_id FROM core.SenseGroup WHERE entry_id = " + entryIdExpr + ") "
                         + "ORDER BY sgt.sense_group_id, t.sort_order)";
         final String glossBySenseExpr = glossAlias == null ? "NULL"
-                : "(SELECT json_group_array(json_array(g.sense_id, g.text)) FROM " + glossAlias + ".SenseGloss g "
-                        + "JOIN core.Sense s ON s.sense_id = g.sense_id "
+                : "(SELECT json_group_array(json_array(s.sense_id, g.text)) FROM " + glossAlias + ".SenseGloss g "
+                        + "JOIN " + glossAlias + ".Sense gs ON gs.sense_id = g.sense_id "
+                        + "JOIN core.Sense s ON s.entry_source_key = gs.entry_source_key AND s.source_ord = gs.source_ord "
                         + "JOIN core.SenseGroup sg ON sg.sense_group_id = s.sense_group_id "
-                        + "WHERE sg.entry_id = " + entryIdExpr + " ORDER BY g.sense_id, g.ord)";
+                        + "WHERE sg.entry_id = " + entryIdExpr + " ORDER BY s.sense_id, g.ord)";
         final String glossBySenseBackupExpr = backupGlossAlias == null ? "NULL"
-                : "(SELECT json_group_array(json_array(g.sense_id, g.text)) FROM " + backupGlossAlias + ".SenseGloss g "
-                        + "JOIN core.Sense s ON s.sense_id = g.sense_id "
+                : "(SELECT json_group_array(json_array(s.sense_id, g.text)) FROM " + backupGlossAlias + ".SenseGloss g "
+                        + "JOIN " + backupGlossAlias + ".Sense gs ON gs.sense_id = g.sense_id "
+                        + "JOIN core.Sense s ON s.entry_source_key = gs.entry_source_key AND s.source_ord = gs.source_ord "
                         + "JOIN core.SenseGroup sg ON sg.sense_group_id = s.sense_group_id "
-                        + "WHERE sg.entry_id = " + entryIdExpr + " ORDER BY g.sense_id, g.ord)";
+                        + "WHERE sg.entry_id = " + entryIdExpr + " ORDER BY s.sense_id, g.ord)";
         final String restrictedFormsBySenseExpr = glossAlias == null ? "NULL"
                 : "(SELECT json_group_array(json_array(a.sense_id, a.form_id)) FROM core.SenseAppliesToForm a "
                         + "JOIN core.Sense s ON s.sense_id = a.sense_id "
@@ -293,12 +307,17 @@ public class DictionarySearchQueryTool {
     // Gloss (reverse/translation) search: one pass per language, no separate staging table needed
     // now that DictionarySearchElement doesn't carry gloss text - GROUP BY entry_id plus a single
     // MIN() aggregate (SQLite's documented "bare column" extension) picks matched_text/rank from
-    // whichever sense produced the smallest ord, i.e. the best/first matching sense.
+    // whichever sense produced the smallest ord, i.e. the best/first matching sense. Sense.entry_id
+    // here is the gloss pack's own (possibly stale-release) numbering, only ever used to reach
+    // GlossSearchFts/SenseGloss rows within that same pack - the join to core.Entry (and the
+    // entry_id actually selected/grouped on) goes through Entry.source_key = Sense.entry_source_key
+    // instead, so a gloss pack from an older SumatoraIndex release still resolves to the right core
+    // entry rather than whatever core.Entry happens to have that same raw rowid today.
     private static final String SQL_QUERY_GLOSS_TIER =
             "INSERT OR IGNORE INTO DictionarySearchElement "
                     + "(ref, entryOrder, entry_id, seq, form_id, match_kind, original_query, matched_text, "
                     + "dictionary_form, deinflection_label, rank, bookmark, memo, tags, render_json) "
-                    + "SELECT ? AS ref, ? AS entryOrder, Sense.entry_id, "
+                    + "SELECT ? AS ref, ? AS entryOrder, Entry.entry_id, "
                     + "CAST(Entry.source_key AS INTEGER), NULL AS form_id, "
                     + "'gloss' AS match_kind, ? AS original_query, SenseGloss.text AS matched_text, "
                     + "NULL, NULL, MIN(Sense.ord) AS rank, "
@@ -307,10 +326,10 @@ public class DictionarySearchQueryTool {
                     + "FROM %s.GlossSearchFts "
                     + "JOIN %s.SenseGloss ON SenseGloss.rowid = GlossSearchFts.rowid "
                     + "JOIN %s.Sense ON Sense.sense_id = SenseGloss.sense_id "
-                    + "JOIN core.Entry ON Entry.entry_id = Sense.entry_id "
+                    + "JOIN core.Entry ON Entry.source_key = Sense.entry_source_key "
                     + BOOKMARK_JOIN
                     + "WHERE GlossSearchFts.text MATCH %s AND " + BOOKMARKS_WHERE_CLAUSE + " "
-                    + "GROUP BY Sense.entry_id";
+                    + "GROUP BY Entry.entry_id";
 
     // Deinflection: same shape as the exact-tier basic query, but requires FormRule to confirm the
     // matched form actually supports the rule the Deinflector candidate was generated under, and
@@ -419,6 +438,33 @@ public class DictionarySearchQueryTool {
         return false;
     }
 
+    // Every gloss statement below is compiled once here at attach time, not wrapped in a per-row
+    // try/catch like the live queries in PersistentDatabaseComponent - so a gloss pack downloaded
+    // before dictionaries-v14 added Sense.entry_source_key (see sumatora_schema.py on
+    // SumatoraIndex) would fail compileStatement() outright the moment glossInstalled/
+    // glossBackupInstalled turned it on, rather than degrading gracefully. Treat a pack missing
+    // that column the same as "not installed" until the user updates it, instead of crashing.
+    private static boolean hasStableSenseKey(final SupportSQLiteDatabase db, final String alias) {
+        try {
+            Cursor cur = db.query("PRAGMA " + alias + ".table_info(Sense)");
+            if (cur == null) {
+                return false;
+            }
+            final int nameIdx = cur.getColumnIndex("name");
+            boolean found = false;
+            while (cur.moveToNext()) {
+                if ("entry_source_key".equals(cur.getString(nameIdx))) {
+                    found = true;
+                    break;
+                }
+            }
+            cur.close();
+            return found;
+        } catch (SQLException e) {
+            return false;
+        }
+    }
+
     private static String globEscape(final String term) {
         return term.replace("[", "[[]").replace("]", "[]]").replace("*", "[*]").replace("?", "[?]");
     }
@@ -452,9 +498,11 @@ public class DictionarySearchQueryTool {
         final List<InstalledDictionary> installedDictionaries = database.installedDictionaryDao().getAll();
         final boolean suffixInstalled = isInstalled(installedDictionaries, "suffix", "");
         final boolean namesInstalled = isInstalled(installedDictionaries, "names", "");
-        final boolean glossInstalled = isInstalled(installedDictionaries, "gloss", persistentLanguageSettings.lang);
+        final boolean glossInstalled = isInstalled(installedDictionaries, "gloss", persistentLanguageSettings.lang)
+                && hasStableSenseKey(db, glossAlias(persistentLanguageSettings.lang));
         final boolean glossBackupInstalled = persistentLanguageSettings.backupLang != null
-                && isInstalled(installedDictionaries, "gloss", persistentLanguageSettings.backupLang);
+                && isInstalled(installedDictionaries, "gloss", persistentLanguageSettings.backupLang)
+                && hasStableSenseKey(db, glossAlias(persistentLanguageSettings.backupLang));
 
         final String glossAliasOrNull = glossInstalled ? glossAlias(persistentLanguageSettings.lang) : null;
         final String backupGlossAliasOrNull = glossBackupInstalled ? glossAlias(persistentLanguageSettings.backupLang) : null;

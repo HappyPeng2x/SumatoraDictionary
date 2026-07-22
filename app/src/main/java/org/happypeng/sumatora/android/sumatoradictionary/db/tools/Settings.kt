@@ -74,5 +74,6 @@ class Settings {
 
     companion object {
         const val REPOSITORY_URL: String = "repositoryURL"
+        const val LAST_SEEN_VERSION_CODE: String = "lastSeenVersionCode"
     }
 }

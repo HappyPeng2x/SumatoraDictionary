@@ -82,7 +82,10 @@ class DictionaryUpdateWorker @AssistedInject constructor(
             )
         }
 
-        // "Check Now" in Settings - allowed over metered connections since it's user-initiated.
+        // "Check Now" in Settings, and the one-time catch-up fired from
+        // PersistentDatabaseComponent when the APK version changes - allowed over metered
+        // connections since both are either user-initiated or a rare one-off.
+        @JvmStatic
         fun enqueueNow(context: Context) {
             val constraints = Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)

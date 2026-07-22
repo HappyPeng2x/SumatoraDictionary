@@ -35,6 +35,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import org.happypeng.sumatora.android.sumatoradictionary.BuildConfig;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryControlInfo;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryKanjiInfo;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement;
@@ -44,7 +45,10 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabaseInitialization;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings;
+import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentSetting;
+import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Settings;
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.SumatoraSQLiteOpenHelperFactory;
+import org.happypeng.sumatora.android.sumatoradictionary.update.DictionaryUpdateWorker;
 import org.happypeng.sumatora.jromkan.Romkan;
 
 import java.util.ArrayList;
@@ -113,8 +117,28 @@ public class PersistentDatabaseComponent {
         }
 
         PersistentDatabaseInitialization.initializeDatabase(context, database, dictionaryControlInfo);
+        checkAppUpgrade();
 
         databaseInitialized = true;
+    }
+
+    // updateDictionaries() (PersistentDatabaseInitialization) only re-bootstraps the packs bundled
+    // in dictionaries.xml (core/kanji/pitch/gloss_eng/tatoeba_eng) on every APK upgrade. Optional
+    // packs the user downloaded separately (other gloss/tatoeba languages, suffix, names) aren't in
+    // that manifest, so without this they'd sit at whatever version they were before the upgrade
+    // until the 7-day periodic worker or a manual "Check for updates" happened to catch up -
+    // producing exactly the kind of mixed-version install (e.g. core at the new bundled version,
+    // an optional pack still one behind) this check exists to close.
+    @WorkerThread
+    private void checkAppUpgrade() {
+        final String lastSeen = database.persistentSettingsDao().getValueDirect(Settings.LAST_SEEN_VERSION_CODE);
+        final String current = String.valueOf(BuildConfig.VERSION_CODE);
+
+        if (lastSeen != null && !lastSeen.equals(current)) {
+            DictionaryUpdateWorker.enqueueNow(context);
+        }
+
+        database.persistentSettingsDao().insert(new PersistentSetting(Settings.LAST_SEEN_VERSION_CODE, current));
     }
 
     @WorkerThread
@@ -689,12 +713,22 @@ public class PersistentDatabaseComponent {
         return result;
     }
 
+    // Joins through gloss_xx.Sense.entry_source_key/source_ord (denormalized copies of
+    // Entry.source_key and the original per-entry sense index - see sumatora_schema.py on
+    // SumatoraIndex) rather than a raw sense_id equality check: sense_id is a plain rowid
+    // reassigned from scratch on every SumatoraIndex build, so a gloss pack installed from an
+    // older release than the currently-attached core can't be trusted to share its numbering -
+    // see DictionarySearchQueryTool's glossBySenseExpr for the same rationale on the search path.
     @WorkerThread
     @Nullable
     private String fetchGlossText(SupportSQLiteDatabase readable, String lang, long senseId) {
         try {
             Cursor cur = readable.query(
-                    "SELECT text FROM gloss_" + lang + ".SenseGloss WHERE sense_id = ? ORDER BY ord",
+                    "SELECT g.text FROM gloss_" + lang + ".SenseGloss g "
+                            + "JOIN gloss_" + lang + ".Sense gs ON gs.sense_id = g.sense_id "
+                            + "JOIN core.Sense s ON s.entry_source_key = gs.entry_source_key "
+                            + "AND s.source_ord = gs.source_ord "
+                            + "WHERE s.sense_id = ? ORDER BY g.ord",
                     new Object[]{senseId});
             if (cur == null) {
                 return null;
@@ -710,16 +744,27 @@ public class PersistentDatabaseComponent {
         }
     }
 
+    // Same stable-key rationale as fetchGlossText: EntryExample.entry_id/sense_id are raw rowids
+    // from whichever SumatoraIndex release built this examples pack, not necessarily the currently-
+    // attached core's numbering. entry_source_key resolves the entry-level link; the sense-level
+    // link (nullable) is resolved separately via sense_source_ord, since EntryExample.sense_id
+    // always belongs to the same entry as EntryExample.entry_id (see gitoeba-to-sumatora-db.py's
+    // _sense_id), so entry_source_key doubles as the entry half of that key too. The returned
+    // 4th column is core's sense_id (matching what fetchEntryDetail's sensesById map is keyed by),
+    // not the examples pack's own sense_id.
     @WorkerThread
     private List<EntryDetail.Example> fetchExamples(SupportSQLiteDatabase readable, String lang, long entryId) {
         List<EntryDetail.Example> result = new ArrayList<>();
         try {
             Cursor cur = readable.query(
                     "SELECT EntryExample.example_id, EntryExample.matched_text, Example.translation, "
-                            + "EntryExample.sense_id "
+                            + "cs.sense_id "
                             + "FROM examples_" + lang + ".EntryExample "
                             + "JOIN examples_" + lang + ".Example ON Example.example_id = EntryExample.example_id "
-                            + "WHERE EntryExample.entry_id = ? ORDER BY EntryExample.ord",
+                            + "JOIN core.Entry ce ON ce.source_key = EntryExample.entry_source_key "
+                            + "LEFT JOIN core.Sense cs ON cs.entry_id = ce.entry_id "
+                            + "AND cs.source_ord = EntryExample.sense_source_ord "
+                            + "WHERE ce.entry_id = ? ORDER BY EntryExample.ord",
                     new Object[]{entryId});
             if (cur != null) {
                 while (cur.moveToNext()) {
