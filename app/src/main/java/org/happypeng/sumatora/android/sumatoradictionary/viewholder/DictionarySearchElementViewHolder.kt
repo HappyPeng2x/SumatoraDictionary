@@ -337,11 +337,10 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
     }
 
     private fun bindSummary(summary: EntryListSummary, entry: DictionarySearchElement) {
-        if (summary.usedBackupLang) {
-            wordCardBinding.wordCardView.setBackgroundColor(colors.backupLang)
-        } else {
-            wordCardBinding.wordCardView.setBackgroundColor(colors.activeLang)
-        }
+        // Graying is per-sense now (see buildSenseRows), not per-entry - the whole card always
+        // uses the active-language background; a recycled row must still have this set every
+        // bind or it'd keep whatever the previously bound row left behind.
+        wordCardBinding.wordCardView.setBackgroundColor(colors.activeLang)
 
         wordCardBinding.wordCardHeadword.text = renderHeadword(summary, colors)
         val density = wordCardBinding.wordCardSenses.context.resources.displayMetrics.density

@@ -306,13 +306,14 @@ public class PersistentDatabaseComponent {
 
     // Called from parsePrecomputedSummary() below to turn a bookmark/search row's precomputed
     // render_json sense data into displayed sense groups: adjacent sense groups sharing identical
-    // tags AND identical restricted-form-id sets get merged into one displayed group.
-    // hasSeparateBackupSource is whether glossBySenseBackup is actually a *different* source from
-    // glossBySense worth falling back to per sense (false when the backup language was already
-    // promoted to the effective/primary one - see parsePrecomputedSummary's usedBackupLang check).
+    // tags AND identical restricted-form-id sets get merged into one displayed group. Each sense
+    // is resolved independently - main-language gloss first, backup only for that specific sense
+    // if the main language has nothing for it - so a partially-translated entry shows exactly
+    // which senses are genuine main-language translations and which fell back (see
+    // EntryListSummary.SenseSummary.usedBackupLang), rather than judging the whole entry at once.
     private static void mergeSenseGroups(List<long[]> senseRows, Map<Long, List<String>> tagsByGroup,
                                          Map<Long, List<String>> glossBySense, Map<Long, List<String>> glossBySenseBackup,
-                                         boolean hasSeparateBackupSource, Map<Long, List<Long>> restrictedFormsBySense,
+                                         Map<Long, List<Long>> restrictedFormsBySense,
                                          EntryListSummary summary) {
         if (senseRows.isEmpty()) {
             return;
@@ -359,8 +360,10 @@ public class PersistentDatabaseComponent {
             }
 
             List<String> glossTexts = glossBySense.get(senseId);
-            if ((glossTexts == null || glossTexts.isEmpty()) && hasSeparateBackupSource) {
+            boolean usedBackupLang = false;
+            if (glossTexts == null || glossTexts.isEmpty()) {
                 glossTexts = glossBySenseBackup.get(senseId);
+                usedBackupLang = true;
             }
             if (glossTexts == null || glossTexts.isEmpty()) {
                 continue;
@@ -371,6 +374,7 @@ public class PersistentDatabaseComponent {
             EntryListSummary.SenseSummary sense = new EntryListSummary.SenseSummary();
             sense.displayIndex = ++displayIndex[0];
             sense.glossText = String.join("; ", glossTexts);
+            sense.usedBackupLang = usedBackupLang;
             currentSenses.add(sense);
         }
         if (groupOpen && !currentSenses.isEmpty()) {
@@ -391,10 +395,10 @@ public class PersistentDatabaseComponent {
     // Parses a search-result row's precomputed render_json (assembled at insert time by every
     // search tier - see DictionarySearchQueryTool.buildRenderJsonExpr/buildNameRenderJsonExpr)
     // into the display-ready EntryListSummary shape. Pure JSON parsing, no DB access, so this is
-    // safe to call synchronously from the main thread at bind time. 'usedBackupLang' picks which
-    // raw gloss map (glossBySense vs glossBySenseBackup) is the *effective* one before handing
-    // both to mergeSenseGroups(), mirroring the effective-language selection the SQL's
-    // 'usedBackupLang' expression performs (see buildRenderJsonExpr's comment).
+    // safe to call synchronously from the main thread at bind time. The top-level 'usedBackupLang'
+    // is kept only as an entry-wide diagnostic ("does the main language have zero senses at all
+    // for this entry") - the actual per-sense text selection happens in mergeSenseGroups(), which
+    // is handed both raw gloss maps and picks main-vs-backup independently for each sense.
     @Nullable
     public static EntryListSummary parsePrecomputedSummary(String renderJson) {
         try {
@@ -424,10 +428,7 @@ public class PersistentDatabaseComponent {
             final Map<Long, List<String>> glossBackup = obj.isNull("glossBySenseBackup") ? Collections.emptyMap() : parseLongToStringListMap(obj.getString("glossBySenseBackup"));
             final Map<Long, List<Long>> restrictedFormsBySense = obj.isNull("restrictedFormsBySense") ? Collections.emptyMap() : parseLongToLongListMap(obj.getString("restrictedFormsBySense"));
 
-            final Map<Long, List<String>> effectiveGloss = summary.usedBackupLang ? glossBackup : glossMain;
-            final Map<Long, List<String>> fallbackGloss = summary.usedBackupLang ? Collections.emptyMap() : glossBackup;
-            mergeSenseGroups(senseRows, tagsByGroup, effectiveGloss, fallbackGloss, !summary.usedBackupLang,
-                    restrictedFormsBySense, summary);
+            mergeSenseGroups(senseRows, tagsByGroup, glossMain, glossBackup, restrictedFormsBySense, summary);
 
             return summary;
         } catch (JSONException e) {

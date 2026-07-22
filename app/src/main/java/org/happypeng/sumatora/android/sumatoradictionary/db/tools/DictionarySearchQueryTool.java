@@ -159,15 +159,16 @@ public class DictionarySearchQueryTool {
     // null means no backup language is configured. This has to stay a single static, precompiled
     // statement reused for every row across every tier, so - unlike a live per-entry fetch that
     // could pick one *effective* language in Java before querying - it unconditionally aggregates
-    // gloss text from both packs and leaves the effective-language decision (and the per-sense
-    // backup-gloss fallback) to the client-side parse, driven by the 'usedBackupLang' flag computed
-    // here. This is deliberately the same lang/backupLang pair regardless of which tier a row was
-    // matched through (even a hit found via the *backup*-language gloss search still gets
-    // usedBackupLang computed fresh from "does the main language have any senses for this entry"),
-    // otherwise a backup-tier hit whose entry actually has main-language senses too would get
-    // mis-flagged. matchedFormIdExpr null means this tier never carries a specific matched form
-    // (bookmark listing, gloss hits) - the sense-applies-to-form filter is skipped in that case
-    // (see senseFormFilter below).
+    // gloss text from both packs (glossBySense/glossBySenseBackup, both keyed per sense_id) and
+    // leaves the per-sense effective-language decision to the client-side parse (see
+    // PersistentDatabaseComponent.mergeSenseGroups): each sense picks its own gloss independently,
+    // main language first, falling back to backup only for that sense - a partially-translated
+    // entry ends up with some senses in the main language and others in backup, not an all-or-
+    // nothing choice for the whole entry. 'usedBackupLang' here stays entry-wide ("does the main
+    // language have zero senses at all for this entry") and is only a diagnostic signal now, not
+    // something the parse depends on. matchedFormIdExpr null means this tier never carries a
+    // specific matched form (bookmark listing, gloss hits) - the sense-applies-to-form filter is
+    // skipped in that case (see senseFormFilter below).
     static String buildRenderJsonExpr(String entryIdExpr, @Nullable String matchedFormIdExpr,
                                                @Nullable String glossAlias, @Nullable String backupGlossAlias) {
         final String chosenFormId = buildChosenFormIdExpr("core", entryIdExpr, matchedFormIdExpr);

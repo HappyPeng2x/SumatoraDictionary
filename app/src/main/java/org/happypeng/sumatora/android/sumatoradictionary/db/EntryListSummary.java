@@ -68,6 +68,10 @@ public class EntryListSummary {
     public static class SenseSummary {
         public int displayIndex;
         public String glossText;
+        // Per-sense (not per-entry) fallback flag: true when this specific sense had no gloss in
+        // the main language and glossText was sourced from the backup language instead - see
+        // PersistentDatabaseComponent.mergeSenseGroups.
+        public boolean usedBackupLang;
     }
 
     public static class AlternateWriting {

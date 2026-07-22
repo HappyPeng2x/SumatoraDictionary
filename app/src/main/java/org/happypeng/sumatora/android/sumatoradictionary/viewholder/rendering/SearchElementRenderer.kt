@@ -201,8 +201,19 @@ fun buildSenseRows(
 
     val totalSenses = summary.senseGroups.sumOf { it.senses.size }
     for (group in summary.senseGroups) {
-        val senseText = group.senses.joinToString("\n") { sense ->
-            if (totalSenses > 1) "${circledDigit(sense.displayIndex)} ${sense.glossText}" else sense.glossText
+        val senseText = SpannableStringBuilder()
+        for ((i, sense) in group.senses.withIndex()) {
+            if (i > 0) senseText.append("\n")
+            val start = senseText.length
+            if (totalSenses > 1) senseText.append("${circledDigit(sense.displayIndex)} ")
+            senseText.append(sense.glossText)
+            // Per-sense backup-language indicator (replaces the old whole-card graying): dims just
+            // the senses that fell back, so a partially-translated entry shows exactly which ones
+            // are genuine main-language translations - see PersistentDatabaseComponent.mergeSenseGroups.
+            if (sense.usedBackupLang) {
+                senseText.setSpan(ForegroundColorSpan(colors.secondary), start, senseText.length,
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            }
         }
         container.addView(TableRow(context).apply {
             addView(tagCell(context, group.tagCodes, colors, density))
@@ -232,7 +243,7 @@ private fun tagCell(context: android.content.Context, codes: List<String>,
     }
 }
 
-private fun senseCell(context: android.content.Context, text: String): TextView =
+private fun senseCell(context: android.content.Context, text: CharSequence): TextView =
     TextView(context).apply {
         this.text = text
         textSize = 14f
