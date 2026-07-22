@@ -70,6 +70,9 @@ public class EntryDetail {
         public long senseId;
         public int displayIndex;
         @Nullable public String glossText;
+        // True when glossText came from the backup language because the main language had no
+        // gloss for this specific sense - see PersistentDatabaseComponent.fetchEntryDetail.
+        public boolean usedBackupLang;
         public List<String> notes = new ArrayList<>();
         public List<Xref> xrefs = new ArrayList<>();
         public List<Xref> antonyms = new ArrayList<>();

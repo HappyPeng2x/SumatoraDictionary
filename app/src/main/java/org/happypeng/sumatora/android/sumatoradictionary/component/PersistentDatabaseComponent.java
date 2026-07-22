@@ -690,19 +690,6 @@ public class PersistentDatabaseComponent {
     }
 
     @WorkerThread
-    private boolean glossHasEntry(SupportSQLiteDatabase readable, String lang, long entryId) {
-        try {
-            Cursor cur = readable.query("SELECT 1 FROM gloss_" + lang + ".Sense WHERE entry_id = ? LIMIT 1",
-                    new Object[]{entryId});
-            boolean has = cur != null && cur.moveToNext();
-            if (cur != null) cur.close();
-            return has;
-        } catch (SQLException e) {
-            return false;
-        }
-    }
-
-    @WorkerThread
     @Nullable
     private String fetchGlossText(SupportSQLiteDatabase readable, String lang, long senseId) {
         try {
@@ -898,14 +885,6 @@ public class PersistentDatabaseComponent {
             }
         }
 
-        String effectiveLang = null;
-        if (glossHasEntry(readable, languageSettings.lang, entryId)) {
-            effectiveLang = languageSettings.lang;
-        } else if (languageSettings.backupLang != null && glossHasEntry(readable, languageSettings.backupLang, entryId)) {
-            effectiveLang = languageSettings.backupLang;
-        }
-        final String glossLang = effectiveLang;
-
         int[] displayIndex = {0};
         try {
             Cursor groupCur = readable.query(
@@ -951,10 +930,16 @@ public class PersistentDatabaseComponent {
                     if (senseCur != null) {
                         while (senseCur.moveToNext()) {
                             long senseId = senseCur.getLong(0);
-                            String glossText = glossLang != null ? fetchGlossText(readable, glossLang, senseId) : null;
-                            if (glossText == null && languageSettings.backupLang != null
-                                    && !languageSettings.backupLang.equals(glossLang)) {
+                            // Resolved per sense, not once for the whole entry - main language
+                            // first, backup only for the senses that specifically lack it, so a
+                            // partially-translated entry shows exactly which senses are genuine
+                            // main-language translations (see DictionarySearchQueryTool's
+                            // equivalent per-sense resolution for the search-result list).
+                            String glossText = fetchGlossText(readable, languageSettings.lang, senseId);
+                            boolean usedBackupLang = false;
+                            if (glossText == null && languageSettings.backupLang != null) {
                                 glossText = fetchGlossText(readable, languageSettings.backupLang, senseId);
+                                usedBackupLang = true;
                             }
                             if (glossText == null) {
                                 continue;
@@ -966,6 +951,7 @@ public class PersistentDatabaseComponent {
                             sense.senseId = senseId;
                             sense.displayIndex = ++displayIndex[0];
                             sense.glossText = glossText;
+                            sense.usedBackupLang = usedBackupLang;
                             sense.notes = fetchStrings(readable,
                                     "SELECT text FROM core.SenseNote WHERE sense_id = ? ORDER BY ord", senseId);
                             sense.xrefs = fetchXrefs(readable, senseId, "xref");

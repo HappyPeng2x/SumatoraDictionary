@@ -562,7 +562,16 @@ class EntryDetailBottomSheet : BottomSheetDialogFragment() {
                             Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
                         )
                     }
+                    val glossStart = sb.length
                     sb.append(sense.glossText.orEmpty())
+                    // Per-sense backup-language indicator, same treatment as the search-result
+                    // list (DictionarySearchElementViewHolder/buildSenseRows): dim just the
+                    // senses that fell back to the backup language instead of judging the whole
+                    // entry at once.
+                    if (sense.usedBackupLang) {
+                        sb.setSpan(ForegroundColorSpan(secondaryColor), glossStart, sb.length,
+                            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                    }
                     text = sb
                     textSize = 15f
                     setTextColor(primaryColor)
