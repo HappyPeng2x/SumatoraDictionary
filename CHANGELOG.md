@@ -2,6 +2,40 @@
 
 ## [Unreleased]
 
+## [0.5.0-beta3] - 2026-07-22
+
+### Language packs
+
+- Non-English gloss/example dictionaries (German, Russian, Spanish, Dutch, Hungarian, Swedish,
+  French, Slovenian) are no longer bundled in the app - only English still ships in the APK
+  (shrinking it by ~52MB), and every other language is now a downloadable pack through the
+  existing suffix/names optional-pack machinery (`OptionalDictionaryCatalog`). Install them from
+  "Manage dictionaries".
+- The search screen's language picker now updates immediately when a pack is installed from
+  "Manage dictionaries" (a separate Activity), instead of requiring the search screen to be
+  recreated first - `BaseQueryFragmentModel.installedDictionaries` is now backed by a Room
+  Flowable instead of a one-shot query built once in `onCreateOptionsMenu`. The picker also gained
+  a "More languages…" entry, shown whenever the catalog has a gloss pack that isn't installed yet,
+  that jumps straight to "Manage dictionaries".
+- Fixed the backup-language fallback being judged for a whole entry at once instead of per sense:
+  a partially-translated entry either showed every sense in the main language or every sense in
+  the backup language - and the search-result card was grayed out or not as a single unit - even
+  when only some of its senses actually had a main-language translation. Each sense now resolves
+  its own gloss independently, main language first and backup only for the senses that
+  specifically lack it, both in the search-result list (`DictionarySearchQueryTool`'s precomputed
+  render payload, merged per sense in `PersistentDatabaseComponent.mergeSenseGroups`) and in the
+  entry detail sheet (`PersistentDatabaseComponent.fetchEntryDetail`, which previously had no
+  fallback indicator at all). Senses that fell back are now dimmed individually instead of
+  graying the whole search-result card - most noticeable with a language like French whose JMdict
+  translation coverage (~6% of senses) is far sparser than English's (~88%), where most results
+  are a genuine mix of translated and backup-language senses within the same entry.
+
+### App icon
+
+- Shrunk the adaptive icon artwork (~12%, to a 60dp diameter) so it clears the ~66dp safe-circle
+  that many launcher mask shapes crop to - the previous artwork sat at a 68.4dp diameter against
+  the 108dp canvas with almost no margin, reportedly clipped on some devices (e.g. Pixel 8 Pro).
+
 ### Dictionary downloads
 
 - Fixed a failed optional-pack download (bad network, checksum mismatch, storage full) silently
