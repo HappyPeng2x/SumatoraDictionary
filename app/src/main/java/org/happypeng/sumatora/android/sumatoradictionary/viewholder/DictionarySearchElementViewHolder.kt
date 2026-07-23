@@ -182,11 +182,12 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
 
     fun bindTo(entry: DictionarySearchElement) {
         val wasEditingSameEntry = editingSeq == entry.seq
-        // Same seq means this is a rebind of the entry already showing here (e.g. a bookmark/memo/
-        // tag change triggered a DB refresh), not a recycled holder receiving a different row.
-        // The headword/senses only depend on static dictionary content keyed by seq, so they don't
-        // need to be cleared and refetched in that case - avoids a visible blank-then-repaint blink.
-        val isSameEntryRebind = currentEntry?.seq == entry.seq
+        // Same seq AND same render_json means this is a rebind of the entry already showing here
+        // (e.g. a bookmark/memo/tag change triggered a DB refresh), not a recycled holder receiving
+        // a different row. The headword/senses don't need to be cleared and refetched in that case -
+        // avoids a visible blank-then-repaint blink. render_json must still be compared: a language
+        // switch keeps the same seq but changes the rendered gloss text, so it needs to re-parse.
+        val isSameEntryRebind = currentEntry?.seq == entry.seq && currentEntry?.render_json == entry.render_json
         currentEntry = entry
         isRebindingSameEntry = wasEditingSameEntry
         subscription?.dispose()
