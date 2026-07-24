@@ -21,8 +21,12 @@ import android.content.Context
 import android.util.Log
 import androidx.annotation.WorkerThread
 import org.happypeng.sumatora.android.sumatoradictionary.db.CachedManifestEntry
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryChangelog
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase
+import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Sha256
 import java.io.File
+import java.net.HttpURLConnection
+import java.net.URL
 
 // Generalizes Phase 0b's manual suffix/names download to every already-installed pack, per
 // update-pipeline.md. Deliberately only updates packs the user already has (core/gloss_*/pitch/
@@ -30,10 +34,14 @@ import java.io.File
 // user hasn't opted into, same restraint DictionariesManagementActivity already applies.
 object DictionaryUpdateChecker {
     private const val TAG = "DictionaryUpdateChecker"
+    private const val TIMEOUT_MILLIS = 15000
 
     @WorkerThread
     fun checkAndEnqueue(context: Context, db: PersistentDatabase, manifestUrl: String): Int {
-        val remoteEntries = RemoteManifestFetcher.fetch(manifestUrl) ?: return 0
+        val manifest = RemoteManifestFetcher.fetch(manifestUrl) ?: return 0
+        val remoteEntries = manifest.entries
+        fetchAndStoreChangelog(context, db, manifest)
+
         val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         val downloadDir = File(context.getExternalFilesDir(null), "downloads").apply { mkdirs() }
 
@@ -79,4 +87,47 @@ object DictionaryUpdateChecker {
 
     private fun isNewer(version: Int, date: Int, thanVersion: Int, thanDate: Int): Boolean =
         version > thanVersion || (version >= thanVersion && date > thanDate)
+
+    // Runs on every check, independent of whether the user has any packs installed - unlike the
+    // per-pack loop above, "recent updates" is meant to tell users about releases even for
+    // dictionaries they haven't downloaded yet. hasVersion() short-circuits repeat checks within
+    // the same release cycle (this runs every 7 days, but a release is also weekly - see
+    // release-dictionaries.yml - so most checks land on an already-seen version).
+    @WorkerThread
+    private fun fetchAndStoreChangelog(context: Context, db: PersistentDatabase, manifest: RemoteManifest) {
+        val url = manifest.changelogUrl ?: return
+
+        if (db.dictionaryChangelogDao().hasVersion(manifest.version)) {
+            return
+        }
+
+        var connection: HttpURLConnection? = null
+        val tempFile = File.createTempFile("changelog", ".json", context.cacheDir)
+
+        try {
+            connection = (URL(url).openConnection() as HttpURLConnection).apply {
+                connectTimeout = TIMEOUT_MILLIS
+                readTimeout = TIMEOUT_MILLIS
+                requestMethod = "GET"
+            }
+
+            connection.inputStream.use { input ->
+                tempFile.outputStream().use { output -> input.copyTo(output) }
+            }
+
+            if (!manifest.changelogSha256.isNullOrEmpty() && !Sha256.matches(tempFile, manifest.changelogSha256)) {
+                Log.e(TAG, "Checksum mismatch for changelog.json v${manifest.version}, discarding")
+                return
+            }
+
+            db.dictionaryChangelogDao().insert(DictionaryChangelog(
+                manifest.version, manifest.date, tempFile.readText(), System.currentTimeMillis()
+            ))
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to fetch changelog.json from $url", e)
+        } finally {
+            connection?.disconnect()
+            tempFile.delete()
+        }
+    }
 }

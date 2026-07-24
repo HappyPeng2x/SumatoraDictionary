@@ -266,4 +266,15 @@ public abstract class PersistentDatabaseParameters {
             database.execSQL("ALTER TABLE RemoteDictionaryObject ADD COLUMN failed INTEGER NOT NULL DEFAULT 0");
         }
     };
+
+    // New table for the "recent dictionary updates" screen (changelog-pipeline.md):
+    // DictionaryUpdateChecker stores each fetched changelog.json here verbatim, keyed by the
+    // repository version it documents, so DictionaryChangelogActivity can list past releases
+    // without re-fetching them.
+    public static final Migration MIGRATION_12_13 = new Migration(12, 13) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL("CREATE TABLE IF NOT EXISTS DictionaryChangelog (`version` INTEGER NOT NULL, `date` INTEGER NOT NULL, `json` TEXT NOT NULL, `fetchedAt` INTEGER NOT NULL, PRIMARY KEY(`version`))");
+        }
+    };
 }

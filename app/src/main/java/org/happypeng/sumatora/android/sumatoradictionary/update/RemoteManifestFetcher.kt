@@ -23,6 +23,19 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.tools.BaseDictionary
 import java.net.HttpURLConnection
 import java.net.URL
 
+// version/date on the result mirror the <repository> element (every <dictionary> child shares
+// them - see BaseDictionaryObject.fromXML), so callers needing "what version is this manifest"
+// don't need to dig into entries. changelogUrl/changelogSha256 are null when the manifest predates
+// changelog-pipeline.md's changelog attributes (older releases, or a manifest with no changes to
+// report yet).
+data class RemoteManifest(
+    val entries: List<RemoteDictionaryObject>,
+    val version: Int,
+    val date: Int,
+    val changelogUrl: String?,
+    val changelogSha256: String?
+)
+
 // Fetches and parses the dictionaries.xml manifest describing what's currently published -
 // same XML shape as the bundled asset manifest (see PersistentDatabaseInitialization), served
 // from a stable raw.githubusercontent.com URL rather than a release-tagged one, per
@@ -33,7 +46,7 @@ object RemoteManifestFetcher {
     private const val TIMEOUT_MILLIS = 15000
 
     @WorkerThread
-    fun fetch(manifestUrl: String): List<RemoteDictionaryObject>? {
+    fun fetch(manifestUrl: String): RemoteManifest? {
         var connection: HttpURLConnection? = null
 
         return try {
@@ -43,11 +56,23 @@ object RemoteManifestFetcher {
                 requestMethod = "GET"
             }
 
-            connection.inputStream.use { stream ->
-                BaseDictionaryObject.fromXML(stream) { uri, description, type, lang, version, date, sha256 ->
+            var repoVersion = 0
+            var repoDate = 0
+            var changelogUrl: String? = null
+            var changelogSha256: String? = null
+
+            val entries = connection.inputStream.use { stream ->
+                BaseDictionaryObject.fromXML(stream, { uri, description, type, lang, version, date, sha256 ->
                     RemoteDictionaryObject(uri, description, type, lang, version, date, sha256)
-                }
-            }
+                }, { version, date, changelog, changelogSha ->
+                    repoVersion = version
+                    repoDate = date
+                    changelogUrl = changelog
+                    changelogSha256 = changelogSha
+                })
+            } ?: return null
+
+            RemoteManifest(entries, repoVersion, repoDate, changelogUrl, changelogSha256)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to fetch dictionary manifest from $manifestUrl", e)
             null

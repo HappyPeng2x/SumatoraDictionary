@@ -61,6 +61,12 @@
             android:text="@string/manage_dictionaries_title" />
 
         <Button
+            android:id="@+id/settings_recent_updates"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/recent_updates_title" />
+
+        <Button
             android:id="@+id/settings_display_log"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

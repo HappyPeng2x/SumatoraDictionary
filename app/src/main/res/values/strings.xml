@@ -26,6 +26,12 @@
     <string name="dictionary_status_failed">Download failed · tap to retry</string>
     <string name="dictionary_version_caption">v%1$d · %2$s</string>
 
+    <string name="recent_updates_title">Recent updates</string>
+    <string name="recent_updates_empty">No updates yet. Check back after the next dictionary release.</string>
+    <string name="changelog_delta_added">+%d</string>
+    <string name="changelog_delta_modified">%d modified</string>
+    <string name="changelog_delta_removed">%d removed</string>
+
     <string name="tag_icon_description">Tag icon</string>
     <string name="tag_input_hint">Add tag</string>
 

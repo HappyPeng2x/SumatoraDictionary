@@ -110,6 +110,10 @@
             android:label="@string/manage_dictionaries_title"
             android:theme="@style/AppTheme" />
         <activity
+            android:name=".activity.DictionaryChangelogActivity"
+            android:label="@string/recent_updates_title"
+            android:theme="@style/AppTheme" />
+        <activity
             android:name=".activity.DebugLogActivity"
             android:theme="@style/AppTheme" />
         <activity

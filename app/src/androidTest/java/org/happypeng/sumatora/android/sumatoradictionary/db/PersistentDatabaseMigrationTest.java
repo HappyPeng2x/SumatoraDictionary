@@ -158,4 +158,31 @@ public class PersistentDatabaseMigrationTest {
         assertEquals(1, updatedRow.getInt(1));
         updatedRow.close();
     }
+
+    // MIGRATION_12_13 creates DictionaryChangelog (see PersistentDatabaseParameters) so
+    // DictionaryUpdateChecker has somewhere to store each fetched changelog.json for the "recent
+    // updates" screen (DictionaryChangelogActivity). A new table, so there's no pre-migration data
+    // to preserve - this just checks the table exists post-migration and accepts a row.
+    @Test
+    public void migrate12To13_createsDictionaryChangelogTable() throws IOException {
+        SupportSQLiteDatabase v12 = helper.createDatabase(TEST_DB, 12);
+        v12.close();
+
+        // Throws if the post-migration schema doesn't match what Room expects for version 13
+        // (app/schemas/.../13.json) - that's the main safety net here.
+        SupportSQLiteDatabase v13 = helper.runMigrationsAndValidate(
+                TEST_DB, 13, true, PersistentDatabaseParameters.MIGRATION_12_13);
+
+        v13.execSQL("INSERT INTO DictionaryChangelog (version, date, json, fetchedAt) "
+                + "VALUES (15, 20260723, '{\"jmdict\":{\"entries\":{\"added\":[1],\"modified\":[],\"removed\":[]}}}', 1753267200000)");
+
+        Cursor row = v13.query("SELECT version, date, json, fetchedAt FROM DictionaryChangelog WHERE version = 15");
+        assertEquals(1, row.getCount());
+        row.moveToFirst();
+        assertEquals(15, row.getInt(0));
+        assertEquals(20260723, row.getInt(1));
+        assertTrue(row.getString(2).contains("jmdict"));
+        assertEquals(1753267200000L, row.getLong(3));
+        row.close();
+    }
 }

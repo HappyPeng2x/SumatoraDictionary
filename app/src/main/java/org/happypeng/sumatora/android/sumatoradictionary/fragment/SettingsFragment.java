@@ -51,6 +51,7 @@ public class SettingsFragment extends Fragment {
     public interface SettingsFragmentActions {
         void displayLog();
         void manageDictionaries();
+        void showRecentUpdates();
         void setRepositoryURL(final String aUrl);
     }
 
@@ -114,6 +115,17 @@ public class SettingsFragment extends Fragment {
                     public void onClick(View v) {
                         if (mActions != null) {
                             mActions.manageDictionaries();
+                        }
+                    }
+                }
+        );
+
+        view.findViewById(R.id.settings_recent_updates).setOnClickListener(
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        if (mActions != null) {
+                            mActions.showRecentUpdates();
                         }
                     }
                 }

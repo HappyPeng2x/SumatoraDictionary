@@ -35,11 +35,9 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabaseParameters;
 import org.happypeng.sumatora.android.sumatoradictionary.db.RemoteDictionaryObject;
+import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Sha256;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.InputStream;
-import java.security.MessageDigest;
 import java.util.List;
 
 import javax.inject.Inject;
@@ -178,27 +176,7 @@ public class DictionaryDownloadCompleteReceiver extends BroadcastReceiver {
             return true;
         }
 
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-
-            try (InputStream in = new FileInputStream(remote.localFile)) {
-                byte[] buffer = new byte[8192];
-                int read;
-                while ((read = in.read(buffer)) != -1) {
-                    digest.update(buffer, 0, read);
-                }
-            }
-
-            StringBuilder hex = new StringBuilder();
-            for (byte b : digest.digest()) {
-                hex.append(String.format("%02x", b));
-            }
-
-            return hex.toString().equalsIgnoreCase(remote.sha256);
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to verify checksum for " + remote.type + "/" + remote.lang, e);
-            return false;
-        }
+        return Sha256.matches(new File(remote.localFile), remote.sha256);
     }
 
     @WorkerThread

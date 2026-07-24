@@ -88,8 +88,23 @@ public class BaseDictionaryObject {
                         final @NonNull String aSha256);
     }
 
+    // Invoked once, when the <repository> start tag is seen, with attributes that apply to the
+    // whole manifest rather than any single <dictionary> child - currently just the changelog
+    // pointer (see changelog-pipeline.md). Optional and separate from Constructor<T> so
+    // asset/local callers (which don't care about it) don't need to change at all.
+    public interface RepositoryCallback {
+        void onRepository(int aVersion, int aDate,
+                          @Nullable String aChangelog, @Nullable String aChangelogSha256);
+    }
+
     public static <T extends BaseDictionaryObject> List<T> fromXML(final InputStream aStream,
                                                                Constructor<T> aConstructor) {
+        return fromXML(aStream, aConstructor, null);
+    }
+
+    public static <T extends BaseDictionaryObject> List<T> fromXML(final InputStream aStream,
+                                                               Constructor<T> aConstructor,
+                                                               @Nullable RepositoryCallback aRepositoryCallback) {
         List<T> result = new LinkedList<>();
 
         try {
@@ -114,6 +129,12 @@ public class BaseDictionaryObject {
 
                         version = Integer.valueOf(xpp.getAttributeValue(null, "version"));
                         date = Integer.valueOf(xpp.getAttributeValue(null, "date"));
+
+                        if (aRepositoryCallback != null) {
+                            aRepositoryCallback.onRepository(version, date,
+                                    xpp.getAttributeValue(null, "changelog"),
+                                    xpp.getAttributeValue(null, "changelog_sha256"));
+                        }
                     }
 
                     if (level == 2 && parent != null && parent.equals("repository") &&

@@ -334,6 +334,10 @@ class MainActivity : AppCompatActivity(), SettingsFragment.SettingsFragmentActio
         startActivity(Intent(this, DictionariesManagementActivity::class.java))
     }
 
+    override fun showRecentUpdates() {
+        startActivity(Intent(this, DictionaryChangelogActivity::class.java))
+    }
+
     override fun setRepositoryURL(aUrl: String) {
         // Not wired to anything yet - the repository URL is only meaningful once the app fetches
         // a remote manifest (see update-pipeline.md), which isn't built yet.

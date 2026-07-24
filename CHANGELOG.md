@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+### Recent updates
+
+- New "Recent updates" screen (Settings → Recent updates) lists what changed in each weekly
+  dictionary release - added/modified counts per dictionary and per language, newest first.
+  Backed by a `changelog.json` SumatoraIndex now publishes with every release (see
+  changelog-pipeline.md); `DictionaryUpdateChecker` fetches and sha256-verifies it alongside the
+  existing manifest check (same 7-day background schedule, or manual "Check Now"), independent of
+  whether the user has any packs installed.
+
 ## [0.5.0-beta3] - 2026-07-22
 
 ### Language packs
