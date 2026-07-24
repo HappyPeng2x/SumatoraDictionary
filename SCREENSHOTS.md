@@ -10,18 +10,18 @@
 
 ## Reverse search
 
-![](/screenshots/Screenshot_1581404274.png)
+![](/screenshots/reverse_search.png)
 
 ## Multilingual search
 ![](/screenshots/multilingual_search.png)
 
 ## Search from other apps
 
-![](/screenshots/Screenshot_1551599195.png)
+![](/screenshots/search_from_other_apps.png)
 
 ## Search from other apps (using sharing)
 
-![](/screenshots/Screenshot_1553243720.png)
+![](/screenshots/search_from_other_apps_sharing.png)
 
 ## Navigation drawer
 
@@ -37,15 +37,15 @@
 
 ## Bookmarks export
 
-![](/screenshots/Screenshot_1551520604.png)
+![](/screenshots/bookmarks_export.png)
 
 ## Bookmarks import
 
-![](/screenshots/Screenshot_1551520652.png)
+![](/screenshots/bookmarks_import.png)
 
 ## Memos
 
-![](/screenshots/Screenshot_1606555939.png)
+![](/screenshots/memos.png)
 
 ## Dark mode
 
