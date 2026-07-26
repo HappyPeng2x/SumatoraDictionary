@@ -107,7 +107,29 @@ class DictionariesManagementActivity : AppCompatActivity() {
             checkUpdatesButton.isEnabled = false
             checkUpdatesButton.setText(R.string.checking_for_updates)
             checkUpdatesSpinner.visibility = View.VISIBLE
-            DictionaryUpdateWorker.enqueueNow(this)
+
+            // WorkManager's NetworkType.CONNECTED constraint tracks whether a validated network
+            // exists system-wide, not whether this specific app can actually reach it - so on
+            // GrapheneOS with Network off, the enqueued work just sits there forever (confirmed via
+            // dumpsys jobscheduler: Ready stays false, and the worker's doWork() never even starts),
+            // leaving this button stuck on "Checking for updates..." with no way out. Probe the same
+            // real socket capability used before a download and fail fast instead of enqueueing work
+            // that will never run.
+            disposables.add(
+                Single.fromCallable { hasSocketCapability() }
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .subscribe { hasNetwork ->
+                        if (hasNetwork) {
+                            DictionaryUpdateWorker.enqueueNow(this)
+                        } else {
+                            checkUpdatesButton.isEnabled = true
+                            checkUpdatesButton.setText(R.string.check_for_updates)
+                            checkUpdatesSpinner.visibility = View.GONE
+                            showNetworkPermissionRequiredDialog()
+                        }
+                    }
+            )
         }
 
         DictionaryUpdateWorker.manualCheckStatus(this).observe(this) { workInfos ->
