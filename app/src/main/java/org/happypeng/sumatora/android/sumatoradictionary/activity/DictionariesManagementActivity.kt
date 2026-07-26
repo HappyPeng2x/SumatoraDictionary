@@ -19,16 +19,19 @@ package org.happypeng.sumatora.android.sumatoradictionary.activity
 import android.Manifest
 import android.app.DownloadManager
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
+import android.provider.Settings
 import android.view.View
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import androidx.core.content.ContextCompat
@@ -40,6 +43,8 @@ import io.reactivex.rxjava3.core.Completable
 import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.disposables.CompositeDisposable
 import io.reactivex.rxjava3.schedulers.Schedulers
+import org.slf4j.LoggerFactory
+import java.net.DatagramSocket
 import org.happypeng.sumatora.android.sumatoradictionary.R
 import org.happypeng.sumatora.android.sumatoradictionary.component.PersistentDatabaseComponent
 import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary
@@ -59,7 +64,7 @@ import javax.inject.Inject
 class DictionariesManagementActivity : AppCompatActivity() {
 
     companion object {
-        private const val TAG = "DictMgmtActivity"
+        private val log = LoggerFactory.getLogger(DictionariesManagementActivity::class.java)
     }
 
     @Inject
@@ -214,30 +219,68 @@ class DictionariesManagementActivity : AppCompatActivity() {
                             if (state.pendingUpdate) R.drawable.bg_status_pill_pending else R.drawable.bg_status_pill_ok
                         )
                     },
-                    { e -> Log.e(TAG, "Failed to refresh dictionary lists", e) }
+                    { e -> log.error("Failed to refresh dictionary lists", e) }
                 )
         )
     }
 
+    // GrapheneOS's per-app "Network" toggle (Settings -> Apps -> Sumatora -> Permissions) doesn't
+    // go through the normal runtime-permission grant table that checkSelfPermission(INTERNET) reads
+    // - dumpsys package still shows it as a tracked runtime permission, but checkSelfPermission kept
+    // reporting GRANTED in testing even with the toggle off. What actually changes is the process's
+    // supplementary groups: with the toggle off, the app process is launched without gid 3003 (inet),
+    // so any socket() call fails with EACCES - which is exactly what silently makes
+    // DownloadManager.enqueue() return -1 (see RemoteDictionaryObject.download()). Opening a throwaway
+    // DatagramSocket is a cheap, portable way to probe that real capability directly instead of
+    // trusting a permission API that doesn't reflect it here.
+    private fun hasSocketCapability(): Boolean {
+        return try {
+            DatagramSocket().close()
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private class NetworkPermissionDeniedException : Exception()
+
     private fun startDownload(entry: RemoteDictionaryObject) {
+        log.info("Install tapped for {}/{}, url={}", entry.type, entry.lang, entry.file)
+
         disposables.add(
             Completable.fromAction {
+                if (!hasSocketCapability()) {
+                    throw NetworkPermissionDeniedException()
+                }
+
                 val db = persistentDatabaseComponent.database
                 val downloadManager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
                 // DownloadManager.setDestinationUri() only accepts app-specific *external*
                 // storage (or public external dirs) - internal storage (filesDir) throws
                 // SecurityException: Unsupported path.
-                val downloadDir = File(getExternalFilesDir(null), "downloads").apply { mkdirs() }
+                val externalDir = getExternalFilesDir(null)
+                log.info("getExternalFilesDir(null) = {}", externalDir)
+                val downloadDir = File(externalDir, "downloads").apply { mkdirs() }
 
                 entry.download(downloadManager, downloadDir)
                 db.remoteDictionaryObjectDao().insert(entry)
+                log.info(
+                    "Enqueued download for {}/{}, DownloadManager id={}",
+                    entry.type, entry.lang, entry.downloadId
+                )
             }
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(
                     {},
                     { e ->
-                        Log.e(TAG, "Failed to start download for ${entry.type}", e)
+                        if (e is NetworkPermissionDeniedException) {
+                            log.warn("No socket capability, blocking download for {}/{}", entry.type, entry.lang)
+                            showNetworkPermissionRequiredDialog()
+                            return@subscribe
+                        }
+
+                        log.error("Failed to start download for {}/{}", entry.type, entry.lang, e)
                         // entry.download() throwing before enqueue (e.g. no external storage)
                         // never reaches DictionaryDownloadCompleteReceiver, so nothing else would
                         // ever tell the user the tap didn't do anything - surface it here instead.
@@ -248,6 +291,21 @@ class DictionariesManagementActivity : AppCompatActivity() {
                     }
                 )
         )
+    }
+
+    private fun showNetworkPermissionRequiredDialog() {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.network_permission_required_title)
+            .setMessage(R.string.network_permission_required_text)
+            .setCancelable(false)
+            .setPositiveButton(R.string.network_permission_required_open_settings) { _, _ ->
+                startActivity(
+                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                        .setData(Uri.fromParts("package", packageName, null))
+                )
+            }
+            .setNegativeButton(R.string.network_permission_required_cancel, null)
+            .show()
     }
 
     private fun removeInstalled(entry: InstalledDictionary) {
@@ -262,7 +320,7 @@ class DictionariesManagementActivity : AppCompatActivity() {
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(
                     {},
-                    { e -> Log.e(TAG, "Failed to remove ${entry.type}", e) }
+                    { e -> log.error("Failed to remove {}/{}", entry.type, entry.lang, e) }
                 )
         )
     }

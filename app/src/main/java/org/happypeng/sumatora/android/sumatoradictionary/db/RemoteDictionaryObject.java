@@ -100,6 +100,18 @@ public class RemoteDictionaryObject extends BaseDictionaryObject {
                 .setAllowedOverRoaming(false);
 
         downloadId =  aDownloadManager.enqueue(request);
+
+        if (downloadId < 0) {
+            // DownloadManager.enqueue() returns -1 instead of throwing when the provider's
+            // insert() rejects the request - e.g. on GrapheneOS, if the user has switched off this
+            // app's runtime-revocable "Network" permission (see DictionariesManagementActivity's
+            // INTERNET permission check, which should normally catch this before we get here).
+            // Left unchecked, this silently persists a downloadId=-1 row that refresh()'s
+            // downloading/failed filters both ignore, so the pack quietly reverts to "not
+            // installed" and every retry repeats the same silent no-op.
+            throw new IllegalStateException(
+                    "DownloadManager.enqueue() returned invalid id " + downloadId);
+        }
     }
 
     public LocalDictionaryObject getLocalDictionaryObject() {

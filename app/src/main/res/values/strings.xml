@@ -17,6 +17,10 @@
     <string name="dictionary_download_complete_text">%1$s is ready to use</string>
     <string name="dictionary_download_failed_title">Download failed</string>
     <string name="dictionary_download_failed_text">%1$s failed to download. Open Manage dictionaries to retry.</string>
+    <string name="network_permission_required_title">Network permission required</string>
+    <string name="network_permission_required_text">Sumatora needs the Network permission to download dictionaries. Some Android variants (such as GrapheneOS) let you turn this off per app - open this app\'s settings and enable Network, then try again.</string>
+    <string name="network_permission_required_open_settings">Open settings</string>
+    <string name="network_permission_required_cancel">Cancel</string>
     <string name="check_for_updates">Check for updates</string>
     <string name="dictionaries_header">Dictionaries</string>
     <string name="checking_for_updates">Checking for updates…</string>

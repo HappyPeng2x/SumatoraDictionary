@@ -24,10 +24,12 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
-import android.util.Log;
 
 import androidx.annotation.VisibleForTesting;
 import androidx.annotation.WorkerThread;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.happypeng.sumatora.android.sumatoradictionary.R;
 import org.happypeng.sumatora.android.sumatoradictionary.component.PersistentDatabaseComponent;
@@ -53,7 +55,7 @@ import dagger.hilt.android.AndroidEntryPoint;
 // itself is a system service and survives that).
 @AndroidEntryPoint
 public class DictionaryDownloadCompleteReceiver extends BroadcastReceiver {
-    private static final String TAG = "DictDownloadReceiver";
+    private static final Logger log = LoggerFactory.getLogger(DictionaryDownloadCompleteReceiver.class);
     private static final String UPDATE_CHANNEL_ID = "dictionary_updates";
 
     @Inject
@@ -61,12 +63,15 @@ public class DictionaryDownloadCompleteReceiver extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context context, Intent intent) {
+        log.info("onReceive action={}", intent.getAction());
+
         if (!DownloadManager.ACTION_DOWNLOAD_COMPLETE.equals(intent.getAction())) {
             return;
         }
 
         long downloadId = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1);
         if (downloadId < 0) {
+            log.warn("ACTION_DOWNLOAD_COMPLETE received with no EXTRA_DOWNLOAD_ID");
             return;
         }
 
@@ -77,7 +82,7 @@ public class DictionaryDownloadCompleteReceiver extends BroadcastReceiver {
             try {
                 handleDownloadComplete(appContext, downloadId);
             } catch (Exception e) {
-                Log.e(TAG, "Failed to handle completed download " + downloadId, e);
+                log.error("Failed to handle completed download {}", downloadId, e);
             } finally {
                 pendingResult.finish();
             }
@@ -98,13 +103,16 @@ public class DictionaryDownloadCompleteReceiver extends BroadcastReceiver {
         final List<RemoteDictionaryObject> matches =
                 db.remoteDictionaryObjectDao().getAllForDownloadId(downloadId);
 
+        log.info("handleDownloadComplete downloadId={} succeeded={} matches={}",
+                downloadId, succeeded, matches.size());
+
         for (RemoteDictionaryObject remote : matches) {
             boolean installOk = false;
 
             if (!succeeded) {
-                Log.e(TAG, "Download failed for " + remote.type + "/" + remote.lang);
+                log.error("Download failed for {}/{}", remote.type, remote.lang);
             } else if (!verifyChecksum(remote)) {
-                Log.e(TAG, "Checksum mismatch for " + remote.type + "/" + remote.lang + ", discarding download");
+                log.error("Checksum mismatch for {}/{}, discarding download", remote.type, remote.lang);
             } else {
                 installOk = install(context, db, remote);
             }
@@ -114,11 +122,13 @@ public class DictionaryDownloadCompleteReceiver extends BroadcastReceiver {
             }
 
             if (installOk) {
+                log.info("Installed {}/{} successfully", remote.type, remote.lang);
                 db.remoteDictionaryObjectDao().delete(remote);
             } else {
                 // Keep the row instead of deleting it, so DictionariesManagementActivity can show
                 // a "failed, tap to retry" state rather than the row just silently reverting to
                 // "not installed" with no explanation (see download() resetting this on retry).
+                log.error("Marking {}/{} as failed for retry", remote.type, remote.lang);
                 remote.downloadId = -1;
                 remote.failed = true;
                 db.remoteDictionaryObjectDao().insert(remote);
@@ -143,7 +153,7 @@ public class DictionaryDownloadCompleteReceiver extends BroadcastReceiver {
             // this type/lang, so it's safe to install and attach immediately.
             InstalledDictionary installed = remote.getLocalDictionaryObject().install(installDir);
             if (installed == null) {
-                Log.e(TAG, "Failed to decompress downloaded pack for " + remote.type + "/" + remote.lang);
+                log.error("Failed to decompress downloaded pack for {}/{}", remote.type, remote.lang);
                 return false;
             }
 
@@ -158,7 +168,7 @@ public class DictionaryDownloadCompleteReceiver extends BroadcastReceiver {
         // PersistentDatabaseInitialization's pending-update promotion step).
         InstalledDictionary pending = remote.getLocalDictionaryObject().install(installDir, true);
         if (pending == null) {
-            Log.e(TAG, "Failed to decompress downloaded update for " + remote.type + "/" + remote.lang);
+            log.error("Failed to decompress downloaded update for {}/{}", remote.type, remote.lang);
             return false;
         }
 
@@ -196,7 +206,7 @@ public class DictionaryDownloadCompleteReceiver extends BroadcastReceiver {
 
             return hex.toString().equalsIgnoreCase(remote.sha256);
         } catch (Exception e) {
-            Log.e(TAG, "Failed to verify checksum for " + remote.type + "/" + remote.lang, e);
+            log.error("Failed to verify checksum for {}/{}", remote.type, remote.lang, e);
             return false;
         }
     }
@@ -250,10 +260,22 @@ public class DictionaryDownloadCompleteReceiver extends BroadcastReceiver {
         DownloadManager.Query query = new DownloadManager.Query().setFilterById(downloadId);
         try (Cursor cur = downloadManager.query(query)) {
             if (cur == null || !cur.moveToFirst()) {
+                log.warn("DownloadManager has no record for downloadId={}", downloadId);
                 return false;
             }
             int statusIdx = cur.getColumnIndex(DownloadManager.COLUMN_STATUS);
-            return statusIdx >= 0 && cur.getInt(statusIdx) == DownloadManager.STATUS_SUCCESSFUL;
+            int status = statusIdx >= 0 ? cur.getInt(statusIdx) : -1;
+            boolean succeeded = status == DownloadManager.STATUS_SUCCESSFUL;
+
+            if (!succeeded) {
+                int reasonIdx = cur.getColumnIndex(DownloadManager.COLUMN_REASON);
+                int reason = reasonIdx >= 0 ? cur.getInt(reasonIdx) : -1;
+                // DownloadManager status/reason codes: see android.app.DownloadManager.STATUS_*
+                // and ERROR_*/PAUSED_* constants - reason's meaning depends on which status this is.
+                log.warn("Download {} did not succeed: status={} reason={}", downloadId, status, reason);
+            }
+
+            return succeeded;
         }
     }
 }
