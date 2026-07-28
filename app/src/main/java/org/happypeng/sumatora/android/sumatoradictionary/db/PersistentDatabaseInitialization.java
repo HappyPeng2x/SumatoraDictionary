@@ -228,8 +228,8 @@ public abstract class PersistentDatabaseInitialization {
     }
 
     @WorkerThread
-    private static void detachIncompatiblePacks(@NonNull final PersistentDatabase persistentDatabase,
-                                                 @NonNull final DictionaryControlInfo controlInfo) {
+    static void detachIncompatiblePacks(@NonNull final PersistentDatabase persistentDatabase,
+                                         @NonNull final DictionaryControlInfo controlInfo) {
         List<InstalledDictionary> dictionaries = persistentDatabase.installedDictionaryDao().getAll();
 
         for (InstalledDictionary d : dictionaries) {
@@ -237,19 +237,21 @@ public abstract class PersistentDatabaseInitialization {
                 continue;
             }
 
-            // version == 0 means already flagged by a previous run or recovered as missing —
-            // nothing to probe.
-            if (d.version <= 0 || d.version >= MINIMUM_COMPATIBLE_GLOSS_VERSION) {
+            if (d.version >= MINIMUM_COMPATIBLE_GLOSS_VERSION) {
                 continue;
             }
 
-            if (d.isAttached(persistentDatabase)) {
-                d.detach(persistentDatabase);
-            }
+            // version == 0 means already flagged on a previous run — still report it so the
+            // Manage Dictionaries screen shows the warning, but don't re-detach or re-write.
+            if (d.version > 0) {
+                if (d.isAttached(persistentDatabase)) {
+                    d.detach(persistentDatabase);
+                }
 
-            d.version = 0;
-            d.date = 0;
-            persistentDatabase.installedDictionaryDao().insert(d);
+                d.version = 0;
+                d.date = 0;
+                persistentDatabase.installedDictionaryDao().insert(d);
+            }
 
             controlInfo.incompatiblePacks.add(d.getAlias());
         }

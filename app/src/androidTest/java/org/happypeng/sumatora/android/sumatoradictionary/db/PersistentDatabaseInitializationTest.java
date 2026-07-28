@@ -16,6 +16,7 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.db;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -103,5 +104,77 @@ public class PersistentDatabaseInitializationTest {
 
         assertFalse("file with no InstalledDictionary row should be deleted", orphanFile.exists());
         assertTrue("file a current InstalledDictionary row points at should survive", keptFile.exists());
+    }
+
+    @Test
+    public void detachIncompatible_flagsOldGlossPack() {
+        InstalledDictionary oldGloss = new InstalledDictionary(
+                new File(installDir, "gloss_old.db").getAbsolutePath(),
+                "test", "gloss", "_dt_old", 12, 20200101);
+        db.installedDictionaryDao().insert(oldGloss);
+
+        DictionaryControlInfo info = new DictionaryControlInfo();
+        PersistentDatabaseInitialization.detachIncompatiblePacks(db, info);
+
+        InstalledDictionary result = db.installedDictionaryDao().getForTypeLang("gloss", "_dt_old");
+        assertEquals("old gloss pack should be reset to version 0", 0, result.version);
+        assertTrue("old gloss pack should be in incompatiblePacks",
+                info.incompatiblePacks.contains("gloss__dt_old"));
+
+        db.installedDictionaryDao().delete(result);
+    }
+
+    @Test
+    public void detachIncompatible_keepsNewGlossPack() {
+        InstalledDictionary newGloss = new InstalledDictionary(
+                new File(installDir, "gloss_new.db").getAbsolutePath(),
+                "test", "gloss", "_dt_new", 18, 20260726);
+        db.installedDictionaryDao().insert(newGloss);
+
+        DictionaryControlInfo info = new DictionaryControlInfo();
+        PersistentDatabaseInitialization.detachIncompatiblePacks(db, info);
+
+        InstalledDictionary result = db.installedDictionaryDao().getForTypeLang("gloss", "_dt_new");
+        assertEquals("new gloss pack should keep its version", 18, result.version);
+        assertTrue("new gloss pack should NOT be in incompatiblePacks",
+                info.incompatiblePacks.isEmpty());
+
+        db.installedDictionaryDao().delete(result);
+    }
+
+    @Test
+    public void detachIncompatible_alreadyFlaggedStillReported() {
+        InstalledDictionary flagged = new InstalledDictionary(
+                new File(installDir, "gloss_flagged.db").getAbsolutePath(),
+                "test", "gloss", "_dt_flagged", 0, 0);
+        db.installedDictionaryDao().insert(flagged);
+
+        DictionaryControlInfo info = new DictionaryControlInfo();
+        PersistentDatabaseInitialization.detachIncompatiblePacks(db, info);
+
+        InstalledDictionary result = db.installedDictionaryDao().getForTypeLang("gloss", "_dt_flagged");
+        assertEquals("already-flagged pack should stay at version 0", 0, result.version);
+        assertTrue("already-flagged pack should still be in incompatiblePacks",
+                info.incompatiblePacks.contains("gloss__dt_flagged"));
+
+        db.installedDictionaryDao().delete(result);
+    }
+
+    @Test
+    public void detachIncompatible_ignoresNonGlossTypes() {
+        InstalledDictionary core = new InstalledDictionary(
+                new File(installDir, "core_test.db").getAbsolutePath(),
+                "test", "core", "_dt_core", 1, 20200101);
+        db.installedDictionaryDao().insert(core);
+
+        DictionaryControlInfo info = new DictionaryControlInfo();
+        PersistentDatabaseInitialization.detachIncompatiblePacks(db, info);
+
+        InstalledDictionary result = db.installedDictionaryDao().getForTypeLang("core", "_dt_core");
+        assertEquals("non-gloss pack should keep its version", 1, result.version);
+        assertTrue("non-gloss pack should NOT be in incompatiblePacks",
+                info.incompatiblePacks.isEmpty());
+
+        db.installedDictionaryDao().delete(result);
     }
 }
