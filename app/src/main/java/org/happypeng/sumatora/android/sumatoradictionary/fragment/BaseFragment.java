@@ -47,6 +47,8 @@ import org.happypeng.sumatora.android.sumatoradictionary.activity.DictionariesMa
 import org.happypeng.sumatora.android.sumatoradictionary.activity.MainActivity;
 import org.happypeng.sumatora.android.sumatoradictionary.adapter.DictionaryPagedListAdapter;
 import org.happypeng.sumatora.android.sumatoradictionary.databinding.FragmentDictionaryQueryBinding;
+import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary;
+import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabaseInitialization;
 import org.happypeng.sumatora.android.sumatoradictionary.model.BaseQueryFragmentModel;
 import org.happypeng.sumatora.android.sumatoradictionary.model.state.QueryState;
 import org.happypeng.sumatora.android.sumatoradictionary.model.viewbinding.FragmentDictionaryQueryBindingUtil;
@@ -77,6 +79,7 @@ public abstract class BaseFragment extends Fragment {
     protected CompositeDisposable viewAutoDisposable = new CompositeDisposable();
     protected CompositeDisposable fragmentAutoDisposable = new CompositeDisposable();
 
+    private List<InstalledDictionary> cachedInstalledDictionaries = new ArrayList<>();
     private Subject<String> intentSearchTerm = PublishSubject.create();
     private String currentSearchTerm = "";
 
@@ -262,14 +265,22 @@ public abstract class BaseFragment extends Fragment {
                 queryFragmentModel.getInstalledDictionaries(),
                 queryFragmentModel.getMoreLanguagesAvailable(),
                 android.util.Pair::new)
-                .subscribe(state -> queryMenu.addLanguageMenu(getContext(), state.first, state.second,
-                        new QueryMenu.LanguageChangeCallback() {
-                            @Override
-                            public void change(String language) {
-                                queryFragmentModel.setLanguage(language);
-                            }
-                        },
-                        () -> startActivity(new Intent(getActivity(), DictionariesManagementActivity.class)))));
+                .subscribe(state -> {
+                    cachedInstalledDictionaries = state.first;
+                    queryMenu.addLanguageMenu(getContext(), state.first, state.second,
+                            new QueryMenu.LanguageChangeCallback() {
+                                @Override
+                                public void change(String language) {
+                                    if (isGlossLanguageCompatible(language)) {
+                                        queryFragmentModel.setLanguage(language);
+                                    } else {
+                                        showLanguageUnavailableDialog(language);
+                                    }
+                                }
+                            },
+                            () -> startActivity(new Intent(getActivity(),
+                                    DictionariesManagementActivity.class)));
+                }));
 
         // When the app starts with a non-English language whose gloss pack is outdated or
         // missing (e.g. French with a v11 pack that lacks entry_source_key), the model falls
@@ -349,6 +360,19 @@ public abstract class BaseFragment extends Fragment {
         intent.putExtra("SEARCH_TERM", intentSearchTerm);
 
         activity.processIntent(intent);
+    }
+
+    private boolean isGlossLanguageCompatible(String lang) {
+        if ("eng".equals(lang)) {
+            return true;
+        }
+        for (InstalledDictionary d : cachedInstalledDictionaries) {
+            if ("gloss".equals(d.type) && lang.equals(d.lang)) {
+                return PersistentDatabaseInitialization.isGlossPackCompatible(d);
+            }
+        }
+        // Pack not installed at all — offer to install it.
+        return false;
     }
 
     private void showLanguageUnavailableDialog(String lang) {

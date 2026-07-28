@@ -133,15 +133,10 @@ abstract class BaseQueryFragmentModel protected constructor(
 
     // Flowable (not a one-shot query) so the language picker (BaseFragment.onCreateOptionsMenu)
     // picks up a pack installed later via DictionariesManagementActivity without needing the
-    // fragment recreated. Gloss packs below MINIMUM_COMPATIBLE_GLOSS_VERSION are filtered out so
-    // the language picker never offers an incompatible language.
+    // fragment recreated.
     val installedDictionaries: Observable<List<InstalledDictionary>>
         get() = persistentDatabaseComponent.database.installedDictionaryDao().allFlowable
             .toObservable()
-            .map { list -> list.filter { d ->
-                d.type != "gloss" || d.lang == "eng" ||
-                d.version >= PersistentDatabaseInitialization.MINIMUM_COMPATIBLE_GLOSS_VERSION
-            }}
             .subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
 
     // Drives the language picker's "More languages…" entry - true only once there's at least one
