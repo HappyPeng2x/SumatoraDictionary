@@ -73,8 +73,8 @@ class DictionaryUpdateWorker @AssistedInject constructor(
         // completes. Null means "no check has run yet" — enqueueNow() resets it so the observer
         // can distinguish a fresh run from a stale cached value. The periodic worker also posts
         // here, but since it runs in the background with no observer, that's harmless.
-        private val _lastManualResult = MutableLiveData<Int>()
-        val lastManualResult: LiveData<Int> = _lastManualResult
+        private val _lastManualResult = MutableLiveData<Int?>()
+        val lastManualResult: LiveData<Int?> = _lastManualResult
 
         @JvmStatic
         fun enqueuePeriodic(context: Context) {
