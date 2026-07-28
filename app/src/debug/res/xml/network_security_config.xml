@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug build type only (see app/src/debug/AndroidManifest.xml) - lets DictionaryUpdateEndToEndTest
+     run a loopback-only HTTP server standing in for the real dictionaries.xml host, so the
+     RemoteManifestFetcher -> DownloadManager -> DictionaryDownloadCompleteReceiver pipeline can be
+     exercised hermetically in CI. RemoteManifestFetcher/RemoteDictionaryObject.download() only ever
+     talk to https hosts in production, and this file never ships in a release build. -->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
+    </domain-config>
+</network-security-config>

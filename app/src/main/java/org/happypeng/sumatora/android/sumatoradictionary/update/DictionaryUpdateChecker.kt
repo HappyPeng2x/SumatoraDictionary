@@ -69,9 +69,18 @@ object DictionaryUpdateChecker {
             Log.i(TAG, "Enqueuing update for ${remote.type}/${remote.lang}: " +
                     "${installed.version}/${installed.date} -> ${remote.version}/${remote.date}")
 
-            remote.download(downloadManager, downloadDir)
-            db.remoteDictionaryObjectDao().insert(remote)
-            enqueued++
+            try {
+                remote.download(downloadManager, downloadDir)
+                db.remoteDictionaryObjectDao().insert(remote)
+                enqueued++
+            } catch (e: Exception) {
+                // A single pack's DownloadManager.enqueue() failing (e.g. the GrapheneOS
+                // network-toggle case RemoteDictionaryObject.download() guards against) must not
+                // abort the whole manifest loop - Worker.startWork() catches an uncaught exception
+                // here and fails the entire work item, silently dropping every remaining pack in
+                // this pass, including whichever one the user actually needed updated.
+                Log.e(TAG, "Failed to enqueue update for ${remote.type}/${remote.lang}", e)
+            }
         }
 
         return enqueued

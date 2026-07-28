@@ -79,7 +79,8 @@ button's spinner.
 4. Compares via `isSuperiorVersion()` (`version > other.version || (version >= other.version &&
    date > other.date)`), skips if a pending update at least as new is already queued, and skips
    if a download for that `(type, lang)` is already in flight.
-5. Otherwise calls `RemoteDictionaryObject.download()` and persists the row.
+5. Otherwise calls `RemoteDictionaryObject.download()` and persists the row, inside a try/catch -
+   one pack's `download()` throwing doesn't stop the rest of the manifest from being checked.
 
 **Download.** `RemoteDictionaryObject.download()` uses `android.app.DownloadManager` (not OkHttp
 or a plain HTTP client), destination `<externalFilesDir>/downloads/<type>-<lang>.db.gz`,
@@ -96,13 +97,14 @@ actually reach it) fail with no usable signal. `DictionariesManagementActivity.k
 manual pack download and a manual "Check Now" tap; on failure it shows a blocking dialog that
 deep-links to the app's system Network setting.
 
-**Known gap:** this probe only guards the two Activity-initiated paths above. The *background*
-periodic-worker download path (`DictionaryUpdateChecker.checkAndEnqueue()` →
-`RemoteDictionaryObject.download()`) has no equivalent pre-check, so on a device with Network
-access blocked, the periodic worker would hit the same `IllegalStateException` uncaught,
-failing that check cycle rather than degrading gracefully. Worth fixing the same way if it comes
-up in the wild - the background job just silently doesn't update instead of visibly erroring,
-which is lower-severity than the foreground hang this was originally fixed for, but still a gap.
+**Known gap:** this probe only guards the two Activity-initiated paths above - `checkAndEnqueue()`
+(shared by the periodic worker and the manual "Check Now" worker) has no equivalent pre-check
+before `RemoteDictionaryObject.download()`, so on a device with Network access blocked, a
+`DownloadManager.enqueue()` failure still throws `IllegalStateException` there. That per-entry
+call *is* now wrapped in try/catch (see below), so one pack failing to enqueue no longer aborts
+every other pack in the same manifest - it just skips that one pack and keeps going - but there's
+still no proactive check, so a fully network-blocked device silently fails every entry one at a
+time instead of degrading with a single clear signal up front.
 
 **Checksum verification.** `DictionaryDownloadCompleteReceiver.verifyChecksum()` computes the
 downloaded file's SHA-256 and compares it (case-insensitively) against the manifest's `sha256`

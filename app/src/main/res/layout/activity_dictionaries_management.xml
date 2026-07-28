@@ -82,6 +82,17 @@
                             android:paddingBottom="4dp" />
                     </LinearLayout>
 
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/activity_dictionaries_management_restart_button"
+                        style="@style/Widget.MaterialComponents.Button"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        app:icon="@drawable/ic_refresh_24px"
+                        app:iconGravity="textStart"
+                        android:text="@string/dictionary_restart_now_button"
+                        android:visibility="gone" />
+
                     <TextView
                         android:id="@+id/activity_dictionaries_management_warning"
                         android:layout_width="match_parent"

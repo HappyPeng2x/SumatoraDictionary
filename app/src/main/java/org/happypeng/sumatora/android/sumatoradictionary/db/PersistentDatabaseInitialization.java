@@ -23,6 +23,7 @@ import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.VisibleForTesting;
 import androidx.annotation.WorkerThread;
 
 import org.happypeng.sumatora.android.sumatoradictionary.R;
@@ -227,8 +228,43 @@ public abstract class PersistentDatabaseInitialization {
         return pack != null && pack.version >= MINIMUM_COMPATIBLE_GLOSS_VERSION;
     }
 
+    // Every past value of R.string.dictionaries_url, oldest first - a phone that installed the
+    // app while one of these was the shipped default still has it sitting in the REPOSITORY_URL
+    // PersistentSetting, since insertDefault() below only writes when no row exists yet and is
+    // never revisited on app upgrade. Confirmed on a real device stuck on the third entry here:
+    // "Check for updates" ran, but RemoteManifestFetcher 404'd against it on every check, forever,
+    // with nothing surfaced to the user - the checker just silently found nothing to enqueue.
+    private static final String[] STALE_REPOSITORY_URLS = {
+            "https://drive.google.com/uc?export=download&id=1IjKdMs57HMczFAzYQzpGhiZbpJntqOKO",
+            "https://sumatora.happypeng.org/dictionaries/v4/dictionaries.xml",
+            "https://raw.githubusercontent.com/HappyPeng2x/SumatoraDictionary/main/dictionaries.xml",
+            "https://raw.githubusercontent.com/HappyPeng2x/SumatoraIndex/main/dictionaries.xml",
+    };
+
     @WorkerThread
-    static void detachIncompatiblePacks(@NonNull final PersistentDatabase persistentDatabase,
+    private static void migrateStaleRepositoryUrl(@NonNull final PersistentDatabase persistentDatabase,
+                                                   @NonNull final Context context) {
+        String current = persistentDatabase.persistentSettingsDao().getValueDirect(Settings.REPOSITORY_URL);
+
+        if (current == null) {
+            return;
+        }
+
+        for (String stale : STALE_REPOSITORY_URLS) {
+            if (stale.equals(current)) {
+                persistentDatabase.persistentSettingsDao().insert(new PersistentSetting(
+                        Settings.REPOSITORY_URL, context.getString(R.string.dictionaries_url)));
+                return;
+            }
+        }
+    }
+
+    // Public (not package-private) so both PersistentDatabaseInitializationTest (same package) and
+    // DictionaryUpdateEndToEndTest (org...update package, needs this alongside DictionaryUpdateChecker
+    // and DictionaryDownloadCompleteReceiver in one walkthrough) can drive it directly.
+    @VisibleForTesting
+    @WorkerThread
+    public static void detachIncompatiblePacks(@NonNull final PersistentDatabase persistentDatabase,
                                          @NonNull final DictionaryControlInfo controlInfo) {
         List<InstalledDictionary> dictionaries = persistentDatabase.installedDictionaryDao().getAll();
 
@@ -296,8 +332,12 @@ public abstract class PersistentDatabaseInitialization {
         }
     }
 
+    // Public (not private) so DictionaryUpdateEndToEndTest can drive the "restart promotes the
+    // download" step directly - calling the full initializeDatabase() would also re-run legacy-DB
+    // migration/bundled-asset extraction, unrelated to what that test verifies.
+    @VisibleForTesting
     @WorkerThread
-    private static void promotePendingUpdate(@NonNull final PersistentDatabase persistentDatabase,
+    public static void promotePendingUpdate(@NonNull final PersistentDatabase persistentDatabase,
                                              @NonNull final InstalledDictionary d) {
         new File(d.file).delete();
 
@@ -382,6 +422,7 @@ public abstract class PersistentDatabaseInitialization {
 
         detachIncompatiblePacks(persistentDatabase, controlInfo);
 
+        migrateStaleRepositoryUrl(persistentDatabase, context);
         persistentDatabase.persistentSettingsDao().insertDefault(new PersistentSetting(Settings.REPOSITORY_URL,
                 context.getString(R.string.dictionaries_url)));
 

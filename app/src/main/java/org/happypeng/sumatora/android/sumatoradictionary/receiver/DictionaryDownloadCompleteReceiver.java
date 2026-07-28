@@ -20,6 +20,7 @@ import android.app.DownloadManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -32,6 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.happypeng.sumatora.android.sumatoradictionary.R;
+import org.happypeng.sumatora.android.sumatoradictionary.activity.DictionariesManagementActivity;
 import org.happypeng.sumatora.android.sumatoradictionary.component.PersistentDatabaseComponent;
 import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary;
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
@@ -58,8 +60,12 @@ public class DictionaryDownloadCompleteReceiver extends BroadcastReceiver {
     private static final Logger log = LoggerFactory.getLogger(DictionaryDownloadCompleteReceiver.class);
     private static final String UPDATE_CHANNEL_ID = "dictionary_updates";
 
+    // Public (not package-private) so both DictionaryDownloadCompleteReceiverFailureTest (same
+    // package) and DictionaryUpdateEndToEndTest (org...update package, needs the real
+    // DictionaryUpdateChecker/PersistentDatabaseInitialization alongside this in one walkthrough)
+    // can set it directly instead of fighting goAsync()/protected-broadcast delivery.
     @Inject
-    PersistentDatabaseComponent persistentDatabaseComponent;
+    public PersistentDatabaseComponent persistentDatabaseComponent;
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -89,12 +95,13 @@ public class DictionaryDownloadCompleteReceiver extends BroadcastReceiver {
         }).start();
     }
 
-    // Package-private (not private) so DictionaryDownloadCompleteReceiverFailureTest can drive the
+    // Public (not private) so DictionaryDownloadCompleteReceiverFailureTest and
+    // DictionaryUpdateEndToEndTest (different packages - see the field above) can drive the
     // failure/success handling directly instead of fighting goAsync()/protected-broadcast delivery
     // through a manually constructed BroadcastReceiver.
     @VisibleForTesting
     @WorkerThread
-    void handleDownloadComplete(Context context, long downloadId) {
+    public void handleDownloadComplete(Context context, long downloadId) {
         final DownloadManager downloadManager =
                 (DownloadManager) context.getSystemService(Context.DOWNLOAD_SERVICE);
         final boolean succeeded = downloadSucceeded(downloadManager, downloadId);
@@ -245,11 +252,22 @@ public class DictionaryDownloadCompleteReceiver extends BroadcastReceiver {
         notificationManager.createNotificationChannel(new NotificationChannel(
                 UPDATE_CHANNEL_ID, "Dictionary updates", NotificationManager.IMPORTANCE_DEFAULT));
 
+        // All three outcomes (update ready to restart, fresh pack installed, download failed) are
+        // actionable from the same screen - Manage Dictionaries has the restart button, the retry
+        // button, and the up-to-date pack list respectively - so route every tap there instead of
+        // just dismissing, since a user who only sees this from the notification shade would
+        // otherwise have no way to find that screen on their own.
+        Intent contentIntent = new Intent(context, DictionariesManagementActivity.class)
+                .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        PendingIntent pendingIntent = PendingIntent.getActivity(
+                context, 0, contentIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
         Notification notification = new Notification.Builder(context, UPDATE_CHANNEL_ID)
                 .setContentTitle(title)
                 .setContentText(text)
                 .setSmallIcon(R.drawable.ic_sumatora_monochrome)
                 .setAutoCancel(true)
+                .setContentIntent(pendingIntent)
                 .build();
 
         notificationManager.notify(remote.type.hashCode() ^ remote.lang.hashCode(), notification);

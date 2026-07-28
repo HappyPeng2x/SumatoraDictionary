@@ -44,3 +44,15 @@
 -keepclassmembers class * extends androidx.room.RoomDatabase {
     <init>(...);
 }
+
+# Same reflection-vs-R8 problem as above, for WorkManager's InputMerger: it's instantiated via
+# Class.forName(...).getDeclaredConstructor() for every work execution (not just chained work with
+# multiple inputs), keyed by class name stored in the WorkSpec. WorkManager's own consumer rules
+# only keep the class itself ("-keep class * extends androidx.work.InputMerger", no members), which
+# doesn't stop R8 stripping the no-arg constructor as apparently unused - broke every WorkManager
+# job on the release build silently (WM-InputMerger: "NoSuchMethodException:
+# androidx.work.OverwritingInputMerger.<init> []", work fails before the Worker's doWork() ever
+# runs, no exception surfaces to app code) - this is why "Check for updates" did nothing at all.
+-keepclassmembers class * extends androidx.work.InputMerger {
+    <init>(...);
+}

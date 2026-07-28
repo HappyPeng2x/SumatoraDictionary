@@ -72,11 +72,20 @@ class DictionariesManagementActivity : AppCompatActivity() {
 
     private val disposables = CompositeDisposable()
 
+    // getWorkInfosForUniqueWorkLiveData() emits its current value immediately on every fresh
+    // observe() - including whatever WorkInfo is left over from the last manual check, or from the
+    // enqueueNow() PersistentDatabaseComponent.checkAppUpgrade() fires automatically on a cold
+    // start after an APK upgrade. Without this flag, just opening this screen (re-subscribing)
+    // would replay that stale finished state and toast a result the user never asked for. Only
+    // react when this screen itself started the check that's finishing.
+    private var checkInProgress = false
+
     private lateinit var container: LinearLayout
     private lateinit var statusPill: TextView
     private lateinit var warningBanner: TextView
     private lateinit var checkUpdatesButton: MaterialButton
     private lateinit var checkUpdatesSpinner: ProgressBar
+    private lateinit var restartButton: MaterialButton
 
     // Without this, DictionaryDownloadCompleteReceiver's success/failure notifications silently
     // no-op on API 33+ - the on-screen failed/retry state still works either way, but a background
@@ -104,8 +113,11 @@ class DictionariesManagementActivity : AppCompatActivity() {
         warningBanner = findViewById(R.id.activity_dictionaries_management_warning)
         checkUpdatesButton = findViewById(R.id.activity_dictionaries_management_check_updates)
         checkUpdatesSpinner = findViewById(R.id.activity_dictionaries_management_check_updates_spinner)
+        restartButton = findViewById(R.id.activity_dictionaries_management_restart_button)
+        restartButton.setOnClickListener { confirmRestart() }
 
         checkUpdatesButton.setOnClickListener {
+            checkInProgress = true
             checkUpdatesButton.isEnabled = false
             checkUpdatesButton.setText(R.string.checking_for_updates)
             checkUpdatesSpinner.visibility = View.VISIBLE
@@ -125,6 +137,7 @@ class DictionariesManagementActivity : AppCompatActivity() {
                         if (hasNetwork) {
                             DictionaryUpdateWorker.enqueueNow(this)
                         } else {
+                            checkInProgress = false
                             checkUpdatesButton.isEnabled = true
                             checkUpdatesButton.setText(R.string.check_for_updates)
                             checkUpdatesSpinner.visibility = View.GONE
@@ -135,7 +148,8 @@ class DictionariesManagementActivity : AppCompatActivity() {
         }
 
         DictionaryUpdateWorker.manualCheckStatus(this).observe(this) { workInfos ->
-            if (workInfos.any { it.state.isFinished }) {
+            if (checkInProgress && workInfos.any { it.state.isFinished }) {
+                checkInProgress = false
                 checkUpdatesButton.isEnabled = true
                 checkUpdatesButton.setText(R.string.check_for_updates)
                 checkUpdatesSpinner.visibility = View.GONE
@@ -284,6 +298,11 @@ class DictionariesManagementActivity : AppCompatActivity() {
                         )
 
                         warningBanner.visibility = if (needsUpdate) View.VISIBLE else View.GONE
+                        // A restart is the only way to finish applying a downloaded update (see
+                        // update-pipeline.md - never hot-swapping a live-attached SQLite file),
+                        // but most users don't know that force-stopping/reopening the app is what
+                        // "restart" means here - offer to do it for them instead of just saying so.
+                        restartButton.visibility = if (state.pendingUpdate) View.VISIBLE else View.GONE
                     },
                     { e -> log.error("Failed to refresh dictionary lists", e) }
                 )
@@ -357,6 +376,27 @@ class DictionariesManagementActivity : AppCompatActivity() {
                     }
                 )
         )
+    }
+
+    private fun confirmRestart() {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.restart_now_dialog_title)
+            .setMessage(R.string.restart_now_dialog_message)
+            .setPositiveButton(R.string.restart_now_confirm) { _, _ -> restartApp() }
+            .setNegativeButton(R.string.restart_now_cancel, null)
+            .show()
+    }
+
+    // PersistentDatabaseComponent (and the pending-update promotion it triggers via
+    // PersistentDatabaseInitialization.initializeDatabase()) is a Hilt @Singleton tied to the
+    // process, not the Activity - Activity.recreate() would not re-run it. Relaunching the
+    // launcher activity in a fresh task and then killing this process is the standard way to force
+    // a real cold start without the user having to find their way to Android's own "force stop".
+    private fun restartApp() {
+        val intent = packageManager.getLaunchIntentForPackage(packageName)
+        intent?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        startActivity(intent)
+        Runtime.getRuntime().exit(0)
     }
 
     private fun showNetworkPermissionRequiredDialog() {

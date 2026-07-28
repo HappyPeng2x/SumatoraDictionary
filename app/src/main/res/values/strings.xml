@@ -31,9 +31,15 @@
     <string name="dictionary_status_failed">Download failed · tap to retry</string>
     <string name="dictionary_version_caption">v%1$d · %2$s</string>
     <string name="dictionary_needs_update">Needs update · tap Check for updates</string>
+    <string name="dictionary_update_pending_restart">Downloaded · restart app to apply</string>
     <string name="dictionary_check_up_to_date">All dictionaries are up to date</string>
     <string name="dictionary_check_updates_found">%1$d update(s) found — restart the app after downloading to apply them</string>
     <string name="dictionary_pack_incompatible_warning">Some dictionary packs are outdated and incompatible with this app version. Tap Check for updates to fix them.</string>
+    <string name="dictionary_restart_now_button">Restart now to finish updating</string>
+    <string name="restart_now_dialog_title">Restart Sumatora?</string>
+    <string name="restart_now_dialog_message">The updated dictionaries have finished downloading. Sumatora needs to restart to start using them.</string>
+    <string name="restart_now_confirm">Restart now</string>
+    <string name="restart_now_cancel">Later</string>
 
     <string name="language_unavailable_title">Dictionary pack unavailable</string>
     <string name="language_unavailable_message">The dictionary for %1$s is not installed or is outdated and incompatible with this version of the app. You can switch to English or update the pack in Manage dictionaries.</string>

@@ -164,6 +164,13 @@ object DictionaryManagementRenderer {
                     text = context.getString(R.string.dictionary_status_failed)
                     setTextColor(ContextCompat.getColor(context, R.color.dict_status_error))
                 }
+                row.installed?.hasPendingUpdate() == true -> {
+                    // Distinct from the version==0 case below - the replacement has already been
+                    // downloaded and verified, "tap Check for updates" again would do nothing;
+                    // only a restart (promotePendingUpdate at the next cold start) finishes this.
+                    text = context.getString(R.string.dictionary_update_pending_restart)
+                    setTextColor(ContextCompat.getColor(context, R.color.dict_status_pending))
+                }
                 row.version == 0 && row.installed != null -> {
                     text = context.getString(R.string.dictionary_needs_update)
                     setTextColor(ContextCompat.getColor(context, R.color.dict_status_error))
