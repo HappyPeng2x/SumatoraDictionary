@@ -36,6 +36,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmarkTa
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement
 import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary
 import org.happypeng.sumatora.android.sumatoradictionary.db.OptionalDictionaryCatalog
+import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabaseInitialization
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.DictionarySearchQueryTool
 import org.happypeng.sumatora.core.bookmark.BookmarkMergeService
@@ -122,15 +123,25 @@ abstract class BaseQueryFragmentModel protected constructor(
     private val opsSubject: Subject<Op> = PublishSubject.create()
     private val closedSubject: Subject<Unit> = PublishSubject.create()
 
+    // Emits when the current language's gloss pack is incompatible or missing; the fragment
+    // observes this to show a dialog offering English or Manage Dictionaries.
+    private val languageBlockedSubject: Subject<String> = PublishSubject.create()
+    val languageBlocked: Observable<String> = languageBlockedSubject.hide()
+
     private val pagedListSubject: Subject<PagedList<DictionarySearchElement>> = BehaviorSubject.create()
     val pagedListObservable: Observable<PagedList<DictionarySearchElement>> = pagedListSubject
 
     // Flowable (not a one-shot query) so the language picker (BaseFragment.onCreateOptionsMenu)
     // picks up a pack installed later via DictionariesManagementActivity without needing the
-    // fragment recreated.
+    // fragment recreated. Gloss packs below MINIMUM_COMPATIBLE_GLOSS_VERSION are filtered out so
+    // the language picker never offers an incompatible language.
     val installedDictionaries: Observable<List<InstalledDictionary>>
         get() = persistentDatabaseComponent.database.installedDictionaryDao().allFlowable
             .toObservable()
+            .map { list -> list.filter { d ->
+                d.type != "gloss" || d.lang == "eng" ||
+                d.version >= PersistentDatabaseInitialization.MINIMUM_COMPATIBLE_GLOSS_VERSION
+            }}
             .subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
 
     // Drives the language picker's "More languages…" entry - true only once there's at least one
@@ -385,7 +396,32 @@ abstract class BaseQueryFragmentModel protected constructor(
             .takeUntil(closedSubject)
             .subscribe { intent ->
                 when (intent) {
-                    is LanguageSettingAttachedIntent -> opsSubject.onNext(Op.LanguageAttached(intent.languageSettings))
+                    is LanguageSettingAttachedIntent -> {
+                        val lang = intent.languageSettings.lang
+                        if (lang != null && lang != "eng") {
+                            // Check gloss-pack compatibility on a background thread — the
+                            // language picker already filters incompatible packs from the
+                            // popup, so this only fires for a saved language that was valid
+                            // in a previous APK version but is now outdated.
+                            Observable.fromCallable {
+                                val pack = persistentDatabaseComponent.database
+                                    .installedDictionaryDao().getForTypeLang("gloss", lang)
+                                !PersistentDatabaseInitialization.isGlossPackCompatible(pack)
+                            }
+                            .subscribeOn(Schedulers.io())
+                            .observeOn(AndroidSchedulers.mainThread())
+                            .subscribe { incompatible ->
+                                if (incompatible) {
+                                    languageBlockedSubject.onNext(lang)
+                                    setLanguage("eng")
+                                } else {
+                                    opsSubject.onNext(Op.LanguageAttached(intent.languageSettings))
+                                }
+                            }
+                        } else {
+                            opsSubject.onNext(Op.LanguageAttached(intent.languageSettings))
+                        }
+                    }
                     is LanguageSettingDetachedIntent -> opsSubject.onNext(Op.LanguageDetached)
                 }
             }

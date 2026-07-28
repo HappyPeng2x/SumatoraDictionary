@@ -16,6 +16,7 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.fragment;
 
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.Editable;
@@ -270,6 +271,13 @@ public abstract class BaseFragment extends Fragment {
                         },
                         () -> startActivity(new Intent(getActivity(), DictionariesManagementActivity.class)))));
 
+        // When the app starts with a non-English language whose gloss pack is outdated or
+        // missing (e.g. French with a v11 pack that lacks entry_source_key), the model falls
+        // back to English and emits this signal — show a dialog so the user knows what happened
+        // and can either accept English or go install the updated pack.
+        viewAutoDisposable.add(queryFragmentModel.getLanguageBlocked()
+                .subscribe(lang -> showLanguageUnavailableDialog(lang)));
+
         viewAutoDisposable.add(queryFragmentModel.states()
                 .filter(s -> s.getLanguage() != null)
                 .map(QueryState::getLanguage)
@@ -341,6 +349,24 @@ public abstract class BaseFragment extends Fragment {
         intent.putExtra("SEARCH_TERM", intentSearchTerm);
 
         activity.processIntent(intent);
+    }
+
+    private void showLanguageUnavailableDialog(String lang) {
+        if (getActivity() == null) {
+            return;
+        }
+
+        new AlertDialog.Builder(getActivity())
+                .setTitle(R.string.language_unavailable_title)
+                .setMessage(getString(R.string.language_unavailable_message, lang))
+                .setPositiveButton(R.string.language_unavailable_use_english, (dialog, which) -> {
+                    dialog.dismiss();
+                })
+                .setNegativeButton(R.string.language_unavailable_manage_dicts, (dialog, which) -> {
+                    startActivity(new Intent(getActivity(), DictionariesManagementActivity.class));
+                })
+                .setCancelable(false)
+                .show();
     }
 
     public void focusSearchView() {

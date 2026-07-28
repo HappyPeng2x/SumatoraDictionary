@@ -221,7 +221,11 @@ public abstract class PersistentDatabaseInitialization {
     // (see PersistentDatabaseComponent.fetchGlossText). Such packs attach without error but fail
     // every query at runtime, producing silently empty search results. Detach them and set version
     // to 0 so the next update check will download a compatible replacement.
-    private static final int MINIMUM_COMPATIBLE_GLOSS_VERSION = 12;
+    public static final int MINIMUM_COMPATIBLE_GLOSS_VERSION = 12;
+
+    public static boolean isGlossPackCompatible(InstalledDictionary pack) {
+        return pack != null && pack.version >= MINIMUM_COMPATIBLE_GLOSS_VERSION;
+    }
 
     @WorkerThread
     private static void detachIncompatiblePacks(@NonNull final PersistentDatabase persistentDatabase,

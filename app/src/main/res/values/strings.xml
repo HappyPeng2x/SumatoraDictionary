@@ -34,6 +34,11 @@
     <string name="dictionary_check_updates_found">%1$d update(s) found — restart the app after downloading to apply them</string>
     <string name="dictionary_pack_incompatible_warning">Some dictionary packs are outdated and incompatible with this app version. Tap Check for updates to fix them.</string>
 
+    <string name="language_unavailable_title">Dictionary pack unavailable</string>
+    <string name="language_unavailable_message">The dictionary for %1$s is not installed or is outdated and incompatible with this version of the app. You can switch to English or update the pack in Manage dictionaries.</string>
+    <string name="language_unavailable_use_english">Use English</string>
+    <string name="language_unavailable_manage_dicts">Manage dictionaries</string>
+
     <string name="tag_icon_description">Tag icon</string>
     <string name="tag_input_hint">Add tag</string>
 
