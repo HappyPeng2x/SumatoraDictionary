@@ -87,11 +87,11 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="12dp"
-                        android:background="@drawable/bg_status_pill_pending"
+                        android:background="@drawable/bg_status_pill_warning"
                         android:gravity="center"
                         android:padding="10dp"
                         android:text="@string/dictionary_pack_incompatible_warning"
-                        android:textColor="@color/dict_status_pending"
+                        android:textColor="@color/dict_status_warning"
                         android:textSize="13sp"
                         android:visibility="gone" />
 

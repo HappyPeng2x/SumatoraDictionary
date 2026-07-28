@@ -252,22 +252,35 @@ class DictionariesManagementActivity : AppCompatActivity() {
                             onRetry = { entry -> startDownload(entry) }
                         )
 
+                        val incompatiblePacks = persistentDatabaseComponent
+                            .dictionaryControlInfo.incompatiblePacks
+                        val needsUpdate = incompatiblePacks.isNotEmpty()
+
                         statusPill.text = getString(
-                            if (state.pendingUpdate) R.string.dictionary_status_update_ready
-                            else R.string.dictionary_status_up_to_date
+                            when {
+                                state.pendingUpdate -> R.string.dictionary_status_update_ready
+                                needsUpdate -> R.string.dictionary_status_update_required
+                                else -> R.string.dictionary_status_up_to_date
+                            }
                         )
                         statusPill.setTextColor(ContextCompat.getColor(
-                            this, if (state.pendingUpdate) R.color.dict_status_pending else R.color.dict_status_ok
+                            this,
+                            when {
+                                state.pendingUpdate -> R.color.dict_status_pending
+                                needsUpdate -> R.color.dict_status_warning
+                                else -> R.color.dict_status_ok
+                            }
                         ))
                         statusPill.background = ContextCompat.getDrawable(
                             this,
-                            if (state.pendingUpdate) R.drawable.bg_status_pill_pending else R.drawable.bg_status_pill_ok
+                            when {
+                                state.pendingUpdate -> R.drawable.bg_status_pill_pending
+                                needsUpdate -> R.drawable.bg_status_pill_warning
+                                else -> R.drawable.bg_status_pill_ok
+                            }
                         )
 
-                        val incompatiblePacks = persistentDatabaseComponent
-                            .dictionaryControlInfo.incompatiblePacks
-                        warningBanner.visibility = if (incompatiblePacks.isNotEmpty())
-                            View.VISIBLE else View.GONE
+                        warningBanner.visibility = if (needsUpdate) View.VISIBLE else View.GONE
                     },
                     { e -> log.error("Failed to refresh dictionary lists", e) }
                 )
