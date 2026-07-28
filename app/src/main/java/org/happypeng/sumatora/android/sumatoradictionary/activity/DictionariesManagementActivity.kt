@@ -139,29 +139,32 @@ class DictionariesManagementActivity : AppCompatActivity() {
                 checkUpdatesButton.isEnabled = true
                 checkUpdatesButton.setText(R.string.check_for_updates)
                 checkUpdatesSpinner.visibility = View.GONE
-                // No explicit refresh() needed - the manifest fetch this triggered writes to
-                // CachedManifestEntry, which the LiveData mediator below already reacts to.
-            }
-        }
 
-        // Show a toast when a manual check completes so the user knows whether anything was
-        // found. lastManualResult is reset to null in enqueueNow(); non-null means the worker
-        // finished and posted a result.
-        DictionaryUpdateWorker.lastManualResult.observe(this) { count ->
-            if (count != null) {
-                if (count > 0) {
-                    Toast.makeText(
-                        this,
-                        getString(R.string.dictionary_check_updates_found, count),
-                        Toast.LENGTH_LONG
-                    ).show()
-                } else {
-                    Toast.makeText(
-                        this,
-                        getString(R.string.dictionary_check_up_to_date),
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
+                // Query the DB for freshly-enqueued downloads to report what happened.
+                disposables.add(
+                    Single.fromCallable {
+                        persistentDatabaseComponent.database
+                            .remoteDictionaryObjectDao().all
+                            .count { it.downloadId > -1 }
+                    }
+                        .subscribeOn(Schedulers.io())
+                        .observeOn(AndroidSchedulers.mainThread())
+                        .subscribe { enqueued ->
+                            if (enqueued > 0) {
+                                Toast.makeText(
+                                    this,
+                                    getString(R.string.dictionary_check_updates_found, enqueued),
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            } else {
+                                Toast.makeText(
+                                    this,
+                                    getString(R.string.dictionary_check_up_to_date),
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        }
+                )
             }
         }
 

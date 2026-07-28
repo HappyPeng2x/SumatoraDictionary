@@ -20,7 +20,6 @@ import android.content.Context
 import android.util.Log
 import androidx.hilt.work.HiltWorker
 import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
@@ -57,8 +56,6 @@ class DictionaryUpdateWorker @AssistedInject constructor(
         val enqueued = DictionaryUpdateChecker.checkAndEnqueue(applicationContext, db, manifestUrl)
         Log.i(TAG, "Dictionary update check complete, enqueued $enqueued download(s)")
 
-        _lastManualResult.postValue(enqueued)
-
         // A manifest fetch failure (no network, host unreachable) isn't a worker failure worth
         // retrying aggressively - the next periodic run will just try again.
         return Result.success()
@@ -68,13 +65,6 @@ class DictionaryUpdateWorker @AssistedInject constructor(
         private const val TAG = "DictionaryUpdateWorker"
         private const val UNIQUE_PERIODIC_NAME = "dictionary_update_check"
         private const val UNIQUE_MANUAL_NAME = "dictionary_update_check_manual"
-
-        // Exposed so DictionariesManagementActivity can show a toast after a manual check
-        // completes. Null means "no check has run yet" — enqueueNow() resets it so the observer
-        // can distinguish a fresh run from a stale cached value. The periodic worker also posts
-        // here, but since it runs in the background with no observer, that's harmless.
-        private val _lastManualResult = MutableLiveData<Int?>()
-        val lastManualResult: LiveData<Int?> = _lastManualResult
 
         @JvmStatic
         fun enqueuePeriodic(context: Context) {
@@ -98,10 +88,6 @@ class DictionaryUpdateWorker @AssistedInject constructor(
         // this, and the worker itself handles a fetch failure gracefully (returns 0 enqueued).
         @JvmStatic
         fun enqueueNow(context: Context) {
-            // Reset so the observer in DictionariesManagementActivity can distinguish a fresh
-            // run from a stale cached value (null = "not yet run this cycle").
-            _lastManualResult.value = null
-
             val request = OneTimeWorkRequestBuilder<DictionaryUpdateWorker>()
                 .build()
 
