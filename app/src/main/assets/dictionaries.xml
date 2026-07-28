@@ -1,4 +1,4 @@
-<repository version="14" date="20260722">
+<repository version="18" date="20260726">
     <dictionary uri="dictionaries/sumatora_core.db.gz"
         type="core" description="Index" lang=""/>
     <dictionary uri="dictionaries/sumatora_kanji.db.gz"

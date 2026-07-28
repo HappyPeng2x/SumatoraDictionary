@@ -2,6 +2,40 @@
 
 ## [Unreleased]
 
+## [0.5.0-beta4] - 2026-07-28
+
+### Dictionary downloads
+
+- Fixed "Check for updates" and per-pack downloads hanging indefinitely on devices with
+  GrapheneOS's per-app Network permission switched off. That toggle drops the process from the
+  `inet` supplementary group at launch instead of going through the runtime-permission grant
+  table `checkSelfPermission()` reads, so WorkManager's network constraint and
+  `DownloadManager.enqueue()` both looked satisfied while nothing actually ran. Both flows now
+  probe real socket capability first and show a blocking dialog pointing at the app's Network
+  setting instead of silently stalling; a failed download enqueue is now treated as a hard
+  failure rather than a silently persisted row, and the download/install flow logs in detail to
+  the in-app log viewer for diagnosing a stuck download.
+- Bundled dictionary packs now trigger an immediate update check for optional downloaded packs on
+  every APK upgrade, instead of waiting for the 7-day periodic worker - closing the window where
+  an upgraded app could keep searching against a stale optional pack for an extended period if it
+  doesn't get back online right away.
+
+### Search
+
+- Fixed search results not refreshing when the search language changed - the result list and
+  entry-detail sheet kept showing the previous language's text indefinitely, even though the
+  "results found" count updated immediately.
+- Gloss/example lookups now resolve through each pack's stable JMdict-derived entry key instead
+  of raw sense/entry row IDs, so a pack that's briefly out of sync with a newer core pack (e.g.
+  right after an APK upgrade, before the catch-up check above finishes) can no longer silently
+  resolve to the wrong sense or entry. A pack built before this schema addition is detected and
+  treated as not installed rather than crashing.
+
+### Dictionary data
+
+- Updated the bundled dictionaries (core, kanji, pitch accent, English gloss, English examples)
+  from SumatoraIndex v14 to v18.
+
 ## [0.5.0-beta3] - 2026-07-22
 
 ### Language packs
