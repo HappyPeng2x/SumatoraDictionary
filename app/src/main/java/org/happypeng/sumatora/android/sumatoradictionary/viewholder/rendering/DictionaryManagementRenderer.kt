@@ -164,6 +164,10 @@ object DictionaryManagementRenderer {
                     text = context.getString(R.string.dictionary_status_failed)
                     setTextColor(ContextCompat.getColor(context, R.color.dict_status_error))
                 }
+                row.version == 0 && row.installed != null -> {
+                    text = context.getString(R.string.dictionary_needs_update)
+                    setTextColor(ContextCompat.getColor(context, R.color.dict_status_error))
+                }
                 else -> {
                     text = context.getString(
                         R.string.dictionary_version_caption, row.version, formatDate(row.date)

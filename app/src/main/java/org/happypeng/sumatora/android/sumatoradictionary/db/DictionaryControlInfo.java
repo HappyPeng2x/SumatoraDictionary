@@ -16,6 +16,9 @@
 
 package org.happypeng.sumatora.android.sumatoradictionary.db;
 
+import java.util.LinkedHashSet;
+import java.util.Set;
+
 // Holds the contents of sumatora_core.db's BuildMetadata table, read once at startup.
 public class DictionaryControlInfo {
     public static final int SUPPORTED_FORMAT_VERSION = 2;
@@ -23,6 +26,11 @@ public class DictionaryControlInfo {
     public long buildTimestamp = 0;
     public int formatVersion = 0;
     public int entryCount = 0;
+
+    // Populated by PersistentDatabaseInitialization.detachIncompatiblePacks() when a
+    // gloss/tatoeba pack's version is below MINIMUM_COMPATIBLE_GLOSS_VERSION. The
+    // Manage Dictionaries screen reads this to show a warning banner.
+    public final Set<String> incompatiblePacks = new LinkedHashSet<>();
 
     public boolean isSupported() {
         return formatVersion <= SUPPORTED_FORMAT_VERSION;

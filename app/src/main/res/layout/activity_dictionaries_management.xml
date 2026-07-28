@@ -83,6 +83,19 @@
                     </LinearLayout>
 
                     <TextView
+                        android:id="@+id/activity_dictionaries_management_warning"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:background="@drawable/bg_status_pill_pending"
+                        android:gravity="center"
+                        android:padding="10dp"
+                        android:text="@string/dictionary_pack_incompatible_warning"
+                        android:textColor="@color/dict_status_pending"
+                        android:textSize="13sp"
+                        android:visibility="gone" />
+
+                    <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="16dp"

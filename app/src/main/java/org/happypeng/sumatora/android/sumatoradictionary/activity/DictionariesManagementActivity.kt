@@ -74,6 +74,7 @@ class DictionariesManagementActivity : AppCompatActivity() {
 
     private lateinit var container: LinearLayout
     private lateinit var statusPill: TextView
+    private lateinit var warningBanner: TextView
     private lateinit var checkUpdatesButton: MaterialButton
     private lateinit var checkUpdatesSpinner: ProgressBar
 
@@ -100,6 +101,7 @@ class DictionariesManagementActivity : AppCompatActivity() {
 
         container = findViewById(R.id.activity_dictionaries_management_container)
         statusPill = findViewById(R.id.activity_dictionaries_management_status)
+        warningBanner = findViewById(R.id.activity_dictionaries_management_warning)
         checkUpdatesButton = findViewById(R.id.activity_dictionaries_management_check_updates)
         checkUpdatesSpinner = findViewById(R.id.activity_dictionaries_management_check_updates_spinner)
 
@@ -139,6 +141,27 @@ class DictionariesManagementActivity : AppCompatActivity() {
                 checkUpdatesSpinner.visibility = View.GONE
                 // No explicit refresh() needed - the manifest fetch this triggered writes to
                 // CachedManifestEntry, which the LiveData mediator below already reacts to.
+            }
+        }
+
+        // Show a toast when a manual check completes so the user knows whether anything was
+        // found. lastManualResult is reset to null in enqueueNow(); non-null means the worker
+        // finished and posted a result.
+        DictionaryUpdateWorker.lastManualResult.observe(this) { count ->
+            if (count != null) {
+                if (count > 0) {
+                    Toast.makeText(
+                        this,
+                        getString(R.string.dictionary_check_updates_found, count),
+                        Toast.LENGTH_LONG
+                    ).show()
+                } else {
+                    Toast.makeText(
+                        this,
+                        getString(R.string.dictionary_check_up_to_date),
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
             }
         }
 
@@ -240,6 +263,11 @@ class DictionariesManagementActivity : AppCompatActivity() {
                             this,
                             if (state.pendingUpdate) R.drawable.bg_status_pill_pending else R.drawable.bg_status_pill_ok
                         )
+
+                        val incompatiblePacks = persistentDatabaseComponent
+                            .dictionaryControlInfo.incompatiblePacks
+                        warningBanner.visibility = if (incompatiblePacks.isNotEmpty())
+                            View.VISIBLE else View.GONE
                     },
                     { e -> log.error("Failed to refresh dictionary lists", e) }
                 )

@@ -29,6 +29,10 @@
     <string name="dictionary_status_downloading">Downloading…</string>
     <string name="dictionary_status_failed">Download failed · tap to retry</string>
     <string name="dictionary_version_caption">v%1$d · %2$s</string>
+    <string name="dictionary_needs_update">Needs update · tap Check for updates</string>
+    <string name="dictionary_check_up_to_date">All dictionaries are up to date</string>
+    <string name="dictionary_check_updates_found">%1$d update(s) found — restart the app after downloading to apply them</string>
+    <string name="dictionary_pack_incompatible_warning">Some dictionary packs are outdated and incompatible with this app version. Tap Check for updates to fix them.</string>
 
     <string name="tag_icon_description">Tag icon</string>
     <string name="tag_input_hint">Add tag</string>

@@ -216,6 +216,41 @@ public abstract class PersistentDatabaseInitialization {
         }
     }
 
+    // Gloss/tatoeba packs built by SumatoraIndex before this version lack the entry_source_key /
+    // source_ord columns in the Sense table that the current app's cross-pack join queries rely on
+    // (see PersistentDatabaseComponent.fetchGlossText). Such packs attach without error but fail
+    // every query at runtime, producing silently empty search results. Detach them and set version
+    // to 0 so the next update check will download a compatible replacement.
+    private static final int MINIMUM_COMPATIBLE_GLOSS_VERSION = 12;
+
+    @WorkerThread
+    private static void detachIncompatiblePacks(@NonNull final PersistentDatabase persistentDatabase,
+                                                 @NonNull final DictionaryControlInfo controlInfo) {
+        List<InstalledDictionary> dictionaries = persistentDatabase.installedDictionaryDao().getAll();
+
+        for (InstalledDictionary d : dictionaries) {
+            if (!d.type.equals("gloss") && !d.type.equals("tatoeba")) {
+                continue;
+            }
+
+            // version == 0 means already flagged by a previous run or recovered as missing —
+            // nothing to probe.
+            if (d.version <= 0 || d.version >= MINIMUM_COMPATIBLE_GLOSS_VERSION) {
+                continue;
+            }
+
+            if (d.isAttached(persistentDatabase)) {
+                d.detach(persistentDatabase);
+            }
+
+            d.version = 0;
+            d.date = 0;
+            persistentDatabase.installedDictionaryDao().insert(d);
+
+            controlInfo.incompatiblePacks.add(d.getAlias());
+        }
+    }
+
     @WorkerThread
     private static List<DictionaryBookmark> readBackupBookmarks(@NonNull Context aApp) {
         File bookmarksBackup = new File(aApp.getFilesDir(), "bookmarks_backup.xml");
@@ -338,6 +373,8 @@ public abstract class PersistentDatabaseInitialization {
                 }
             }
         }
+
+        detachIncompatiblePacks(persistentDatabase, controlInfo);
 
         persistentDatabase.persistentSettingsDao().insertDefault(new PersistentSetting(Settings.REPOSITORY_URL,
                 context.getString(R.string.dictionaries_url)));
