@@ -93,20 +93,16 @@ class DictionaryUpdateWorker @AssistedInject constructor(
         }
 
         // "Check Now" in Settings, and the one-time catch-up fired from
-        // PersistentDatabaseComponent when the APK version changes - allowed over metered
-        // connections since both are either user-initiated or a rare one-off.
+        // PersistentDatabaseComponent when the APK version changes. No network constraint —
+        // DictionariesManagementActivity already probes real socket capability before calling
+        // this, and the worker itself handles a fetch failure gracefully (returns 0 enqueued).
         @JvmStatic
         fun enqueueNow(context: Context) {
             // Reset so the observer in DictionariesManagementActivity can distinguish a fresh
             // run from a stale cached value (null = "not yet run this cycle").
             _lastManualResult.value = null
 
-            val constraints = Constraints.Builder()
-                .setRequiredNetworkType(NetworkType.CONNECTED)
-                .build()
-
             val request = OneTimeWorkRequestBuilder<DictionaryUpdateWorker>()
-                .setConstraints(constraints)
                 .build()
 
             WorkManager.getInstance(context).enqueueUniqueWork(
