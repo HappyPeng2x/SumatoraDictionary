@@ -1,104 +1,173 @@
-# Dictionary Update Pipeline (design notes)
+# Dictionary Update Pipeline
 
-Not yet implemented. Written up after the schema v2 migration so it can be picked up later.
-
-**Order of work:** Phase 0b (suffix/names as GitHub Release downloads, per the schema v2 migration
-plan) → this (generalizes Phase 0b to *every* pack, plus lets already-bundled packs like
-core/gloss update without an APK reinstall) → desktop parity.
+**Status: implemented**, as of `v0.5.0-beta4`. Originally written up as a not-yet-built design
+after the schema v2 migration; superseded piece by piece over several releases without this doc
+being kept in sync, so treat everything below as a description of what actually ships, not a
+plan. See `~/Code/SumatoraIndex`'s `release-pipeline.md` for the publishing side (how
+`dictionaries.xml` and its release assets get produced/updated) - this doc only covers the
+app-side consumption of that manifest.
 
 ## Motivation
 
 JMdict/JMnedict/KANJIDIC2/Tatoeba get updated upstream over time, and SumatoraIndex rebuilds
-packs from them. Right now the only way to get a newer dictionary is to ship a new APK with new
-bundled assets. The goal: let the app check for and install a newer pack on its own, for every
-pack type (not just the optional suffix/names packs Phase 0b already needs download support for).
+packs from them. The app checks for and installs a newer pack on its own, for every pack type
+(not just the optional suffix/names packs that needed download support first).
 
-## What's already there, dormant
+## Hosting: SumatoraIndex
 
-Found while investigating this - the app already has half of this built and never wired up:
-
-- `PersistentDatabaseInitialization.java` already writes a `PersistentSetting` called
-  `REPOSITORY_URL` (`Settings.REPOSITORY_URL`), defaulting to
-  `https://sumatora.happypeng.org/dictionaries/v4/dictionaries.xml` - but nothing ever reads it
-  back. The app only ever parses the *bundled* `dictionaries.xml` asset.
-- `RemoteDictionaryObject.download()` wraps `android.app.DownloadManager` but has no caller.
-- `InstalledDictionary.isSuperiorVersion()` already compares `(version, date)` against another
-  `InstalledDictionary` - this is exactly the comparison a remote-update check needs, just
-  currently only used when reconciling against the bundled asset manifest.
-- `RemoteDictionaryObjectDao`/`AssetDictionaryObjectDao`/`LocalDictionaryObjectDao` Room DAOs
-  already exist for tracking these three dictionary-source kinds.
-
-So this is less "design something new" and more "finish connecting what's there."
-
-## Decisions made
-
-- **Hosting: GitHub Releases, unified, on SumatoraIndex.** Every pack (core, gloss_{lang}, pitch,
-  kanji, examples_{lang}, suffix, names) becomes a versioned Release asset on **SumatoraIndex**
-  (the repo that produces them), not `sumatora.happypeng.org` (the existing dormant default) and
-  not `SumatoraDictionary` (where Phase 0b's `OptionalDictionaryCatalog` pragmatically pointed
-  first, since that's where that work happened). Corrected once desktop/PWA clients entered the
-  picture: SumatoraIndex is the single upstream producer, so it's the one place every independent
-  client (Android, desktop, future PWA) should fetch from - see SumatoraIndex's
-  `release-pipeline.md` for the full reasoning and the migration from the Phase 0b URLs.
-  `R.string.dictionaries_url` now points at SumatoraIndex; `OptionalDictionaryCatalog`'s two
-  hardcoded suffix/names URLs still point at the old SumatoraDictionary release (still valid) until
-  SumatoraIndex's first automated release ships.
-- **Update trigger: automatic background check via WorkManager**, with a manual "Check Now"
-  button in Settings kept regardless (auto-check shouldn't remove the ability to force it).
+Every pack (core, gloss_{lang}, pitch, kanji, examples_{lang}, suffix, names, plus web-search/
+web-gloss packs used by the PWA client) is a versioned Release asset on
+**[SumatoraIndex](https://github.com/HappyPeng2x/SumatoraIndex)**, the repo that produces them -
+not `SumatoraDictionary`, so every independent client (Android, desktop, PWA) fetches from one
+shared place instead of coupling to whichever client repo happened to host things first.
+`R.string.dictionaries_url` (`app/src/main/res/values/strings.xml`) points at
+`https://raw.githubusercontent.com/HappyPeng2x/SumatoraIndex/master/dictionaries.xml` - a stable
+URL that always reflects the latest commit on SumatoraIndex's default branch, independent of
+whatever release tag is current. That URL is also the default written into the `REPOSITORY_URL`
+`PersistentSetting` on first run (`PersistentDatabaseInitialization.java`); it's user-editable
+from Settings, which is what a self-hosted mirror or a testing manifest would override.
 
 ## Manifest
 
-GitHub release-asset URLs embed the release tag (`.../releases/download/{tag}/{filename}`), so a
-manifest telling the app "here's the current version" needs a URL that does *not* change every
-release. Keep `dictionaries.xml` as a plain file served via
-`raw.githubusercontent.com/.../main/dictionaries.xml` (always reflects the latest commit on the
-default branch), whose entries point *at* the versioned release-asset URLs. Cutting a new release
-becomes: publish pack assets to a new release, update this one file, commit. That's a small,
-scriptable step in SumatoraIndex's release process - worth writing a helper script there, but it's
-a process detail, not an app concern.
+SumatoraIndex's live `dictionaries.xml` has more fields than the app actually reads.
+`BaseDictionaryObject.fromXML()` (`db/tools/BaseDictionaryObject.java`) only parses:
 
-Add a **SHA-256 field per `<dictionary>` entry** in the manifest schema. Nothing today validates a
-downloaded file before `ATTACH`ing it as SQLite; a truncated/corrupted download would otherwise
-risk a crash rather than a clean "download failed, retry."
+- Repository-level, once per manifest: `version`, `date`. **The whole manifest shares one
+  version/date pair, not one per pack** - every `<dictionary>` entry inherits the `<repository>`
+  element's `version`/`date` regardless of when that individual pack last actually changed.
+- Per `<dictionary>` element: `uri`, `description`, `type`, `lang` (defaults to `""`), `sha256`
+  (defaults to `""`, which skips checksum verification for that entry - see below).
 
-## Download + install flow
+`plain_uri`, `plain_sha256`, `changelog`, and `changelog_sha256` - all present in SumatoraIndex's
+current manifest - are silently ignored by the parser; there's no app code path that fetches an
+uncompressed pack or surfaces a changelog. Adding either is a matter of extending
+`BaseDictionaryObject.fromXML()` and whatever consumes the result, not a manifest-schema change.
 
-1. New dependency: `androidx.work:work-runtime` (not currently in the project).
-2. A `PeriodicWorkRequest` (weekly is a reasonable default - JMdict doesn't need daily
-   granularity), constrained to Wi-Fi + not-low-battery given pack sizes (core alone is
-   ~94M compressed), enqueued via `enqueueUniquePeriodicWork` so re-scheduling on app start is
-   idempotent.
-3. The worker: fetch the manifest -> compare each `(type, lang, version, date)` against
-   `InstalledDictionary` using the existing `isSuperiorVersion()` check -> for anything newer,
-   persist a `RemoteDictionaryObject` row and call `.download(downloadManager, ...)`.
-4. A **manifest-registered** `BroadcastReceiver` for `DownloadManager.ACTION_DOWNLOAD_COMPLETE`
-   (not just runtime-registered, so it still fires if the app isn't open) verifies the checksum,
-   decompresses to a **new, version-suffixed filename**, updates `InstalledDictionary`/marks the
-   new file "pending", and posts a notification ("Dictionary update ready - restart Sumatora to
-   apply").
-5. **Never hot-swap a live-attached SQLite file.** The dictionary files are `ATTACH`ed to Room's
-   live connection; overwriting one in place risks corruption or a crash mid-query. The actual
-   swap (detach old alias if attached / delete old file / promote the new file's
-   `InstalledDictionary` row to active) happens in the existing `initializeDatabase()`
-   reconciliation step on the next cold start, before anything gets attached for that session.
-   This means "restart the app to get the update" - a normal, well-understood UX for content
-   updates, not a limitation worth engineering around for v1.
+## How it works today
 
-## Settings UI
+**Startup wiring.** `DictionaryApplication.onCreate()` calls
+`DictionaryUpdateWorker.enqueuePeriodic(this)`, which schedules a `PeriodicWorkRequest` (7 days,
+`NetworkType.UNMETERED` + `setRequiresBatteryNotLow(true)`) via
+`enqueueUniquePeriodicWork(..., ExistingPeriodicWorkPolicy.KEEP, ...)` - `KEEP` means this
+schedule survives repeated `onCreate()` calls without resetting. WorkManager is initialized with
+a Hilt-aware `WorkerFactory` (the default `androidx.startup` WorkManager initializer is disabled
+in `AndroidManifest.xml` in favor of this manual one).
 
-Extend the existing per-pack list (`DictionaryObjectViewHolder` already renders one row per
-dictionary object) with current version/date (via each pack's `BuildMetadata`, same mechanism
-`DictionaryControlInfo` already uses for the core pack), a manual "Check Now" action, and download
-progress.
+**Manual "Check Now".** Lives in `DictionariesManagementActivity.kt` (not Settings), as a button
+that first probes real socket capability (see "Network-blocked detection" below), then calls
+`DictionaryUpdateWorker.enqueueNow(this)` - a separate `OneTimeWorkRequest`
+(`NetworkType.CONNECTED`, looser than the periodic job's `UNMETERED`) run via
+`enqueueUniqueWork(..., ExistingWorkPolicy.REPLACE, ...)`. Both the periodic and manual requests
+run the same `DictionaryUpdateWorker.doWork()`. The Activity observes
+`DictionaryUpdateWorker.manualCheckStatus()` (a `LiveData<List<WorkInfo>>`) to drive the
+button's spinner.
 
-## Explicitly out of scope for v1
+**Check flow.** `doWork()` reads `Settings.REPOSITORY_URL` (falling back to
+`R.string.dictionaries_url`) and delegates to `DictionaryUpdateChecker.checkAndEnqueue()`:
+
+1. `RemoteManifestFetcher.fetch()` GETs the manifest via plain `HttpURLConnection` (15s
+   connect/read timeout), parsed via `BaseDictionaryObject.fromXML` into `RemoteDictionaryObject`
+   rows. Any failure aborts the check for this cycle - no retry/backoff, it just waits for the
+   next scheduled run.
+2. The fetched manifest overwrites the `CachedManifestEntry` table - this cache is what
+   `OptionalDictionaryCatalog.resolve()` reads later to version-match not-yet-installed optional
+   packs against whatever core is currently installed.
+3. For each remote entry, looks up the matching `InstalledDictionary` by `(type, lang)` and
+   **skips anything not already installed** - the update checker never auto-installs a pack the
+   user hasn't opted into; that's a separate, explicit "install this optional pack" flow through
+   `OptionalDictionaryCatalog`/`DictionariesManagementActivity`.
+4. Compares via `isSuperiorVersion()` (`version > other.version || (version >= other.version &&
+   date > other.date)`), skips if a pending update at least as new is already queued, and skips
+   if a download for that `(type, lang)` is already in flight.
+5. Otherwise calls `RemoteDictionaryObject.download()` and persists the row.
+
+**Download.** `RemoteDictionaryObject.download()` uses `android.app.DownloadManager` (not OkHttp
+or a plain HTTP client), destination `<externalFilesDir>/downloads/<type>-<lang>.db.gz`,
+`setAllowedOverRoaming(false)`. A `downloadId < 0` result throws `IllegalStateException` instead
+of silently persisting a broken row (fixed alongside the network-blocked detection below - this
+used to be a silent failure mode).
+
+**Network-blocked detection.** GrapheneOS's per-app Network permission toggle doesn't flow
+through `checkSelfPermission()` - it drops the process from the `inet` supplementary group at
+launch instead, which made `DownloadManager.enqueue()` (and a stuck `WorkManager` job whose
+`NetworkType.CONNECTED` constraint reads as satisfied system-wide even though this app can't
+actually reach it) fail with no usable signal. `DictionariesManagementActivity.kt` has a private
+`hasSocketCapability()` check (opens/closes a throwaway `DatagramSocket`) used before both a
+manual pack download and a manual "Check Now" tap; on failure it shows a blocking dialog that
+deep-links to the app's system Network setting.
+
+**Known gap:** this probe only guards the two Activity-initiated paths above. The *background*
+periodic-worker download path (`DictionaryUpdateChecker.checkAndEnqueue()` →
+`RemoteDictionaryObject.download()`) has no equivalent pre-check, so on a device with Network
+access blocked, the periodic worker would hit the same `IllegalStateException` uncaught,
+failing that check cycle rather than degrading gracefully. Worth fixing the same way if it comes
+up in the wild - the background job just silently doesn't update instead of visibly erroring,
+which is lower-severity than the foreground hang this was originally fixed for, but still a gap.
+
+**Checksum verification.** `DictionaryDownloadCompleteReceiver.verifyChecksum()` computes the
+downloaded file's SHA-256 and compares it (case-insensitively) against the manifest's `sha256`
+for that entry. If `sha256` was empty in the manifest, verification is skipped and the download
+is trusted as-is.
+
+**Install / download-complete handling.** `DictionaryDownloadCompleteReceiver` is
+manifest-registered (not runtime-registered, so it still fires if the app process was killed
+mid-download) for `DownloadManager.ACTION_DOWNLOAD_COMPLETE`, and `exported="true"` since
+`DownloadManager` delivers that broadcast at the system uid. After checksum verification:
+
+- A **brand-new** pack (no existing `InstalledDictionary` row - e.g. the first time an optional
+  language is installed) decompresses immediately, inserts into `InstalledDictionary`, and
+  attaches it live.
+- An **update to an already-installed** pack decompresses under a version-suffixed filename and
+  stashes it as `pendingFile`/`pendingVersion`/`pendingDate` on the existing row, deferring the
+  actual swap - see below.
+- On failure, the `RemoteDictionaryObject` row is kept (not deleted) with `downloadId = -1,
+  failed = true`, so the Manage Dictionaries screen can offer "Download failed · tap to retry".
+- A notification is posted on both success and failure (`dictionary_updates` channel):
+  "Dictionary update ready - restart Sumatora to apply" for a pending update, a plain completion
+  notification for a fresh optional-pack install, or a failure notification.
+
+**Never hot-swap a live-attached SQLite file.** `PersistentDatabaseInitialization
+.initializeDatabase()` calls `promotePendingUpdate()` for every `InstalledDictionary` with
+`hasPendingUpdate()` (i.e. `pendingFile != null`) *before* anything gets attached for that
+session - deletes the old file and promotes the pending one to `file`/`version`/`date`. This
+means "restart the app to get the update," which is why the notification says exactly that.
+
+**Catch-up check on APK upgrade.** `PersistentDatabaseComponent.checkAppUpgrade()` runs after
+`initializeDatabase()` on every cold start: reads the `lastSeenVersionCode` `PersistentSetting`,
+compares it against `BuildConfig.VERSION_CODE`, and if they differ (and this isn't a first
+install, where `lastSeenVersionCode` is still unset) calls `DictionaryUpdateWorker.enqueueNow()`
+- the same one-time request the manual "Check Now" button uses. This closes the gap where bundled
+packs (core/kanji/pitch/gloss_eng/tatoeba_eng) jump to the new version immediately on every APK
+upgrade (they're just re-extracted from assets), but *optional* downloaded packs would otherwise
+sit stale until the 7-day periodic worker or a manual check happened to run.
+
+**Settings UI.** `DictionariesManagementActivity.kt` + `DictionaryManagementRenderer.kt`: one
+grouped list (by type, with a header when more than one language variant of a type is present),
+each row showing version/date or a "Downloading…"/"Download failed · tap to retry" caption, a
+per-row trailing control (spinner/retry/delete/install depending on state), a combined
+"Up to date" / "Update ready · restart to apply" status pill at the top, and the "Check for
+updates" button. The whole screen is reactive - a `MediatorLiveData` over the installed/remote/
+cached-manifest Room DAOs - so it updates itself if a background download completes while some
+other screen is in the foreground.
+
+## Optional-pack fallback URLs (`OptionalDictionaryCatalog`)
+
+Before the first successful manifest fetch (freshest on first app launch), suffix/names/optional
+gloss+examples packs resolve through a fallback URL built as
+`https://github.com/HappyPeng2x/SumatoraIndex/releases/download/dictionaries-v{N}/...`, where `N`
+is the **currently installed core pack's version**, not a hardcoded pin - this self-corrects as
+the bundled core version moves forward across app releases instead of drifting stale (it used to
+be pinned to a fixed `dictionaries-v8` URL on the old `SumatoraDictionary` repo; fixed in commit
+`2495677`). Once a manifest fetch succeeds, `OptionalDictionaryCatalog.resolve()` prefers the
+freshly cached manifest entries instead, when their `(version, date)` match the installed core.
+
+## Explicitly out of scope
 
 - **Binary diffing between versions.** Full-file re-download per update is simple and safe;
   diffing (bsdiff/courgette-style) would cut bandwidth for routine word-count-only updates but
   needs SumatoraIndex to also publish diff artifacts and the app to bundle a patch-apply library.
-  Worth reconsidering only if update frequency/bandwidth complaints make it necessary - mitigate
-  first by having SumatoraIndex release on a deliberately spaced cadence (e.g. monthly) rather
-  than every upstream JMdict update.
-- **SumatoraIndex's release automation itself** (cutting releases, updating the manifest file,
-  computing checksums) is a prerequisite for this feature but is a SumatoraIndex/process concern,
-  not app code.
+  No code for this exists anywhere in the app. Worth reconsidering only if update
+  frequency/bandwidth complaints make it necessary - mitigated today by SumatoraIndex releasing
+  on a deliberately spaced cadence (monthly) rather than every upstream JMdict update.
+- **Per-pack changelog display.** The manifest already carries `changelog`/`changelog_sha256`
+  (see "Manifest" above); nothing in the app fetches or shows it yet.
