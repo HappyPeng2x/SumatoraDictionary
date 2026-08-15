@@ -220,7 +220,7 @@ public class SearchTierPerformanceTest {
         final String glossAliasOrNull = glossInstalled ? DictionarySearchQueryTool.glossAlias(languageSettings.lang) : null;
 
         final String renderExpr = DictionarySearchQueryTool.buildRenderJsonExpr(
-                "SearchTerm.entry_id", "SearchTerm.form_id", glossAliasOrNull, null);
+                "SearchTerm.entry_id", glossAliasOrNull, null);
 
         // Same shape as the pre-fix SQL_QUERY_BASIC_TIER (see git history around "Precompute
         // search-result render payload at insert time" and its later bounding) - just SELECTing

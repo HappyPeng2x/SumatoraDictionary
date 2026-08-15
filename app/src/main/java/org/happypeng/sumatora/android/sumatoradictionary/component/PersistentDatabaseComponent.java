@@ -160,44 +160,30 @@ public class PersistentDatabaseComponent {
     }
 
 
+    // Which specific form a search hit matched never changes what's displayed - the entry's
+    // designated primary form is always the headword, and every writing/reading the entry has is
+    // always listed (below), regardless of which one the search happened to match. Showing a
+    // different headword/reading set depending on the search term would mean the same entry
+    // renders inconsistently across searches, which is worse than always resolving through the
+    // matched form's paired writing ever was; the pwa client (sqlite.worker.ts/gitender.ts) works
+    // the same way, always deriving the headline from the primary form.
     private static final String FORM_QUERY_PRIMARY =
             "SELECT text, reading, form_type, form_id, is_common FROM %s.EntryForm WHERE entry_id = ? AND is_primary = 1 LIMIT 1";
 
-    // The specific form a search hit matched (DictionaryQueryResult.formId) - e.g. 発条 matched
-    // via a rK kanji spelling should still show 発条 rather than collapsing to the entry's
-    // kana-only primary reading. is_search_only forms (JMdict sK/sk) are excluded even when
-    // matched, since those exist purely to be found, not displayed.
-    private static final String FORM_QUERY_BY_ID =
-            "SELECT text, reading, form_type, form_id, is_common FROM %s.EntryForm WHERE form_id = ? AND is_search_only = 0 LIMIT 1";
-
-    // Which SearchTerm row matched should only decide what gets highlighted, never make the app
-    // hide content that exists on the entry - so a match on the bare kana reading still pairs it
-    // with a kanji spelling here, the same way a match on a kanji form already shows its reading.
-    private static final String FORM_QUERY_PAIRED_WRITING =
-            "SELECT text, reading, form_type, form_id, is_common FROM %s.EntryForm "
-                    + "WHERE entry_id = ? AND form_type = 'writing' AND reading = ? AND is_search_only = 0 "
-                    + "ORDER BY is_primary DESC, score DESC, ord LIMIT 1";
-
-    // Other kanji spellings sharing the exact reading being displayed - the list row only shows
-    // one furigana reading, so mixing in a spelling read differently would look like it shares
-    // the same pronunciation. Excludes the displayed form itself and is_search_only forms.
-    // Furigana is joined in directly (grouped in code below) instead of a separate query per
-    // alternate writing - one round trip instead of one query per result set.
-    private static final String FORM_QUERY_ALTERNATE_WRITINGS =
-            "SELECT ef.text, ef.form_id, ffs.base, ffs.ruby FROM %s.EntryForm ef "
-                    + "LEFT JOIN %s.FormFuriganaSegment ffs ON ffs.form_id = ef.form_id "
-                    + "WHERE ef.entry_id = ? AND ef.form_type = 'writing' AND ef.is_search_only = 0 "
-                    + "AND ef.form_id != ? AND ef.reading = (SELECT reading FROM %s.EntryForm WHERE form_id = ?) "
-                    + "ORDER BY ef.is_primary DESC, ef.score DESC, ef.ord, ffs.ord";
-
-    // Other readings the displayed kanji spelling itself can take (e.g. 二 also reads ふた/ふ/ふう) -
-    // the search could have hit any of them, but furigana only ever shows the one that was
-    // actually matched/promoted, so a different valid reading would otherwise be invisible short
-    // of opening the detail sheet's forms table.
+    // Every other reading the entry has, whether or not it's tied to the displayed kanji spelling
+    // (e.g. 猿滑's しび still shows up next to 百日紅's headword) or has no kanji pairing at all
+    // (bare form_type='reading' rows) - excludes the primary reading itself and is_search_only
+    // forms. Deduplicated by reading text since the same reading can appear on several writing
+    // rows (e.g. さるすべり under both 百日紅 and 猿滑); ordered by the best tier/position any of
+    // those rows has.
     private static final String FORM_QUERY_ALTERNATE_READINGS =
-            "SELECT reading FROM %s.EntryForm WHERE entry_id = ? AND form_type = 'writing' AND text = ? "
-                    + "AND is_search_only = 0 AND reading != ? "
-                    + "ORDER BY is_primary DESC, score DESC, ord";
+            "SELECT r FROM (SELECT r, MAX(sc) AS msc, MIN(mo) AS mmo FROM ("
+                    + "SELECT reading AS r, score AS sc, ord AS mo FROM %s.EntryForm "
+                    + "WHERE entry_id = ? AND form_type = 'writing' AND is_search_only = 0 "
+                    + "UNION ALL "
+                    + "SELECT text AS r, score AS sc, ord AS mo FROM %s.EntryForm "
+                    + "WHERE entry_id = ? AND form_type = 'reading' AND is_search_only = 0) "
+                    + "WHERE r != ? GROUP BY r ORDER BY msc DESC, mmo ASC)";
 
     private static final class DisplayForm {
         @Nullable String text;
@@ -207,42 +193,12 @@ public class PersistentDatabaseComponent {
     }
 
     @WorkerThread
-    private List<EntryListSummary.AlternateWriting> fetchAlternateWritings(SupportSQLiteDatabase readable, String pack,
-                                                                            long entryId, long formId) {
-        List<EntryListSummary.AlternateWriting> result = new ArrayList<>();
-        Map<Long, EntryListSummary.AlternateWriting> byFormId = new LinkedHashMap<>();
-        try {
-            Cursor cur = readable.query(String.format(FORM_QUERY_ALTERNATE_WRITINGS, pack, pack, pack),
-                    new Object[]{entryId, formId, formId});
-            if (cur != null) {
-                while (cur.moveToNext()) {
-                    long altFormId = cur.getLong(1);
-                    EntryListSummary.AlternateWriting alt = byFormId.get(altFormId);
-                    if (alt == null) {
-                        alt = new EntryListSummary.AlternateWriting();
-                        alt.text = cur.getString(0);
-                        byFormId.put(altFormId, alt);
-                        result.add(alt);
-                    }
-                    final String base = cur.getString(2);
-                    if (base != null) {
-                        alt.furiganaSegments.add(new EntryListSummary.FuriganaSegment(base, cur.getString(3)));
-                    }
-                }
-                cur.close();
-            }
-        } catch (SQLException ignored) {
-        }
-        return result;
-    }
-
-    @WorkerThread
     private List<String> fetchAlternateReadings(SupportSQLiteDatabase readable, String pack,
-                                                 long entryId, String text, String matchedReading) {
+                                                 long entryId, String primaryReading) {
         List<String> result = new ArrayList<>();
         try {
-            Cursor cur = readable.query(String.format(FORM_QUERY_ALTERNATE_READINGS, pack),
-                    new Object[]{entryId, text, matchedReading});
+            Cursor cur = readable.query(String.format(FORM_QUERY_ALTERNATE_READINGS, pack, pack),
+                    new Object[]{entryId, entryId, primaryReading});
             if (cur != null) {
                 while (cur.moveToNext()) {
                     result.add(cur.getString(0));
@@ -254,47 +210,21 @@ public class PersistentDatabaseComponent {
         return result;
     }
 
-    // Picks the form to show as headword+reading: the form that actually matched the search hit
-    // when there is one and it's displayable, otherwise the entry's globally-designated primary
-    // form (used for match kinds with no specific form, e.g. gloss/bookmark-listing hits).
+    // Always the entry's globally-designated primary form - deliberately ignores which specific
+    // form a search hit matched, so the same entry always renders the same headword/reading no
+    // matter which term found it (see the FORM_QUERY_PRIMARY comment above).
     @WorkerThread
-    private DisplayForm fetchDisplayForm(SupportSQLiteDatabase readable, String pack, long entryId,
-                                          @Nullable Long matchedFormId) {
+    private DisplayForm fetchDisplayForm(SupportSQLiteDatabase readable, String pack, long entryId) {
         final DisplayForm result = new DisplayForm();
         try {
-            Cursor cur = null;
-            if (matchedFormId != null) {
-                cur = readable.query(String.format(FORM_QUERY_BY_ID, pack), new Object[]{matchedFormId});
-                if (cur != null && cur.moveToFirst()) {
-                    if ("reading".equals(cur.getString(2))) {
-                        Cursor pairedCur = readable.query(String.format(FORM_QUERY_PAIRED_WRITING, pack),
-                                new Object[]{entryId, cur.getString(0)});
-                        if (pairedCur != null) {
-                            if (pairedCur.moveToFirst()) {
-                                cur.close();
-                                cur = pairedCur;
-                            } else {
-                                pairedCur.close();
-                            }
-                        }
-                    }
-                } else if (cur != null) {
-                    cur.close();
-                    cur = null;
-                }
-            }
-            if (cur == null) {
-                cur = readable.query(String.format(FORM_QUERY_PRIMARY, pack), new Object[]{entryId});
-                if (cur != null && !cur.moveToFirst()) {
-                    cur.close();
-                    cur = null;
-                }
-            }
+            Cursor cur = readable.query(String.format(FORM_QUERY_PRIMARY, pack), new Object[]{entryId});
             if (cur != null) {
-                result.text = cur.getString(0);
-                result.reading = "writing".equals(cur.getString(2)) ? cur.getString(1) : null;
-                result.formId = cur.getLong(3);
-                result.isCommon = cur.getInt(4) != 0;
+                if (cur.moveToFirst()) {
+                    result.text = cur.getString(0);
+                    result.reading = "writing".equals(cur.getString(2)) ? cur.getString(1) : null;
+                    result.formId = cur.getLong(3);
+                    result.isCommon = cur.getInt(4) != 0;
+                }
                 cur.close();
             }
         } catch (SQLException ignored) {
@@ -839,11 +769,14 @@ public class PersistentDatabaseComponent {
 
     // Every kanji+reading combination for the entry, for the "forms" table - excludes
     // is_search_only forms (JMdict sK/sk), same as the display-form picker already does.
-    // Kana-only ("∅" column) rows are also excluded unless some sense actually carries JMdict's
-    // "uk" (usually kana) tag - every reading gets a bare form_type='reading' row regardless of
-    // real-world usage (it exists so kana-only search works even for kanji-only words), so
-    // without the uk signal the "∅" column would falsely suggest the word is commonly written
-    // without its kanji.
+    // Every reading gets a bare form_type='reading' row regardless of real-world usage (it exists
+    // so kana-only search works even for kanji-only words), so a bare reading row is only kept as
+    // a genuine "∅" (no kanji) entry when its text never shows up as the `reading` on one of this
+    // entry's own 'writing' rows - i.e. no kanji spelling actually pairs with it. This mirrors how
+    // the pwa client resolves the same table (bridging vs. kana-only readings) instead of gating
+    // the whole entry on JMdict's "uk" tag, which either dropped genuinely kanji-less readings
+    // entirely (entry has no uk-tagged sense) or falsely paired every reading with "∅" (entry has
+    // one uk-tagged sense, however narrow).
     @WorkerThread
     private List<EntryDetail.FormRow> fetchEntryForms(SupportSQLiteDatabase readable, long entryId) {
         List<EntryDetail.FormRow> result = new ArrayList<>();
@@ -851,11 +784,10 @@ public class PersistentDatabaseComponent {
             Cursor cur = readable.query(
                     "SELECT text, reading, form_type, is_primary, is_common, score FROM core.EntryForm "
                             + "WHERE entry_id = ? AND is_search_only = 0 "
-                            + "AND (form_type != 'reading' OR EXISTS ("
-                            + "SELECT 1 FROM core.SenseGroupTag "
-                            + "JOIN core.SenseGroup ON SenseGroup.sense_group_id = SenseGroupTag.sense_group_id "
-                            + "JOIN core.Tag ON Tag.tag_id = SenseGroupTag.tag_id "
-                            + "WHERE SenseGroup.entry_id = EntryForm.entry_id AND Tag.code = 'uk')) "
+                            + "AND (form_type != 'reading' OR NOT EXISTS ("
+                            + "SELECT 1 FROM core.EntryForm w "
+                            + "WHERE w.entry_id = EntryForm.entry_id AND w.form_type = 'writing' "
+                            + "AND w.is_search_only = 0 AND w.reading = EntryForm.text)) "
                             + "ORDER BY ord",
                     new Object[]{entryId});
             if (cur != null) {
@@ -883,7 +815,7 @@ public class PersistentDatabaseComponent {
         final SupportSQLiteDatabase readable = getDatabase().getOpenHelper().getReadableDatabase();
         final String pack = isName ? "names" : "core";
 
-        final DisplayForm displayForm = fetchDisplayForm(readable, pack, entryId, formId);
+        final DisplayForm displayForm = fetchDisplayForm(readable, pack, entryId);
         detail.primaryText = displayForm.text;
         detail.primaryReading = displayForm.reading;
         detail.isPriority = displayForm.isCommon;
@@ -917,9 +849,9 @@ public class PersistentDatabaseComponent {
             return detail;
         }
 
-        if (displayForm.text != null && displayForm.reading != null) {
-            detail.alternateReadings = fetchAlternateReadings(readable, pack, entryId,
-                    displayForm.text, displayForm.reading);
+        if (displayForm.text != null) {
+            String primaryReading = displayForm.reading != null ? displayForm.reading : displayForm.text;
+            detail.alternateReadings = fetchAlternateReadings(readable, pack, entryId, primaryReading);
         }
 
         long pitchFormId = formId != null ? formId : displayForm.formId;
@@ -961,17 +893,17 @@ public class PersistentDatabaseComponent {
                     }
 
                     List<EntryDetail.Sense> senses = new ArrayList<>();
-                    // SenseGroup is 1:1 with the source sense (schema-v2.md), so every sense
-                    // surviving the filter below shares the same SenseAppliesToForm set - resolve
-                    // it once from whichever sense_id is seen first.
+                    // Every sense in the group is always included, regardless of which form was
+                    // searched - a stagk/stagr restriction (SenseAppliesToForm) becomes the group's
+                    // restrictionLabel below, not a filter that hides the sense depending on what
+                    // was searched (matches the pwa client, which never filters senses by matched
+                    // form either). SenseGroup is 1:1 with the source sense (schema-v2.md), so every
+                    // sense here shares the same SenseAppliesToForm set - resolve it once from
+                    // whichever sense_id is seen first.
                     List<Long> restrictedFormIds = null;
                     Cursor senseCur = readable.query(
-                            "SELECT sense_id FROM core.Sense WHERE sense_group_id = ? AND "
-                                    + "(NOT EXISTS (SELECT 1 FROM core.SenseAppliesToForm a WHERE a.sense_id = Sense.sense_id) "
-                                    + "OR ? IS NULL "
-                                    + "OR EXISTS (SELECT 1 FROM core.SenseAppliesToForm a WHERE a.sense_id = Sense.sense_id AND a.form_id = ?)) "
-                                    + "ORDER BY ord",
-                            new Object[]{groupId, formId, formId});
+                            "SELECT sense_id FROM core.Sense WHERE sense_group_id = ? ORDER BY ord",
+                            new Object[]{groupId});
                     if (senseCur != null) {
                         while (senseCur.moveToNext()) {
                             long senseId = senseCur.getLong(0);

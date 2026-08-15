@@ -71,7 +71,7 @@ public class BookmarkImportQueryTool {
                 && DictionarySearchQueryTool.isInstalled(installedDictionaries, "gloss", persistentLanguageSettings.backupLang);
         @Nullable final String glossAliasOrNull = glossInstalled ? DictionarySearchQueryTool.glossAlias(persistentLanguageSettings.lang) : null;
         @Nullable final String backupGlossAliasOrNull = glossBackupInstalled ? DictionarySearchQueryTool.glossAlias(persistentLanguageSettings.backupLang) : null;
-        final String renderJsonExpr = DictionarySearchQueryTool.buildRenderJsonExpr("Entry.entry_id", null, glossAliasOrNull, backupGlossAliasOrNull);
+        final String renderJsonExpr = DictionarySearchQueryTool.buildRenderJsonExpr("Entry.entry_id", glossAliasOrNull, backupGlossAliasOrNull);
 
         deleteStatement = db.compileStatement(DictionarySearchQueryTool.SQL_QUERY_DELETE);
         queryStatement = db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT, renderJsonExpr));

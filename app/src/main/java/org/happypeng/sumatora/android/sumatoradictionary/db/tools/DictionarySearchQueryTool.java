@@ -125,36 +125,14 @@ public class DictionarySearchQueryTool {
                     + "JOIN core.Entry ON Entry.source_key = CAST(DictionaryBookmark.seq AS TEXT) "
                     + "WHERE %s";
 
-    // One correlated scalar subquery per field instead of a single joined row, since plain SQLite
-    // (no CTEs/LATERAL relied on here for compatibility) can't cheaply name and reuse a correlated
-    // subquery's result across sibling expressions - each is a cheap indexed point lookup
-    // (measured ~20 microseconds/row end to end against the bookmark-listing tier). Resolves
-    // exactly like fetchDisplayForm: prefer the specific matched form (promoted to its paired
-    // writing if the match itself is a bare reading), falling back to the entry's primary form
-    // when there's no matched form_id at all (bookmark listing, gloss hits) or the matched one
-    // turns out to be search-only. pack is "core" or "names"; entryIdExpr/matchedFormIdExpr are
-    // SQL expressions correlated to the enclosing row (matchedFormIdExpr null means always use the
-    // primary form). See PersistentDatabaseComponent.parsePrecomputedSummary, the client-side
-    // counterpart this must stay in sync with.
-    private static String buildChosenFormIdExpr(String pack, String entryIdExpr, @Nullable String matchedFormIdExpr) {
-        final String primaryFormId = "(SELECT form_id FROM " + pack + ".EntryForm WHERE entry_id = " + entryIdExpr
+    // Always the entry's globally-designated primary form, regardless of which specific form a
+    // search hit matched - the same entry must render the same headword/reading/sense set no
+    // matter which term found it (see PersistentDatabaseComponent.FORM_QUERY_PRIMARY, the
+    // client-side counterpart this must stay in sync with; also matches the pwa client, which
+    // never threads a matched form into its entry-detail/summary assembly at all).
+    private static String buildPrimaryFormIdExpr(String pack, String entryIdExpr) {
+        return "(SELECT form_id FROM " + pack + ".EntryForm WHERE entry_id = " + entryIdExpr
                 + " AND is_primary = 1 LIMIT 1)";
-        if (matchedFormIdExpr == null) {
-            return primaryFormId;
-        }
-        final String matchedValidFormId = "(SELECT form_id FROM " + pack + ".EntryForm WHERE form_id = " + matchedFormIdExpr
-                + " AND is_search_only = 0 LIMIT 1)";
-        final String matchedFormType = "(SELECT form_type FROM " + pack + ".EntryForm WHERE form_id = " + matchedFormIdExpr
-                + " AND is_search_only = 0 LIMIT 1)";
-        final String matchedFormText = "(SELECT text FROM " + pack + ".EntryForm WHERE form_id = " + matchedFormIdExpr
-                + " AND is_search_only = 0 LIMIT 1)";
-        final String pairedWritingFormId = "(SELECT form_id FROM " + pack + ".EntryForm WHERE entry_id = " + entryIdExpr
-                + " AND form_type = 'writing' AND reading = " + matchedFormText + " AND is_search_only = 0 "
-                + "ORDER BY is_primary DESC, score DESC, ord LIMIT 1)";
-        return "COALESCE("
-                + "(CASE WHEN " + matchedFormType + " = 'reading' THEN " + pairedWritingFormId + " END), "
-                + matchedValidFormId + ", "
-                + primaryFormId + ")";
     }
 
     // Word-entry (core pack) render payload: headword/furigana/alt-forms + sense groups. glossAlias
@@ -169,20 +147,16 @@ public class DictionarySearchQueryTool {
     // entry ends up with some senses in the main language and others in backup, not an all-or-
     // nothing choice for the whole entry. 'usedBackupLang' here stays entry-wide ("does the main
     // language have zero senses at all for this entry") and is only a diagnostic signal now, not
-    // something the parse depends on. matchedFormIdExpr null means this tier never carries a
-    // specific matched form (bookmark listing, gloss hits) - the sense-applies-to-form filter is
-    // skipped in that case (see senseFormFilter below).
-    static String buildRenderJsonExpr(String entryIdExpr, @Nullable String matchedFormIdExpr,
-                                               @Nullable String glossAlias, @Nullable String backupGlossAlias) {
-        final String chosenFormId = buildChosenFormIdExpr("core", entryIdExpr, matchedFormIdExpr);
+    // something the parse depends on. Every sense is always included regardless of which form the
+    // search matched - restrictedFormsBySenseExpr below still carries the full stagk/stagr
+    // restriction data so the client can label a restricted sense group, but no longer uses it to
+    // hide senses depending on what was searched (matches the pwa client, which always shows every
+    // sense with an appliesToForms label instead of filtering).
+    static String buildRenderJsonExpr(String entryIdExpr, @Nullable String glossAlias, @Nullable String backupGlossAlias) {
+        final String chosenFormId = buildPrimaryFormIdExpr("core", entryIdExpr);
         final String chosenFormText = "(SELECT text FROM core.EntryForm WHERE form_id = " + chosenFormId + ")";
-        final String chosenFormRawReading = "(SELECT reading FROM core.EntryForm WHERE form_id = " + chosenFormId + ")";
         final String chosenFormGatedReading = "(SELECT CASE WHEN form_type = 'writing' THEN reading ELSE NULL END "
                 + "FROM core.EntryForm WHERE form_id = " + chosenFormId + ")";
-        final String senseFormFilter = matchedFormIdExpr == null ? "1 = 1"
-                : "(NOT EXISTS (SELECT 1 FROM core.SenseAppliesToForm a WHERE a.sense_id = s.sense_id) "
-                        + "OR " + matchedFormIdExpr + " IS NULL "
-                        + "OR EXISTS (SELECT 1 FROM core.SenseAppliesToForm a WHERE a.sense_id = s.sense_id AND a.form_id = " + matchedFormIdExpr + "))";
 
         // Every gloss_xx/examples_xx cross-pack join below goes through Sense.entry_source_key +
         // Sense.source_ord (denormalized copies of Entry.source_key / the original per-entry sense
@@ -198,7 +172,7 @@ public class DictionarySearchQueryTool {
         final String senseRowsExpr = glossAlias == null ? "NULL"
                 : "(SELECT json_group_array(json_array(sg.sense_group_id, s.sense_id)) FROM core.Sense s "
                         + "JOIN core.SenseGroup sg ON sg.sense_group_id = s.sense_group_id "
-                        + "WHERE sg.entry_id = " + entryIdExpr + " AND " + senseFormFilter + " "
+                        + "WHERE sg.entry_id = " + entryIdExpr + " "
                         + "ORDER BY sg.ord, s.ord)";
         final String tagsByGroupExpr = glossAlias == null ? "NULL"
                 : "(SELECT json_group_array(json_array(sgt.sense_group_id, t.code)) FROM core.SenseGroupTag sgt "
@@ -229,17 +203,33 @@ public class DictionarySearchQueryTool {
                 + "'primaryReading', " + chosenFormGatedReading + ", "
                 + "'furigana', (SELECT json_group_array(json_array(base, ruby)) FROM core.FormFuriganaSegment "
                 + "WHERE form_id = " + chosenFormId + " ORDER BY ord), "
+                // Every other kanji spelling the entry has, whichever reading each one pairs with -
+                // not just spellings sharing the primary form's own reading (e.g. 猿滑 still shows
+                // up as an alt writing of 百日紅 even though its own primary reading is しび, not
+                // さるすべり). One row per distinct text: the correlated subquery picks that text's
+                // own best-tier form_id so furigana matches its most representative reading.
                 + "'altWritings', (SELECT json_group_array(json_object('text', alt.text, 'furigana', json(alt.furigana_json))) FROM ("
                 + "SELECT ef.text AS text, "
                 + "(SELECT json_group_array(json_array(ffs.base, ffs.ruby)) FROM core.FormFuriganaSegment ffs "
                 + "WHERE ffs.form_id = ef.form_id ORDER BY ffs.ord) AS furigana_json "
                 + "FROM core.EntryForm ef "
                 + "WHERE ef.entry_id = " + entryIdExpr + " AND ef.form_type = 'writing' AND ef.is_search_only = 0 "
-                + "AND ef.form_id != " + chosenFormId + " AND ef.reading = " + chosenFormRawReading + " "
+                + "AND ef.text != " + chosenFormText + " "
+                + "AND ef.form_id = (SELECT form_id FROM core.EntryForm ef2 WHERE ef2.entry_id = ef.entry_id "
+                + "AND ef2.form_type = 'writing' AND ef2.is_search_only = 0 AND ef2.text = ef.text "
+                + "ORDER BY ef2.is_primary DESC, ef2.score DESC, ef2.ord LIMIT 1) "
                 + "ORDER BY ef.is_primary DESC, ef.score DESC, ef.ord) AS alt), "
-                + "'altReadings', (SELECT json_group_array(reading) FROM core.EntryForm WHERE entry_id = " + entryIdExpr + " "
-                + "AND form_type = 'writing' AND text = " + chosenFormText + " AND is_search_only = 0 "
-                + "AND reading != " + chosenFormGatedReading + " ORDER BY is_primary DESC, score DESC, ord), "
+                // Every other reading the entry has, whether or not it's tied to the primary
+                // writing (e.g. 猿滑's しび) or has no kanji pairing at all (bare
+                // form_type='reading' rows, e.g. サルスベリ's re_nokanji reading) - mirrors
+                // PersistentDatabaseComponent.FORM_QUERY_ALTERNATE_READINGS.
+                + "'altReadings', (SELECT json_group_array(r) FROM (SELECT r, MAX(sc) AS msc, MIN(mo) AS mmo FROM ("
+                + "SELECT reading AS r, score AS sc, ord AS mo FROM core.EntryForm "
+                + "WHERE entry_id = " + entryIdExpr + " AND form_type = 'writing' AND is_search_only = 0 "
+                + "UNION ALL "
+                + "SELECT text AS r, score AS sc, ord AS mo FROM core.EntryForm "
+                + "WHERE entry_id = " + entryIdExpr + " AND form_type = 'reading' AND is_search_only = 0) "
+                + "WHERE r != " + chosenFormGatedReading + " GROUP BY r ORDER BY msc DESC, mmo ASC)), "
                 + "'usedBackupLang', " + usedBackupLangExpr + ", "
                 + "'senseRows', " + senseRowsExpr + ", "
                 + "'tagsByGroup', " + tagsByGroupExpr + ", "
@@ -253,8 +243,8 @@ public class DictionarySearchQueryTool {
     // Name-entry (names pack) render payload: no senses at all, just headword/furigana + name-type
     // tags + a flat translation list - see PersistentDatabaseComponent.parsePrecomputedSummary's
     // isName branch, the client-side counterpart this must stay in sync with.
-    private static String buildNameRenderJsonExpr(String entryIdExpr, @Nullable String matchedFormIdExpr) {
-        final String chosenFormId = buildChosenFormIdExpr("names", entryIdExpr, matchedFormIdExpr);
+    private static String buildNameRenderJsonExpr(String entryIdExpr) {
+        final String chosenFormId = buildPrimaryFormIdExpr("names", entryIdExpr);
         final String chosenFormGatedReading = "(SELECT CASE WHEN form_type = 'writing' THEN reading ELSE NULL END "
                 + "FROM names.EntryForm WHERE form_id = " + chosenFormId + ")";
 
@@ -595,19 +585,17 @@ public class DictionarySearchQueryTool {
         deinflectWritingPrioStatement = db.compileStatement(String.format(SQL_QUERY_DEINFLECTION, SCRIPT_WRITING));
         deinflectReadingPrioStatement = db.compileStatement(String.format(SQL_QUERY_DEINFLECTION, SCRIPT_KANA));
 
-        // Backfill: entry_id/form_id are now columns on the already-inserted row rather than
-        // SearchTerm's, so this is one shared expression for every core-pack tier (bookmark listing
-        // and gloss hits leave form_id NULL, which buildChosenFormIdExpr already resolves to "use
-        // the entry's primary form" - the same fallback buildRenderJsonExpr already implements for a
-        // literal null matchedFormIdExpr, just now driven by the column's runtime value instead of
-        // a compile-time branch).
+        // Backfill: entry_id is now a column on the already-inserted row rather than SearchTerm's,
+        // so this is one shared expression for every core-pack tier - always resolved through the
+        // entry's primary form (buildPrimaryFormIdExpr), regardless of which form_id the row's own
+        // search hit carries, so every tier renders the same headword/sense set for a given entry.
         final String backfillCoreRenderExpr = asUpdateExpr(buildRenderJsonExpr(
-                "DictionarySearchElement.entry_id", "DictionarySearchElement.form_id", glossAliasOrNull, backupGlossAliasOrNull));
+                "DictionarySearchElement.entry_id", glossAliasOrNull, backupGlossAliasOrNull));
         backfillCoreStatement = db.compileStatement(String.format(SQL_QUERY_BACKFILL_RENDER, backfillCoreRenderExpr, "!= 'name'"));
 
         if (namesInstalled) {
             final String backfillNamesRenderExpr = asUpdateExpr(buildNameRenderJsonExpr(
-                    "DictionarySearchElement.entry_id", "DictionarySearchElement.form_id"));
+                    "DictionarySearchElement.entry_id"));
             backfillNamesStatement = db.compileStatement(String.format(SQL_QUERY_BACKFILL_RENDER, backfillNamesRenderExpr, "= 'name'"));
         }
 
