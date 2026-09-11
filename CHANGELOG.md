@@ -2,6 +2,24 @@
 
 ## [Unreleased]
 
+## [0.5.0-beta5] - 2026-09-11
+
+### Dictionary downloads
+
+- Notifications for several dictionary updates finishing in the same background pass (a common
+  case for the 7-day periodic check with multiple installed packs) are now grouped into a single
+  collapsible notification instead of flooding the shade with one entry per pack.
+- Added a "Wi-Fi only" setting in Manage Dictionaries (on by default). It's now actually enforced
+  on the download itself - `DownloadManager`'s per-request "allowed over metered" flag was never
+  set before, so a download could silently start, or keep running after switching off Wi-Fi, over
+  mobile data regardless of intent. Tapping "Check for updates" or installing/retrying a pack
+  while on a metered connection now asks for confirmation instead of silently using data.
+- Fixed the status pill reporting "Up to date" even when a download had failed - it never checked
+  the failed-download state. The more common case of the same bug also meant an already-installed
+  pack whose *update* failed showed no error and no retry button at the row level either (only a
+  brand-new pack's failed first install did); both are fixed, with a new "Update failed" pill
+  state that takes priority over "pending restart".
+
 ## [0.5.0-beta4] - 2026-07-28
 
 ### Dictionary downloads
