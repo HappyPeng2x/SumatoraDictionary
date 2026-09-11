@@ -84,9 +84,14 @@ public class RemoteDictionaryObject extends BaseDictionaryObject {
         localFile = "";
     }
 
+    // allowedOverMetered controls whether DownloadManager may run (or keep running, if the network
+    // changes mid-download) this request over a metered connection - see Settings.WIFI_ONLY_DOWNLOADS.
+    // DownloadManager's own default is true (unrestricted), which is what silently let downloads
+    // start or continue on mobile data regardless of any app-level Wi-Fi preference before this.
     @WorkerThread
     public void download(final @NonNull DownloadManager aDownloadManager,
-                         final @NonNull File aDownloadDir) {
+                         final @NonNull File aDownloadDir,
+                         final boolean allowedOverMetered) {
         File fLocalFile = new File(aDownloadDir,type + "-" + lang + ".db.gz");
 
         localFile = fLocalFile.getAbsolutePath();
@@ -97,6 +102,7 @@ public class RemoteDictionaryObject extends BaseDictionaryObject {
                 .setDescription("Downloading")// Description of the Download Notification
                 .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)// Visibility of the download Notification
                 .setDestinationUri(Uri.fromFile(fLocalFile))// Uri of the destination file
+                .setAllowedOverMetered(allowedOverMetered)
                 .setAllowedOverRoaming(false);
 
         downloadId =  aDownloadManager.enqueue(request);

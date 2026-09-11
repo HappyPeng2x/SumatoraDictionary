@@ -22,6 +22,7 @@ import android.util.Log
 import androidx.annotation.WorkerThread
 import org.happypeng.sumatora.android.sumatoradictionary.db.CachedManifestEntry
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase
+import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Settings
 import java.io.File
 
 // Generalizes Phase 0b's manual suffix/names download to every already-installed pack, per
@@ -31,11 +32,20 @@ import java.io.File
 object DictionaryUpdateChecker {
     private const val TAG = "DictionaryUpdateChecker"
 
+    // allowMeteredOverride is set for a manual "Check Now" tap the user already confirmed through
+    // DictionariesManagementActivity's metered-connection dialog - it overrides
+    // Settings.WIFI_ONLY_DOWNLOADS for this one check only, without touching the persisted setting.
     @WorkerThread
-    fun checkAndEnqueue(context: Context, db: PersistentDatabase, manifestUrl: String): Int {
+    fun checkAndEnqueue(
+        context: Context,
+        db: PersistentDatabase,
+        manifestUrl: String,
+        allowMeteredOverride: Boolean = false
+    ): Int {
         val remoteEntries = RemoteManifestFetcher.fetch(manifestUrl) ?: return 0
         val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         val downloadDir = File(context.getExternalFilesDir(null), "downloads").apply { mkdirs() }
+        val allowedOverMetered = allowMeteredOverride || !Settings.isWifiOnly(db)
 
         // Keep a snapshot of the manifest we just saw so OptionalDictionaryCatalog can offer
         // not-yet-installed optional packs versioned to match whatever core version ends up
@@ -70,7 +80,7 @@ object DictionaryUpdateChecker {
                     "${installed.version}/${installed.date} -> ${remote.version}/${remote.date}")
 
             try {
-                remote.download(downloadManager, downloadDir)
+                remote.download(downloadManager, downloadDir, allowedOverMetered)
                 db.remoteDictionaryObjectDao().insert(remote)
                 enqueued++
             } catch (e: Exception) {

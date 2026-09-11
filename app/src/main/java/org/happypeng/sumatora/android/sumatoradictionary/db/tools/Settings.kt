@@ -75,5 +75,16 @@ class Settings {
     companion object {
         const val REPOSITORY_URL: String = "repositoryURL"
         const val LAST_SEEN_VERSION_CODE: String = "lastSeenVersionCode"
+
+        // Gates both the periodic-check's DownloadManager requests (see DictionaryUpdateChecker)
+        // and the manual "Check for updates"/install/retry paths in DictionariesManagementActivity.
+        // Unset (null) defaults to Wi-Fi-only, same as the app's behavior before this setting
+        // existed - only an explicit "false" opts a user into metered downloads.
+        const val WIFI_ONLY_DOWNLOADS: String = "wifiOnlyDownloads"
+
+        @JvmStatic
+        @WorkerThread
+        fun isWifiOnly(db: PersistentDatabase): Boolean =
+            db.persistentSettingsDao().getValueDirect(WIFI_ONLY_DOWNLOADS) != "false"
     }
 }

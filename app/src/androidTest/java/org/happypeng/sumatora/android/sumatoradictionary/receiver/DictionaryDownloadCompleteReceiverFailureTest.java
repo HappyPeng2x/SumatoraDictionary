@@ -133,7 +133,7 @@ public class DictionaryDownloadCompleteReceiverFailureTest {
         // "tap to retry" button was built from (DictionaryManagementRenderer wires onRetry to the
         // same handler as onInstall), then persist it - a fresh download's row must not still
         // read as failed while it's in flight.
-        toRetry.download(downloadManager, downloadDir);
+        toRetry.download(downloadManager, downloadDir, true);
         db.remoteDictionaryObjectDao().insert(toRetry);
 
         try {

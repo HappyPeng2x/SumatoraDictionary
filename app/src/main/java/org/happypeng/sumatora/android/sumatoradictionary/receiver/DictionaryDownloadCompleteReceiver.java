@@ -25,6 +25,8 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
+import android.os.Build;
+import android.service.notification.StatusBarNotification;
 
 import androidx.annotation.VisibleForTesting;
 import androidx.annotation.WorkerThread;
@@ -59,6 +61,11 @@ import dagger.hilt.android.AndroidEntryPoint;
 public class DictionaryDownloadCompleteReceiver extends BroadcastReceiver {
     private static final Logger log = LoggerFactory.getLogger(DictionaryDownloadCompleteReceiver.class);
     private static final String UPDATE_CHANNEL_ID = "dictionary_updates";
+    // Ties every per-pack notification to one collapsible shade entry (see postGroupSummary) so a
+    // background pass touching several installed packs at once - the common case on a weekly
+    // periodic check - doesn't flood the notification shade with one entry per pack.
+    private static final String GROUP_KEY = "dictionary_updates_group";
+    private static final int SUMMARY_NOTIFICATION_ID = 0;
 
     // Public (not package-private) so both DictionaryDownloadCompleteReceiverFailureTest (same
     // package) and DictionaryUpdateEndToEndTest (org...update package, needs the real
@@ -268,9 +275,57 @@ public class DictionaryDownloadCompleteReceiver extends BroadcastReceiver {
                 .setSmallIcon(R.drawable.ic_sumatora_monochrome)
                 .setAutoCancel(true)
                 .setContentIntent(pendingIntent)
+                .setGroup(GROUP_KEY)
                 .build();
 
         notificationManager.notify(remote.type.hashCode() ^ remote.lang.hashCode(), notification);
+
+        postGroupSummary(context, notificationManager, pendingIntent);
+    }
+
+    // Android only collapses grouped notifications into one shade entry once a
+    // setGroupSummary(true) notification sharing the same group key exists - without this, several
+    // packs finishing in the same background pass would still post as separate full-size entries.
+    // Rebuilt from the currently active notifications each time rather than tracked separately, so
+    // it always reflects exactly what's still in the shade (including after the user dismisses one).
+    @WorkerThread
+    private void postGroupSummary(Context context, NotificationManager notificationManager,
+                                   PendingIntent pendingIntent) {
+        Notification.Builder summaryBuilder = new Notification.Builder(context, UPDATE_CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_sumatora_monochrome)
+                .setGroup(GROUP_KEY)
+                .setGroupSummary(true)
+                .setAutoCancel(true)
+                .setContentIntent(pendingIntent);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            Notification.InboxStyle style = new Notification.InboxStyle();
+            int count = 0;
+
+            for (StatusBarNotification sbn : notificationManager.getActiveNotifications()) {
+                if (sbn.getId() == SUMMARY_NOTIFICATION_ID
+                        || !GROUP_KEY.equals(sbn.getNotification().getGroup())) {
+                    continue;
+                }
+
+                CharSequence lineTitle = sbn.getNotification().extras.getCharSequence(Notification.EXTRA_TITLE);
+                CharSequence lineText = sbn.getNotification().extras.getCharSequence(Notification.EXTRA_TEXT);
+                style.addLine(lineTitle + ": " + lineText);
+                count++;
+            }
+
+            summaryBuilder.setContentTitle(context.getString(R.string.dictionary_updates_summary_title))
+                    .setContentText(context.getResources().getQuantityString(
+                            R.plurals.dictionary_updates_summary_count, count, count))
+                    .setStyle(style);
+        } else {
+            // No getActiveNotifications() before API 23 to enumerate what's already in the group -
+            // a generic summary still collapses the shade entry, just without per-pack detail.
+            summaryBuilder.setContentTitle(context.getString(R.string.dictionary_updates_summary_title))
+                    .setContentText(context.getString(R.string.dictionary_updates_summary_fallback));
+        }
+
+        notificationManager.notify(SUMMARY_NOTIFICATION_ID, summaryBuilder.build());
     }
 
     @WorkerThread

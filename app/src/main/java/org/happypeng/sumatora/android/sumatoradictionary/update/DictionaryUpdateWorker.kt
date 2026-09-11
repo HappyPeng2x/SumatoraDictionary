@@ -30,6 +30,7 @@ import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.Worker
 import androidx.work.WorkerParameters
+import androidx.work.workDataOf
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import org.happypeng.sumatora.android.sumatoradictionary.R
@@ -52,8 +53,11 @@ class DictionaryUpdateWorker @AssistedInject constructor(
         val db = persistentDatabaseComponent.database
         val manifestUrl = db.persistentSettingsDao().getValueDirect(Settings.REPOSITORY_URL)
             ?: applicationContext.getString(R.string.dictionaries_url)
+        val allowMeteredOverride = inputData.getBoolean(KEY_ALLOW_METERED_OVERRIDE, false)
 
-        val enqueued = DictionaryUpdateChecker.checkAndEnqueue(applicationContext, db, manifestUrl)
+        val enqueued = DictionaryUpdateChecker.checkAndEnqueue(
+            applicationContext, db, manifestUrl, allowMeteredOverride
+        )
         Log.i(TAG, "Dictionary update check complete, enqueued $enqueued download(s)")
 
         // A manifest fetch failure (no network, host unreachable) isn't a worker failure worth
@@ -65,11 +69,18 @@ class DictionaryUpdateWorker @AssistedInject constructor(
         private const val TAG = "DictionaryUpdateWorker"
         private const val UNIQUE_PERIODIC_NAME = "dictionary_update_check"
         private const val UNIQUE_MANUAL_NAME = "dictionary_update_check_manual"
+        private const val KEY_ALLOW_METERED_OVERRIDE = "allowMeteredOverride"
 
+        // Only requires *some* connectivity to fetch the small manifest - whether any pack is
+        // actually allowed to download over that connection is decided per-request via
+        // DictionaryUpdateChecker/RemoteDictionaryObject.download()'s allowedOverMetered flag
+        // (Settings.WIFI_ONLY_DOWNLOADS), not by this constraint. Keeping this at UNMETERED would
+        // mean a mobile-data-only user never gets an automatic check at all, and DownloadManager
+        // already queues a metered-restricted download until Wi-Fi shows up on its own.
         @JvmStatic
         fun enqueuePeriodic(context: Context) {
             val constraints = Constraints.Builder()
-                .setRequiredNetworkType(NetworkType.UNMETERED)
+                .setRequiredNetworkType(NetworkType.CONNECTED)
                 .setRequiresBatteryNotLow(true)
                 .build()
 
@@ -86,9 +97,13 @@ class DictionaryUpdateWorker @AssistedInject constructor(
         // PersistentDatabaseComponent when the APK version changes. No network constraint —
         // DictionariesManagementActivity already probes real socket capability before calling
         // this, and the worker itself handles a fetch failure gracefully (returns 0 enqueued).
+        // allowMeteredOverride is only ever true for a manual tap the user already confirmed past
+        // a metered-connection warning dialog - see DictionariesManagementActivity.
         @JvmStatic
-        fun enqueueNow(context: Context) {
+        @JvmOverloads
+        fun enqueueNow(context: Context, allowMeteredOverride: Boolean = false) {
             val request = OneTimeWorkRequestBuilder<DictionaryUpdateWorker>()
+                .setInputData(workDataOf(KEY_ALLOW_METERED_OVERRIDE to allowMeteredOverride))
                 .build()
 
             WorkManager.getInstance(context).enqueueUniqueWork(

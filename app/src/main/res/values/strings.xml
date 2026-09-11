@@ -17,6 +17,8 @@
     <string name="dictionary_download_complete_text">%1$s is ready to use</string>
     <string name="dictionary_download_failed_title">Download failed</string>
     <string name="dictionary_download_failed_text">%1$s failed to download. Open Manage dictionaries to retry.</string>
+    <string name="dictionary_updates_summary_title">Dictionary updates</string>
+    <string name="dictionary_updates_summary_fallback">Open Manage dictionaries for details</string>
     <string name="network_permission_required_title">Network permission required</string>
     <string name="network_permission_required_text">Sumatora needs the Network permission to download dictionaries. Some Android variants (such as GrapheneOS) let you turn this off per app - open this app\'s settings and enable Network, then try again.</string>
     <string name="network_permission_required_open_settings">Open settings</string>
@@ -26,6 +28,7 @@
     <string name="checking_for_updates">Checking for updates…</string>
     <string name="dictionary_status_up_to_date">Up to date</string>
     <string name="dictionary_status_update_ready">Update ready · restart to apply</string>
+    <string name="dictionary_status_update_failed">Update failed · see below</string>
     <string name="dictionary_status_update_required">Update required</string>
     <string name="dictionary_status_downloading">Downloading…</string>
     <string name="dictionary_status_failed">Download failed · tap to retry</string>
@@ -40,6 +43,12 @@
     <string name="restart_now_dialog_message">The updated dictionaries have finished downloading. Sumatora needs to restart to start using them.</string>
     <string name="restart_now_confirm">Restart now</string>
     <string name="restart_now_cancel">Later</string>
+
+    <string name="wifi_only_downloads_label">Wi-Fi only</string>
+    <string name="metered_download_confirm_title">Not on Wi-Fi</string>
+    <string name="metered_download_confirm_message">Wi-Fi only is enabled, but you\'re on a metered connection right now. Download anyway?</string>
+    <string name="metered_download_confirm_positive">Download anyway</string>
+    <string name="metered_download_confirm_negative">Cancel</string>
 
     <string name="language_unavailable_title">Dictionary pack unavailable</string>
     <string name="language_unavailable_message">The dictionary for %1$s is not installed or is outdated and incompatible with this version of the app. You can switch to English or update the pack in Manage dictionaries.</string>
@@ -75,4 +84,9 @@
     <string name="examples_header">Examples</string>
     <string name="forms_header">Forms</string>
     <string name="restricted_to_format">%1$s only</string>
+
+    <plurals name="dictionary_updates_summary_count">
+        <item quantity="one">%1$d update</item>
+        <item quantity="other">%1$d updates</item>
+    </plurals>
 </resources>
