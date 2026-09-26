@@ -115,7 +115,7 @@ public class SearchTierPerformanceTest {
             for (int i = 0; i < max; i++) {
                 tool.execute(term, i, false, false);
             }
-            tool.executeProperNouns(term);
+            tool.executeProperNouns(term, false, false, java.util.Collections.emptyList());
             tool.executeDeinflection(term);
         });
     }

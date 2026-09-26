@@ -19,6 +19,7 @@ package org.happypeng.sumatora.android.sumatoradictionary.viewholder
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
 import android.os.Build
 import android.text.InputType
 import android.view.inputmethod.EditorInfo
@@ -26,6 +27,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.PopupMenu
+import android.widget.TextView
 import android.widget.Toast
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.chip.Chip
@@ -35,10 +37,12 @@ import io.reactivex.rxjava3.disposables.Disposable
 import io.reactivex.rxjava3.schedulers.Schedulers
 import io.reactivex.rxjava3.subjects.Subject
 import org.happypeng.sumatora.android.sumatoradictionary.R
+import org.happypeng.sumatora.android.sumatoradictionary.activity.DictionariesManagementActivity
 import org.happypeng.sumatora.android.sumatoradictionary.component.PersistentDatabaseComponent
 import org.happypeng.sumatora.android.sumatoradictionary.databinding.WordCardBinding
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement
 import org.happypeng.sumatora.android.sumatoradictionary.db.EntryListSummary
+import org.happypeng.sumatora.android.sumatoradictionary.db.tools.DictionarySearchQueryTool
 import org.happypeng.sumatora.android.sumatoradictionary.adapter.OnEntryClickListener
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.DictionaryPagedListAdapterCloseIntent
 import org.happypeng.sumatora.android.sumatoradictionary.model.intent.DictionaryPagedListAdapterIntent
@@ -224,7 +228,10 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
         // right here on the main thread. Skipped entirely on a same-entry rebind, since the
         // summary can't have changed and re-parsing would just blink the content that's already
         // correctly on screen.
-        if (!isSameEntryRebind) {
+        val isUnavailableName = entry.matchKind == DictionarySearchQueryTool.MATCH_KIND_NAME_UNAVAILABLE
+        if (isUnavailableName) {
+            bindUnavailableName(entry)
+        } else if (!isSameEntryRebind) {
             val precomputed = entry.render_json?.let { PersistentDatabaseComponent.parsePrecomputedSummary(it) }
             if (precomputed != null) {
                 bindSummary(precomputed, entry)
@@ -234,7 +241,15 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
                 currentCopyText = null
             }
         }
-        wordCardBinding.wordCardContent.setOnClickListener { onEntryClick.onClick(entry) }
+        // A placeholder has no entry to open (entry_id is 0) - send the user to where the names
+        // pack can be installed instead.
+        wordCardBinding.wordCardContent.setOnClickListener { view ->
+            if (isUnavailableName) {
+                view.context.startActivity(Intent(view.context, DictionariesManagementActivity::class.java))
+            } else {
+                onEntryClick.onClick(entry)
+            }
+        }
         wordCardBinding.wordCardContent.setOnLongClickListener { view -> copyCurrentEntryToClipboard(view) }
         wordCardBinding.wordCardBookmarkBadge.visibility =
             if (entry.bookmark != 0L) View.VISIBLE else View.GONE
@@ -348,6 +363,23 @@ class DictionarySearchElementViewHolder(private val wordCardBinding: WordCardBin
         wordCardBinding.wordCardSenses.removeAllViews()
         buildSenseRows(wordCardBinding.wordCardSenses, summary, colors, density, entry.deinflectionLabel)
         currentCopyText = buildCopyText(summary)
+    }
+
+    // Bookmark listing placeholder for a proper name whose pack isn't installed (see
+    // DictionarySearchQueryTool.MATCH_KIND_NAME_UNAVAILABLE): nothing to render but the seq, so
+    // say what the row is instead. Bookmark/memo/tags stay editable through the usual controls.
+    private fun bindUnavailableName(entry: DictionarySearchElement) {
+        val context = wordCardBinding.wordCardView.context
+        wordCardBinding.wordCardView.setBackgroundColor(colors.activeLang)
+        wordCardBinding.wordCardHeadword.text =
+            context.getString(R.string.bookmark_name_unavailable_headword, entry.seq)
+        wordCardBinding.wordCardSenses.removeAllViews()
+        wordCardBinding.wordCardSenses.addView(TextView(context).apply {
+            text = context.getString(R.string.bookmark_name_unavailable_explanation)
+            textSize = 14f
+            setTextColor(colors.secondary)
+        })
+        currentCopyText = null
     }
 
     // Plain-text equivalent of what bindSummary just rendered as spans/table rows - headword,

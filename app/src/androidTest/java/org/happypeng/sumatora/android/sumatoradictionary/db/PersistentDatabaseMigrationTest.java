@@ -158,4 +158,43 @@ public class PersistentDatabaseMigrationTest {
         assertEquals(1, updatedRow.getInt(1));
         updatedRow.close();
     }
+
+    // MIGRATION_12_13 re-keys DictionarySearchElement on (ref, seq) instead of (ref, entry_id), so
+    // a names-pack row whose entry_id happens to equal a core row's is no longer dropped, and
+    // deletes the bookmark/tag rows stored under seq 0 by proper-name rows before names carried
+    // their real seq. Checks two rows sharing an entry_id but not a seq both land, a duplicate seq
+    // is still rejected (that's what dedups the entries JMdict and JMnedict both carry), and only
+    // the seq-0 bookmark data goes away.
+    @Test
+    public void migrate12To13_rekeysSearchElementOnSeqAndDropsSeqZeroBookmarks() throws IOException {
+        SupportSQLiteDatabase v12 = helper.createDatabase(TEST_DB, 12);
+        v12.execSQL("INSERT INTO DictionaryBookmark (seq, bookmark, memo, tags) VALUES (0, 1, 'name memo', 'x')");
+        v12.execSQL("INSERT INTO DictionaryBookmark (seq, bookmark, memo, tags) VALUES (1000010, 1, NULL, 'x')");
+        v12.execSQL("INSERT INTO DictionaryBookmarkTag (seq, tag) VALUES (0, 'x')");
+        v12.execSQL("INSERT INTO DictionaryBookmarkTag (seq, tag) VALUES (1000010, 'x')");
+        v12.close();
+
+        SupportSQLiteDatabase v13 = helper.runMigrationsAndValidate(
+                TEST_DB, 13, true, PersistentDatabaseParameters.MIGRATION_12_13);
+
+        final String insert = "INSERT OR IGNORE INTO DictionarySearchElement "
+                + "(ref, entryOrder, entry_id, seq, match_kind, rank, bookmark) VALUES (1, 1, 42, %d, '%s', 0, 0)";
+        v13.execSQL(String.format(insert, 1000010, "exact"));
+        v13.execSQL(String.format(insert, 5000010, "name"));
+        v13.execSQL(String.format(insert, 5000010, "name"));
+
+        Cursor rows = v13.query("SELECT seq FROM DictionarySearchElement WHERE ref = 1 AND entry_id = 42");
+        assertEquals(2, rows.getCount());
+        rows.close();
+
+        Cursor bookmarks = v13.query("SELECT seq FROM DictionaryBookmark");
+        assertEquals(1, bookmarks.getCount());
+        bookmarks.moveToFirst();
+        assertEquals(1000010, bookmarks.getLong(0));
+        bookmarks.close();
+
+        Cursor tags = v13.query("SELECT seq FROM DictionaryBookmarkTag");
+        assertEquals(1, tags.getCount());
+        tags.close();
+    }
 }

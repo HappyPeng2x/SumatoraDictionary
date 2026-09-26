@@ -70,6 +70,8 @@
     <string name="action_edit_tags">Edit tags</string>
     <string name="action_done_editing_tags">Done editing tags</string>
     <string name="copied_to_clipboard">Copied to clipboard</string>
+    <string name="bookmark_name_unavailable_headword">Proper name #%1$d</string>
+    <string name="bookmark_name_unavailable_explanation">This bookmark is an entry from the proper-names dictionary, which isn\'t installed. Tap to install it from Manage dictionaries.</string>
 
     <!-- Navigation Drawer -->
     <string name="nav_drawer_subtitle">Japanese Dictionary</string>

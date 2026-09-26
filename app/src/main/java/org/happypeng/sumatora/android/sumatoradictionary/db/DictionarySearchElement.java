@@ -26,7 +26,12 @@ import org.happypeng.sumatora.core.dict.DictionaryQueryResult;
 // precomputes at insert time (see DictionarySearchQueryTool.buildRenderJsonExpr). The *detail*
 // view (tapping into an entry) still assembles Entry/EntryForm/Sense/... separately by
 // entry_id/form_id (see EntryDetailBottomSheet) rather than reusing render_json.
-@Entity(primaryKeys = {"ref", "entry_id"})
+// Keyed by seq, not entry_id: entry_id is a per-pack rowid (core and names each number their
+// own from 1), so a names-pack hit could collide with an unrelated core hit and be silently
+// dropped by INSERT OR IGNORE. seq (JMdict/JMnedict ent_seq) is one namespace shared by both
+// sources - the entries JMdict also carries in the 5xxxxxx names range are the same entry - so
+// it's unique per row and doubles as the adapter's stable id.
+@Entity(primaryKeys = {"ref", "seq"})
 public class DictionarySearchElement implements DictionaryQueryResult {
     public int ref;
     public int entryOrder;

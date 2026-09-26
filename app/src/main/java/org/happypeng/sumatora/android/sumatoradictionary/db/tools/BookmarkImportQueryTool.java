@@ -46,12 +46,41 @@ public class BookmarkImportQueryTool {
                     + "FROM DictionaryBookmarkImport "
                     + "JOIN core.Entry ON CAST(Entry.source_key AS INTEGER) = DictionaryBookmarkImport.seq";
 
+    // Proper-name bookmarks, after the core pass - same idea as DictionarySearchQueryTool's
+    // SQL_QUERY_BOOKMARK_LISTING_NAMES (INSERT OR IGNORE on (ref, seq) skips what core listed).
+    static final String SQL_QUERY_INSERT_DISPLAY_ELEMENT_NAMES =
+            "INSERT OR IGNORE INTO DictionarySearchElement "
+                    + "(ref, entryOrder, entry_id, seq, form_id, match_kind, original_query, matched_text, "
+                    + "dictionary_form, deinflection_label, rank, bookmark, memo, tags, render_json) "
+                    + "SELECT ? AS ref, 0 AS entryOrder, Entry.entry_id, DictionaryBookmarkImport.seq, NULL AS form_id, "
+                    + "'" + DictionarySearchQueryTool.MATCH_KIND_NAME + "' AS match_kind, NULL AS original_query, NULL AS matched_text, "
+                    + "NULL, NULL, (0 - Entry.score) AS rank, "
+                    + "DictionaryBookmarkImport.bookmark, DictionaryBookmarkImport.memo, DictionaryBookmarkImport.tags, "
+                    + "%s "
+                    + "FROM DictionaryBookmarkImport "
+                    + "JOIN names.Entry ON Entry.source_id = (SELECT source_id FROM names.DataSource WHERE code = 'jmnedict') "
+                    + "AND Entry.source_key = CAST(DictionaryBookmarkImport.seq AS TEXT)";
+
+    // Names pack not installed: placeholder rows, as in the bookmark listing.
+    static final String SQL_QUERY_INSERT_DISPLAY_ELEMENT_NAMES_UNAVAILABLE =
+            "INSERT OR IGNORE INTO DictionarySearchElement "
+                    + "(ref, entryOrder, entry_id, seq, form_id, match_kind, original_query, matched_text, "
+                    + "dictionary_form, deinflection_label, rank, bookmark, memo, tags, render_json) "
+                    + "SELECT ? AS ref, 0 AS entryOrder, 0, DictionaryBookmarkImport.seq, NULL AS form_id, "
+                    + "'" + DictionarySearchQueryTool.MATCH_KIND_NAME_UNAVAILABLE + "' AS match_kind, NULL AS original_query, NULL AS matched_text, "
+                    + "NULL, NULL, 1 AS rank, "
+                    + "DictionaryBookmarkImport.bookmark, DictionaryBookmarkImport.memo, DictionaryBookmarkImport.tags, "
+                    + "'{}' AS render_json "
+                    + "FROM DictionaryBookmarkImport "
+                    + "WHERE DictionaryBookmarkImport.seq >= " + DictionarySearchQueryTool.JMNEDICT_FIRST_SEQ;
+
     private final PersistentDatabaseComponent persistentDatabaseComponent;
     private final int key;
     private final PersistentLanguageSettings persistentLanguageSettings;
 
     private SupportSQLiteStatement deleteStatement;
     private SupportSQLiteStatement queryStatement;
+    private SupportSQLiteStatement queryNamesStatement;
 
     public BookmarkImportQueryTool(final PersistentDatabaseComponent persistentDatabaseComponent, final int key,
                                    final PersistentLanguageSettings persistentLanguageSettings) {
@@ -75,6 +104,10 @@ public class BookmarkImportQueryTool {
 
         deleteStatement = db.compileStatement(DictionarySearchQueryTool.SQL_QUERY_DELETE);
         queryStatement = db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT, renderJsonExpr));
+        queryNamesStatement = DictionarySearchQueryTool.isInstalled(installedDictionaries, "names", "")
+                ? db.compileStatement(String.format(SQL_QUERY_INSERT_DISPLAY_ELEMENT_NAMES,
+                        DictionarySearchQueryTool.buildNameRenderJsonExpr("Entry.entry_id")))
+                : db.compileStatement(SQL_QUERY_INSERT_DISPLAY_ELEMENT_NAMES_UNAVAILABLE);
     }
 
     public void delete() {
@@ -86,6 +119,9 @@ public class BookmarkImportQueryTool {
         queryStatement.bindLong(1, key);
 
         long insert = queryStatement.executeInsert();
+
+        queryNamesStatement.bindLong(1, key);
+        insert = Math.max(insert, queryNamesStatement.executeInsert());
 
         return insert >= 0;
     }
@@ -99,6 +135,16 @@ public class BookmarkImportQueryTool {
             }
 
             queryStatement = null;
+        }
+
+        if (queryNamesStatement != null) {
+            try {
+                queryNamesStatement.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            queryNamesStatement = null;
         }
 
         if (deleteStatement != null) {

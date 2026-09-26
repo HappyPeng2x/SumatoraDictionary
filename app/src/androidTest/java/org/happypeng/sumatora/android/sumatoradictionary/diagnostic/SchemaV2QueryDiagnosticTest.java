@@ -177,7 +177,7 @@ public class SchemaV2QueryDiagnosticTest {
             for (int i = 0; i < max; i++) {
                 tool.execute(term, i, false, false);
             }
-            tool.executeProperNouns(term);
+            tool.executeProperNouns(term, false, false, java.util.Collections.emptyList());
             tool.executeDeinflection(term);
             // render_json is left NULL by the tier inserts now (see backfillRenderJson) - render
             // everything matched for this diagnostic ref so the logged output below still shows

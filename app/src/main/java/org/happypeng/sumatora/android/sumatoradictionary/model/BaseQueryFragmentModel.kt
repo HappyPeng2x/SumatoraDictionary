@@ -254,8 +254,8 @@ abstract class BaseQueryFragmentModel protected constructor(
                         found = queryTool.execute(prev.plainTerm, current, filterBookmarks, filterMemos, prev.tags)
                         current++
                     }
+                    found = queryTool.executeProperNouns(prev.plainTerm, filterBookmarks, filterMemos, prev.tags) || found
                     if (!filterBookmarks && !filterMemos) {
-                        found = queryTool.executeProperNouns(prev.plainTerm) || found
                         found = queryTool.executeDeinflection(prev.plainTerm) || found
                     }
                     queryTool.backfillRenderJson(RENDER_BACKFILL_LIMIT)
@@ -280,8 +280,8 @@ abstract class BaseQueryFragmentModel protected constructor(
                         found = tool.execute(prev.plainTerm, current, filterBookmarks, filterMemos, prev.tags)
                         current++
                     }
+                    found = tool.executeProperNouns(prev.plainTerm, filterBookmarks, filterMemos, prev.tags) || found
                     if (!filterBookmarks && !filterMemos) {
-                        found = tool.executeProperNouns(prev.plainTerm) || found
                         found = tool.executeDeinflection(prev.plainTerm) || found
                     }
                     tool.backfillRenderJson(RENDER_BACKFILL_LIMIT)

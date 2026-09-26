@@ -64,6 +64,17 @@ public class DictionarySearchQueryTool {
     private static final int ORDER_PROPER_NOUN_EXACT = 20;
     private static final int ORDER_PROPER_NOUN_BEGIN = 21;
 
+    // match_kind of a row rendered from the names pack (proper-noun tier, or a bookmark whose seq
+    // only exists there) - routes render backfill and the detail sheet to names instead of core.
+    public static final String MATCH_KIND_NAME = "name";
+    // match_kind of a bookmark listing placeholder: a bookmark that isn't in core and whose seq is
+    // in JMnedict's range while the names pack isn't installed. Carries a fixed render_json so the
+    // backfill leaves it alone; the view holder draws it from string resources instead.
+    public static final String MATCH_KIND_NAME_UNAVAILABLE = "name_unavailable";
+    // JMnedict ent_seqs start here; JMdict's own run from 1000000 up and only reach this range for
+    // the entries it shares with JMnedict (same seq, same entry), which core then already has.
+    static final long JMNEDICT_FIRST_SEQ = 5000000;
+
     private static final String SCRIPT_WRITING = "writing";
     private static final String SCRIPT_KANA = "kana";
 
@@ -124,6 +135,40 @@ public class DictionarySearchQueryTool {
                     + "FROM DictionaryBookmark "
                     + "JOIN core.Entry ON Entry.source_key = CAST(DictionaryBookmark.seq AS TEXT) "
                     + "WHERE %s";
+
+    // Second pass of the bookmark listing (run right after SQL_QUERY_BOOKMARK_LISTING, same binds):
+    // bookmarks whose seq is a proper name. INSERT OR IGNORE on (ref, seq) skips every seq the core
+    // pass already listed, so a name JMdict also carries shows once, from core. The source_id
+    // constraint is what lets the lookup use the names pack's (source_id, source_key) index - a
+    // bare source_key match makes SQLite build an automatic index over the whole Entry table.
+    private static final String SQL_QUERY_BOOKMARK_LISTING_NAMES =
+            "INSERT OR IGNORE INTO DictionarySearchElement "
+                    + "(ref, entryOrder, entry_id, seq, form_id, match_kind, original_query, matched_text, "
+                    + "dictionary_form, deinflection_label, rank, bookmark, memo, tags, render_json) "
+                    + "SELECT ? AS ref, ? AS entryOrder, Entry.entry_id, DictionaryBookmark.seq, NULL AS form_id, "
+                    + "'" + MATCH_KIND_NAME + "' AS match_kind, ? AS original_query, ? AS matched_text, "
+                    + "NULL, NULL, (0 - Entry.score) AS rank, "
+                    + "DictionaryBookmark.bookmark, DictionaryBookmark.memo, DictionaryBookmark.tags, "
+                    + "NULL AS render_json "
+                    + "FROM DictionaryBookmark "
+                    + "JOIN names.Entry ON Entry.source_id = (SELECT source_id FROM names.DataSource WHERE code = 'jmnedict') "
+                    + "AND Entry.source_key = CAST(DictionaryBookmark.seq AS TEXT) "
+                    + "WHERE %s";
+
+    // Same second pass when the names pack isn't installed: a placeholder row per bookmark in
+    // JMnedict's seq range that core didn't list (again via INSERT OR IGNORE), so those bookmarks
+    // stay visible and editable instead of silently vanishing. Ranked after every real entry.
+    private static final String SQL_QUERY_BOOKMARK_LISTING_NAMES_UNAVAILABLE =
+            "INSERT OR IGNORE INTO DictionarySearchElement "
+                    + "(ref, entryOrder, entry_id, seq, form_id, match_kind, original_query, matched_text, "
+                    + "dictionary_form, deinflection_label, rank, bookmark, memo, tags, render_json) "
+                    + "SELECT ? AS ref, ? AS entryOrder, 0, DictionaryBookmark.seq, NULL AS form_id, "
+                    + "'" + MATCH_KIND_NAME_UNAVAILABLE + "' AS match_kind, ? AS original_query, ? AS matched_text, "
+                    + "NULL, NULL, 1 AS rank, "
+                    + "DictionaryBookmark.bookmark, DictionaryBookmark.memo, DictionaryBookmark.tags, "
+                    + "'{}' AS render_json "
+                    + "FROM DictionaryBookmark "
+                    + "WHERE DictionaryBookmark.seq >= " + JMNEDICT_FIRST_SEQ + " AND %s";
 
     // Always the entry's globally-designated primary form, regardless of which specific form a
     // search hit matched - the same entry must render the same headword/reading/sense set no
@@ -243,7 +288,7 @@ public class DictionarySearchQueryTool {
     // Name-entry (names pack) render payload: no senses at all, just headword/furigana + name-type
     // tags + a flat translation list - see PersistentDatabaseComponent.parsePrecomputedSummary's
     // isName branch, the client-side counterpart this must stay in sync with.
-    private static String buildNameRenderJsonExpr(String entryIdExpr) {
+    static String buildNameRenderJsonExpr(String entryIdExpr) {
         final String chosenFormId = buildPrimaryFormIdExpr("names", entryIdExpr);
         final String chosenFormGatedReading = "(SELECT CASE WHEN form_type = 'writing' THEN reading ELSE NULL END "
                 + "FROM names.EntryForm WHERE form_id = " + chosenFormId + ")";
@@ -340,19 +385,26 @@ public class DictionarySearchQueryTool {
                     + "WHERE SearchTerm.script = '%s' AND SearchTerm.normalized = ? "
                     + "AND EXISTS (SELECT 1 FROM core.FormRule WHERE FormRule.form_id = SearchTerm.form_id AND FormRule.rule = ?)";
 
-    // Proper names (JMnedict): same 4-slot shape as a basic tier, just against the names pack's own
-    // Entry/SearchTerm instead of core's - reuses BasicQueryStatement directly. Names aren't
-    // bookmarkable in this app, so bookmark/memo/tags are literal defaults, no join needed.
+    // Proper names (JMnedict): same shape as a basic tier (including the bookmark join and the
+    // bookmarked/has-memo filter), just against the names pack's own Entry/SearchTerm instead of
+    // core's - reuses BasicQueryStatement directly. seq is the real JMnedict ent_seq, which is what
+    // names are bookmarked under and the row's primary key alongside ref: the ~7k names JMdict also
+    // carries (same ent_seq, same entry) collapse into the core row, which ran first and has the
+    // richer sense-based rendering.
     private static final String SQL_QUERY_PROPER_NOUN =
             "INSERT OR IGNORE INTO DictionarySearchElement "
                     + "(ref, entryOrder, entry_id, seq, form_id, match_kind, original_query, matched_text, "
                     + "dictionary_form, deinflection_label, rank, bookmark, memo, tags, render_json) "
-                    + "SELECT ? AS ref, ? AS entryOrder, SearchTerm.entry_id, 0, SearchTerm.form_id, "
-                    + "'name' AS match_kind, ? AS original_query, SearchTerm.term AS matched_text, "
-                    + "NULL, NULL, 0 AS rank, 0, NULL, NULL, "
+                    + "SELECT ? AS ref, ? AS entryOrder, SearchTerm.entry_id, "
+                    + "CAST(Entry.source_key AS INTEGER), SearchTerm.form_id, "
+                    + "'" + MATCH_KIND_NAME + "' AS match_kind, ? AS original_query, SearchTerm.term AS matched_text, "
+                    + "NULL, NULL, 0 AS rank, "
+                    + "IFNULL(DictionaryBookmark.bookmark, 0), DictionaryBookmark.memo, DictionaryBookmark.tags, "
                     + "NULL AS render_json "
                     + "FROM names.SearchTerm "
-                    + "WHERE SearchTerm.script = '%s' AND SearchTerm.normalized %s";
+                    + "JOIN names.Entry ON Entry.entry_id = SearchTerm.entry_id "
+                    + BOOKMARK_JOIN
+                    + "WHERE SearchTerm.script = '%s' AND SearchTerm.normalized %s AND " + BOOKMARKS_WHERE_CLAUSE;
 
     static final String SQL_QUERY_DELETE =
             "DELETE FROM DictionarySearchElement WHERE ref = ?";
@@ -389,6 +441,7 @@ public class DictionarySearchQueryTool {
     private QueryStatement[] statements;
     private SupportSQLiteStatement deleteStatement;
     private SupportSQLiteStatement tagOnlyStatement;
+    private SupportSQLiteStatement tagOnlyNamesStatement;
     private SupportSQLiteStatement deleteByTagStatement;
     private SupportSQLiteStatement countByRefStatement;
 
@@ -501,6 +554,10 @@ public class DictionarySearchQueryTool {
 
         final SupportSQLiteStatement queryBookmarkListing =
                 db.compileStatement(String.format(SQL_QUERY_BOOKMARK_LISTING, BOOKMARKS_WHERE_CLAUSE));
+        final String namesListingSql = namesInstalled ? SQL_QUERY_BOOKMARK_LISTING_NAMES
+                : SQL_QUERY_BOOKMARK_LISTING_NAMES_UNAVAILABLE;
+        final SupportSQLiteStatement queryBookmarkListingNames =
+                db.compileStatement(String.format(namesListingSql, BOOKMARKS_WHERE_CLAUSE));
 
         final SupportSQLiteStatement queryExactPrioWriting = compileBasic(db, "exact", FROM_CORE_SEARCH_TERM,
                 basicTierWhere("= ?", SCRIPT_WRITING, true, false, false));
@@ -559,12 +616,11 @@ public class DictionarySearchQueryTool {
                 : null;
 
         tagOnlyStatement = db.compileStatement(String.format(SQL_QUERY_BOOKMARK_LISTING, SQL_TAG_ONLY_WHERE_CLAUSE));
+        tagOnlyNamesStatement = db.compileStatement(String.format(namesListingSql, SQL_TAG_ONLY_WHERE_CLAUSE));
 
         deleteByTagStatement = db.compileStatement(
-                "DELETE FROM DictionarySearchElement WHERE ref = ? AND entry_id NOT IN ("
-                        + "SELECT Entry.entry_id FROM core.Entry "
-                        + "JOIN DictionaryBookmarkTag ON Entry.source_key = CAST(DictionaryBookmarkTag.seq AS TEXT) "
-                        + "WHERE DictionaryBookmarkTag.tag = ?)");
+                "DELETE FROM DictionarySearchElement WHERE ref = ? AND seq NOT IN ("
+                        + "SELECT seq FROM DictionaryBookmarkTag WHERE tag = ?)");
 
         countByRefStatement = db.compileStatement(
                 "SELECT COUNT(*) FROM DictionarySearchElement WHERE ref = ?");
@@ -591,17 +647,19 @@ public class DictionarySearchQueryTool {
         // search hit carries, so every tier renders the same headword/sense set for a given entry.
         final String backfillCoreRenderExpr = asUpdateExpr(buildRenderJsonExpr(
                 "DictionarySearchElement.entry_id", glossAliasOrNull, backupGlossAliasOrNull));
-        backfillCoreStatement = db.compileStatement(String.format(SQL_QUERY_BACKFILL_RENDER, backfillCoreRenderExpr, "!= 'name'"));
+        backfillCoreStatement = db.compileStatement(String.format(SQL_QUERY_BACKFILL_RENDER, backfillCoreRenderExpr,
+                "NOT IN ('" + MATCH_KIND_NAME + "', '" + MATCH_KIND_NAME_UNAVAILABLE + "')"));
 
         if (namesInstalled) {
             final String backfillNamesRenderExpr = asUpdateExpr(buildNameRenderJsonExpr(
                     "DictionarySearchElement.entry_id"));
-            backfillNamesStatement = db.compileStatement(String.format(SQL_QUERY_BACKFILL_RENDER, backfillNamesRenderExpr, "= 'name'"));
+            backfillNamesStatement = db.compileStatement(String.format(SQL_QUERY_BACKFILL_RENDER, backfillNamesRenderExpr,
+                    "= '" + MATCH_KIND_NAME + "'"));
         }
 
         statements = new QueryStatement[15];
 
-        statements[0] = new BasicQueryStatement(database, key, ORDER_BOOKMARK_LISTING, persistentLanguageSettings, queryBookmarkListing, null, false, "", romkan);
+        statements[0] = new BasicQueryStatement(database, key, ORDER_BOOKMARK_LISTING, persistentLanguageSettings, queryBookmarkListing, queryBookmarkListingNames, false, "", romkan);
         statements[1] = new BasicQueryStatement(database, key, ORDER_EXACT_PRIO_WRITING, persistentLanguageSettings, queryExactPrioWriting, null, false, "", romkan);
         statements[2] = new BasicQueryStatement(database, key, ORDER_EXACT_PRIO_KANA, persistentLanguageSettings, queryExactPrioReading, null, true, "", romkan);
         statements[3] = new BasicQueryStatement(database, key, ORDER_EXACT_NONPRIO_WRITING, persistentLanguageSettings, queryExactNonPrioWriting, null, false, "", romkan);
@@ -656,12 +714,16 @@ public class DictionarySearchQueryTool {
     }
 
     private boolean executeTagOnly() {
-        tagOnlyStatement.bindLong(1, key);
-        tagOnlyStatement.bindLong(2, ORDER_BOOKMARK_LISTING);
-        tagOnlyStatement.bindString(3, "");
-        tagOnlyStatement.bindString(4, "");
+        long found = -1;
+        for (SupportSQLiteStatement statement : new SupportSQLiteStatement[]{tagOnlyStatement, tagOnlyNamesStatement}) {
+            statement.bindLong(1, key);
+            statement.bindLong(2, ORDER_BOOKMARK_LISTING);
+            statement.bindString(3, "");
+            statement.bindString(4, "");
+            found = Math.max(found, statement.executeInsert());
+        }
 
-        return tagOnlyStatement.executeInsert() >= 0;
+        return found >= 0;
     }
 
     public boolean execute(String term, int number, boolean isBookmarked, boolean hasMemo, List<String> tags) {
@@ -680,17 +742,18 @@ public class DictionarySearchQueryTool {
             found = execute(term, number, isBookmarked, hasMemo);
         }
 
-        if (found) {
-            for (String tag : tags) {
-                deleteByTagStatement.bindLong(1, key);
-                deleteByTagStatement.bindString(2, tag);
-                deleteByTagStatement.execute();
-            }
-            countByRefStatement.bindLong(1, key);
-            return countByRefStatement.simpleQueryForLong() > 0;
-        }
+        return found && applyTagFilter(tags);
+    }
 
-        return false;
+    // Drops every row of this search not carrying all of `tags`; true if any row is left.
+    private boolean applyTagFilter(List<String> tags) {
+        for (String tag : tags) {
+            deleteByTagStatement.bindLong(1, key);
+            deleteByTagStatement.bindString(2, tag);
+            deleteByTagStatement.execute();
+        }
+        countByRefStatement.bindLong(1, key);
+        return countByRefStatement.simpleQueryForLong() > 0;
     }
 
     public int getCount(String term) {
@@ -704,17 +767,30 @@ public class DictionarySearchQueryTool {
     // Proper name (JMnedict) search: an appended pass run once per term alongside (not instead of)
     // the regular tiered dictionary search, so proper-name hits show below direct dictionary
     // results in the same list. No-op (returns false) when the optional names pack isn't installed.
-    public boolean executeProperNouns(String term) {
+    // Takes the same bookmarked/has-memo/tag filters as the tiered search, since names can be
+    // bookmarked too: the tag filter has to be re-applied here, the tiers' own pass ran before
+    // these rows existed.
+    public boolean executeProperNouns(String term, boolean isBookmarked, boolean hasMemo, List<String> tags) {
         if (term == null || term.isEmpty() || properNounExactWriting == null) {
             return false;
         }
 
-        long exactWriting = properNounExactWriting.execute(term, null);
-        long exactReading = properNounExactReading.execute(term, null);
-        long beginWriting = properNounBeginWriting.execute(term, null);
-        long beginReading = properNounBeginReading.execute(term, null);
+        final List<Object> parameters = new LinkedList<>();
+        parameters.add(isBookmarked);
+        parameters.add(hasMemo);
+        parameters.add(isBookmarked);
+        parameters.add(hasMemo);
 
-        return exactWriting >= 0 || exactReading >= 0 || beginWriting >= 0 || beginReading >= 0;
+        long exactWriting = properNounExactWriting.execute(term, parameters);
+        long exactReading = properNounExactReading.execute(term, parameters);
+        long beginWriting = properNounBeginWriting.execute(term, parameters);
+        long beginReading = properNounBeginReading.execute(term, parameters);
+
+        final boolean found = exactWriting >= 0 || exactReading >= 0 || beginWriting >= 0 || beginReading >= 0;
+        if (found && tags != null && !tags.isEmpty()) {
+            return applyTagFilter(tags);
+        }
+        return found;
     }
 
     // Deinflection: an appended pass run once per term, alongside (not instead of) the regular
@@ -796,6 +872,8 @@ public class DictionarySearchQueryTool {
         deleteStatement = null;
         closeQuietly(tagOnlyStatement);
         tagOnlyStatement = null;
+        closeQuietly(tagOnlyNamesStatement);
+        tagOnlyNamesStatement = null;
         closeQuietly(deleteByTagStatement);
         deleteByTagStatement = null;
         closeQuietly(countByRefStatement);

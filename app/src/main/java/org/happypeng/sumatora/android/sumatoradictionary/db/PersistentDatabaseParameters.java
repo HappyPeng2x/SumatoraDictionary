@@ -266,4 +266,29 @@ public abstract class PersistentDatabaseParameters {
             database.execSQL("ALTER TABLE RemoteDictionaryObject ADD COLUMN failed INTEGER NOT NULL DEFAULT 0");
         }
     };
+
+    // DictionarySearchElement's primary key moves from (ref, entry_id) to (ref, seq). entry_id is
+    // a per-pack rowid reassigned on every SumatoraIndex build, and core/names packs update
+    // independently, so a proper-name row could collide with an unrelated core row and be
+    // silently dropped by INSERT OR IGNORE; seq (ent_seq) is one namespace across JMdict and
+    // JMnedict. The table is a per-search cache, so drop and recreate rather than copy.
+    //
+    // Also deletes bookmark data stored under seq 0: until this version every proper-name search
+    // row carried seq 0, so bookmarking/annotating any name wrote to that one seq, which matches
+    // no entry and never showed up anywhere. No real entry has seq 0.
+    public static final Migration MIGRATION_12_13 = new Migration(12, 13) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL("DROP TABLE IF EXISTS DictionarySearchElement");
+            database.execSQL("CREATE TABLE IF NOT EXISTS DictionarySearchElement ("
+                    + "`ref` INTEGER NOT NULL, `entryOrder` INTEGER NOT NULL, `entry_id` INTEGER NOT NULL, "
+                    + "`seq` INTEGER NOT NULL, `form_id` INTEGER, `match_kind` TEXT, `matched_text` TEXT, "
+                    + "`original_query` TEXT, `dictionary_form` TEXT, `deinflection_label` TEXT, "
+                    + "`rank` INTEGER NOT NULL, `bookmark` INTEGER NOT NULL, `memo` TEXT, `tags` TEXT, "
+                    + "`render_json` TEXT, PRIMARY KEY(`ref`, `seq`))");
+
+            database.execSQL("DELETE FROM DictionaryBookmark WHERE seq = 0");
+            database.execSQL("DELETE FROM DictionaryBookmarkTag WHERE seq = 0");
+        }
+    };
 }
