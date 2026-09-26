@@ -159,6 +159,13 @@ dependencies {
     implementation 'androidx.work:work-runtime-ktx:2.9.0'
     implementation 'androidx.hilt:hilt-work:1.2.0'
 
+    // Nextcloud sync: Custom Tab to run Login Flow v2's browser step, and Keystore-backed
+    // encrypted storage for the resulting app password (every other persisted value in this app
+    // goes through plaintext Room PersistentSetting, which is not appropriate for credentials).
+    // WebDAV/login-flow HTTP itself is hand-rolled on HttpURLConnection - no networking library.
+    implementation 'androidx.browser:browser:1.8.0'
+    implementation 'androidx.security:security-crypto:1.1.0'
+
     implementation 'io.reactivex.rxjava3:rxandroid:3.0.0'
     implementation 'io.reactivex.rxjava3:rxjava:3.0.4'
 

@@ -22,38 +22,17 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class Bookmark {
+public class BookmarkTombstone {
     @JsonProperty("seq")
     public long seq;
 
-    @JsonProperty("bookmark")
-    public long bookmark;
+    @JsonProperty("deletedAt")
+    public long deletedAt;
 
-    @JsonProperty("memo")
-    public String memo;
+    public BookmarkTombstone() {}
 
-    @JsonProperty("tags")
-    public String tags;
-
-    // Last-modified time for this row (distinct from `bookmark`, which is a "starred-at"
-    // timestamp and does not move on a memo/tag-only edit). Absent (0) for bookmarks written by
-    // versions/paths that predate sync - treated as "unknown, old" when compared against a
-    // tombstone's deletedAt, which is the safe default (never lets an unknown-age edit clobber a
-    // known deletion).
-    @JsonProperty("updatedAt")
-    public long updatedAt;
-
-    public Bookmark() {}
-
-    public Bookmark(long seq, long bookmark, String memo, String tags) {
-        this(seq, bookmark, memo, tags, 0L);
-    }
-
-    public Bookmark(long seq, long bookmark, String memo, String tags, long updatedAt) {
+    public BookmarkTombstone(long seq, long deletedAt) {
         this.seq = seq;
-        this.bookmark = bookmark;
-        this.memo = memo;
-        this.tags = tags;
-        this.updatedAt = updatedAt;
+        this.deletedAt = deletedAt;
     }
 }

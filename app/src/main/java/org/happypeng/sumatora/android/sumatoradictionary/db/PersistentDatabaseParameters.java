@@ -291,4 +291,18 @@ public abstract class PersistentDatabaseParameters {
             database.execSQL("DELETE FROM DictionaryBookmarkTag WHERE seq = 0");
         }
     };
+
+    // Adds Nextcloud sync's tombstone-based deletion tracking (see BookmarkComponent and
+    // BookmarkMergeService.mergeWithTombstones in :core): a real last-modified timestamp on
+    // DictionaryBookmark (distinct from the "starred-at" `bookmark` column, which a memo/tag-only
+    // edit doesn't move), and a new table recording deletions so a sync merge can tell "deleted
+    // here" apart from "never existed here". Existing rows default updatedAt to 0 ("unknown, old"
+    // - the safe default, since it never lets a pre-sync edit outrank a genuine later deletion).
+    public static final Migration MIGRATION_13_14 = new Migration(13, 14) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL("ALTER TABLE DictionaryBookmark ADD COLUMN updatedAt INTEGER NOT NULL DEFAULT 0");
+            database.execSQL("CREATE TABLE IF NOT EXISTS DictionaryBookmarkTombstone (`seq` INTEGER NOT NULL, `deletedAt` INTEGER NOT NULL, PRIMARY KEY(`seq`))");
+        }
+    };
 }

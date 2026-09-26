@@ -20,6 +20,8 @@ import androidx.annotation.MainThread;
 
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark;
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmarkDao;
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmarkTombstone;
+import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase;
 
 import java.util.List;
 
@@ -58,12 +60,23 @@ public class BookmarkComponent {
     public void updateBookmark(final DictionaryBookmark bookmark) {
         // Only write to the database. Room will automatically emit updates to bookmarkChangesObservable.
         Completable.fromAction(() -> {
-            final DictionaryBookmarkDao dictionaryBookmarkDao = persistentDatabaseComponent.getDatabase().dictionaryBookmarkDao();
+            final PersistentDatabase database = persistentDatabaseComponent.getDatabase();
+            final DictionaryBookmarkDao dictionaryBookmarkDao = database.dictionaryBookmarkDao();
 
             if (bookmark.bookmark > 0 || (bookmark.memo != null && !bookmark.memo.isEmpty()) || (bookmark.tags != null && !bookmark.tags.isEmpty())) {
+                bookmark.updatedAt = System.currentTimeMillis();
                 dictionaryBookmarkDao.insert(bookmark);
             } else {
-                dictionaryBookmarkDao.delete(bookmark);
+                // This is the only place a DictionaryBookmark row is ever removed - a tombstone
+                // is recorded in the same transaction so Nextcloud sync's merge can tell "deleted
+                // here" apart from "never existed here" and not resurrect it from a copy
+                // elsewhere that still has the live row (see BookmarkMergeService.mergeWithTombstones).
+                final long now = System.currentTimeMillis();
+                database.runInTransaction(() -> {
+                    dictionaryBookmarkDao.delete(bookmark);
+                    database.dictionaryBookmarkTombstoneDao().insert(
+                            new DictionaryBookmarkTombstone(bookmark.seq, now));
+                });
             }
         }).subscribeOn(Schedulers.io()).subscribe();
     }

@@ -197,4 +197,47 @@ public class PersistentDatabaseMigrationTest {
         assertEquals(1, tags.getCount());
         tags.close();
     }
+
+    // MIGRATION_13_14 adds Nextcloud sync's tombstone-based deletion tracking (see
+    // PersistentDatabaseParameters / BookmarkComponent / BookmarkMergeService.mergeWithTombstones
+    // in :core): DictionaryBookmark.updatedAt (a real last-modified time, distinct from the
+    // "starred-at" `bookmark` column) and the new DictionaryBookmarkTombstone table. Checks a
+    // pre-migration bookmark survives with updatedAt defaulting to 0 ("unknown, old" - the safe
+    // fallback), and that both the new column and the new table accept data afterward.
+    @Test
+    public void migrate13To14_addsUpdatedAtAndTombstoneTableAndPreservesExistingRows() throws IOException {
+        SupportSQLiteDatabase v13 = helper.createDatabase(TEST_DB, 13);
+        v13.execSQL("INSERT INTO DictionaryBookmark (seq, bookmark, memo, tags) "
+                + "VALUES (5678, 1, 'test memo', 'tag-a')");
+        v13.close();
+
+        // Throws if the post-migration schema doesn't match what Room expects for version 14
+        // (app/schemas/.../14.json) - that's the main safety net here.
+        SupportSQLiteDatabase v14 = helper.runMigrationsAndValidate(
+                TEST_DB, 14, true, PersistentDatabaseParameters.MIGRATION_13_14);
+
+        Cursor preMigrationRow = v14.query(
+                "SELECT seq, memo, updatedAt FROM DictionaryBookmark WHERE seq = 5678");
+        assertEquals(1, preMigrationRow.getCount());
+        preMigrationRow.moveToFirst();
+        assertEquals("test memo", preMigrationRow.getString(1));
+        assertEquals(0, preMigrationRow.getInt(2));
+        preMigrationRow.close();
+
+        v14.execSQL("UPDATE DictionaryBookmark SET updatedAt = 999999 WHERE seq = 5678");
+        v14.execSQL("INSERT INTO DictionaryBookmarkTombstone (seq, deletedAt) VALUES (4321, 888888)");
+
+        Cursor updatedRow = v14.query(
+                "SELECT updatedAt FROM DictionaryBookmark WHERE seq = 5678");
+        updatedRow.moveToFirst();
+        assertEquals(999999, updatedRow.getInt(0));
+        updatedRow.close();
+
+        Cursor tombstoneRow = v14.query(
+                "SELECT seq, deletedAt FROM DictionaryBookmarkTombstone WHERE seq = 4321");
+        assertEquals(1, tombstoneRow.getCount());
+        tombstoneRow.moveToFirst();
+        assertEquals(888888, tombstoneRow.getInt(1));
+        tombstoneRow.close();
+    }
 }

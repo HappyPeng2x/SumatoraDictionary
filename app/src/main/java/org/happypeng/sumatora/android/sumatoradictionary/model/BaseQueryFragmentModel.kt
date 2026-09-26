@@ -33,9 +33,11 @@ import org.happypeng.sumatora.android.sumatoradictionary.component.PersistentDat
 import org.happypeng.sumatora.android.sumatoradictionary.db.CachedManifestEntry
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmark
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmarkTag
+import org.happypeng.sumatora.android.sumatoradictionary.db.DictionaryBookmarkTombstone
 import org.happypeng.sumatora.android.sumatoradictionary.db.DictionarySearchElement
 import org.happypeng.sumatora.android.sumatoradictionary.db.InstalledDictionary
 import org.happypeng.sumatora.android.sumatoradictionary.db.OptionalDictionaryCatalog
+import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabaseInitialization
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentLanguageSettings
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.DictionarySearchQueryTool
@@ -192,15 +194,29 @@ abstract class BaseQueryFragmentModel protected constructor(
         super.onCleared()
     }
 
+    // Upserts a bookmark row, or removes it and records a tombstone if this clears its last bit
+    // of user data (no star, no memo, no tags) - the only two ways a DictionaryBookmark row's
+    // life cycle ends. Both commitBookmarksFun and commitTagsFun funnel through this so Nextcloud
+    // sync's deletion tracking (see BookmarkMergeService.mergeWithTombstones in :core) can't be
+    // bypassed by one call site forgetting it, the way the DAO used to be hit directly here.
+    private fun upsertOrDeleteBookmark(db: PersistentDatabase, bookmark: DictionaryBookmark) {
+        val bookmarkDao = db.dictionaryBookmarkDao()
+        if (bookmark.bookmark > 0 || !bookmark.memo.isNullOrEmpty() || !bookmark.tags.isNullOrEmpty()) {
+            bookmark.updatedAt = System.currentTimeMillis()
+            bookmarkDao.insert(bookmark)
+        } else {
+            val now = System.currentTimeMillis()
+            bookmarkDao.delete(bookmark)
+            db.dictionaryBookmarkTombstoneDao().insert(DictionaryBookmarkTombstone(bookmark.seq, now))
+        }
+    }
+
     val commitBookmarksFun: (Long, Long, String?) -> Unit = { seq, bookmark, memo ->
         Completable.fromAction {
             val db = persistentDatabaseComponent.database
-            val existing = db.dictionaryBookmarkDao().getBySeq(seq)
-            val bm = DictionaryBookmark(seq, bookmark, memo, existing?.tags)
-            if (bm.bookmark > 0 || !bm.memo.isNullOrEmpty() || !bm.tags.isNullOrEmpty()) {
-                db.dictionaryBookmarkDao().insert(bm)
-            } else {
-                db.dictionaryBookmarkDao().delete(bm)
+            db.runInTransaction {
+                val existing = db.dictionaryBookmarkDao().getBySeq(seq)
+                upsertOrDeleteBookmark(db, DictionaryBookmark(seq, bookmark, memo, existing?.tags))
             }
         }.subscribeOn(Schedulers.io()).subscribe()
     }
@@ -212,11 +228,8 @@ abstract class BaseQueryFragmentModel protected constructor(
                 val existing = db.dictionaryBookmarkDao().getBySeq(seq)
                     ?: DictionaryBookmark(seq, 0L, null, null)
                 existing.tags = tagsStr.ifEmpty { null }
-                if (existing.bookmark > 0 || !existing.memo.isNullOrEmpty() || !existing.tags.isNullOrEmpty()) {
-                    db.dictionaryBookmarkDao().insert(existing)
-                } else {
-                    db.dictionaryBookmarkDao().delete(existing)
-                }
+                upsertOrDeleteBookmark(db, existing)
+
                 val tagDao = db.dictionaryBookmarkTagDao()
                 tagDao.deleteTagsForSeq(seq)
                 if (tagsStr.isNotEmpty()) {

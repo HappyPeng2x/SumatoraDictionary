@@ -20,40 +20,36 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.util.ArrayList;
+import java.util.List;
+
+// The envelope written to/read from the single synced file on the Nextcloud server. `version`
+// lets a future incompatible payload shape be detected before it's blindly merged.
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class Bookmark {
-    @JsonProperty("seq")
-    public long seq;
+public class SyncPayload {
+    @JsonProperty("version")
+    public int version;
 
-    @JsonProperty("bookmark")
-    public long bookmark;
+    @JsonProperty("bookmarks")
+    public List<Bookmark> bookmarks;
 
-    @JsonProperty("memo")
-    public String memo;
+    @JsonProperty("tombstones")
+    public List<BookmarkTombstone> tombstones;
 
-    @JsonProperty("tags")
-    public String tags;
-
-    // Last-modified time for this row (distinct from `bookmark`, which is a "starred-at"
-    // timestamp and does not move on a memo/tag-only edit). Absent (0) for bookmarks written by
-    // versions/paths that predate sync - treated as "unknown, old" when compared against a
-    // tombstone's deletedAt, which is the safe default (never lets an unknown-age edit clobber a
-    // known deletion).
-    @JsonProperty("updatedAt")
-    public long updatedAt;
-
-    public Bookmark() {}
-
-    public Bookmark(long seq, long bookmark, String memo, String tags) {
-        this(seq, bookmark, memo, tags, 0L);
+    public SyncPayload() {
+        version = 1;
+        bookmarks = new ArrayList<>();
+        tombstones = new ArrayList<>();
     }
 
-    public Bookmark(long seq, long bookmark, String memo, String tags, long updatedAt) {
-        this.seq = seq;
-        this.bookmark = bookmark;
-        this.memo = memo;
-        this.tags = tags;
-        this.updatedAt = updatedAt;
+    public SyncPayload(int version, List<Bookmark> bookmarks, List<BookmarkTombstone> tombstones) {
+        this.version = version;
+        this.bookmarks = bookmarks;
+        this.tombstones = tombstones;
+    }
+
+    public static SyncPayload empty() {
+        return new SyncPayload(1, new ArrayList<>(), new ArrayList<>());
     }
 }

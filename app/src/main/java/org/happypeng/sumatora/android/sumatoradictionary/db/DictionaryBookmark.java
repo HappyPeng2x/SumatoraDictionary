@@ -17,6 +17,7 @@
 package org.happypeng.sumatora.android.sumatoradictionary.db;
 
 import androidx.annotation.Nullable;
+import androidx.room.ColumnInfo;
 import androidx.room.Entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -41,6 +42,13 @@ public class DictionaryBookmark {
     @JsonProperty("tags")
     @Nullable public String tags;
 
+    // Last-modified time, stamped by BookmarkComponent.updateBookmark() on every write. Distinct
+    // from `bookmark` (a "starred-at" timestamp that a memo/tag-only edit doesn't move) - this is
+    // what Nextcloud sync's tombstone resolution compares against a deletion's timestamp.
+    @JsonProperty("updatedAt")
+    @ColumnInfo(defaultValue = "0")
+    public long updatedAt;
+
     public DictionaryBookmark() {}
 
     public DictionaryBookmark(long aSeq, long aBookmark, String aMemo) {
@@ -56,11 +64,19 @@ public class DictionaryBookmark {
         tags = aTags;
     }
 
+    public DictionaryBookmark(long aSeq, long aBookmark, String aMemo, String aTags, long aUpdatedAt) {
+        seq = aSeq;
+        bookmark = aBookmark;
+        memo = aMemo;
+        tags = aTags;
+        updatedAt = aUpdatedAt;
+    }
+
     public Bookmark toBookmark() {
-        return new Bookmark(seq, bookmark, memo, tags);
+        return new Bookmark(seq, bookmark, memo, tags, updatedAt);
     }
 
     public static DictionaryBookmark fromBookmark(Bookmark b) {
-        return new DictionaryBookmark(b.seq, b.bookmark, b.memo, b.tags);
+        return new DictionaryBookmark(b.seq, b.bookmark, b.memo, b.tags, b.updatedAt);
     }
 }

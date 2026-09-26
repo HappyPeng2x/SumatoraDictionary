@@ -40,4 +40,16 @@ object BookmarkImportExportService {
         val listType = mapper.typeFactory.constructCollectionType(List::class.java, Bookmark::class.java)
         return mapper.readValue(inputStream, listType)
     }
+
+    // Separate methods (and format - an envelope object, not a bare array) from
+    // writeBookmarks/readBookmarks above: those stay exactly as they are for the existing local
+    // JSON export/share/import feature, which this must not disturb.
+    @JvmStatic
+    fun writeSyncPayload(payload: SyncPayload, outputStream: OutputStream) {
+        mapper.writeValue(outputStream, payload)
+    }
+
+    @JvmStatic
+    fun readSyncPayload(inputStream: InputStream): SyncPayload =
+        mapper.readValue(inputStream, SyncPayload::class.java)
 }
