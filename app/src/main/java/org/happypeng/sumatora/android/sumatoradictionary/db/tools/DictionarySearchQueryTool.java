@@ -78,12 +78,15 @@ public class DictionarySearchQueryTool {
     private static final String SCRIPT_WRITING = "writing";
     private static final String SCRIPT_KANA = "kana";
 
-    // Casting DictionaryBookmark.seq to TEXT (not Entry.source_key to INTEGER) keeps
-    // Entry.source_key bare so EntrySourceKeyOnly can be used for the join - see the query-plan
-    // audit this fixed. Doesn't matter for correctness which side the cast is on (source_key is
-    // always a plain decimal string), only for whether the indexed column stays seekable.
+    // Search tiers look bookmarks up per matched entry, so the cast goes on the Entry side and
+    // DictionaryBookmark.seq (its primary key) stays bare and seekable. The other way round
+    // (CAST(DictionaryBookmark.seq AS TEXT)) scans every bookmark for every matched row: with
+    // 2,200 bookmarks a one-kana search took ~4.5s instead of ~0.1s. SQL_QUERY_BOOKMARK_LISTING
+    // is the opposite direction (bookmark -> Entry), so there the cast goes on the bookmark side
+    // instead, keeping Entry.source_key seekable. Correctness is the same either way (source_key
+    // is always a plain decimal string).
     private static final String BOOKMARK_JOIN =
-            "LEFT JOIN DictionaryBookmark ON Entry.source_key = CAST(DictionaryBookmark.seq AS TEXT) ";
+            "LEFT JOIN DictionaryBookmark ON DictionaryBookmark.seq = CAST(Entry.source_key AS INTEGER) ";
 
     private static final String BOOKMARKS_WHERE_CLAUSE =
             "((? = 0 AND ? = 0) OR (((? AND IFNULL(DictionaryBookmark.bookmark, 0) > 0) OR (? AND DictionaryBookmark.memo IS NOT NULL AND DictionaryBookmark.memo != ''))))";
