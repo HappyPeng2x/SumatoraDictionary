@@ -2,6 +2,27 @@
 
 ## [Unreleased]
 
+## [0.5.0-beta6] - 2026-09-26
+
+### Proper names
+
+- Fixed a crash when scrolling search results that include proper names (with the optional
+  "Proper names" dictionary installed), and when searching again quickly while such results were
+  showing. Every proper-name result carried the same internal id (0), which the result list
+  relies on being unique. Common queries like こうせい, 代 or 極 crashed reliably.
+- Proper names can now be bookmarked, annotated and tagged like regular entries. The menu was
+  already shown on name results, but all of them were saved under that same id 0 and never showed
+  up anywhere; those broken entries are removed on upgrade. Name bookmarks appear in Bookmarks,
+  can be found by searching from the Bookmarks screen, and work with #tag filters. If the "Proper
+  names" dictionary isn't installed, they show as a placeholder that links to Manage dictionaries.
+- Names that are also in the main dictionary now appear once instead of twice.
+
+### Search
+
+- Searching is faster when you have many bookmarks: looking up the bookmark state of each result
+  couldn't use its index and scanned every bookmark once per matching result. A one-character
+  search with 2,000+ bookmarks went from about 1s to 0.1s.
+
 ## [0.5.0-beta5] - 2026-09-11
 
 ### Dictionary downloads
