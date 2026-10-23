@@ -2,6 +2,24 @@
 
 ## [Unreleased]
 
+## [0.5.0-beta7] - 2026-10-23
+
+### Search
+
+- Fixed blank results when scrolling far down a long result list. Results are drawn in batches of
+  200, and the next batch was only prepared once you reached the very end of the list, so everything
+  past the first ~200 showed as empty cards. Short queries (one or two kana, e.g. こま) and the
+  proper-names dictionary, which can match thousands of names at once, hit this reliably. Results
+  are now prepared around wherever you scroll to.
+
+### Dictionary downloads
+
+- Fixed dictionary updates all failing with "Download failed · tap to retry". When two update
+  checks ran at the same time (for example the automatic check after updating the app, plus
+  "Check for updates" or the weekly check), each pack was downloaded twice into the same file,
+  corrupting it, so every update failed its integrity check. A pack is now never downloaded twice
+  at once. If you're seeing "Download failed" from the previous beta, "tap to retry" fixes it.
+
 ## [0.5.0-beta6] - 2026-09-26
 
 ### Proper names
