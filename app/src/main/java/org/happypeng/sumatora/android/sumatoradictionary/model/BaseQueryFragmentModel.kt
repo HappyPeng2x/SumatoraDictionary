@@ -46,6 +46,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.model.intent.LanguageSe
 import org.happypeng.sumatora.android.sumatoradictionary.model.state.QueryState
 import org.happypeng.sumatora.android.sumatoradictionary.operator.LiveDataWrapper
 import java.io.File
+import java.util.concurrent.atomic.AtomicReference
 
 abstract class BaseQueryFragmentModel protected constructor(
     protected val persistentDatabaseComponent: PersistentDatabaseComponent,
@@ -74,6 +75,10 @@ abstract class BaseQueryFragmentModel protected constructor(
         // matched. Cheap even at this size (~a few ms) now that the missing Sense.sense_group_id
         // index that made per-row rendering expensive is fixed (dictionaries-v12).
         const val RENDER_BACKFILL_LIMIT = 200
+        // Rows rendered before/after the requested positions by a RenderPositions step, so the
+        // rows just off-screen in either scroll direction are ready before they're bound.
+        const val RENDER_WINDOW_BEFORE = 50
+        const val RENDER_WINDOW_AFTER = 150
     }
 
     // Internal operation sealed class replaces Intent→Action→Result layers.
@@ -87,6 +92,7 @@ abstract class BaseQueryFragmentModel protected constructor(
         object OpenSearchBox : Op()
         object RefreshBookmarks : Op()
         object Scroll : Op()
+        object RenderPositions : Op()
         object Clear : Op()
         object Close : Op()
     }
@@ -169,6 +175,21 @@ abstract class BaseQueryFragmentModel protected constructor(
     }
 
     fun openSearchBox() = opsSubject.onNext(Op.OpenSearchBox)
+
+    // Display positions the adapter bound without a render_json, accumulated until the next
+    // RenderPositions step picks them up. A fling binds many rows in a row; only the first
+    // request queues an op, the rest just widen the range it will render.
+    private val pendingRenderRange = AtomicReference<IntRange?>(null)
+
+    val requestRenderFun: (Int) -> Unit = { position ->
+        val previous = pendingRenderRange.getAndUpdate { range ->
+            if (range == null) position..position
+            else minOf(range.first, position)..maxOf(range.last, position)
+        }
+        if (previous == null) {
+            opsSubject.onNext(Op.RenderPositions)
+        }
+    }
 
     open fun setLanguage(language: String) {
         val settings = PersistentLanguageSettings()
@@ -351,6 +372,17 @@ abstract class BaseQueryFragmentModel protected constructor(
                 }
                 prev.copy(currentQuery = current, found = prev.found || found, searching = false,
                     setIntent = false, clearSearchBox = false)
+            }
+            Op.RenderPositions -> {
+                val range = pendingRenderRange.getAndSet(null) ?: return prev
+                // No tool means the language is being swapped; LanguageAttached re-runs the search
+                // and the rebuilt rows get bound (and request rendering) again.
+                val tool = prev.queryTool ?: return prev
+                val offset = maxOf(0, range.first - RENDER_WINDOW_BEFORE)
+                db.runInTransaction {
+                    tool.backfillRenderJsonWindow(offset, range.last + RENDER_WINDOW_AFTER - offset + 1)
+                }
+                prev
             }
             Op.Clear -> {
                 prev.queryTool?.let { db.runInTransaction { it.delete() } }

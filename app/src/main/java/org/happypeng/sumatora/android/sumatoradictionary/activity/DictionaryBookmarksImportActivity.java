@@ -131,7 +131,9 @@ public class DictionaryBookmarksImportActivity extends AppCompatActivity {
                         entry -> {
                             EntryDetailBottomSheet sheet = EntryDetailBottomSheet.Companion.newInstance(entry, null);
                             sheet.show(getSupportFragmentManager(), "entry_detail");
-                        });
+                        },
+                        // The import preview renders every row eagerly (BookmarkImportQueryTool).
+                        position -> Unit.INSTANCE);
 
         autoDisposable.add(bookmarkImportModel.getPagedListObservable().subscribe(l ->
                 pagedListAdapter.submitList(l)));

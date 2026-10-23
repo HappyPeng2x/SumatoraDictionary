@@ -424,7 +424,20 @@ public class DictionarySearchQueryTool {
             "UPDATE DictionarySearchElement SET render_json = %s "
                     + "WHERE rowid IN (SELECT rowid FROM DictionarySearchElement "
                     + "WHERE ref = ? AND render_json IS NULL AND match_kind %s "
-                    + "ORDER BY entryOrder, rank LIMIT ?)";
+                    + "ORDER BY entryOrder, rank, entry_id LIMIT ?)";
+
+    // Same backfill, but for a window of display positions (OFFSET/LIMIT over the paged list's own
+    // ORDER BY - see DictionarySearchElementDao.getAllDetailsLivePaged) rather than the first
+    // unrendered rows. The paged list reads whatever position the user scrolled to, and one tier
+    // (a one/two-kana prefix, or the proper-noun tier, which inserts every name match at once) can
+    // hold thousands of rows, so the bounded "first N unrendered" pass alone leaves everything past
+    // its limit blank until the list's very end triggers another match-finding step.
+    private static final String SQL_QUERY_BACKFILL_RENDER_WINDOW =
+            "UPDATE DictionarySearchElement SET render_json = %s "
+                    + "WHERE rowid IN (SELECT rid FROM (SELECT rowid AS rid, render_json, match_kind "
+                    + "FROM DictionarySearchElement WHERE ref = ? "
+                    + "ORDER BY entryOrder, rank, entry_id LIMIT ? OFFSET ?) "
+                    + "WHERE render_json IS NULL AND match_kind %s)";
 
     // buildRenderJsonExpr/buildNameRenderJsonExpr are written as SELECT-list column expressions
     // ("(...) AS render_json") for their other caller (BookmarkImportQueryTool, which still computes
@@ -459,6 +472,8 @@ public class DictionarySearchQueryTool {
 
     private SupportSQLiteStatement backfillCoreStatement;
     private SupportSQLiteStatement backfillNamesStatement;
+    private SupportSQLiteStatement backfillCoreWindowStatement;
+    private SupportSQLiteStatement backfillNamesWindowStatement;
 
     private final int key;
 
@@ -650,14 +665,19 @@ public class DictionarySearchQueryTool {
         // search hit carries, so every tier renders the same headword/sense set for a given entry.
         final String backfillCoreRenderExpr = asUpdateExpr(buildRenderJsonExpr(
                 "DictionarySearchElement.entry_id", glossAliasOrNull, backupGlossAliasOrNull));
+        final String coreMatchKinds = "NOT IN ('" + MATCH_KIND_NAME + "', '" + MATCH_KIND_NAME_UNAVAILABLE + "')";
         backfillCoreStatement = db.compileStatement(String.format(SQL_QUERY_BACKFILL_RENDER, backfillCoreRenderExpr,
-                "NOT IN ('" + MATCH_KIND_NAME + "', '" + MATCH_KIND_NAME_UNAVAILABLE + "')"));
+                coreMatchKinds));
+        backfillCoreWindowStatement = db.compileStatement(String.format(SQL_QUERY_BACKFILL_RENDER_WINDOW,
+                backfillCoreRenderExpr, coreMatchKinds));
 
         if (namesInstalled) {
             final String backfillNamesRenderExpr = asUpdateExpr(buildNameRenderJsonExpr(
                     "DictionarySearchElement.entry_id"));
             backfillNamesStatement = db.compileStatement(String.format(SQL_QUERY_BACKFILL_RENDER, backfillNamesRenderExpr,
                     "= '" + MATCH_KIND_NAME + "'"));
+            backfillNamesWindowStatement = db.compileStatement(String.format(SQL_QUERY_BACKFILL_RENDER_WINDOW,
+                    backfillNamesRenderExpr, "= '" + MATCH_KIND_NAME + "'"));
         }
 
         statements = new QueryStatement[15];
@@ -856,6 +876,24 @@ public class DictionarySearchQueryTool {
         }
     }
 
+    // Renders the unrendered rows among display positions [offset, offset + count) - see
+    // SQL_QUERY_BACKFILL_RENDER_WINDOW. Driven by the adapter binding a row that has no
+    // render_json yet, so it covers wherever the user has scrolled to.
+    @WorkerThread
+    public void backfillRenderJsonWindow(int offset, int count) {
+        backfillCoreWindowStatement.bindLong(1, key);
+        backfillCoreWindowStatement.bindLong(2, count);
+        backfillCoreWindowStatement.bindLong(3, offset);
+        backfillCoreWindowStatement.execute();
+
+        if (backfillNamesWindowStatement != null) {
+            backfillNamesWindowStatement.bindLong(1, key);
+            backfillNamesWindowStatement.bindLong(2, count);
+            backfillNamesWindowStatement.bindLong(3, offset);
+            backfillNamesWindowStatement.execute();
+        }
+    }
+
     public void close() {
         if (statements != null) {
             for (QueryStatement s : statements) {
@@ -900,6 +938,10 @@ public class DictionarySearchQueryTool {
         closeQuietly(backfillNamesStatement);
         backfillCoreStatement = null;
         backfillNamesStatement = null;
+        closeQuietly(backfillCoreWindowStatement);
+        closeQuietly(backfillNamesWindowStatement);
+        backfillCoreWindowStatement = null;
+        backfillNamesWindowStatement = null;
     }
 
     private static void closeStatement(QueryStatement statement) {

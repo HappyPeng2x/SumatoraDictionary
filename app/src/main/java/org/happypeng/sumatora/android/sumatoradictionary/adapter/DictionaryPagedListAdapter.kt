@@ -38,7 +38,11 @@ class DictionaryPagedListAdapter(aDisableBookmarkButton: Boolean,
                                  commitTagsConsumer: (Long, String) -> Unit,
                                  tagSuggestionsProvider: () -> List<String>,
                                  private val holderColors: DictionarySearchElementViewHolder.Colors,
-                                 private val onEntryClick: OnEntryClickListener = OnEntryClickListener {}) :
+                                 private val onEntryClick: OnEntryClickListener = OnEntryClickListener {},
+                                 // Called with the absolute position (the DAO query's OFFSET) of a
+                                 // row bound before its render_json was computed - see
+                                 // BaseQueryFragmentModel.requestRenderFun.
+                                 private val onRenderMissing: (Int) -> Unit = {}) :
         PagedListAdapter<DictionarySearchElement?, DictionarySearchElementViewHolder>(DictionarySearchElementDiffUtil.getDiffUtil()) {
     private val disableBookmarkButton: Boolean
     private val disableMemoEdit: Boolean
@@ -70,6 +74,12 @@ class DictionaryPagedListAdapter(aDisableBookmarkButton: Boolean,
         val entry = getItem(position)
         if (entry != null) {
             holder.bindTo(entry)
+            if (entry.render_json == null) {
+                // Placeholders are disabled, so a PagedList reloaded after an invalidation starts
+                // at whatever offset it was loaded around, not 0 - adapter positions are relative
+                // to that.
+                onRenderMissing((currentList?.positionOffset ?: 0) + position)
+            }
         }
     }
 

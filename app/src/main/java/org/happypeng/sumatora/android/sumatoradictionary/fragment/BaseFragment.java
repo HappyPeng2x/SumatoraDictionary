@@ -197,7 +197,8 @@ public abstract class BaseFragment extends Fragment {
                         entry -> {
                             EntryDetailBottomSheet sheet = EntryDetailBottomSheet.Companion.newInstance(entry, null);
                             sheet.show(getChildFragmentManager(), "entry_detail");
-                        });
+                        },
+                        queryFragmentModel.getRequestRenderFun());
 
         // submitList() schedules an async DiffUtil computation whose result later dispatches
         // notifyItemRangeInserted on the main thread's message queue (AsyncPagedListDiffer). If
