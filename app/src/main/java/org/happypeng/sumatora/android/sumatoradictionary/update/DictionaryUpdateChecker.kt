@@ -22,6 +22,7 @@ import android.util.Log
 import androidx.annotation.WorkerThread
 import org.happypeng.sumatora.android.sumatoradictionary.db.CachedManifestEntry
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentDatabase
+import org.happypeng.sumatora.android.sumatoradictionary.db.RemoteDictionaryObject
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Settings
 import java.io.File
 
@@ -69,20 +70,12 @@ object DictionaryUpdateChecker {
                 continue
             }
 
-            val alreadyDownloading = db.remoteDictionaryObjectDao()
-                .getForTypeLang(remote.type, remote.lang)?.downloadId ?: -1L
-
-            if (alreadyDownloading > -1) {
-                continue
-            }
-
-            Log.i(TAG, "Enqueuing update for ${remote.type}/${remote.lang}: " +
-                    "${installed.version}/${installed.date} -> ${remote.version}/${remote.date}")
-
             try {
-                remote.download(downloadManager, downloadDir, allowedOverMetered)
-                db.remoteDictionaryObjectDao().insert(remote)
-                enqueued++
+                if (enqueueIfNotDownloading(db, downloadManager, downloadDir, remote, allowedOverMetered)) {
+                    Log.i(TAG, "Enqueued update for ${remote.type}/${remote.lang}: " +
+                            "${installed.version}/${installed.date} -> ${remote.version}/${remote.date}")
+                    enqueued++
+                }
             } catch (e: Exception) {
                 // A single pack's DownloadManager.enqueue() failing (e.g. the GrapheneOS
                 // network-toggle case RemoteDictionaryObject.download() guards against) must not
@@ -94,6 +87,36 @@ object DictionaryUpdateChecker {
         }
 
         return enqueued
+    }
+
+    // The only way a pack download gets enqueued - both this checker and
+    // DictionariesManagementActivity's Install/Retry go through here. Checking for an in-flight
+    // download and recording the new one must be atomic: two update checks can run at once (a
+    // REPLACEd manual check keeps running inside doWork(), and the periodic check has its own
+    // unique name), and both would otherwise pass the check, then enqueue the same pack to the same
+    // type-lang.db.gz destination. The two DownloadManager writes corrupt that file, and only the
+    // last download id is recorded, so its completion fails the checksum - every pack updated in
+    // that pass ended up "Download failed". WorkManager runs in the app process, so a JVM lock
+    // covers every caller.
+    @Synchronized
+    @WorkerThread
+    fun enqueueIfNotDownloading(
+        db: PersistentDatabase,
+        downloadManager: DownloadManager,
+        downloadDir: File,
+        remote: RemoteDictionaryObject,
+        allowedOverMetered: Boolean
+    ): Boolean {
+        val alreadyDownloading = db.remoteDictionaryObjectDao()
+            .getForTypeLang(remote.type, remote.lang)?.downloadId ?: -1L
+
+        if (alreadyDownloading > -1) {
+            return false
+        }
+
+        remote.download(downloadManager, downloadDir, allowedOverMetered)
+        db.remoteDictionaryObjectDao().insert(remote)
+        return true
     }
 
     private fun isNewer(version: Int, date: Int, thanVersion: Int, thanDate: Int): Boolean =

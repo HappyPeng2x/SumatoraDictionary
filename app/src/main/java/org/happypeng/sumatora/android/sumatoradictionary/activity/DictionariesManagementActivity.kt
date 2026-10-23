@@ -55,6 +55,7 @@ import org.happypeng.sumatora.android.sumatoradictionary.db.OptionalDictionaryCa
 import org.happypeng.sumatora.android.sumatoradictionary.db.PersistentSetting
 import org.happypeng.sumatora.android.sumatoradictionary.db.RemoteDictionaryObject
 import org.happypeng.sumatora.android.sumatoradictionary.db.tools.Settings as AppSettings
+import org.happypeng.sumatora.android.sumatoradictionary.update.DictionaryUpdateChecker
 import org.happypeng.sumatora.android.sumatoradictionary.update.DictionaryUpdateWorker
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.DictionaryManagementRenderer
 import org.happypeng.sumatora.android.sumatoradictionary.viewholder.rendering.DictionaryManagementRow
@@ -451,12 +452,16 @@ class DictionariesManagementActivity : AppCompatActivity() {
                 log.info("getExternalFilesDir(null) = {}", externalDir)
                 val downloadDir = File(externalDir, "downloads").apply { mkdirs() }
 
-                entry.download(downloadManager, downloadDir, allowedOverMetered)
-                db.remoteDictionaryObjectDao().insert(entry)
-                log.info(
-                    "Enqueued download for {}/{}, DownloadManager id={}",
-                    entry.type, entry.lang, entry.downloadId
-                )
+                if (DictionaryUpdateChecker.enqueueIfNotDownloading(
+                        db, downloadManager, downloadDir, entry, allowedOverMetered)) {
+                    log.info(
+                        "Enqueued download for {}/{}, DownloadManager id={}",
+                        entry.type, entry.lang, entry.downloadId
+                    )
+                } else {
+                    // An update check got to this pack first - its download is already running.
+                    log.info("Download already in progress for {}/{}", entry.type, entry.lang)
+                }
             }
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
